@@ -3,7 +3,7 @@ package pl.pelotasplus.eyeofbeholder.data
 import co.touchlab.kermit.Logger
 
 object LCWHelper {
-    fun decompress(source: ByteArray, dest: ByteArray) {
+    fun decompress(source: UByteArray, dest: UByteArray) {
         var sp = 0 // Source Pointer
         var dp = 0 // Destination Pointer
 

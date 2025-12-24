@@ -47,7 +47,7 @@ class CpsRepositoryImpl(
 
             // sizeFromHeader is file size minus 2, compressed data is from current offset to end
             val compressed = bytes.copyOfRange(offset, bytes.size)
-            val decompressed = ByteArray(uncompressedSize) // IMAGE_WIDTH * IMAGE_HEIGHT)
+            val decompressed = UByteArray(uncompressedSize)
 
             LCWHelper.decompress(compressed, decompressed)
 
@@ -55,7 +55,7 @@ class CpsRepositoryImpl(
                 name = name,
                 width = IMAGE_WIDTH,
                 height = IMAGE_HEIGHT,
-                pixels = decompressed.asUByteArray()
+                pixels = decompressed
             )
         }
     }

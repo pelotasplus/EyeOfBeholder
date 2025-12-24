@@ -4,7 +4,7 @@ import co.touchlab.kermit.Logger
 import eyeofbeholder.composeapp.generated.resources.Res
 
 interface ResourceRepository {
-    suspend fun readResource(path: String): ByteArray
+    suspend fun readResource(path: String): UByteArray
 
     suspend fun listResources(extension: String): Result<List<String>>
 }
@@ -98,8 +98,8 @@ class ResourceRepositoryImpl() : ResourceRepository {
         "WOLF.CPS",
     )
 
-    override suspend fun readResource(path: String): ByteArray {
-        return Res.readBytes(path)
+    override suspend fun readResource(path: String): UByteArray {
+        return Res.readBytes(path).asUByteArray()
     }
 
     override suspend fun listResources(extension: String): Result<List<String>> {
