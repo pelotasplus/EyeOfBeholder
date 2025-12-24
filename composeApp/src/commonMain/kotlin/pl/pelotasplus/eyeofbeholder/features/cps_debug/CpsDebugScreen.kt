@@ -1,6 +1,7 @@
-package pl.pelotasplus.eyeofbeholder.features.pal_debug
+package pl.pelotasplus.eyeofbeholder.features.cps_debug
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -23,26 +24,26 @@ import org.jetbrains.compose.ui.tooling.preview.Preview
 import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
-fun PalDebugScreen(
-    viewModel: PalDebugViewModel = koinViewModel(),
+fun CpsDebugScreen(
+    viewModel: CpsDebugViewModel = koinViewModel(),
     modifier: Modifier = Modifier
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
 
-    PalDebugContent(
+    CpsDebugContent(
         modifier = modifier,
         state = state,
-        onPalSelected = {
-            viewModel.onEvent(PalDebugViewModel.Event.OnPalSelected(it))
+        onCpsSelected = {
+            viewModel.onEvent(CpsDebugViewModel.Event.OnCpsSelected(it))
         }
     )
 }
 
 @Composable
-private fun PalDebugContent(
-    state: PalDebugViewModel.State,
+private fun CpsDebugContent(
+    state: CpsDebugViewModel.State,
     modifier: Modifier = Modifier,
-    onPalSelected: (String) -> Unit = {},
+    onCpsSelected: (String) -> Unit = {},
 ) {
     if (state.isLoading) {
         CircularProgressIndicator()
@@ -52,9 +53,9 @@ private fun PalDebugContent(
 
             val palList: @Composable (Modifier) -> Unit = { listModifier ->
                 LazyColumn(listModifier) {
-                    items(state.allPals) { palName ->
+                    items(state.cpsNames) { palName ->
                         Button(
-                            onClick = { onPalSelected(palName) }
+                            onClick = { onCpsSelected(palName) }
                         ) {
                             Text(text = palName)
                         }
@@ -63,14 +64,15 @@ private fun PalDebugContent(
             }
 
             val palCanvas: @Composable (Modifier) -> Unit = { canvasModifier ->
-                if (state.loadedPalette != null) {
+                if (state.loadedCps != null && state.loadedPalette != null) {
                     BoxWithConstraints(modifier = canvasModifier) {
                         val canvasSize = if (isLandscape) maxHeight else maxWidth
                         Canvas(modifier = Modifier.size(canvasSize)) {
-                            val cellSize = size.width / 16
-                            state.loadedPalette.colors.forEachIndexed { index, color ->
-                                val x = (index % 16) * cellSize
-                                val y = (index / 16) * cellSize
+                            val cellSize = maxWidth / 320
+                            state.loadedCps.pixels.forEachIndexed { index, colorIndex ->
+                                val x = (index % 320) * cellSize.toPx()
+                                val y = (index / 320) * cellSize.toPx()
+                                val color = state.loadedPalette.colors[colorIndex.toInt()]
                                 drawRect(
                                     color = Color(
                                         color.red.toInt(),
@@ -78,7 +80,7 @@ private fun PalDebugContent(
                                         color.blue.toInt()
                                     ),
                                     topLeft = Offset(x, y),
-                                    size = Size(cellSize, cellSize)
+                                    size = Size(cellSize.toPx(), cellSize.toPx())
                                 )
                             }
                         }
@@ -88,8 +90,8 @@ private fun PalDebugContent(
 
             if (isLandscape) {
                 Row {
-                    palList(Modifier.weight(1f).fillMaxHeight())
-                    palCanvas(Modifier)
+                    palList(Modifier.weight(0.3f).fillMaxHeight())
+                    palCanvas(Modifier.weight(0.7f).fillMaxWidth().background(Color.Red))
                 }
             } else {
                 Column {
@@ -104,8 +106,8 @@ private fun PalDebugContent(
 @Preview
 @Composable
 private fun PreviewCpsDebugContent() {
-    PalDebugContent(
-        state = PalDebugViewModel.State(
+    CpsDebugContent(
+        state = CpsDebugViewModel.State(
             isLoading = true
         )
     )

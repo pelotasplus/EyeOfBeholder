@@ -9,6 +9,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import org.jetbrains.compose.ui.tooling.preview.Preview
+import pl.pelotasplus.eyeofbeholder.features.cps_debug.CpsDebugScreen
 import pl.pelotasplus.eyeofbeholder.features.pal_debug.PalDebugScreen
 
 @Composable
@@ -22,7 +23,8 @@ fun App() {
                 .fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            PalDebugScreen()
+//            PalDebugScreen()
+            CpsDebugScreen()
         }
     }
 }

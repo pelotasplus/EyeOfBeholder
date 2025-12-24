@@ -1,5 +1,6 @@
 package pl.pelotasplus.eyeofbeholder.data.repository
 
+import co.touchlab.kermit.Logger
 import eyeofbeholder.composeapp.generated.resources.Res
 
 interface ResourceRepository {
@@ -9,8 +10,10 @@ interface ResourceRepository {
 }
 
 class ResourceRepositoryImpl() : ResourceRepository {
-    private val palResources = listOf(
+    private val TAG = "ResourceRepository"
+    private val manifest = listOf(
         "AZURE.PAL",
+        "AZURE1.CPS",
         "CRIMSON.PAL",
         "FINALE_0.PAL",
         "FINALE_1.PAL",
@@ -23,15 +26,14 @@ class ResourceRepositoryImpl() : ResourceRepository {
         "FOREST.PAL",
     )
 
-    private val allResources = palResources
-
     override suspend fun readResource(path: String): ByteArray {
         return Res.readBytes(path)
     }
 
     override suspend fun listResources(extension: String): Result<List<String>> {
         return runCatching {
-            allResources.filter { it.endsWith(extension, ignoreCase = true) }
+            manifest.filter { it.endsWith(extension, ignoreCase = true) }
+                .also { Logger.d(TAG) { "listResources: $extension got $it" } }
         }
     }
 }

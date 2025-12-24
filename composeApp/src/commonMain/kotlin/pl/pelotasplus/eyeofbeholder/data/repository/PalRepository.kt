@@ -1,11 +1,11 @@
 package pl.pelotasplus.eyeofbeholder.data.repository
 
 import kotlinx.collections.immutable.toImmutableList
-import pl.pelotasplus.eyeofbeholder.data.model.Pal
+import pl.pelotasplus.eyeofbeholder.data.model.Palette
 import pl.pelotasplus.eyeofbeholder.data.model.RGB
 
 interface PalRepository {
-    suspend fun loadPal(name: String): Result<Pal>
+    suspend fun loadPal(name: String): Result<Palette>
 
     suspend fun getAllPalNames(): Result<List<String>>
 }
@@ -13,7 +13,7 @@ interface PalRepository {
 class PalRepositoryImpl(
     private val resourceRepository: ResourceRepository
 ) : PalRepository {
-    override suspend fun loadPal(name: String): Result<Pal> {
+    override suspend fun loadPal(name: String): Result<Palette> {
         return runCatching {
             val bytes = resourceRepository.readResource("files/$name")
 
@@ -27,7 +27,7 @@ class PalRepositoryImpl(
                         blue = convert6bitTo8bit(b),
                     )
                 }
-            Pal(name = name, colors = colors.toImmutableList())
+            Palette(name = name, colors = colors.toImmutableList())
         }
     }
 
