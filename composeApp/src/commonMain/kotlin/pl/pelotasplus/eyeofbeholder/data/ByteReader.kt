@@ -15,6 +15,11 @@ class ByteReader(private val bytes: UByteArray) {
         return bytes[offset++].toInt()
     }
 
+    fun readI8(): Int {
+        check(offset < bytes.size) { "Read past end of buffer" }
+        return bytes[offset++].toByte().toInt()
+    }
+
     fun readU16LE(): Int {
         check(offset + 1 < bytes.size) { "Read past end of buffer" }
         val value = (bytes[offset].toInt()) +
