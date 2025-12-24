@@ -8,6 +8,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.Door
 import pl.pelotasplus.eyeofbeholder.data.model.Inf
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterGfx
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterProperty
+import pl.pelotasplus.eyeofbeholder.data.model.ScriptTimer
 
 interface InfRepository {
     suspend fun loadInf(name: String): Result<Inf>
@@ -76,29 +77,19 @@ class InfRepositoryImpl(
         val vmpData = reader.readString(13)
         Logger.d(TAG) { "VMP name '$vmpData'" }
 
-        Logger.d(TAG) { "Offset is ${reader.offset}" }
-
         cmd = reader.readU8()
         check(cmd == 0xFF) { "expected 0xFF, got 0x${cmd.toHexString()}" }
 
-        Logger.d(TAG) { "Offset is ${reader.offset}" }
-
         val palette = reader.readString(13)
         Logger.d(TAG) { "Palette name '$palette'" }
-
-        Logger.d(TAG) { "Offset is ${reader.offset}" }
 
         val doors = readDoors(reader)
         doors.forEach { door ->
             Logger.d(TAG) { "Got door: $door" }
         }
 
-        Logger.d(TAG) { "Offset is ${reader.offset}" }
-
         val stepsUntilScriptCall = reader.readU16LE()
         Logger.d(TAG) { "stepsUntilScriptCall/maxMonstersCount is $stepsUntilScriptCall" }
-
-        Logger.d(TAG) { "Offset is ${reader.offset}" }
 
         val monsterGfx = readMonsterGfx(reader)
         monsterGfx.forEach { monsterGfx ->
@@ -111,6 +102,58 @@ class InfRepositoryImpl(
         }
 
         Logger.d(TAG) { "Offset is ${reader.offset} remaining ${reader.remaining}" }
+
+        cmd = reader.readU8()
+        check(cmd == 0xEC) { "expected 0xFF, got 0x${cmd.toHexString()}" }
+
+        val decorationBlocks = reader.readU16LE()
+        Logger.d(TAG) { "Decorations block count $decorationBlocks" }
+        for (i in 0 until decorationBlocks) {
+            cmd = reader.readU8()
+            if (cmd == 0xEC) {
+                // read decorations
+                val gfx = reader.readString(13)
+                val dec = reader.readString(13)
+                Logger.d(TAG) { "Decoration: $gfx $dec" }
+            } else if (cmd == 0xFB) {
+                // assign decorations
+                Logger.d(TAG) { "Assigning decorations..." }
+                val wallIndex = reader.readU8()
+                val vmpIndex = reader.readU8()
+                val decIndex = reader.readU8()
+                val specialType = reader.readU8()
+                val flags = reader.readU8()
+                Logger.d(TAG) { "Assigning decorations: wallIndex: $wallIndex vmpIndex: $vmpIndex decIndex: $decIndex specialType: $specialType flags: $flags" }
+            } else {
+                check(false) { "Unexpected cmd $cmd" }
+            }
+        }
+
+        Logger.d(TAG) { "Offset is ${reader.offset} remaining ${reader.remaining}" }
+
+        val scriptTimers = readScriptTimers(reader)
+        scriptTimers.forEach {
+            Logger.d(TAG) { "Got script timer: $it" }
+        }
+
+        Logger.d(TAG) { "Offset is ${reader.offset} remaining ${reader.remaining}" }
+    }
+
+    fun readScriptTimers(reader: ByteReader): List<ScriptTimer> {
+        val scriptTimers = mutableListOf<ScriptTimer>()
+
+        while (true) {
+            val func = reader.readU16LE()
+            if (func == 0xFFFF) {
+                break
+            }
+            val ticks = reader.readU16LE() * 18
+
+            val scriptTimer = ScriptTimer(func, ticks)
+            scriptTimers.add(scriptTimer)
+        }
+
+        return scriptTimers
     }
 
     private fun readMonsterGfx(reader: ByteReader): List<MonsterGfx> {
