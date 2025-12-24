@@ -16,8 +16,8 @@ junit = "4.13.2"
 kotlin = "2.3.0"
 kotlinx-coroutines = "1.10.2"
 koin = "4.1.1"
-kermit = "2.0.4"
-kotlinx-collections-immutable = "0.3.8"
+kermit = "2.0.8"
+kotlinx-collections-immutable = "0.4.0"
 
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
