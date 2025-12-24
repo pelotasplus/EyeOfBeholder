@@ -103,4 +103,9 @@ object LCWHelper {
             }
         }
     }
+
+    private fun UByteArray.readU16LE(offset: Int): Int {
+        return (this[offset].toInt() and 0xFF) +
+                ((this[offset + 1].toInt() and 0xFF) shl 8)
+    }
 }

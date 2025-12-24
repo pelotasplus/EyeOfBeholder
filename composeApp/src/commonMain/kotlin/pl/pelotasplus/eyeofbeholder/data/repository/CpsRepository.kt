@@ -1,10 +1,9 @@
 package pl.pelotasplus.eyeofbeholder.data.repository
 
 import co.touchlab.kermit.Logger
+import pl.pelotasplus.eyeofbeholder.data.ByteReader
 import pl.pelotasplus.eyeofbeholder.data.LCWHelper
 import pl.pelotasplus.eyeofbeholder.data.model.Cps
-import pl.pelotasplus.eyeofbeholder.data.readU16LE
-import pl.pelotasplus.eyeofbeholder.data.readU32LE
 
 interface CpsRepository {
     suspend fun loadCps(name: String): Result<Cps>
@@ -21,32 +20,29 @@ class CpsRepositoryImpl(
     override suspend fun loadCps(name: String): Result<Cps> {
         return runCatching {
             val bytes = resourceRepository.readResource("files/$name")
-            var offset = 0
+            val reader = ByteReader(bytes)
 
             Logger.d(TAG) { "Decompressing $name; On-disk file size ${bytes.size}" }
 
-            val sizeFromHeader = bytes.readU16LE(offset)
-            offset += 2
+            val sizeFromHeader = reader.readU16LE()
             Logger.d(TAG) { "Header file size $sizeFromHeader" }
 
-            val compressionType = bytes.readU16LE(offset)
-            offset += 2
+            val compressionType = reader.readU16LE()
             Logger.d(TAG) { "Compression Type $compressionType" }
 
-            val uncompressedSize = bytes.readU32LE(offset)
+            val uncompressedSize = reader.readU32LE()
             check(uncompressedSize == IMAGE_WIDTH * IMAGE_HEIGHT) {
                 "Unexpected uncompressed size: $uncompressedSize, expected ${IMAGE_WIDTH * IMAGE_HEIGHT}"
             }
-
-            offset += 4
             Logger.d(TAG) { "Uncompressed size $uncompressedSize" }
 
-            val paletteSize = bytes.readU16LE(offset)
-            offset += 2
+            val paletteSize = reader.readU16LE()
+            check(paletteSize == 0) {
+                "Unexpected palette size: $paletteSize, expected 0"
+            }
             Logger.d(TAG) { "Palette Size $paletteSize" }
 
-            // sizeFromHeader is file size minus 2, compressed data is from current offset to end
-            val compressed = bytes.copyOfRange(offset, bytes.size)
+            val compressed = reader.readRemaining()
             val decompressed = UByteArray(uncompressedSize)
 
             LCWHelper.decompress(compressed, decompressed)
