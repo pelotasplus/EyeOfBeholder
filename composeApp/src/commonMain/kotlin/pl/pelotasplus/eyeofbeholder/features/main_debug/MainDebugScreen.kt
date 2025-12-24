@@ -13,6 +13,7 @@ fun MainDebugScreen(
     modifier: Modifier = Modifier,
     onCpsDebugClick: () -> Unit,
     onPalDebugClick: () -> Unit,
+    onInfDebugClick: () -> Unit,
 ) {
     Column(
         modifier = modifier,
@@ -27,6 +28,11 @@ fun MainDebugScreen(
             onClick = onPalDebugClick,
         ) {
             Text("PAL Debug")
+        }
+        Button(
+            onClick = onInfDebugClick,
+        ) {
+            Text("INF Debug")
         }
     }
 }

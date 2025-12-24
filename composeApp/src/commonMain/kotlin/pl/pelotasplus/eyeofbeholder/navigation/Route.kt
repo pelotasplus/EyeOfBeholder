@@ -15,4 +15,7 @@ sealed interface Route {
 
     @Serializable
     data object CpsDebug : Route
+
+    @Serializable
+    data object InfDebug : Route
 }
