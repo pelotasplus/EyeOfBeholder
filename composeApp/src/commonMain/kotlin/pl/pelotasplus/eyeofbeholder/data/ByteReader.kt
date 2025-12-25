@@ -28,6 +28,15 @@ class ByteReader(private val bytes: UByteArray) {
         return value
     }
 
+    fun readI16LE(): Int {
+        check(offset + 1 < bytes.size) { "Read past end of buffer" }
+        val value = (bytes[offset].toInt()) +
+                (bytes[offset + 1].toInt() shl 8)
+        offset += 2
+        // Sign-extend from 16-bit to 32-bit
+        return if (value >= 0x8000) value - 0x10000 else value
+    }
+
     fun readU32LE(): Int {
         check(offset + 3 < bytes.size) { "Read past end of buffer" }
         val value = (bytes[offset].toInt()) +
@@ -63,6 +72,14 @@ class ByteReader(private val bytes: UByteArray) {
             bytes.take(endIndex).map { it.toInt().toChar() }.joinToString("")
         } else {
             bytes.map { it.toInt().toChar() }.joinToString("")
+        }
+    }
+
+    fun readString(): String = buildString {
+        while (true) {
+            val byte = readU8()
+            if (byte == 0x0) break
+            append(byte.toChar())
         }
     }
 

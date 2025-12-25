@@ -18,7 +18,11 @@ data class Eval(
             val tokens = mutableListOf<Conditional>()
 
             while (true) {
-                val opcode = reader.readU8()
+                val cmd = reader.readI8()
+                val opcode = cmd.toUByte().toInt()
+
+//                println("XXX opCode ${opcode.toHexString()} -> ${cmd + 50}")
+
                 if (opcode == 0xEE) { // Else marker - end of condition
                     break
                 }

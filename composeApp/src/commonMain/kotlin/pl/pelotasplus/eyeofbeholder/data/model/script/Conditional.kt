@@ -1,6 +1,7 @@
 package pl.pelotasplus.eyeofbeholder.data.model.script
 
 import pl.pelotasplus.eyeofbeholder.data.ByteReader
+import pl.pelotasplus.eyeofbeholder.data.model.Location
 
 /**
  * Conditional opcodes for scripting system.
@@ -50,8 +51,40 @@ sealed interface Conditional {
         override fun read(reader: ByteReader) = this
     }
 
-    data object IsMonsterAtLocation : Conditional {             // 0xF3 (TestBlockFlag)
-        override fun read(reader: ByteReader) = this
+    sealed class IsMonsterAtLocation : Conditional {             // 0xF3 (TestBlockFlag)
+        override fun read(reader: ByteReader): Conditional = read(reader)
+
+        /**
+         * Check block flags at a location.
+         * First byte is -1 (0xFF), then reads u16 location.
+         */
+        data class BlockFlags(val location: Location) : IsMonsterAtLocation()
+
+        /**
+         * Count specific monsters.
+         * Reads monster IDs until -1 (0xFF) terminator.
+         */
+        data class CountMonsters(val monsterIds: List<Int>) : IsMonsterAtLocation()
+
+        companion object : Conditional {
+            override fun read(reader: ByteReader): IsMonsterAtLocation {
+                val firstByte = reader.readI8()
+                return if (firstByte == -1) {
+                    // Check block flags
+                    BlockFlags(location = Location.read(reader))
+                } else {
+                    // Count specific monsters
+                    val monsterIds = mutableListOf(firstByte)
+                    while (true) {
+                        val id = reader.readI8()
+                        if (id == -1) break
+                        monsterIds.add(id)
+                    }
+//                    reader.readI8() // extra skip
+                    CountMonsters(monsterIds = monsterIds)
+                }
+            }
+        }
     }
 
     data object IsItemAtLocation : Conditional {                // 0xF2
@@ -67,7 +100,11 @@ sealed interface Conditional {
     }
 
     data object GetLevelFlag : Conditional {                    // 0xEF
-        override fun read(reader: ByteReader) = this
+        override fun read(reader: ByteReader) =
+            // 			_stack[_stackIndex++] = (_flagTable[_vm->_currentLevel] & (1 << (*pos++))) ? 1 : 0;
+            GetLevelFlag.also {
+                reader.readU8()
+            }
     }
 
     data object Else : Conditional {                            // 0xEE
@@ -78,8 +115,14 @@ sealed interface Conditional {
         override fun read(reader: ByteReader) = this
     }
 
-    data object GetWallSide : Conditional {                     // 0xE9
+    data class GetWallSide(val wallIndex: Int, val location: Location) :
+        Conditional {                     // 0xE9
         override fun read(reader: ByteReader) = this
+
+        companion object : Conditional {
+            override fun read(reader: ByteReader) =
+                GetWallSide(wallIndex = reader.readU8(), location = Location.read(reader))
+        }
     }
 
     data object GetPointerItem : Conditional {                  // 0xE7
@@ -102,8 +145,12 @@ sealed interface Conditional {
         override fun read(reader: ByteReader) = this
     }
 
-    data object HasClass : Conditional {                        // 0xDC
+    data class HasClass(val classFlags: Int) : Conditional {    // 0xDC
         override fun read(reader: ByteReader) = this
+
+        companion object : Conditional {
+            override fun read(reader: ByteReader) = HasClass(classFlags = reader.readU8())
+        }
     }
 
     data object RollDice : Conditional {                        // 0xDB
@@ -175,7 +222,7 @@ sealed interface Conditional {
             0xE0 to GetTriggerFlag,
             0xDF to OnSpell,
             0xDD to HasRace,
-            0xDC to HasClass,
+            0xDC to HasClass.Companion,
             0xDB to RollDice,
             0xDA to IsPartyVisible,
             0xD7 to OnBash,
@@ -189,7 +236,7 @@ sealed interface Conditional {
 
         fun fromOpcode(opcode: Int, reader: ByteReader): Conditional {
             val condition = conditions[opcode]
-            return condition?.read(reader) ?: Unknown(opcode)
+            return condition?.read(reader) ?: error("Unknown condition opcode: $opcode")
         }
     }
 }

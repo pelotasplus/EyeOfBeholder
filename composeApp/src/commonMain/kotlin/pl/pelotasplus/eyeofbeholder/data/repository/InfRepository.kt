@@ -10,8 +10,24 @@ import pl.pelotasplus.eyeofbeholder.data.model.MonsterGfx
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterProperty
 import pl.pelotasplus.eyeofbeholder.data.model.script.Script
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptTimer
+import pl.pelotasplus.eyeofbeholder.data.model.script.ClearFlag
+import pl.pelotasplus.eyeofbeholder.data.model.script.CreateMonster
+import pl.pelotasplus.eyeofbeholder.data.model.script.Dialog
+import pl.pelotasplus.eyeofbeholder.data.model.script.End
 import pl.pelotasplus.eyeofbeholder.data.model.script.Eval
+import pl.pelotasplus.eyeofbeholder.data.model.script.GoSub
+import pl.pelotasplus.eyeofbeholder.data.model.script.Goto
+import pl.pelotasplus.eyeofbeholder.data.model.script.Message
+import pl.pelotasplus.eyeofbeholder.data.model.script.NewItem
+import pl.pelotasplus.eyeofbeholder.data.model.script.NewLevelOrMonster
+import pl.pelotasplus.eyeofbeholder.data.model.script.Return
 import pl.pelotasplus.eyeofbeholder.data.model.script.ScriptToken
+import pl.pelotasplus.eyeofbeholder.data.model.script.SetFlag
+import pl.pelotasplus.eyeofbeholder.data.model.script.SetWall
+import pl.pelotasplus.eyeofbeholder.data.model.script.Sound
+import pl.pelotasplus.eyeofbeholder.data.model.script.Teleport
+import pl.pelotasplus.eyeofbeholder.data.model.script.UpdateScreen
+import pl.pelotasplus.eyeofbeholder.data.model.script.Wait
 
 interface InfRepository {
     suspend fun loadInf(name: String): Result<Inf>
@@ -64,11 +80,11 @@ class InfRepositoryImpl(
     private fun decodeInf(bytes: UByteArray) {
         val reader = ByteReader(bytes)
 
-        val hunkSize = reader.readU16LE()
-        Logger.d(TAG) { "XXX first hunkSize $hunkSize" }
+        val offsetBlockB = reader.readU16LE()
+        Logger.d(TAG) { "Block B starts at $offsetBlockB" }
 
-        val nextHunkSize = reader.readU16LE()
-        Logger.d(TAG) { "XXX next hunkSize $nextHunkSize" }
+        val nextSubLevelOffset = reader.readU16LE()
+        Logger.d(TAG) { "Next sublevel starts at $nextSubLevelOffset" }
 
         var cmd = reader.readU8()
         check(cmd == 0xEC) { "expected 0xEC, got $cmd" }
@@ -147,9 +163,16 @@ class InfRepositoryImpl(
             Logger.d(TAG) { "Got script timer: $it" }
         }
 
-        check(nextHunkSize == reader.offset) {
-            "After reading timers expected to be at offset $nextHunkSize but is at offset ${reader.offset}"
+        Logger.d(TAG) { "After script timers Offset is ${reader.offset} remaining ${reader.remaining}" }
+
+        // done reading Block A so main level and all sublevels
+
+        check(offsetBlockB == (reader.offset + 2)) {
+            "After reading main level and all sublevels expected to be at offset $offsetBlockB but is at offset ${reader.offset}"
         }
+
+//        val offsetBlockC = reader.readU16LE()
+//        Logger.d(TAG) { "Block C starts at $offsetBlockC" }
 
         // timer?
         reader.readU8()
@@ -173,58 +196,69 @@ class InfRepositoryImpl(
         script.tokens.forEach {
             Logger.d(TAG) { "Got script token: $it" }
         }
+
+        Logger.d(TAG) { "Offset is ${reader.offset} remaining ${reader.remaining}" }
+
+        while (reader.remaining> 1) {
+            val message = reader.readString()
+            Logger.d(TAG) { "Got message: $message" }
+        }
     }
 
     private fun readScript(reader: ByteReader): Script {
         val tokens = mutableListOf<ScriptToken>()
-        val startOffset = reader.offset
-        val length = reader.readU16LE()
+        val scriptStartOffset = reader.offset
+        val scriptLength = reader.readU16LE()
 
-        Logger.d(TAG) { "Script size $length starting at $startOffset" }
+        Logger.d(TAG) { "Script size $scriptLength starting at $scriptStartOffset" }
 
-        while (reader.offset < startOffset + length) {
-            val tokenOffset = reader.offset - startOffset
+        while (reader.offset < scriptStartOffset + scriptLength) {
+            val tokenOffset = reader.offset - scriptStartOffset
             val opcode = reader.readU8()
 
-            Logger.d(TAG) { "Script opCode ${opcode.toHexString()} at offset $tokenOffset" }
-
             val scriptToken = when (opcode) {
+                0xFF -> SetWall.read(reader)
+                0xFB -> CreateMonster.read(reader)
+                0xFA -> Teleport.read(reader)
+                0xF8 -> Message.read(reader)
+                0xF7 -> SetFlag.read(reader)
+                0xF6 -> Sound.read(reader)
+                0xF5 -> ClearFlag.read(reader)
+                0xF2 -> Goto.read(reader)
+                0xF1 -> End.read(reader)
+                0xF0 -> Return.read(reader)
+
+                0xEF -> GoSub.read(reader)
                 0xEE -> Eval.read(reader)
+                0XEC -> NewLevelOrMonster.read(reader)
+                0xEA -> NewItem.read(reader)
+                0xE5 -> Wait.read(reader)
+                0xE4 -> UpdateScreen.read(reader)
+                0xE3 -> Dialog.read(reader)
+
                 else -> error("Unsupported script opcode: 0x${opcode.toHexString()}")
             }
+
+//            Logger.d(TAG) { "Script opCode ${opcode.toHexString()} at script offset $tokenOffset -> $scriptToken" }
+//            Logger.d(TAG) { "Reader offset ${reader.offset} remaining ${reader.remaining}" }
 
             tokens.add(scriptToken)
 
 //            val token: ScriptToken? = when (opcode) {
-//                0xFF -> ScriptToken.SetWall
 //                0xFE -> ScriptToken.ChangeWall
 //                0xFD -> ScriptToken.OpenDoor
 //                0xFC -> ScriptToken.CloseDoor
-//                0xFB -> ScriptToken.CreateMonster
-//                0xFA -> ScriptToken.Teleport
 //                0xF9 -> ScriptToken.StealItem
-//                0xF8 -> ScriptToken.Message
-//                0xF7 -> ScriptToken.SetFlag
-//                0xF6 -> ScriptToken.Sound
-//                0xF5 -> ScriptToken.ClearFlag
 //                0xF4 -> ScriptToken.Heal
 //                0xF3 -> ScriptToken.Damage
-//                0xF2 -> ScriptToken.Goto(reader.readU16LE())
-//                0xF1 -> ScriptToken.End
-//                0xF0 -> ScriptToken.Return
 //                0xEF -> ScriptToken.GoSub(reader.readU16LE())
-//                0xEE -> ScriptToken.Eval(readConditional(reader))
 //                0xED -> ScriptToken.ConsumeItem
-//                0xEC -> ScriptToken.ChangeLevel
 //                0xEB -> ScriptToken.GiveXP
 //                0xEA -> ScriptToken.NewItem
 //                0xE9 -> ScriptToken.Launcher
 //                0xE8 -> ScriptToken.Turn
 //                0xE7 -> ScriptToken.IdentifyAllItems
 //                0xE6 -> ScriptToken.Encounter
-//                0xE5 -> ScriptToken.Wait
-//                0xE4 -> ScriptToken.UpdateScreen
-//                0xE3 -> ScriptToken.Dialog
 //                0xE2 -> ScriptToken.SpecialEvent
 //                0xD3 -> ScriptToken.CutScene
 //                else -> {
