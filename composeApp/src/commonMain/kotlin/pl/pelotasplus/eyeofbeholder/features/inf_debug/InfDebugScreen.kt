@@ -1,5 +1,6 @@
 package pl.pelotasplus.eyeofbeholder.features.inf_debug
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -17,7 +18,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.jetbrains.compose.ui.tooling.preview.Preview
@@ -64,30 +64,31 @@ private fun InfDebugContent(
             }
 
             val infDetails: @Composable (Modifier) -> Unit = { detailsModifier ->
-                if (state.loadedInf != null) {
+                if (state.loadedLevel != null) {
                     Column(
                         modifier = detailsModifier
                             .padding(8.dp)
-                            .verticalScroll(rememberScrollState())
+                            .verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Text(
-                            text = "File: ${state.loadedInf.name}",
+                            text = "File: ${state.loadedLevel.inf}",
                             style = MaterialTheme.typography.titleMedium
                         )
                         Text(
-                            text = "Size: ${state.loadedInf.data.size} bytes",
+                            text = "Number of sublevels: ${state.loadedLevel.subLevels.size}",
                             style = MaterialTheme.typography.bodyMedium
                         )
                         Text(
-                            text = "Hex dump (first 256 bytes):",
-                            style = MaterialTheme.typography.bodySmall,
-                            modifier = Modifier.padding(top = 8.dp)
+                            text = "Messages:",
+                            style = MaterialTheme.typography.bodyMedium
                         )
-                        Text(
-                            text = formatHexDump(state.loadedInf.data.take(256)),
-                            fontFamily = FontFamily.Monospace,
-                            style = MaterialTheme.typography.bodySmall
-                        )
+                        state.loadedLevel.messages.forEach {
+                            Text(
+                                text = "\t$it",
+                                style = MaterialTheme.typography.bodySmall,
+                            )
+                        }
                     }
                 }
             }
@@ -107,24 +108,10 @@ private fun InfDebugContent(
     }
 }
 
-private fun formatHexDump(bytes: List<UByte>): String {
-    return bytes.chunked(16).mapIndexed { lineIndex, line ->
-        val offset = String.format("%04X", lineIndex * 16)
-        val hex = line.joinToString(" ") { String.format("%02X", it.toInt()) }
-        val ascii = line.map { byte ->
-            val char = byte.toInt().toChar()
-            if (char.isLetterOrDigit() || char in " !\"#\$%&'()*+,-./:;<=>?@[\\]^_`{|}~") char else '.'
-        }.joinToString("")
-        "$offset  ${hex.padEnd(48)}  $ascii"
-    }.joinToString("\n")
-}
-
 @Preview
 @Composable
 private fun PreviewInfDebugContent() {
     InfDebugContent(
-        state = InfDebugViewModel.State(
-            isLoading = true
-        )
+        state = InfDebugViewModel.State()
     )
 }

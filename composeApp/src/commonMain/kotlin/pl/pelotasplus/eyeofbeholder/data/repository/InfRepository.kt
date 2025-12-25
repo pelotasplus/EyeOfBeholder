@@ -5,12 +5,12 @@ import pl.pelotasplus.eyeofbeholder.data.ByteReader
 import pl.pelotasplus.eyeofbeholder.data.LCWHelper
 import pl.pelotasplus.eyeofbeholder.data.model.DamageDice
 import pl.pelotasplus.eyeofbeholder.data.model.Door
-import pl.pelotasplus.eyeofbeholder.data.model.Inf
+import pl.pelotasplus.eyeofbeholder.data.model.Level
 import pl.pelotasplus.eyeofbeholder.data.model.Location
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterGfx
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterProperty
-import pl.pelotasplus.eyeofbeholder.data.model.script.Script
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptTimer
+import pl.pelotasplus.eyeofbeholder.data.model.SubLevel
 import pl.pelotasplus.eyeofbeholder.data.model.script.ClearFlag
 import pl.pelotasplus.eyeofbeholder.data.model.script.CloseDoor
 import pl.pelotasplus.eyeofbeholder.data.model.script.ConsumeItem
@@ -28,6 +28,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.script.NewItem
 import pl.pelotasplus.eyeofbeholder.data.model.script.NewLevelOrMonster
 import pl.pelotasplus.eyeofbeholder.data.model.script.OpenDoor
 import pl.pelotasplus.eyeofbeholder.data.model.script.Return
+import pl.pelotasplus.eyeofbeholder.data.model.script.Script
 import pl.pelotasplus.eyeofbeholder.data.model.script.ScriptToken
 import pl.pelotasplus.eyeofbeholder.data.model.script.SetFlag
 import pl.pelotasplus.eyeofbeholder.data.model.script.SetWall
@@ -40,7 +41,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.script.UpdateScreen
 import pl.pelotasplus.eyeofbeholder.data.model.script.Wait
 
 interface InfRepository {
-    suspend fun loadInf(name: String): Result<Inf>
+    suspend fun loadInf(name: String): Result<Level>
 
     suspend fun getAllInfNames(): Result<List<String>>
 }
@@ -51,7 +52,7 @@ class InfRepositoryImpl(
 
     private val TAG = "InfRepository"
 
-    override suspend fun loadInf(name: String): Result<Inf> {
+    override suspend fun loadInf(name: String): Result<Level> {
         return runCatching {
             val bytes = resourceRepository.readResource("files/$name")
             val reader = ByteReader(bytes)
@@ -78,28 +79,28 @@ class InfRepositoryImpl(
 
             LCWHelper.decompress(compressed, decompressed)
 
-            decodeInf(decompressed)
-
-            Inf(
-                name = name,
-                data = decompressed
-            )
+            decodeInf(name, decompressed)
         }
     }
 
-    private fun decodeInf(bytes: UByteArray) {
+    private fun decodeInf(name: String, bytes: UByteArray): Level {
         val reader = ByteReader(bytes)
 
         val offsetBlockB = reader.readU16LE()
         Logger.d(TAG) { "Block B starts at $offsetBlockB" }
 
+        var nextSubLevelOffset = reader.readU16LE()
+
+        val subLevels = mutableListOf<SubLevel>()
+
         while (reader.offset < offsetBlockB) {
-            Logger.d(TAG) { "Starting sublevel at ${reader.offset}" }
-            val nextSubLevelOffset = reader.readU16LE()
-            Logger.d(TAG) { "Next sublevel starts at $nextSubLevelOffset" }
-            if (nextSubLevelOffset == 0xFFFF) {
-                break
-            }
+            Logger.d(TAG) { "Starting sublevel at ${reader.offset} nextSubLevelOffset $nextSubLevelOffset offsetBlockB offset is $offsetBlockB" }
+
+//            val nextSubLevelOffset = reader.readU16LE()
+//            Logger.d(TAG) { "Next sublevel starts at $nextSubLevelOffset" }
+//            if (nextSubLevelOffset == 0xFFFF) {
+//                break
+//            }
 
             var cmd = reader.readU8()
             check(cmd == 0xEC) { "expected 0xEC, got ${cmd.toHexString()}" }
@@ -179,6 +180,15 @@ class InfRepositoryImpl(
             }
 
             Logger.d(TAG) { "After script timers Offset is ${reader.offset} remaining ${reader.remaining}" }
+
+            nextSubLevelOffset = reader.readU16LE()
+
+            subLevels.add(
+                SubLevel(
+                    index = 0,
+                    mazName = mazName
+                )
+            )
         }
 
         // done reading Block A so main level and all sublevels
@@ -212,8 +222,10 @@ class InfRepositoryImpl(
 
         Logger.d(TAG) { "Offset is ${reader.offset} remaining ${reader.remaining}" }
 
+        val messages = mutableListOf<String>()
         while (reader.offset < offsetBlockC) {
             val message = reader.readString()
+            messages.add(message)
             Logger.d(TAG) { "Got message: $message" }
         }
 
@@ -236,6 +248,13 @@ class InfRepositoryImpl(
         check(reader.remaining == 0) {
             "Expected empty reader after all INF parsing"
         }
+
+        return Level(
+            inf = name,
+            subLevels = subLevels,
+            script = script,
+            messages = messages
+        )
     }
 
     private fun readScript(reader: ByteReader): Script {
@@ -258,10 +277,12 @@ class InfRepositoryImpl(
                 0xFC -> CloseDoor.read(reader)
                 0xFB -> CreateMonster.read(reader)
                 0xFA -> Teleport.read(reader)
+//                0xF9 -> ScriptToken.StealItem
                 0xF8 -> Message.read(reader)
                 0xF7 -> SetFlag.read(reader)
                 0xF6 -> Sound.read(reader)
                 0xF5 -> ClearFlag.read(reader)
+//                0xF4 -> ScriptToken.Heal
                 0xF3 -> Damage.read(reader)
                 0xF2 -> Goto.read(reader)
                 0xF1 -> End
@@ -271,14 +292,18 @@ class InfRepositoryImpl(
                 0xEE -> Eval.read(reader)
                 0xED -> ConsumeItem.read(reader)
                 0xEC -> NewLevelOrMonster.read(reader)
+//                0xEB -> ScriptToken.GiveXP
                 0xEA -> NewItem.read(reader)
                 0xE9 -> Launcher.read(reader)
                 0xE8 -> Turn.read(reader)
+//                0xE7 -> ScriptToken.IdentifyAllItems
                 0xE6 -> Encounter.read(reader)
                 0xE5 -> Wait.read(reader)
                 0xE4 -> UpdateScreen
                 0xE3 -> Dialog.read(reader)
                 0xE2 -> SpecialEvent.read(reader)
+
+//                0xD3 -> ScriptToken.CutScene
 
                 else -> error("Unsupported script opcode: 0x${opcode.toHexString()}")
             }
@@ -286,26 +311,6 @@ class InfRepositoryImpl(
             Logger.d(TAG) { "Reader offset ${reader.offset} remaining ${reader.remaining}" }
 
             tokens.add(scriptToken)
-
-//            val token: ScriptToken? = when (opcode) {
-//                0xF9 -> ScriptToken.StealItem
-//                0xF4 -> ScriptToken.Heal
-//                0xF3 -> ScriptToken.Damage
-//                0xEF -> ScriptToken.GoSub(reader.readU16LE())
-//                0xEB -> ScriptToken.GiveXP
-//                0xEA -> ScriptToken.NewItem
-//                0xE8 -> ScriptToken.Turn
-//                0xE7 -> ScriptToken.IdentifyAllItems
-//                0xE6 -> ScriptToken.Encounter
-//                0xE2 -> ScriptToken.SpecialEvent
-//                0xD3 -> ScriptToken.CutScene
-//                else -> {
-//                    Logger.w(TAG) { "Unknown script opcode: 0x${opcode.toHexString()}" }
-//                    ScriptToken.Unknown(opcode)
-//                }
-//            }
-//
-//            token?.let { tokens[tokenOffset] = it }
         }
 
         return Script(tokens = tokens)
