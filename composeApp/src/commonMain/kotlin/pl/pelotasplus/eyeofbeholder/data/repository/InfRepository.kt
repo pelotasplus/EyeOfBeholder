@@ -6,6 +6,7 @@ import pl.pelotasplus.eyeofbeholder.data.LCWHelper
 import pl.pelotasplus.eyeofbeholder.data.model.DamageDice
 import pl.pelotasplus.eyeofbeholder.data.model.Door
 import pl.pelotasplus.eyeofbeholder.data.model.Inf
+import pl.pelotasplus.eyeofbeholder.data.model.Location
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterGfx
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterProperty
 import pl.pelotasplus.eyeofbeholder.data.model.script.Script
@@ -83,102 +84,105 @@ class InfRepositoryImpl(
         val offsetBlockB = reader.readU16LE()
         Logger.d(TAG) { "Block B starts at $offsetBlockB" }
 
-        val nextSubLevelOffset = reader.readU16LE()
-        Logger.d(TAG) { "Next sublevel starts at $nextSubLevelOffset" }
-
-        var cmd = reader.readU8()
-        check(cmd == 0xEC) { "expected 0xEC, got $cmd" }
-
-        val mazName = reader.readString(13)
-        Logger.d(TAG) { "Maz name '$mazName'" }
-
-        val vmpData = reader.readString(13)
-        Logger.d(TAG) { "VMP name '$vmpData'" }
-
-        cmd = reader.readU8()
-        check(cmd == 0xFF) { "expected 0xFF, got 0x${cmd.toHexString()}" }
-
-        val palette = reader.readString(13)
-        Logger.d(TAG) { "Palette name '$palette'" }
-
-        val doors = readDoors(reader)
-        doors.forEach { door ->
-            Logger.d(TAG) { "Got door: $door" }
-        }
-
-        val stepsUntilScriptCall = reader.readU16LE()
-        Logger.d(TAG) { "stepsUntilScriptCall/maxMonstersCount is $stepsUntilScriptCall" }
-
-        val monsterGfx = readMonsterGfx(reader)
-        monsterGfx.forEach { monsterGfx ->
-            Logger.d(TAG) { "Got monster gfx: $monsterGfx" }
-        }
-
-        val monsters = readMonsterProperties(reader)
-        monsters.forEach {
-            Logger.d(TAG) { "Got monster: $it" }
-        }
-
-        Logger.d(TAG) { "Offset is ${reader.offset} remaining ${reader.remaining}" }
-
-        cmd = reader.readU8()
-        check(cmd == 0xEC) { "expected 0xFF, got 0x${cmd.toHexString()}" }
-
-        val decorationBlocks = reader.readU16LE()
-        Logger.d(TAG) { "Decorations block count $decorationBlocks" }
-        for (i in 0 until decorationBlocks) {
-            cmd = reader.readU8()
-            if (cmd == 0xEC) {
-                // read decorations
-                val gfx = reader.readString(13)
-                val dec = reader.readString(13)
-                Logger.d(TAG) { "Decoration: gfc: $gfx dec: $dec" }
-            } else if (cmd == 0xFB) {
-                // assign decorations
-                /**
-                 * struct WallMapping
-                 * {
-                 *    unsigned char wallMappingIndex; /* This is the index used by the .maz file. */
-                 *    unsigned char wallType; /* Index to what backdrop wall type that is being used. */
-                 *    unsigned char decorationID; /* Index to and optional overlay decoration image in
-                 *                                   the DecorationData.decorations array in the
-                 *                                   [[eob.dat|.dat]] files. */
-                 *    unsigned char unknownFlags1;
-                 *    unsigned char unknownFlags2;
-                 * };
-                 */
-                val wallIndex = reader.readU8()
-                val wallType = reader.readU8()
-                val decorationID = reader.readU8()
-                val specialType = reader.readU8()
-                val flags = reader.readU8()
-                Logger.d(TAG) { "Assigning decorations: wallIndex: $wallIndex vmpIndex: $wallType decIndex: $decorationID specialType: $specialType flags: $flags" }
-            } else {
-                check(false) { "Unexpected cmd $cmd" }
+        while (reader.offset < offsetBlockB) {
+            Logger.d(TAG) { "Starting sublevel at ${reader.offset}" }
+            val nextSubLevelOffset = reader.readU16LE()
+            Logger.d(TAG) { "Next sublevel starts at $nextSubLevelOffset" }
+            if (nextSubLevelOffset == 0xFFFF) {
+                break
             }
-        }
 
-        val scriptTimers = readScriptTimers(reader)
-        scriptTimers.forEach {
-            Logger.d(TAG) { "Got script timer: $it" }
-        }
+            var cmd = reader.readU8()
+            check(cmd == 0xEC) { "expected 0xEC, got ${cmd.toHexString()}" }
 
-        Logger.d(TAG) { "After script timers Offset is ${reader.offset} remaining ${reader.remaining}" }
+            val mazName = reader.readString(13)
+            Logger.d(TAG) { "Maz name '$mazName'" }
+
+            val vmpData = reader.readString(13)
+            Logger.d(TAG) { "VMP name '$vmpData'" }
+
+            cmd = reader.readU8()
+            check(cmd == 0xFF) { "expected 0xFF, got 0x${cmd.toHexString()}" }
+
+            val palette = reader.readString(13)
+            Logger.d(TAG) { "Palette name '$palette'" }
+
+            val doors = readDoors(reader)
+            doors.forEach { door ->
+                Logger.d(TAG) { "Got door: $door" }
+            }
+
+            val stepsUntilScriptCall = reader.readU16LE()
+            Logger.d(TAG) { "stepsUntilScriptCall/maxMonstersCount is $stepsUntilScriptCall" }
+
+            val monsterGfx = readMonsterGfx(reader)
+            monsterGfx.forEach { monsterGfx ->
+                Logger.d(TAG) { "Got monster gfx: $monsterGfx" }
+            }
+
+            val monsters = readMonsterProperties(reader)
+            monsters.forEach {
+                Logger.d(TAG) { "Got monster: $it" }
+            }
+
+            Logger.d(TAG) { "Offset is ${reader.offset} remaining ${reader.remaining}" }
+
+            cmd = reader.readU8()
+            check(cmd == 0xEC) { "expected 0xFF, got 0x${cmd.toHexString()}" }
+
+            val decorationBlocks = reader.readU16LE()
+            Logger.d(TAG) { "Decorations block count $decorationBlocks" }
+            for (i in 0 until decorationBlocks) {
+                cmd = reader.readU8()
+                if (cmd == 0xEC) {
+                    // read decorations
+                    val gfx = reader.readString(13)
+                    val dec = reader.readString(13)
+                    Logger.d(TAG) { "Decoration: gfc: $gfx dec: $dec" }
+                } else if (cmd == 0xFB) {
+                    // assign decorations
+                    /**
+                     * struct WallMapping
+                     * {
+                     *    unsigned char wallMappingIndex; /* This is the index used by the .maz file. */
+                     *    unsigned char wallType; /* Index to what backdrop wall type that is being used. */
+                     *    unsigned char decorationID; /* Index to and optional overlay decoration image in
+                     *                                   the DecorationData.decorations array in the
+                     *                                   [[eob.dat|.dat]] files. */
+                     *    unsigned char unknownFlags1;
+                     *    unsigned char unknownFlags2;
+                     * };
+                     */
+                    val wallIndex = reader.readU8()
+                    val wallType = reader.readU8()
+                    val decorationID = reader.readU8()
+                    val specialType = reader.readU8()
+                    val flags = reader.readU8()
+                    Logger.d(TAG) { "Assigning decorations: wallIndex: $wallIndex vmpIndex: $wallType decIndex: $decorationID specialType: $specialType flags: $flags" }
+                } else {
+                    check(false) { "Unexpected cmd $cmd" }
+                }
+            }
+
+            val scriptTimers = readScriptTimers(reader)
+            scriptTimers.forEach {
+                Logger.d(TAG) { "Got script timer: $it" }
+            }
+
+            Logger.d(TAG) { "After script timers Offset is ${reader.offset} remaining ${reader.remaining}" }
+        }
 
         // done reading Block A so main level and all sublevels
-
-        check(offsetBlockB == (reader.offset + 2)) {
+        check(offsetBlockB == (reader.offset)) {
             "After reading main level and all sublevels expected to be at offset $offsetBlockB but is at offset ${reader.offset}"
         }
 
-//        val offsetBlockC = reader.readU16LE()
-//        Logger.d(TAG) { "Block C starts at $offsetBlockC" }
+        val offsetBlockC = reader.readU16LE()
+        Logger.d(TAG) { "Block C starts at $offsetBlockC" }
 
-        // timer?
-        reader.readU8()
-        reader.readU8()
-        reader.readU8()
-        reader.readU8()
+        // D6 08 EC 00 23 01 19 FF
+
+//        // timer?
         reader.readU8()
         reader.readU8()
         reader.readU8()
@@ -199,10 +203,26 @@ class InfRepositoryImpl(
 
         Logger.d(TAG) { "Offset is ${reader.offset} remaining ${reader.remaining}" }
 
-        while (reader.remaining> 1) {
+        while (reader.offset < offsetBlockC) {
             val message = reader.readString()
             Logger.d(TAG) { "Got message: $message" }
         }
+
+        Logger.d(TAG) { "After block B offset is ${reader.offset} remaining ${reader.remaining}" }
+
+        check(reader.offset == offsetBlockC) { "After reading script and messages expected be at offset $offsetBlockC but is at offset ${reader.offset}" }
+
+        val numberOfSpecialBlocks = reader.readU16LE()
+
+        repeat(numberOfSpecialBlocks) {
+            val location = Location.read(reader)
+            val flag = reader.readU16LE()
+            val scriptOffset = reader.readU16LE()
+
+            Logger.d(TAG) { "Got special block for location: $location flag: $flag scriptOffset: $scriptOffset" }
+        }
+
+        Logger.d(TAG) { "After block C offset is ${reader.offset} remaining ${reader.remaining}" }
     }
 
     private fun readScript(reader: ByteReader): Script {
