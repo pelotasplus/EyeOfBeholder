@@ -89,18 +89,11 @@ class InfRepositoryImpl(
         val offsetBlockB = reader.readU16LE()
         Logger.d(TAG) { "Block B starts at $offsetBlockB" }
 
-        var nextSubLevelOffset = reader.readU16LE()
-
         val subLevels = mutableListOf<SubLevel>()
 
         while (reader.offset < offsetBlockB) {
+            val nextSubLevelOffset = reader.readU16LE()
             Logger.d(TAG) { "Starting sublevel at ${reader.offset} nextSubLevelOffset $nextSubLevelOffset offsetBlockB offset is $offsetBlockB" }
-
-//            val nextSubLevelOffset = reader.readU16LE()
-//            Logger.d(TAG) { "Next sublevel starts at $nextSubLevelOffset" }
-//            if (nextSubLevelOffset == 0xFFFF) {
-//                break
-//            }
 
             var cmd = reader.readU8()
             check(cmd == 0xEC) { "expected 0xEC, got ${cmd.toHexString()}" }
@@ -181,7 +174,15 @@ class InfRepositoryImpl(
 
             Logger.d(TAG) { "After script timers Offset is ${reader.offset} remaining ${reader.remaining}" }
 
-            nextSubLevelOffset = reader.readU16LE()
+            check(reader.offset == nextSubLevelOffset) {
+                "Expected to be at sublevel offset $nextSubLevelOffset but is at offset ${reader.offset}"
+            }
+
+            // extra padding
+            val padding = reader.readU16LE()
+            check(padding == 0xFFFF) {
+                "Expected padding to be 0xFFFF but is ${padding.toHexString()}"
+            }
 
             subLevels.add(
                 SubLevel(
@@ -196,13 +197,13 @@ class InfRepositoryImpl(
             "After reading main level and all sublevels expected to be at offset $offsetBlockB but is at offset ${reader.offset}"
         }
 
+        // D6 08 EC 00 23 01 19 FF
         val offsetBlockC = reader.readU16LE()
         Logger.d(TAG) { "Block C starts at $offsetBlockC" }
 
-        // D6 08 EC 00 23 01 19 FF
+        val ec = reader.readU8()
+        check(ec == 0xEC) { "Expected 0xEC but got 0x${ec.toHexString()}" }
 
-//        // timer?
-        reader.readU8()
         reader.readU8()
         reader.readU8()
         reader.readU8()

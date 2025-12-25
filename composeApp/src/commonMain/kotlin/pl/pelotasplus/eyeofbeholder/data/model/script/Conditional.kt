@@ -342,7 +342,7 @@ sealed interface Conditional {
             0xE7 to GetPointerItem.Companion,
             0xE4 to DialogResult,
             0xE0 to GetTriggerFlag,
-//            0xDF to OnSpell,
+            0xDF to OnSpell,
             0xDD to HasRace.Companion,
             0xDC to HasClass.Companion,
             0xDB to RollDice,
