@@ -10,7 +10,7 @@ data class Wait(
     val delay: Int
 ) : ScriptToken {
 
-    override fun read(reader: ByteReader): ScriptToken = read(reader)
+    
 
     companion object {
         fun read(reader: ByteReader): Wait {

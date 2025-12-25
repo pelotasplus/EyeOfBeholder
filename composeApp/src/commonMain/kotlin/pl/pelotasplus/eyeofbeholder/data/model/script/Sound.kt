@@ -8,7 +8,7 @@ data class Sound(
     val location: Location
 ) : ScriptToken {
 
-    override fun read(reader: ByteReader): ScriptToken = read(reader)
+    
 
     companion object {
         fun read(reader: ByteReader): Sound {

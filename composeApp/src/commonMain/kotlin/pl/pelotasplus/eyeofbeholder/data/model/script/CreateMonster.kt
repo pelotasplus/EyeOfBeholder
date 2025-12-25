@@ -21,8 +21,6 @@ data class CreateMonster(
     val weapon: Int
 ) : ScriptToken {
 
-    override fun read(reader: ByteReader): ScriptToken = read(reader)
-
     companion object {
         fun read(reader: ByteReader): CreateMonster {
             return CreateMonster(

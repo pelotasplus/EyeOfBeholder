@@ -12,21 +12,30 @@ import pl.pelotasplus.eyeofbeholder.data.model.MonsterProperty
 import pl.pelotasplus.eyeofbeholder.data.model.script.Script
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptTimer
 import pl.pelotasplus.eyeofbeholder.data.model.script.ClearFlag
+import pl.pelotasplus.eyeofbeholder.data.model.script.CloseDoor
+import pl.pelotasplus.eyeofbeholder.data.model.script.ConsumeItem
 import pl.pelotasplus.eyeofbeholder.data.model.script.CreateMonster
+import pl.pelotasplus.eyeofbeholder.data.model.script.Damage
 import pl.pelotasplus.eyeofbeholder.data.model.script.Dialog
+import pl.pelotasplus.eyeofbeholder.data.model.script.Encounter
 import pl.pelotasplus.eyeofbeholder.data.model.script.End
 import pl.pelotasplus.eyeofbeholder.data.model.script.Eval
 import pl.pelotasplus.eyeofbeholder.data.model.script.GoSub
 import pl.pelotasplus.eyeofbeholder.data.model.script.Goto
+import pl.pelotasplus.eyeofbeholder.data.model.script.Launcher
 import pl.pelotasplus.eyeofbeholder.data.model.script.Message
 import pl.pelotasplus.eyeofbeholder.data.model.script.NewItem
 import pl.pelotasplus.eyeofbeholder.data.model.script.NewLevelOrMonster
+import pl.pelotasplus.eyeofbeholder.data.model.script.OpenDoor
 import pl.pelotasplus.eyeofbeholder.data.model.script.Return
 import pl.pelotasplus.eyeofbeholder.data.model.script.ScriptToken
 import pl.pelotasplus.eyeofbeholder.data.model.script.SetFlag
 import pl.pelotasplus.eyeofbeholder.data.model.script.SetWall
 import pl.pelotasplus.eyeofbeholder.data.model.script.Sound
+import pl.pelotasplus.eyeofbeholder.data.model.script.SpecialEvent
 import pl.pelotasplus.eyeofbeholder.data.model.script.Teleport
+import pl.pelotasplus.eyeofbeholder.data.model.script.ToggleWall
+import pl.pelotasplus.eyeofbeholder.data.model.script.Turn
 import pl.pelotasplus.eyeofbeholder.data.model.script.UpdateScreen
 import pl.pelotasplus.eyeofbeholder.data.model.script.Wait
 
@@ -223,6 +232,10 @@ class InfRepositoryImpl(
         }
 
         Logger.d(TAG) { "After block C offset is ${reader.offset} remaining ${reader.remaining}" }
+
+        check(reader.remaining == 0) {
+            "Expected empty reader after all INF parsing"
+        }
     }
 
     private fun readScript(reader: ByteReader): Script {
@@ -236,46 +249,51 @@ class InfRepositoryImpl(
             val tokenOffset = reader.offset - scriptStartOffset
             val opcode = reader.readU8()
 
+            Logger.d(TAG) { "Script opCode ${opcode.toHexString()} at script offset $tokenOffset" }
+
             val scriptToken = when (opcode) {
                 0xFF -> SetWall.read(reader)
+                0xFE -> ToggleWall.read(reader)
+                0xFD -> OpenDoor.read(reader)
+                0xFC -> CloseDoor.read(reader)
                 0xFB -> CreateMonster.read(reader)
                 0xFA -> Teleport.read(reader)
                 0xF8 -> Message.read(reader)
                 0xF7 -> SetFlag.read(reader)
                 0xF6 -> Sound.read(reader)
                 0xF5 -> ClearFlag.read(reader)
+                0xF3 -> Damage.read(reader)
                 0xF2 -> Goto.read(reader)
-                0xF1 -> End.read(reader)
-                0xF0 -> Return.read(reader)
+                0xF1 -> End
+                0xF0 -> Return
 
                 0xEF -> GoSub.read(reader)
                 0xEE -> Eval.read(reader)
-                0XEC -> NewLevelOrMonster.read(reader)
+                0xED -> ConsumeItem.read(reader)
+                0xEC -> NewLevelOrMonster.read(reader)
                 0xEA -> NewItem.read(reader)
+                0xE9 -> Launcher.read(reader)
+                0xE8 -> Turn.read(reader)
+                0xE6 -> Encounter.read(reader)
                 0xE5 -> Wait.read(reader)
-                0xE4 -> UpdateScreen.read(reader)
+                0xE4 -> UpdateScreen
                 0xE3 -> Dialog.read(reader)
+                0xE2 -> SpecialEvent.read(reader)
 
                 else -> error("Unsupported script opcode: 0x${opcode.toHexString()}")
             }
 
-//            Logger.d(TAG) { "Script opCode ${opcode.toHexString()} at script offset $tokenOffset -> $scriptToken" }
-//            Logger.d(TAG) { "Reader offset ${reader.offset} remaining ${reader.remaining}" }
+            Logger.d(TAG) { "Reader offset ${reader.offset} remaining ${reader.remaining}" }
 
             tokens.add(scriptToken)
 
 //            val token: ScriptToken? = when (opcode) {
-//                0xFE -> ScriptToken.ChangeWall
-//                0xFD -> ScriptToken.OpenDoor
-//                0xFC -> ScriptToken.CloseDoor
 //                0xF9 -> ScriptToken.StealItem
 //                0xF4 -> ScriptToken.Heal
 //                0xF3 -> ScriptToken.Damage
 //                0xEF -> ScriptToken.GoSub(reader.readU16LE())
-//                0xED -> ScriptToken.ConsumeItem
 //                0xEB -> ScriptToken.GiveXP
 //                0xEA -> ScriptToken.NewItem
-//                0xE9 -> ScriptToken.Launcher
 //                0xE8 -> ScriptToken.Turn
 //                0xE7 -> ScriptToken.IdentifyAllItems
 //                0xE6 -> ScriptToken.Encounter

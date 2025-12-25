@@ -4,8 +4,6 @@ import pl.pelotasplus.eyeofbeholder.data.ByteReader
 
 sealed class Dialog : ScriptToken {
 
-    override fun read(reader: ByteReader): ScriptToken = read(reader)
-
     data class DisplayPicture(
         val pictureName: String,
         val rect: Int,

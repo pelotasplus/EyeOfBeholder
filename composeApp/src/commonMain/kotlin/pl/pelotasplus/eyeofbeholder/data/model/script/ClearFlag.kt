@@ -8,8 +8,6 @@ import pl.pelotasplus.eyeofbeholder.data.ByteReader
  */
 sealed class ClearFlag : ScriptToken {
 
-    override fun read(reader: ByteReader): ScriptToken = read(reader)
-
     data class LevelFlag(val flag: Int) : ClearFlag()         // type = -17 (0xEF)
     data class GlobalFlag(val flag: Int) : ClearFlag()        // type = -16 (0xF0)
     data object Event : ClearFlag()                            // type = -28 (0xE4)

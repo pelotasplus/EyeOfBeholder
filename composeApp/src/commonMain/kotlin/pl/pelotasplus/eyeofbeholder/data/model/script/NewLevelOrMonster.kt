@@ -9,7 +9,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.Location
  */
 sealed class NewLevelOrMonster : ScriptToken {
 
-    override fun read(reader: ByteReader): ScriptToken = read(reader)
+    
 
     /**
      * Change to a new level.

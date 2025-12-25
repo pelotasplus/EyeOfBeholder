@@ -9,7 +9,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.Location
  */
 sealed class SetWall : ScriptToken {
 
-    override fun read(reader: ByteReader): ScriptToken = read(reader)
+    
 
     /**
      * Set all sides of a wall.

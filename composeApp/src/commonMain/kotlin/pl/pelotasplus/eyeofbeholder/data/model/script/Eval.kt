@@ -11,8 +11,6 @@ data class Eval(
     val goto: Int
 ) : ScriptToken {
 
-    override fun read(reader: ByteReader): ScriptToken = read(reader)
-
     companion object {
         fun read(reader: ByteReader): Eval {
             val tokens = mutableListOf<Conditional>()
@@ -21,7 +19,7 @@ data class Eval(
                 val cmd = reader.readI8()
                 val opcode = cmd.toUByte().toInt()
 
-//                println("XXX opCode ${opcode.toHexString()} -> ${cmd + 50}")
+                println("XXX eval opCode ${opcode.toHexString()} -> ${cmd + 50}")
 
                 if (opcode == 0xEE) { // Else marker - end of condition
                     break

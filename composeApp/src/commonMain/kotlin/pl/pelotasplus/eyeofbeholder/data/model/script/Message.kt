@@ -7,7 +7,6 @@ data class Message(
     val color: Int,
 ) : ScriptToken {
 
-    override fun read(reader: ByteReader): ScriptToken = read(reader)
 
     companion object {
         fun read(reader: ByteReader): Message {

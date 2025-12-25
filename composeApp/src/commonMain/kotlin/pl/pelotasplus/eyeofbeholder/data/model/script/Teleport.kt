@@ -9,7 +9,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.Location
  */
 sealed class Teleport : ScriptToken {
 
-    override fun read(reader: ByteReader): ScriptToken = read(reader)
+    
 
     /**
      * Move item.

@@ -17,7 +17,7 @@ data class NewItem(
     val itemIcon: Int?
 ) : ScriptToken {
 
-    override fun read(reader: ByteReader): ScriptToken = read(reader)
+    
 
     companion object {
         fun read(reader: ByteReader): NewItem {

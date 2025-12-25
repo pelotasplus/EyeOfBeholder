@@ -43,12 +43,30 @@ sealed interface Conditional {
         override fun read(reader: ByteReader) = this
     }
 
-    data object GetWallNumber : Conditional {                   // 0xF7
+    data class GetWallNumber(val location: Location) : Conditional { // 0xF7
         override fun read(reader: ByteReader) = this
+
+        companion object : Conditional {
+            override fun read(reader: ByteReader) = GetWallNumber(
+                location = Location.read(reader)
+            )
+        }
     }
 
-    data object ItemCountAtLocation : Conditional {             // 0xF5
+    data class ItemCountAtLocation(                              // 0xF5
+        val a: Int,
+        val b: Int,
+        val location: Location
+    ) : Conditional {
         override fun read(reader: ByteReader) = this
+
+        companion object : Conditional {
+            override fun read(reader: ByteReader) = ItemCountAtLocation(
+                a = reader.readU8(),
+                b = reader.readU8(),
+                location = Location.read(reader)
+            )
+        }
     }
 
     sealed class IsMonsterAtLocation : Conditional {             // 0xF3 (TestBlockFlag)
@@ -80,7 +98,7 @@ sealed interface Conditional {
                         if (id == -1) break
                         monsterIds.add(id)
                     }
-//                    reader.readI8() // extra skip
+                    reader.readI8() // extra skip
                     CountMonsters(monsterIds = monsterIds)
                 }
             }
@@ -91,12 +109,42 @@ sealed interface Conditional {
         override fun read(reader: ByteReader) = this
     }
 
-    data object IsPartyAtLocation : Conditional {               // 0xF1
-        override fun read(reader: ByteReader) = this
+    sealed class IsPartyAtLocation : Conditional {               // 0xF1
+        override fun read(reader: ByteReader): Conditional = read(reader)
+
+        /** Count characters with specific items. first byte = -11 (0xF5) */
+        data class CountCharactersWithItems(
+            val a: Int,
+            val b: Int
+        ) : IsPartyAtLocation()
+
+        /** Check if party is at current block. first byte != -11 */
+        data class CheckCurrentBlock(
+            val location: Location
+        ) : IsPartyAtLocation()
+
+        companion object : Conditional {
+            override fun read(reader: ByteReader): IsPartyAtLocation {
+                val firstByte = reader.readI8()
+                return if (firstByte == -11) { // 0xF5
+                    CountCharactersWithItems(
+                        a = reader.readI16LE(),
+                        b = reader.readI16LE()
+                    )
+                } else {
+                    CheckCurrentBlock(
+                        location = Location.read(reader)
+                    )
+                }
+            }
+        }
     }
 
-    data object GetGlobalFlag : Conditional {                   // 0xF0
-        override fun read(reader: ByteReader) = this
+    data object GetGlobalFlag : Conditional {
+        // 			_stack[_stackIndex++] = (_flagTable[17] & (1 << (*pos++))) ? 1 : 0;
+        override fun read(reader: ByteReader) = GetGlobalFlag.also {
+            reader.readU8()
+        }
     }
 
     data object GetLevelFlag : Conditional {                    // 0xEF
@@ -125,8 +173,44 @@ sealed interface Conditional {
         }
     }
 
-    data object GetPointerItem : Conditional {                  // 0xE7
-        override fun read(reader: ByteReader) = this
+    sealed class GetPointerItem : Conditional {                  // 0xE7
+        override fun read(reader: ByteReader): Conditional = read(reader)
+
+        /** Check if item name contains string. -49 (0xCF) */
+        data class NameContains(val searchString: String) : GetPointerItem()
+
+        /** Check if unidentified item name contains string. -48 (0xD0) */
+        data class UnidNameContains(val searchString: String) : GetPointerItem()
+
+        /** Get item type. -31 (0xE1) */
+        data object ItemType : GetPointerItem()
+
+        /** Get item in hand. -11 (0xF5) */
+        data object ItemInHand : GetPointerItem()
+
+        /** Get item value. -10 (0xF6) */
+        data object ItemValue : GetPointerItem()
+
+        data class Unknown(val subCmd: Int) : GetPointerItem()
+
+        companion object : Conditional {
+            override fun read(reader: ByteReader): GetPointerItem {
+                return when (val subCmd = reader.readU8()) {
+                    0xCF -> {                                   // -49
+                        val length = reader.readU8()
+                        NameContains(searchString = reader.readString(length, nullTerminated = false))
+                    }
+                    0xD0 -> {                                   // -48
+                        val length = reader.readU8()
+                        UnidNameContains(searchString = reader.readString(length, nullTerminated = false))
+                    }
+                    0xE1 -> ItemType                            // -31
+                    0xF5 -> ItemInHand                          // -11
+                    0xF6 -> ItemValue                           // -10
+                    else -> Unknown(subCmd)
+                }
+            }
+        }
     }
 
     data object DialogResult : Conditional {                    // 0xE4
@@ -141,8 +225,12 @@ sealed interface Conditional {
         override fun read(reader: ByteReader) = this
     }
 
-    data object HasRace : Conditional {                         // 0xDD
+    data class HasRace(val race: Int) : Conditional {           // 0xDD
         override fun read(reader: ByteReader) = this
+
+        companion object : Conditional {
+            override fun read(reader: ByteReader) = HasRace(race = reader.readU8())
+        }
     }
 
     data class HasClass(val classFlags: Int) : Conditional {    // 0xDC
@@ -153,16 +241,50 @@ sealed interface Conditional {
         }
     }
 
-    data object RollDice : Conditional {                        // 0xDB
-        override fun read(reader: ByteReader) = this
+    data class RollDice(
+        val rolls: Int,
+        val size: Int,
+        val base: Int
+    ) : Conditional {                        //
+
+        override fun read(reader: ByteReader): Conditional = this
+
+        // 0xDB
+        companion object : Conditional {
+            override fun read(reader: ByteReader): RollDice {
+                return RollDice(
+                    rolls = reader.readU8(),
+                    size = reader.readU8(),
+                    base = reader.readU8()
+                )
+            }
+        }
     }
 
     data object IsPartyVisible : Conditional {                  // 0xDA
         override fun read(reader: ByteReader) = this
     }
 
-    data object OnBash : Conditional {                          // 0xD7
-        override fun read(reader: ByteReader) = this
+    sealed class OnBash : Conditional {                          // 0xD7
+        override fun read(reader: ByteReader): Conditional = read(reader)
+
+        data object ItemExtraProperties : OnBash()              // -36 (0xDC)
+        data object ItemType : OnBash()                         // -31 (0xE1)
+        data object LastUsedItem : OnBash()                     // -11 (0xF5)
+        data object ItemValue : OnBash()                        // -10 (0xF6)
+        data class Unknown(val subCmd: Int) : OnBash()
+
+        companion object : Conditional {
+            override fun read(reader: ByteReader): OnBash {
+                return when (val subCmd = reader.readU8()) {
+                    0xDC -> ItemExtraProperties                 // -36
+                    0xE1 -> ItemType                            // -31
+                    0xF5 -> LastUsedItem                        // -11
+                    0xF6 -> ItemValue                           // -10
+                    else -> error("Unknown OnBas sub command $subCmd")
+                }
+            }
+        }
     }
 
     data class ImmediateShort(val value: Int) : Conditional {   // 0xD2
@@ -207,36 +329,36 @@ sealed interface Conditional {
             0xFA to LessEqualsThan,
             0xF9 to And,
             0xF8 to Or,
-            0xF7 to GetWallNumber,
-            0xF5 to ItemCountAtLocation,
+            0xF7 to GetWallNumber.Companion,
+            0xF5 to ItemCountAtLocation.Companion,
             0xF3 to IsMonsterAtLocation,
-            0xF2 to IsItemAtLocation,
-            0xF1 to IsPartyAtLocation,
+//            0xF2 to IsItemAtLocation,
+            0xF1 to IsPartyAtLocation.Companion,
             0xF0 to GetGlobalFlag,
             0xEF to GetLevelFlag,
             0xEE to Else,
             0xED to GetPartyDirection,
             0xE9 to GetWallSide,
-            0xE7 to GetPointerItem,
+            0xE7 to GetPointerItem.Companion,
             0xE4 to DialogResult,
             0xE0 to GetTriggerFlag,
-            0xDF to OnSpell,
-            0xDD to HasRace,
+//            0xDF to OnSpell,
+            0xDD to HasRace.Companion,
             0xDC to HasClass.Companion,
             0xDB to RollDice,
-            0xDA to IsPartyVisible,
-            0xD7 to OnBash,
+//            0xDA to IsPartyVisible,
+            0xD7 to OnBash.Companion,
             0xD2 to ImmediateShort.Companion,
-            0xCE to HasAlignment,
-            0x68 to Condition68,
-            0x02 to Condition02,
-            0x01 to PushTrue,
-            0x00 to PushFalse,
+//            0xCE to HasAlignment,
+//            0x68 to Condition68,
+//            0x02 to Condition02,
+//            0x01 to PushTrue,
+//            0x00 to PushFalse,
         )
 
         fun fromOpcode(opcode: Int, reader: ByteReader): Conditional {
             val condition = conditions[opcode]
-            return condition?.read(reader) ?: error("Unknown condition opcode: $opcode")
+            return condition?.read(reader) ?: error("Unknown condition opcode: ${opcode.toHexString()}")
         }
     }
 }
