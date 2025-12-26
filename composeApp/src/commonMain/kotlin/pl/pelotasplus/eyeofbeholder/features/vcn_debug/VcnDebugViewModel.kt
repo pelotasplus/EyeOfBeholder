@@ -11,11 +11,14 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import pl.pelotasplus.eyeofbeholder.data.model.Vcn
 import pl.pelotasplus.eyeofbeholder.data.repository.ResourceRepository
+import pl.pelotasplus.eyeofbeholder.data.repository.VcnRepository
 
 @Stable
 class VcnDebugViewModel(
     private val resourceRepository: ResourceRepository,
+    private val vcnRepository: VcnRepository
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(State())
@@ -51,12 +54,19 @@ class VcnDebugViewModel(
 
     private fun onVcnSelected(name: String) {
         viewModelScope.launch {
-            _state.update {
-                it.copy(
-                    isLoading = false,
-                    selectedVcn = name
-                )
-            }
+            vcnRepository.loadVcn(name)
+                .onSuccess { vcn ->
+                    _state.update {
+                        it.copy(
+                            isLoading = false,
+                            selectedVcn = vcn
+                        )
+                    }
+                }
+                .onFailure {
+                    Logger.e(it) { "Error while loading vcn: $name" }
+                }
+
         }
     }
 
@@ -68,6 +78,6 @@ class VcnDebugViewModel(
     data class State(
         val isLoading: Boolean = true,
         val allVcns: ImmutableList<String> = persistentListOf(),
-        val selectedVcn: String? = null
+        val selectedVcn: Vcn? = null
     )
 }
