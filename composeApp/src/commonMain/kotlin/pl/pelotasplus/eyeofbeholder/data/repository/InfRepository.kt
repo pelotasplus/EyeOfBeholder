@@ -105,10 +105,15 @@ class InfRepositoryImpl(
             Logger.d(TAG) { "VMP name '$vmpData'" }
 
             cmd = reader.readU8()
-            check(cmd == 0xFF) { "expected 0xFF, got 0x${cmd.toHexString()}" }
+            check(cmd == 0xFF || cmd == 0x01) { "expected 0xFF or 0x01, got 0x${cmd.toHexString()}" }
 
-            val palette = reader.readString(13)
-            Logger.d(TAG) { "Palette name '$palette'" }
+            if (cmd != 0xFF) {
+                val palette = reader.readString(13)
+                Logger.d(TAG) { "Palette name '$palette'" }
+            }
+
+            val sound = reader.readString(13)
+            Logger.d(TAG) { "Sound file '$sound'" }
 
             val doors = readDoors(reader)
             doors.forEach { door ->
@@ -135,7 +140,7 @@ class InfRepositoryImpl(
 
             val decorationBlocks = reader.readU16LE()
             Logger.d(TAG) { "Decorations block count $decorationBlocks" }
-            for (i in 0 until decorationBlocks) {
+            repeat(decorationBlocks) {
                 cmd = reader.readU8()
                 if (cmd == 0xEC) {
                     // read decorations
@@ -190,6 +195,8 @@ class InfRepositoryImpl(
                     mazName = mazName
                 )
             )
+
+            Logger.d(TAG) { "Done reading sublevel offset is ${reader.offset} offsetBlockB $offsetBlockB" }
         }
 
         // done reading Block A so main level and all sublevels
@@ -199,20 +206,20 @@ class InfRepositoryImpl(
 
         // D6 08 EC 00 23 01 19 FF
         val offsetBlockC = reader.readU16LE()
-        Logger.d(TAG) { "Block C starts at $offsetBlockC" }
+        Logger.d(TAG) { "Starting Block B at ${reader.offset}. Block C starts at $offsetBlockC" }
 
         val ec = reader.readU8()
-        check(ec == 0xEC) { "Expected 0xEC but got 0x${ec.toHexString()}" }
+        check(ec == 0xEC || ec == 0xFF) { "Expected 0xEC or 0xFF but got 0x${ec.toHexString()}" }
 
-        reader.readU8()
-        reader.readU8()
-        reader.readU8()
-        reader.readU8()
-        reader.readU8()
+        if (ec == 0xEC) {
+            reader.readU8()
+            reader.readU8()
+            reader.readU8()
+            reader.readU8()
+            reader.readU8()
 
-        Logger.d(TAG) { "Offset is ${reader.offset} remaining ${reader.remaining}" }
-
-        readMonsterData(reader)
+            readMonsterData(reader)
+        }
 
         Logger.d(TAG) { "Offset is ${reader.offset} remaining ${reader.remaining}" }
 
