@@ -18,4 +18,7 @@ sealed interface Route {
 
     @Serializable
     data object InfDebug : Route
+
+    @Serializable
+    data object MazDebug : Route
 }

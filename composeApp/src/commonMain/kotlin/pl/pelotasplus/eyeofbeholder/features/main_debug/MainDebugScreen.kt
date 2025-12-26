@@ -14,6 +14,7 @@ fun MainDebugScreen(
     onCpsDebugClick: () -> Unit,
     onPalDebugClick: () -> Unit,
     onInfDebugClick: () -> Unit,
+    onMazDebugClick: () -> Unit,
 ) {
     Column(
         modifier = modifier,
@@ -33,6 +34,11 @@ fun MainDebugScreen(
             onClick = onInfDebugClick,
         ) {
             Text("INF Debug")
+        }
+        Button(
+            onClick = onMazDebugClick,
+        ) {
+            Text("MAZ Debug")
         }
     }
 }
