@@ -31,6 +31,10 @@ sealed interface Conditional {
         override fun read(reader: ByteReader) = this
     }
 
+    data object TestCharacters : Conditional {                        // 0xE8
+        override fun read(reader: ByteReader) = this
+    }
+
     data object LessEqualsThan : Conditional {                  // 0xFA
         override fun read(reader: ByteReader) = this
     }
@@ -339,6 +343,7 @@ sealed interface Conditional {
             0xEE to Else,
             0xED to GetPartyDirection,
             0xE9 to GetWallSide,
+            0xE8 to TestCharacters,
             0xE7 to GetPointerItem.Companion,
             0xE4 to DialogResult,
             0xE0 to GetTriggerFlag,
