@@ -1,5 +1,6 @@
 package pl.pelotasplus.eyeofbeholder.features.maz_debug
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -7,6 +8,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -18,10 +20,14 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.jetbrains.compose.ui.tooling.preview.Preview
 import org.koin.compose.viewmodel.koinViewModel
+import pl.pelotasplus.eyeofbeholder.data.model.isBlocked
 
 @Composable
 fun MazDebugScreen(
@@ -75,6 +81,59 @@ private fun MazDebugContent(
                             text = "File: ${state.loadedMaz.name}",
                             style = MaterialTheme.typography.titleMedium
                         )
+
+                        val mazWidth = state.loadedMaz.width
+                        val mazHeight = state.loadedMaz.height
+
+                        val blockedColor = Color(55, 55, 55)
+                        val wallColor = blockedColor
+
+                        BoxWithConstraints {
+                            val canvasSize = if (isLandscape) maxHeight else maxWidth
+                            Canvas(modifier = Modifier.size(canvasSize)) {
+                                val cellSize = size.width / mazWidth
+                                state.loadedMaz.squares.forEachIndexed { index, square ->
+                                    val x = (index % mazWidth) * cellSize
+                                    val y = (index / mazWidth) * cellSize
+                                    if (square.blockedAllSides) {
+                                        drawRect(
+                                            color = blockedColor,
+                                            topLeft = Offset(x, y),
+                                            size = Size(cellSize, cellSize)
+                                        )
+                                    } else {
+                                        if (square.north.isBlocked()) {
+                                            drawLine(
+                                                color = wallColor,
+                                                start = Offset(x, y),
+                                                end = Offset(x + cellSize, y)
+                                            )
+                                        }
+                                        if (square.east.isBlocked()) {
+                                            drawLine(
+                                                color = wallColor,
+                                                start = Offset(x + cellSize, y),
+                                                end = Offset(x + cellSize, y + cellSize)
+                                            )
+                                        }
+                                        if (square.south.isBlocked()) {
+                                            drawLine(
+                                                color = wallColor,
+                                                start = Offset(x, y + cellSize),
+                                                end = Offset(x + cellSize, y + cellSize)
+                                            )
+                                        }
+                                        if (square.west.isBlocked()) {
+                                            drawLine(
+                                                color = wallColor,
+                                                start = Offset(x, y),
+                                                end = Offset(x, y + cellSize)
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
