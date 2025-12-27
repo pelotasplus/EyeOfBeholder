@@ -72,7 +72,19 @@ private fun VcnDebugContent(
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Text(
-                            text = "File: ${state.selectedVcn}",
+                            text = "File: ${state.selectedVcn.name}",
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        Text(
+                            text = "Tiles count: ${state.selectedVcn.tilesCount}",
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        Text(
+                            text = "Wall palette size: ${state.selectedVcn.wallPalette.size}",
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        Text(
+                            text = "Backdrop palette size: ${state.selectedVcn.wallPalette.size}",
                             style = MaterialTheme.typography.titleMedium
                         )
                     }
@@ -93,6 +105,7 @@ private fun VcnDebugContent(
         }
     }
 }
+
 
 @Preview
 @Composable

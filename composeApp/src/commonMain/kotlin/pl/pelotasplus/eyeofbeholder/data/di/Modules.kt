@@ -33,6 +33,6 @@ val sharedDataModule = module {
         MazRepositoryImpl(get())
     }
     factory<VcnRepository> {
-        VcnRepositoryImpl(get())
+        VcnRepositoryImpl(get(), get())
     }
 }
