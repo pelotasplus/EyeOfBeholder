@@ -19,8 +19,6 @@ data class Eval(
                 val cmd = reader.readI8()
                 val opcode = cmd.toUByte().toInt()
 
-                println("XXX eval opCode ${opcode.toHexString()} -> ${cmd + 50}")
-
                 if (opcode == 0xEE) { // Else marker - end of condition
                     break
                 }

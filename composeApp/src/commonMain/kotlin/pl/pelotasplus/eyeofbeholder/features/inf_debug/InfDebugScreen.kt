@@ -79,6 +79,28 @@ private fun InfDebugContent(
                             text = "Number of sublevels: ${state.loadedLevel.subLevels.size}",
                             style = MaterialTheme.typography.bodyMedium
                         )
+                        state.loadedLevel.subLevels.forEach {
+                            Text(
+                                text = "Sublevel: ${it.index}",
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                            Text(
+                                text = "Palette: ${it.palette}",
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                            Text(
+                                text = "Maz name: ${it.mazName}",
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                            Text(
+                                text = "VMP: ${it.vmpData}",
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                            Text(
+                                text = "Sound: ${it.sound}",
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
                         Text(
                             text = "Messages:",
                             style = MaterialTheme.typography.bodyMedium

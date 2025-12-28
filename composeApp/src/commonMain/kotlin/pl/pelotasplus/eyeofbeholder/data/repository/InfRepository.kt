@@ -93,7 +93,7 @@ class InfRepositoryImpl(
 
         while (reader.offset < offsetBlockB) {
             val nextSubLevelOffset = reader.readU16LE()
-            Logger.d(TAG) { "Starting sublevel at ${reader.offset} nextSubLevelOffset $nextSubLevelOffset offsetBlockB offset is $offsetBlockB" }
+//            Logger.d(TAG) { "Starting sublevel at ${reader.offset} nextSubLevelOffset $nextSubLevelOffset offsetBlockB offset is $offsetBlockB" }
 
             var cmd = reader.readU8()
             check(cmd == 0xEC) { "expected 0xEC, got ${cmd.toHexString()}" }
@@ -107,10 +107,12 @@ class InfRepositoryImpl(
             cmd = reader.readU8()
             check(cmd == 0xFF || cmd == 0x01) { "expected 0xFF or 0x01, got 0x${cmd.toHexString()}" }
 
-            if (cmd != 0xFF) {
-                val palette = reader.readString(13)
-                Logger.d(TAG) { "Palette name '$palette'" }
+            val palette = if (cmd != 0xFF) {
+                reader.readString(13)
+            } else {
+                null
             }
+            Logger.d(TAG) { "Palette name '$palette'" }
 
             val sound = reader.readString(13)
             Logger.d(TAG) { "Sound file '$sound'" }
@@ -132,8 +134,6 @@ class InfRepositoryImpl(
             monsters.forEach {
                 Logger.d(TAG) { "Got monster: $it" }
             }
-
-            Logger.d(TAG) { "Offset is ${reader.offset} remaining ${reader.remaining}" }
 
             cmd = reader.readU8()
             check(cmd == 0xEC) { "expected 0xFF, got 0x${cmd.toHexString()}" }
@@ -192,7 +192,14 @@ class InfRepositoryImpl(
             subLevels.add(
                 SubLevel(
                     index = 0,
-                    mazName = mazName
+                    mazName = mazName,
+                    vmpData = vmpData,
+                    scriptTimers = scriptTimers,
+                    monsters = monsters,
+                    monsterGfx = monsterGfx,
+                    sound = sound,
+                    doors = doors,
+                    palette = palette
                 )
             )
 
@@ -221,20 +228,16 @@ class InfRepositoryImpl(
             readMonsterData(reader)
         }
 
-        Logger.d(TAG) { "Offset is ${reader.offset} remaining ${reader.remaining}" }
-
         val script = readScript(reader)
         script.tokens.forEach {
             Logger.d(TAG) { "Got script token: $it" }
         }
 
-        Logger.d(TAG) { "Offset is ${reader.offset} remaining ${reader.remaining}" }
-
         val messages = mutableListOf<String>()
         while (reader.offset < offsetBlockC) {
             val message = reader.readString()
             messages.add(message)
-            Logger.d(TAG) { "Got message: $message" }
+            // Logger.d(TAG) { "Got message: $message" }
         }
 
         Logger.d(TAG) { "After block B offset is ${reader.offset} remaining ${reader.remaining}" }
@@ -262,7 +265,9 @@ class InfRepositoryImpl(
             subLevels = subLevels,
             script = script,
             messages = messages
-        )
+        ).also {
+            Logger.d(TAG) { it.toString() }
+        }
     }
 
     private fun readScript(reader: ByteReader): Script {
@@ -276,7 +281,7 @@ class InfRepositoryImpl(
             val tokenOffset = reader.offset - scriptStartOffset
             val opcode = reader.readU8()
 
-            Logger.d(TAG) { "Script opCode ${opcode.toHexString()} at script offset $tokenOffset" }
+//            Logger.d(TAG) { "Script opCode ${opcode.toHexString()} at script offset $tokenOffset" }
 
             val scriptToken = when (opcode) {
                 0xFF -> SetWall.read(reader)
@@ -316,7 +321,7 @@ class InfRepositoryImpl(
                 else -> error("Unsupported script opcode: 0x${opcode.toHexString()}")
             }
 
-            Logger.d(TAG) { "Reader offset ${reader.offset} remaining ${reader.remaining}" }
+//            Logger.d(TAG) { "Reader offset ${reader.offset} remaining ${reader.remaining}" }
 
             tokens.add(scriptToken)
         }
