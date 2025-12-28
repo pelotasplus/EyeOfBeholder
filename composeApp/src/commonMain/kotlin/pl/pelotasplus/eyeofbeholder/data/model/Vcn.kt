@@ -16,4 +16,10 @@ data class Vcn(
             pixels = tiles[tileIndex].pixels.map { pixel -> backdropPalette[pixel] }
         )
     }
+
+    fun getTileAsWall(tileIndex: Int): Tile {
+        return Tile(
+            pixels = tiles[tileIndex].pixels.map { pixel -> wallPalette[pixel] }
+        )
+    }
 }

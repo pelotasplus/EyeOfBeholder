@@ -22,17 +22,26 @@ class VmpRepositoryImpl(
             val pal = palRepository.loadPal(name.replace(".VMP", ".PAL")).getOrThrow()
 
             val vmpTilesAsBackdrop = vmp.backdrop
-
             val vcnTilesAsBackdrop = vmpTilesAsBackdrop.map { tileIndex ->
                 vcn.getTileAsBackdrop(tileIndex.tileIndex)
             }
-
             val rgbTiles = vcnTilesAsBackdrop.map {
                 it.pixels.map { pixel -> pal.colors[pixel] }
             }
             check(rgbTiles.size == 330) {
                 "Expected 330 tiles, got ${rgbTiles.size}"
             }
+
+//            val vmpTilesAsWall = vmp.getWallType(0)
+//            val vcnTilesAsWall = vmpTilesAsWall.map { tileIndex ->
+//                vcn.getTileAsWall(tileIndex.tileIndex)
+//            }
+//            val rgbTiles = vcnTilesAsWall.map {
+//                it.pixels.map { pixel -> pal.colors[pixel] }
+//            }
+//            check(rgbTiles.size == 431) {
+//                "Expected 330 tiles, got ${rgbTiles.size}"
+//            }
 
             rgbTiles
         }
