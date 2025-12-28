@@ -1,10 +1,7 @@
 package pl.pelotasplus.eyeofbeholder.features.vcn_debug
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -48,58 +45,42 @@ private fun VcnDebugContent(
     if (state.isLoading) {
         CircularProgressIndicator()
     } else {
-        BoxWithConstraints(modifier = modifier) {
-            val isLandscape = maxWidth > maxHeight
-
-            val vcnList: @Composable (Modifier) -> Unit = { listModifier ->
-                LazyColumn(listModifier) {
-                    items(state.allVcns) { vcnName ->
-                        Button(
-                            onClick = { onVcnSelected(vcnName) }
-                        ) {
-                            Text(text = vcnName)
-                        }
-                    }
-                }
-            }
-
-            val vcnDetails: @Composable (Modifier) -> Unit = { detailsModifier ->
-                if (state.selectedVcn != null) {
-                    Column(
-                        modifier = detailsModifier
-                            .padding(8.dp)
-                            .verticalScroll(rememberScrollState()),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+        Column(modifier = modifier) {
+            LazyColumn(Modifier.weight(1f).fillMaxWidth()) {
+                items(state.allVcns) { vcnName ->
+                    Button(
+                        onClick = { onVcnSelected(vcnName) }
                     ) {
-                        Text(
-                            text = "File: ${state.selectedVcn.name}",
-                            style = MaterialTheme.typography.titleMedium
-                        )
-                        Text(
-                            text = "Tiles count: ${state.selectedVcn.tilesCount}",
-                            style = MaterialTheme.typography.titleMedium
-                        )
-                        Text(
-                            text = "Wall palette size: ${state.selectedVcn.wallPalette.size}",
-                            style = MaterialTheme.typography.titleMedium
-                        )
-                        Text(
-                            text = "Backdrop palette size: ${state.selectedVcn.wallPalette.size}",
-                            style = MaterialTheme.typography.titleMedium
-                        )
+                        Text(text = vcnName)
                     }
                 }
             }
 
-            if (isLandscape) {
-                Row {
-                    vcnList(Modifier.weight(1f).fillMaxHeight())
-                    vcnDetails(Modifier.weight(1f).fillMaxHeight())
-                }
-            } else {
-                Column {
-                    vcnList(Modifier.weight(1f).fillMaxWidth())
-                    vcnDetails(Modifier.weight(1f).fillMaxWidth())
+            if (state.selectedVcn != null) {
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                        .padding(8.dp)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = "File: ${state.selectedVcn.name}",
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    Text(
+                        text = "Tiles count: ${state.selectedVcn.tilesCount}",
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    Text(
+                        text = "Wall palette size: ${state.selectedVcn.wallPalette.size}",
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    Text(
+                        text = "Backdrop palette size: ${state.selectedVcn.wallPalette.size}",
+                        style = MaterialTheme.typography.titleMedium
+                    )
                 }
             }
         }

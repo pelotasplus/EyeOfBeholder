@@ -35,8 +35,8 @@ class PalRepositoryImpl(
         return resourceRepository.listResources(".PAL")
     }
 
-    private fun convert6bitTo8bit(byte: UByte): UByte {
-        return ((byte.toInt() * 255) / 63).toUByte()
+    private fun convert6bitTo8bit(byte: UByte): Int {
+        return ((byte.toInt() * 255) / 63)
     }
 
     companion object {

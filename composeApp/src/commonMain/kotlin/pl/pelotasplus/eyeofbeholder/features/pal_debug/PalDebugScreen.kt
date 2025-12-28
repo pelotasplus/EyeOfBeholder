@@ -3,8 +3,6 @@ package pl.pelotasplus.eyeofbeholder.features.pal_debug
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -47,54 +45,35 @@ private fun PalDebugContent(
     if (state.isLoading) {
         CircularProgressIndicator()
     } else {
-        BoxWithConstraints(modifier = modifier) {
-            val isLandscape = maxWidth > maxHeight
-
-            val palList: @Composable (Modifier) -> Unit = { listModifier ->
-                LazyColumn(listModifier) {
-                    items(state.allPals) { palName ->
-                        Button(
-                            onClick = { onPalSelected(palName) }
-                        ) {
-                            Text(text = palName)
-                        }
+        Column(modifier = modifier) {
+            LazyColumn(Modifier.weight(1f).fillMaxWidth()) {
+                items(state.allPals) { palName ->
+                    Button(
+                        onClick = { onPalSelected(palName) }
+                    ) {
+                        Text(text = palName)
                     }
                 }
             }
 
-            val palCanvas: @Composable (Modifier) -> Unit = { canvasModifier ->
-                if (state.loadedPalette != null) {
-                    BoxWithConstraints(modifier = canvasModifier) {
-                        val canvasSize = if (isLandscape) maxHeight else maxWidth
-                        Canvas(modifier = Modifier.size(canvasSize)) {
-                            val cellSize = size.width / 16
-                            state.loadedPalette.colors.forEachIndexed { index, color ->
-                                val x = (index % 16) * cellSize
-                                val y = (index / 16) * cellSize
-                                drawRect(
-                                    color = Color(
-                                        color.red.toInt(),
-                                        color.green.toInt(),
-                                        color.blue.toInt()
-                                    ),
-                                    topLeft = Offset(x, y),
-                                    size = Size(cellSize, cellSize)
-                                )
-                            }
+            if (state.loadedPalette != null) {
+                BoxWithConstraints {
+                    Canvas(modifier = Modifier.size(maxWidth)) {
+                        val cellSize = size.width / 16
+                        state.loadedPalette.colors.forEachIndexed { index, color ->
+                            val x = (index % 16) * cellSize
+                            val y = (index / 16) * cellSize
+                            drawRect(
+                                color = Color(
+                                    color.red.toInt(),
+                                    color.green.toInt(),
+                                    color.blue.toInt()
+                                ),
+                                topLeft = Offset(x, y),
+                                size = Size(cellSize, cellSize)
+                            )
                         }
                     }
-                }
-            }
-
-            if (isLandscape) {
-                Row {
-                    palList(Modifier.weight(1f).fillMaxHeight())
-                    palCanvas(Modifier)
-                }
-            } else {
-                Column {
-                    palList(Modifier.weight(1f).fillMaxWidth())
-                    palCanvas(Modifier)
                 }
             }
         }

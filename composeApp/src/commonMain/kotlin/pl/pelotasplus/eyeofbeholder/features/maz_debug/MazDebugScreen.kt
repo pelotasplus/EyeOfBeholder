@@ -4,8 +4,6 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -54,99 +52,81 @@ private fun MazDebugContent(
     if (state.isLoading) {
         CircularProgressIndicator()
     } else {
-        BoxWithConstraints(modifier = modifier) {
-            val isLandscape = maxWidth > maxHeight
-
-            val mazList: @Composable (Modifier) -> Unit = { listModifier ->
-                LazyColumn(listModifier) {
-                    items(state.allMazs) { mazName ->
-                        Button(
-                            onClick = { onMazSelected(mazName) }
-                        ) {
-                            Text(text = mazName)
-                        }
+        Column(modifier = modifier) {
+            LazyColumn(Modifier.weight(1f).fillMaxWidth()) {
+                items(state.allMazs) { mazName ->
+                    Button(
+                        onClick = { onMazSelected(mazName) }
+                    ) {
+                        Text(text = mazName)
                     }
                 }
             }
 
-            val mazDetails: @Composable (Modifier) -> Unit = { detailsModifier ->
-                if (state.loadedMaz != null) {
-                    Column(
-                        modifier = detailsModifier
-                            .padding(8.dp)
-                            .verticalScroll(rememberScrollState()),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Text(
-                            text = "File: ${state.loadedMaz.name}",
-                            style = MaterialTheme.typography.titleMedium
-                        )
+            if (state.loadedMaz != null) {
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                        .padding(8.dp)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = "File: ${state.loadedMaz.name}",
+                        style = MaterialTheme.typography.titleMedium
+                    )
 
-                        val mazWidth = state.loadedMaz.width
-                        val mazHeight = state.loadedMaz.height
+                    val mazWidth = state.loadedMaz.width
 
-                        val blockedColor = Color(55, 55, 55)
-                        val wallColor = blockedColor
+                    val blockedColor = Color(55, 55, 55)
+                    val wallColor = blockedColor
 
-                        BoxWithConstraints {
-                            val canvasSize = if (isLandscape) maxHeight else maxWidth
-                            Canvas(modifier = Modifier.size(canvasSize)) {
-                                val cellSize = size.width / mazWidth
-                                state.loadedMaz.squares.forEachIndexed { index, square ->
-                                    val x = (index % mazWidth) * cellSize
-                                    val y = (index / mazWidth) * cellSize
-                                    if (square.blockedAllSides) {
-                                        drawRect(
-                                            color = blockedColor,
-                                            topLeft = Offset(x, y),
-                                            size = Size(cellSize, cellSize)
+                    BoxWithConstraints {
+                        Canvas(modifier = Modifier.size(maxWidth)) {
+                            val cellSize = size.width / mazWidth
+                            state.loadedMaz.squares.forEachIndexed { index, square ->
+                                val x = (index % mazWidth) * cellSize
+                                val y = (index / mazWidth) * cellSize
+                                if (square.blockedAllSides) {
+                                    drawRect(
+                                        color = blockedColor,
+                                        topLeft = Offset(x, y),
+                                        size = Size(cellSize, cellSize)
+                                    )
+                                } else {
+                                    if (square.north.isBlocked()) {
+                                        drawLine(
+                                            color = wallColor,
+                                            start = Offset(x, y),
+                                            end = Offset(x + cellSize, y)
                                         )
-                                    } else {
-                                        if (square.north.isBlocked()) {
-                                            drawLine(
-                                                color = wallColor,
-                                                start = Offset(x, y),
-                                                end = Offset(x + cellSize, y)
-                                            )
-                                        }
-                                        if (square.east.isBlocked()) {
-                                            drawLine(
-                                                color = wallColor,
-                                                start = Offset(x + cellSize, y),
-                                                end = Offset(x + cellSize, y + cellSize)
-                                            )
-                                        }
-                                        if (square.south.isBlocked()) {
-                                            drawLine(
-                                                color = wallColor,
-                                                start = Offset(x, y + cellSize),
-                                                end = Offset(x + cellSize, y + cellSize)
-                                            )
-                                        }
-                                        if (square.west.isBlocked()) {
-                                            drawLine(
-                                                color = wallColor,
-                                                start = Offset(x, y),
-                                                end = Offset(x, y + cellSize)
-                                            )
-                                        }
+                                    }
+                                    if (square.east.isBlocked()) {
+                                        drawLine(
+                                            color = wallColor,
+                                            start = Offset(x + cellSize, y),
+                                            end = Offset(x + cellSize, y + cellSize)
+                                        )
+                                    }
+                                    if (square.south.isBlocked()) {
+                                        drawLine(
+                                            color = wallColor,
+                                            start = Offset(x, y + cellSize),
+                                            end = Offset(x + cellSize, y + cellSize)
+                                        )
+                                    }
+                                    if (square.west.isBlocked()) {
+                                        drawLine(
+                                            color = wallColor,
+                                            start = Offset(x, y),
+                                            end = Offset(x, y + cellSize)
+                                        )
                                     }
                                 }
                             }
                         }
                     }
-                }
-            }
-
-            if (isLandscape) {
-                Row {
-                    mazList(Modifier.weight(1f).fillMaxHeight())
-                    mazDetails(Modifier.weight(1f).fillMaxHeight())
-                }
-            } else {
-                Column {
-                    mazList(Modifier.weight(1f).fillMaxWidth())
-                    mazDetails(Modifier.weight(1f).fillMaxWidth())
                 }
             }
         }

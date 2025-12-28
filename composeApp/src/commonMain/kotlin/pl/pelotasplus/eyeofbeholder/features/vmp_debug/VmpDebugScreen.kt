@@ -1,10 +1,7 @@
 package pl.pelotasplus.eyeofbeholder.features.vmp_debug
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -48,56 +45,40 @@ private fun VmpDebugContent(
     if (state.isLoading) {
         CircularProgressIndicator()
     } else {
-        BoxWithConstraints(modifier = modifier) {
-            val isLandscape = maxWidth > maxHeight
-
-            val vmpList: @Composable (Modifier) -> Unit = { listModifier ->
-                LazyColumn(listModifier) {
-                    items(state.allVmps) { vmpName ->
-                        Button(
-                            onClick = { onVmpSelected(vmpName) }
-                        ) {
-                            Text(text = vmpName)
-                        }
-                    }
-                }
-            }
-
-            val vmpDetails: @Composable (Modifier) -> Unit = { detailsModifier ->
-                if (state.selectedVmp != null) {
-                    Column(
-                        modifier = detailsModifier
-                            .padding(8.dp)
-                            .verticalScroll(rememberScrollState()),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+        Column(modifier = modifier) {
+            LazyColumn(Modifier.weight(1f).fillMaxWidth()) {
+                items(state.allVmps) { vmpName ->
+                    Button(
+                        onClick = { onVmpSelected(vmpName) }
                     ) {
-                        Text(
-                            text = "File: ${state.selectedVmp.name}",
-                            style = MaterialTheme.typography.titleMedium
-                        )
-
-                        Text(
-                            text = "Tiles count: ${state.selectedVmp.tileIndexes.size}",
-                            style = MaterialTheme.typography.titleMedium
-                        )
-
-                        Text(
-                            text = "Wall types count: ${state.selectedVmp.wallTypesCount}",
-                            style = MaterialTheme.typography.titleMedium
-                        )
+                        Text(text = vmpName)
                     }
                 }
             }
 
-            if (isLandscape) {
-                Row {
-                    vmpList(Modifier.weight(1f).fillMaxHeight())
-                    vmpDetails(Modifier.weight(1f).fillMaxHeight())
-                }
-            } else {
-                Column {
-                    vmpList(Modifier.weight(1f).fillMaxWidth())
-                    vmpDetails(Modifier.weight(1f).fillMaxWidth())
+            if (state.selectedVmp != null) {
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                        .padding(8.dp)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = "File: ${state.selectedVmp.name}",
+                        style = MaterialTheme.typography.titleMedium
+                    )
+
+                    Text(
+                        text = "Tiles count: ${state.selectedVmp.tileIndexes.size}",
+                        style = MaterialTheme.typography.titleMedium
+                    )
+
+                    Text(
+                        text = "Wall types count: ${state.selectedVmp.wallTypesCount}",
+                        style = MaterialTheme.typography.titleMedium
+                    )
                 }
             }
         }
