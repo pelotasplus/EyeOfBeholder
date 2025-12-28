@@ -38,6 +38,6 @@ val sharedDataModule = module {
         VcnRepositoryImpl(get(), get())
     }
     factory<VmpRepository> {
-        VmpRepositoryImpl(get())
+        VmpRepositoryImpl(get(), get(), get())
     }
 }

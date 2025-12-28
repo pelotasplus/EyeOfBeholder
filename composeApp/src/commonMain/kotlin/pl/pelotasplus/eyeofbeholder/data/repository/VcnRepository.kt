@@ -66,13 +66,12 @@ class VcnRepositoryImpl(
         }
 
         Logger.d(TAG) { "Vcn $name has $tilesCount tiles" }
-        Logger.d(TAG) { "Remaining size ${vcnReader.remaining}" }
 
         check(tilesCount * 32 == vcnReader.remaining) {
             "Expected ${tilesCount * 32} bytes of tile data, got ${vcnReader.remaining}"
         }
 
-        val tiles = mutableListOf<List<Int>>()
+        val tiles = mutableListOf<Vcn.Tile>()
 
         // The very first tile is fully transparent, 7 tilesets follow.
         // The first are the tiles for the backdrop (ceiling/floor), then 6 different wall types (including doorways and stairs) follow.
@@ -95,7 +94,11 @@ class VcnRepositoryImpl(
                 tilePixels.add(pixel2)
             }
 
-            tiles.add(tilePixels)
+            check(tilePixels.size == 8 * 8) {
+                "Expected tile pixels to be 8x8, got ${tilePixels.size}"
+            }
+
+            tiles.add(Vcn.Tile(pixels = tilePixels))
         }
 
         return Vcn(

@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import pl.pelotasplus.eyeofbeholder.data.model.RGB
 import pl.pelotasplus.eyeofbeholder.data.model.Vmp
 import pl.pelotasplus.eyeofbeholder.data.repository.ResourceRepository
 import pl.pelotasplus.eyeofbeholder.data.repository.VmpRepository
@@ -59,7 +60,8 @@ class VmpDebugViewModel(
                     _state.update {
                         it.copy(
                             isLoading = false,
-                            selectedVmp = vmp
+//                            selectedVmp = vmp
+                            selectedTiles = vmp
                         )
                     }
                 }
@@ -78,6 +80,7 @@ class VmpDebugViewModel(
     data class State(
         val isLoading: Boolean = true,
         val allVmps: ImmutableList<String> = persistentListOf(),
-        val selectedVmp: Vmp? = null
+        val selectedVmp: Vmp? = null,
+        val selectedTiles: List<List<RGB>>? = null
     )
 }
