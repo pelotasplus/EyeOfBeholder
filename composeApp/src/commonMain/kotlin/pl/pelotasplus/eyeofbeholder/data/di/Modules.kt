@@ -14,6 +14,8 @@ import pl.pelotasplus.eyeofbeholder.data.repository.ResourceRepository
 import pl.pelotasplus.eyeofbeholder.data.repository.ResourceRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.VcnRepository
 import pl.pelotasplus.eyeofbeholder.data.repository.VcnRepositoryImpl
+import pl.pelotasplus.eyeofbeholder.data.repository.VmpRepository
+import pl.pelotasplus.eyeofbeholder.data.repository.VmpRepositoryImpl
 
 @OptIn(ExperimentalResourceApi::class)
 val sharedDataModule = module {
@@ -34,5 +36,8 @@ val sharedDataModule = module {
     }
     factory<VcnRepository> {
         VcnRepositoryImpl(get(), get())
+    }
+    factory<VmpRepository> {
+        VmpRepositoryImpl(get())
     }
 }

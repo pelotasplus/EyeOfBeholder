@@ -24,4 +24,7 @@ sealed interface Route {
 
     @Serializable
     data object VcnDebug : Route
+
+    @Serializable
+    data object VmpDebug : Route
 }

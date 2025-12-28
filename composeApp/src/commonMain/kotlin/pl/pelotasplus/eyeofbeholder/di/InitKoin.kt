@@ -8,6 +8,7 @@ import pl.pelotasplus.eyeofbeholder.features.inf_debug.di.sharedFeaturesInfDebug
 import pl.pelotasplus.eyeofbeholder.features.maz_debug.di.sharedFeaturesMazDebugModule
 import pl.pelotasplus.eyeofbeholder.features.pal_debug.di.sharedFeaturesPalDebugModule
 import pl.pelotasplus.eyeofbeholder.features.vcn_debug.di.sharedFeaturesVcnDebugModule
+import pl.pelotasplus.eyeofbeholder.features.vmp_debug.di.sharedFeaturesVmpDebugModule
 
 fun initKoin(config: KoinAppDeclaration? = null) {
     startKoin {
@@ -19,6 +20,7 @@ fun initKoin(config: KoinAppDeclaration? = null) {
             sharedFeaturesInfDebugModule,
             sharedFeaturesMazDebugModule,
             sharedFeaturesVcnDebugModule,
+            sharedFeaturesVmpDebugModule,
         )
     }
 }
