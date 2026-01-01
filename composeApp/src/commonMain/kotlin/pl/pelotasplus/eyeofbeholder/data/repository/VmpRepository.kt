@@ -3,10 +3,11 @@ package pl.pelotasplus.eyeofbeholder.data.repository
 import co.touchlab.kermit.Logger
 import pl.pelotasplus.eyeofbeholder.data.ByteReader
 import pl.pelotasplus.eyeofbeholder.data.model.RGB
+import pl.pelotasplus.eyeofbeholder.data.model.ViewPort
 import pl.pelotasplus.eyeofbeholder.data.model.Vmp
 
 interface VmpRepository {
-    suspend fun loadVmp(name: String): Result<List<List<RGB>>>
+    suspend fun loadVmp(name: String): Result<ViewPort>
 }
 
 class VmpRepositoryImpl(
@@ -14,7 +15,7 @@ class VmpRepositoryImpl(
     private val vcnRepository: VcnRepository,
     private val palRepository: PalRepository
 ) : VmpRepository {
-    override suspend fun loadVmp(name: String): Result<List<List<RGB>>> {
+    override suspend fun loadVmp(name: String): Result<ViewPort> {
         return runCatching {
             val bytes = resourceRepository.readResource("files/$name")
             val vmp = readVmp(name, ByteReader(bytes))
@@ -26,10 +27,31 @@ class VmpRepositoryImpl(
                 vcn.getTileAsBackdrop(tileIndex.tileIndex)
             }
             val rgbTiles = vcnTilesAsBackdrop.map {
-                it.pixels.map { pixel -> pal.colors[pixel] }
+                it.pixels.map { pixel ->
+                    if (pixel == 0) {
+                        RGB(0, 0, 0, transparent = true)
+                    } else {
+                        pal.colors[pixel]
+                    }
+                }
             }
             check(rgbTiles.size == 330) {
                 "Expected 330 tiles, got ${rgbTiles.size}"
+            }
+
+            val viewPort = ViewPort()
+
+            rgbTiles.forEachIndexed { index, tile ->
+                val row = index / 22
+                val col = index % 22
+
+                tile.forEachIndexed { pixelIndex, rgb ->
+                    val tileRow = pixelIndex / 8
+                    val tileCol = pixelIndex % 8
+                    val x = col * 8 + tileCol
+                    val y = row * 8 + tileRow
+                    viewPort.draw(x, y, rgb)
+                }
             }
 
 //            val vmpTilesAsWall = vmp.getWallType(0)
@@ -43,7 +65,56 @@ class VmpRepositoryImpl(
 //                "Expected 330 tiles, got ${rgbTiles.size}"
 //            }
 
-            rgbTiles
+            /*
+             * 0 -> full wall
+             * 1 -> full wall
+             * 2 -> door front
+             * 3 -> stairs up
+             * 4 -> stairs down
+             * 5 -> portal/door?
+             */
+
+            viewPort.drawWall(
+                wallType = 0,
+                wallPosition = 8,
+                vmp = vmp,
+                vcn = vcn,
+                pal = pal
+            )
+
+            viewPort.drawWall(
+                wallType = 0,
+                wallPosition = 13,
+                vmp = vmp,
+                vcn = vcn,
+                pal = pal
+            )
+
+            viewPort.drawWall(
+                wallType = 1,
+                wallPosition = 22,
+                vmp = vmp,
+                vcn = vcn,
+                pal = pal
+            )
+
+            viewPort.drawWall(
+                wallType = 1,
+                wallPosition = 23,
+                vmp = vmp,
+                vcn = vcn,
+                pal = pal
+            )
+
+            viewPort.drawWall(
+                wallType = 0,
+                wallPosition = 24,
+                vmp = vmp,
+                vcn = vcn,
+                pal = pal
+            )
+
+            viewPort
         }
     }
 
@@ -82,7 +153,7 @@ class VmpRepositoryImpl(
      */
     private fun decodeTileIndex(value: Int): Vmp.TileIndex {
         val zMask = (value and 0x8000) != 0
-        val mirrorX = (value and 0x4000) != 0
+        val mirrorX = false // (value and 0x4000) != 0
         val tileIndex = value and 0x3FFF
 
         return Vmp.TileIndex(

@@ -9,17 +9,34 @@ data class Vcn(
 ) {
     data class Tile(
         val pixels: List<Int> // each pixel points to a color in the palette in the Vcn class
-    )
+    ) {
+        override fun toString(): String {
+            return "Tile(pixels=\n${pixels.chunked(8).joinToString("\n")}\n)"
+        }
+    }
 
     fun getTileAsBackdrop(tileIndex: Int): Tile {
         return Tile(
-            pixels = tiles[tileIndex].pixels.map { pixel -> backdropPalette[pixel] }
+            pixels = tiles[tileIndex].pixels.map { pixel ->
+                if (pixel == 0) {
+                    0
+                } else {
+                    backdropPalette[pixel]
+                }
+            }
         )
     }
 
     fun getTileAsWall(tileIndex: Int): Tile {
+        val tile = tiles[tileIndex]
         return Tile(
-            pixels = tiles[tileIndex].pixels.map { pixel -> wallPalette[pixel] }
+            pixels = tile.pixels.map { pixel ->
+                if (pixel == 0) {
+                    0
+                } else {
+                    wallPalette[pixel]
+                }
+            }
         )
     }
 }

@@ -18,7 +18,7 @@ data class Vmp(
 
     fun getWallType(index: Int): List<TileIndex> {
         return tileIndexes.subList(
-            BACKDROP_SIZE + index,
+            BACKDROP_SIZE + (index * WALL_TYPE_SIZE),
             BACKDROP_SIZE + (index + 1) * WALL_TYPE_SIZE
         )
     }

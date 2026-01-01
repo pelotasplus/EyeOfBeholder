@@ -3,10 +3,11 @@ package pl.pelotasplus.eyeofbeholder.features.vmp_debug
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
@@ -20,6 +21,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.scale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.jetbrains.compose.ui.tooling.preview.Preview
@@ -51,7 +53,7 @@ private fun VmpDebugContent(
         CircularProgressIndicator()
     } else {
         Column(modifier = modifier) {
-            Column {
+            Row {
                 state.allVmps.forEach { vmpName ->
                     Button(
                         onClick = { onVmpSelected(vmpName) }
@@ -62,34 +64,24 @@ private fun VmpDebugContent(
             }
 
             if (state.selectedTiles != null) {
-                val tilesPerRow = 22
-                val tileSize = 8
-
-                Canvas(modifier = Modifier.size(176.dp, 120.dp).background(Color.Cyan)) {
-                    val scaleFactor = 5f
-                    val cellSize = 1f
-
-                    scale(scaleFactor, pivot = Offset.Zero) {
-                        state.selectedTiles.forEachIndexed { tileIndex, pixels ->
-                            val tileCol = tileIndex % tilesPerRow
-                            val tileRow = tileIndex / tilesPerRow
-
-                            pixels.forEachIndexed { pixelIndex, color ->
-                                val pixelCol = pixelIndex % tileSize
-                                val pixelRow = pixelIndex / tileSize
-
-                                val x = (tileCol * tileSize + pixelCol) * cellSize
-                                val y = (tileRow * tileSize + pixelRow) * cellSize
-
-                                drawRect(
-                                    color = Color(
-                                        color.red.toInt(),
-                                        color.green.toInt(),
-                                        color.blue.toInt()
-                                    ),
-                                    topLeft = Offset(x, y),
-                                    size = Size(cellSize, cellSize)
-                                )
+                BoxWithConstraints(modifier = Modifier.fillMaxWidth().background(Color.Cyan)) {
+                    val density = LocalDensity.current
+                    val containerWidthInPixels = with(density) { maxWidth.toPx() }.toInt()
+                    val scaleFactor = (containerWidthInPixels / 176f).toInt().coerceAtLeast(1)
+                    Canvas(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(Color.Cyan)
+                    ) {
+                        scale(scaleFactor.toFloat(), pivot = Offset.Zero) {
+                            state.selectedTiles.getRows().forEachIndexed { y, row ->
+                                row.forEachIndexed { x, rgb ->
+                                    drawRect(
+                                        color = Color(rgb.red, rgb.green, rgb.blue),
+                                        topLeft = Offset(x.toFloat(), y.toFloat()),
+                                        size = Size(1f, 1f)
+                                    )
+                                }
                             }
                         }
                     }
