@@ -17,11 +17,20 @@ class MazRepositoryImpl(
 
             val reader = ByteReader(bytes)
 
-            val width = reader.readU16LE() // always 32
-            val height = reader.readU16LE() // always 32
-            val faces = reader.readU16LE() // north, south, west, east
+            val width = reader.readU16LE()
+            check(width == 32) {
+                "Expected width 32, got $width"
+            }
+            val height = reader.readU16LE()
+            check(height == 32) {
+                "Expected height 32, got $height"
+            }
+            val size = reader.readU16LE()
+            check(size == 4) {
+                "Expected size 4, got $size"
+            }
 
-            Logger.d(TAG) { "Maz $name width $width x $height faces $faces" }
+            Logger.d(TAG) { "Maz $name width $width x $height size $size" }
 
             val squares = mutableListOf<Maz.Square>()
             for (y in 0 until height) {
@@ -31,18 +40,16 @@ class MazRepositoryImpl(
                     val south = reader.readU8()
                     val west = reader.readU8()
 
-                    Logger.d(TAG) {
-                        "Square $x, $y north $north south $south west $west east $east"
-                    }
-
                     val square = Maz.Square(
                         x = x,
                         y = y,
-                        north = north,
-                        south = south,
-                        west = west,
-                        east = east
+                        north = Maz.WallType.fromInt(north),
+                        south = Maz.WallType.fromInt(south),
+                        west = Maz.WallType.fromInt(west),
+                        east = Maz.WallType.fromInt(east)
                     )
+
+                    Logger.d(TAG) { "Square $square" }
 
                     squares.add(square)
                 }
