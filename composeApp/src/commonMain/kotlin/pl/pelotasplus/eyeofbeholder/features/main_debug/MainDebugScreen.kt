@@ -17,6 +17,7 @@ fun MainDebugScreen(
     onMazDebugClick: () -> Unit,
     onVcnDebugClick: () -> Unit,
     onVmpDebugClick: () -> Unit,
+    onViewConeDebugClick: () -> Unit,
 ) {
     Column(
         modifier = modifier,
@@ -51,6 +52,11 @@ fun MainDebugScreen(
             onClick = onVmpDebugClick,
         ) {
             Text("VMP Debug")
+        }
+        Button(
+            onClick = onViewConeDebugClick,
+        ) {
+            Text("View Cone Debug")
         }
     }
 }

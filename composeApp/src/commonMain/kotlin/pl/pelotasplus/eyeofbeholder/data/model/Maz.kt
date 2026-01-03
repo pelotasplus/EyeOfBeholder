@@ -6,7 +6,13 @@ data class Maz(
     val height: Int,
     val squares: List<Square>
 ) {
-    operator fun get(x: Int, y: Int): Square = squares[y * width + x]
+    operator fun get(x: Int, y: Int): Square {
+        val ret = squares[y * width + x]
+        check(ret.x == x && ret.y == y) {
+            "Expected ($x, $y) but got (${ret.x}, ${ret.y})"
+        }
+        return ret
+    }
 
     data class Square(
         val north: WallType,
@@ -23,7 +29,7 @@ data class Maz(
 
     sealed class WallType {
         data object NoWall : WallType()
-        data object FixedWall : WallType()
+        data class FixedWall(val wallType: Int) : WallType()
         data class DoorTypeOneWithButton(val state: Int) : WallType()
         data class DoorTypeOneWithoutButton(val state: Int) : WallType()
         data class DoorTypeTwoWithButton(val state: Int) : WallType()
@@ -42,7 +48,7 @@ data class Maz(
         companion object {
             fun fromInt(value: Int): WallType = when (value) {
                 0 -> NoWall
-                1, 2 -> FixedWall
+                1, 2 -> FixedWall(wallType = value - 1)
                 in 3..7 -> DoorTypeOneWithButton(state = value - 3)
                 in 8..12 -> DoorTypeOneWithoutButton(state = value - 8)
                 in 13..17 -> DoorTypeTwoWithButton(state = value - 13)

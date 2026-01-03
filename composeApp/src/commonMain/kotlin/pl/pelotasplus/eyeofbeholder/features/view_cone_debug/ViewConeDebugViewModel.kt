@@ -1,4 +1,4 @@
-package pl.pelotasplus.eyeofbeholder.features.vmp_debug
+package pl.pelotasplus.eyeofbeholder.features.view_cone_debug
 
 import androidx.compose.runtime.Stable
 import androidx.lifecycle.ViewModel
@@ -14,12 +14,13 @@ import kotlinx.coroutines.launch
 import pl.pelotasplus.eyeofbeholder.data.model.ViewPort
 import pl.pelotasplus.eyeofbeholder.data.model.Vmp
 import pl.pelotasplus.eyeofbeholder.data.repository.ResourceRepository
+import pl.pelotasplus.eyeofbeholder.data.repository.ViewConeRepository
 import pl.pelotasplus.eyeofbeholder.data.repository.VmpRepository
 
 @Stable
-class VmpDebugViewModel(
+class ViewConeDebugViewModel(
     private val resourceRepository: ResourceRepository,
-    private val vmpRepository: VmpRepository
+    private val viewConeRepository: ViewConeRepository
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(State())
@@ -38,7 +39,7 @@ class VmpDebugViewModel(
 
     private fun onInitialize() {
         viewModelScope.launch {
-            resourceRepository.listResources(".VMP")
+            resourceRepository.listResources(".MAZ")
                 .onSuccess { vmpNames ->
                     _state.update {
                         it.copy(
@@ -55,11 +56,12 @@ class VmpDebugViewModel(
 
     private fun onVmpSelected(name: String) {
         viewModelScope.launch {
-            vmpRepository.loadViewPort(name)
+            viewConeRepository.loadVmp(name)
                 .onSuccess { vmp ->
                     _state.update {
                         it.copy(
                             isLoading = false,
+//                            selectedVmp = vmp
                             selectedTiles = vmp
                         )
                     }

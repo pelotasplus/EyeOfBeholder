@@ -13,11 +13,11 @@ data class SubLevel(
     val index: Int,
     val mazName: String,
     val vmpData: String,
+    val palette: String?,
     val scriptTimers: List<ScriptTimer>,
     val monsters: List<MonsterProperty>,
     val monsterGfx: List<MonsterGfx>,
     val sound: String,
     val doors: List<Door>,
-    val palette: String?,
 )
 

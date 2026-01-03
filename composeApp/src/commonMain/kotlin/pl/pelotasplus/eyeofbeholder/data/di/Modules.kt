@@ -14,6 +14,8 @@ import pl.pelotasplus.eyeofbeholder.data.repository.ResourceRepository
 import pl.pelotasplus.eyeofbeholder.data.repository.ResourceRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.VcnRepository
 import pl.pelotasplus.eyeofbeholder.data.repository.VcnRepositoryImpl
+import pl.pelotasplus.eyeofbeholder.data.repository.ViewConeRepository
+import pl.pelotasplus.eyeofbeholder.data.repository.ViewConeRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.VmpRepository
 import pl.pelotasplus.eyeofbeholder.data.repository.VmpRepositoryImpl
 
@@ -39,5 +41,8 @@ val sharedDataModule = module {
     }
     factory<VmpRepository> {
         VmpRepositoryImpl(get(), get(), get())
+    }
+    factory<ViewConeRepository> {
+        ViewConeRepositoryImpl(get(), get(), get(), get(), get())
     }
 }

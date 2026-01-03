@@ -192,14 +192,14 @@ class InfRepositoryImpl(
             subLevels.add(
                 SubLevel(
                     index = 0,
-                    mazName = mazName,
-                    vmpData = vmpData,
+                    mazName = mazName.uppercase(),
+                    vmpData = vmpData.uppercase(),
                     scriptTimers = scriptTimers,
                     monsters = monsters,
                     monsterGfx = monsterGfx,
                     sound = sound,
                     doors = doors,
-                    palette = palette
+                    palette = palette?.uppercase()
                 )
             )
 
