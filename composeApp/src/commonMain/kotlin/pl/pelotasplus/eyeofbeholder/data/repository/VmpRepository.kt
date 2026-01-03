@@ -2,7 +2,6 @@ package pl.pelotasplus.eyeofbeholder.data.repository
 
 import co.touchlab.kermit.Logger
 import pl.pelotasplus.eyeofbeholder.data.ByteReader
-import pl.pelotasplus.eyeofbeholder.data.model.RGB
 import pl.pelotasplus.eyeofbeholder.data.model.ViewPort
 import pl.pelotasplus.eyeofbeholder.data.model.Vmp
 
@@ -18,52 +17,18 @@ class VmpRepositoryImpl(
     override suspend fun loadVmp(name: String): Result<ViewPort> {
         return runCatching {
             val bytes = resourceRepository.readResource("files/$name")
+
             val vmp = readVmp(name, ByteReader(bytes))
             val vcn = vcnRepository.loadVcn(name.replace(".VMP", ".VCN")).getOrThrow()
             val pal = palRepository.loadPal(name.replace(".VMP", ".PAL")).getOrThrow()
 
-            val vmpTilesAsBackdrop = vmp.backdrop
-            val vcnTilesAsBackdrop = vmpTilesAsBackdrop.map { tileIndex ->
-                vcn.getTileAsBackdrop(tileIndex.tileIndex)
-            }
-            val rgbTiles = vcnTilesAsBackdrop.map {
-                it.pixels.map { pixel ->
-                    if (pixel == 0) {
-                        RGB(0, 0, 0, transparent = true)
-                    } else {
-                        pal.colors[pixel]
-                    }
-                }
-            }
-            check(rgbTiles.size == 330) {
-                "Expected 330 tiles, got ${rgbTiles.size}"
-            }
-
             val viewPort = ViewPort()
 
-            rgbTiles.forEachIndexed { index, tile ->
-                val row = index / 22
-                val col = index % 22
-
-                tile.forEachIndexed { pixelIndex, rgb ->
-                    val tileRow = pixelIndex / 8
-                    val tileCol = pixelIndex % 8
-                    val x = col * 8 + tileCol
-                    val y = row * 8 + tileRow
-                    viewPort.draw(x, y, rgb)
-                }
-            }
-
-//            val vmpTilesAsWall = vmp.getWallType(0)
-//            val vcnTilesAsWall = vmpTilesAsWall.map { tileIndex ->
-//                vcn.getTileAsWall(tileIndex.tileIndex)
-//            }
-//            val rgbTiles = vcnTilesAsWall.map {
-//                it.pixels.map { pixel -> pal.colors[pixel] }
-//            }
-//            check(rgbTiles.size == 431) {
-//                "Expected 330 tiles, got ${rgbTiles.size}"
-//            }
+            viewPort.drawBackdrop(
+                vmp = vmp,
+                vcn = vcn,
+                pal = pal
+            )
 
             /*
              * 0 -> full wall, type 1
@@ -75,16 +40,8 @@ class VmpRepositoryImpl(
              */
 
             viewPort.drawWall(
-                wallType = 0,
-                wallPosition = 8,
-                vmp = vmp,
-                vcn = vcn,
-                pal = pal
-            )
-
-            viewPort.drawWall(
-                wallType = 0,
-                wallPosition = 13,
+                wallType = 5,
+                wallPosition = 16,
                 vmp = vmp,
                 vcn = vcn,
                 pal = pal
@@ -92,7 +49,7 @@ class VmpRepositoryImpl(
 
             viewPort.drawWall(
                 wallType = 1,
-                wallPosition = 22,
+                wallPosition = 19,
                 vmp = vmp,
                 vcn = vcn,
                 pal = pal

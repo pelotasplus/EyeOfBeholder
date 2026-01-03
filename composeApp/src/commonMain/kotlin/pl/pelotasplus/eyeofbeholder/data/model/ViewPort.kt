@@ -1,16 +1,15 @@
 package pl.pelotasplus.eyeofbeholder.data.model
 
 class ViewPort {
-    // 176px by 120px
     private val pixels = MutableList(ROWS * COLS) {
         RGB(0, 0, 0)
     }
 
-    fun draw(x: Int, y: Int, rgb: RGB) {
+    private fun draw(x: Int, y: Int, rgb: RGB) {
         pixels[y * COLS + x] = rgb
     }
 
-    fun drawBlock(x: Int, y: Int, tilePixels: List<RGB>, flipX: Boolean = false) {
+    private fun drawBlock(x: Int, y: Int, tilePixels: List<RGB>, flipX: Boolean = false) {
         for (py in 0 until TILE_SIZE) {
             for (px in 0 until TILE_SIZE) {
                 val pixelX = if (flipX) {
@@ -28,21 +27,6 @@ class ViewPort {
             }
         }
     }
-
-//    fun drawBlockXFlip(x: Int, y: Int, tilePixels: List<RGB>) {
-//        for (py in 0 until TILE_SIZE) {
-//            for (px in 0 until TILE_SIZE) {
-//                val pixelX = x + (TILE_SIZE - 1 - px)
-//                val pixelY = y + py
-//                if (pixelX in 0 until COLS && pixelY in 0 until ROWS) {
-//                    val rgb = tilePixels[py * TILE_SIZE + px]
-//                    if (rgb.transparent.not()) {
-//                        draw(pixelX, pixelY, rgb)
-//                    }
-//                }
-//            }
-//        }
-//    }
 
     fun drawWall(
         wallType: Int,
@@ -91,8 +75,28 @@ class ViewPort {
         }
     }
 
-    fun getRow(y: Int): List<RGB> {
-        return pixels.subList(y * COLS, (y + 1) * COLS)
+    fun drawBackdrop(
+        vmp: Vmp,
+        vcn: Vcn,
+        pal: Palette
+    ) {
+        for (y in 0 until TILES_PER_COL) {
+            for (x in 0 until TILES_PER_ROW) {
+                val tile = vmp.backdrop[y * TILES_PER_ROW + x]
+                val tilePixels = vcn.getTileAsBackdrop(tile.tileIndex).pixels.map { pixel ->
+                    if (pixel == 0) {
+                        RGB(0, 0, 0, transparent = true)
+                    } else {
+                        pal.colors[pixel]
+                    }
+                }
+
+                val xpos = x * TILE_SIZE
+                val ypos = y * TILE_SIZE
+
+                drawBlock(xpos, ypos, tilePixels, flipX = tile.mirrorX)
+            }
+        }
     }
 
     fun getRows(): List<List<RGB>> {
@@ -104,6 +108,7 @@ class ViewPort {
         const val COLS = 176
         const val TILE_SIZE = 8
         const val TILES_PER_ROW = 22
+        const val TILES_PER_COL = 15
     }
 }
 

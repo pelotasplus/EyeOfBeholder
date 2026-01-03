@@ -53,7 +53,7 @@ private fun VmpDebugContent(
         CircularProgressIndicator()
     } else {
         Column(modifier = modifier) {
-            Row {
+            Column {
                 state.allVmps.forEach { vmpName ->
                     Button(
                         onClick = { onVmpSelected(vmpName) }
