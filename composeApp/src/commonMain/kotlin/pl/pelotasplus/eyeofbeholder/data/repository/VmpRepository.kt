@@ -66,12 +66,12 @@ class VmpRepositoryImpl(
 //            }
 
             /*
-             * 0 -> full wall
-             * 1 -> full wall
-             * 2 -> door front
+             * 0 -> full wall, type 1
+             * 1 -> full wall, type 2
+             * 2 -> door
              * 3 -> stairs up
              * 4 -> stairs down
-             * 5 -> portal/door?
+             * 5 -> portal
              */
 
             viewPort.drawWall(
@@ -152,8 +152,8 @@ class VmpRepositoryImpl(
      * - Bits 0-13: tile_index (14-bit unsigned)
      */
     private fun decodeTileIndex(value: Int): Vmp.TileIndex {
-        val zMask = (value and 0x8000) != 0
-        val mirrorX = false // (value and 0x4000) != 0
+        val zMask = (value shr 15) == 1
+        val mirrorX = (value shr 14 and 1) == 1
         val tileIndex = value and 0x3FFF
 
         return Vmp.TileIndex(
