@@ -91,7 +91,7 @@ private fun MazDebugContent(
                     BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
                         val density = LocalDensity.current
                         val containerWidthInPixels = with(density) { maxWidth.toPx() }.toInt()
-                        val cellSize = 4f
+                        val cellSize = 8f
                         val scaleFactor =
                             (containerWidthInPixels / (32 * cellSize)).toInt().coerceAtLeast(1)
                         Canvas(modifier = Modifier.size(maxWidth)) {
@@ -147,7 +147,7 @@ private fun MazDebugContent(
                                         text = "${square.x},${square.y}",
                                         topLeft = Offset(x + 2f, y + 2f),
                                         style = TextStyle(
-                                            fontSize = 7.sp,
+                                            fontSize = 4.sp,
                                             color = Color.Black
                                         )
                                     )

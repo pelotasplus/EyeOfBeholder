@@ -45,7 +45,7 @@ private fun ViewConeDebugContent(
         CircularProgressIndicator()
     } else {
         Column(modifier = modifier) {
-            Column {
+            Column(Modifier.weight(0.5f)) {
                 state.allVmps.forEach { vmpName ->
                     Button(
                         onClick = { onVmpSelected(vmpName) }
@@ -56,7 +56,7 @@ private fun ViewConeDebugContent(
             }
 
             if (state.selectedTiles != null) {
-                BoxWithConstraints(modifier = Modifier.fillMaxWidth().background(Color.Cyan)) {
+                BoxWithConstraints(modifier = Modifier.weight(0.5f).fillMaxWidth().background(Color.Cyan)) {
                     val density = LocalDensity.current
                     val containerWidthInPixels = with(density) { maxWidth.toPx() }.toInt()
                     val scaleFactor = (containerWidthInPixels / 176f).toInt().coerceAtLeast(1)

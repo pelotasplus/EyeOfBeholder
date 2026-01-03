@@ -47,6 +47,8 @@ class ViewConeDebugViewModel(
                             allVmps = vmpNames.toImmutableList()
                         )
                     }
+
+                    onVmpSelected("LEVEL5.MAZ")
                 }
                 .onFailure {
                     Logger.e(it) { "Error while loading vmp names" }
@@ -61,7 +63,6 @@ class ViewConeDebugViewModel(
                     _state.update {
                         it.copy(
                             isLoading = false,
-//                            selectedVmp = vmp
                             selectedTiles = vmp
                         )
                     }

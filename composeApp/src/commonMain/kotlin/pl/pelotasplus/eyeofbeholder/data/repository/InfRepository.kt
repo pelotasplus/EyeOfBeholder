@@ -166,7 +166,7 @@ class InfRepositoryImpl(
                     val decorationID = reader.readU8()
                     val specialType = reader.readU8()
                     val flags = reader.readU8()
-                    Logger.d(TAG) { "Assigning decorations: wallIndex: $wallIndex vmpIndex: $wallType decIndex: $decorationID specialType: $specialType flags: $flags" }
+                    Logger.d(TAG) { "Assigning decorations: wallIndex: $wallIndex wallType: $wallType decorationID: $decorationID specialType: $specialType flags: $flags" }
                 } else {
                     check(false) { "Unexpected cmd $cmd" }
                 }
@@ -229,9 +229,9 @@ class InfRepositoryImpl(
         }
 
         val script = readScript(reader)
-        script.tokens.forEach {
-            Logger.d(TAG) { "Got script token: $it" }
-        }
+//        script.tokens.forEach {
+//            Logger.d(TAG) { "Got script token: $it" }
+//        }
 
         val messages = mutableListOf<String>()
         while (reader.offset < offsetBlockC) {

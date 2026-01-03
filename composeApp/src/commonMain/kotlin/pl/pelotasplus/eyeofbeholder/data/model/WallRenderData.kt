@@ -38,7 +38,7 @@ val wallRenderData: List<WallRenderData> = listOf(
     // G-west       //   5
     WallRenderData(104, 87, 5, 1, 2, 1),
 
-    // Frontwalls back
+    // Front walls back
     // B-south      //   6
     WallRenderData(133, 66, 5, 2, 4, 0),
     // C-south      //   7
