@@ -12,8 +12,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
+import pl.pelotasplus.eyeofbeholder.data.model.Inf
 import pl.pelotasplus.eyeofbeholder.data.model.ViewPort
-import pl.pelotasplus.eyeofbeholder.data.model.Vmp
 import pl.pelotasplus.eyeofbeholder.data.repository.ResourceRepository
 import pl.pelotasplus.eyeofbeholder.data.repository.ViewConeRepository
 
@@ -33,7 +33,7 @@ class ViewConeDebugViewModel(
     fun onEvent(event: Event) {
         when (event) {
             Event.Initialize -> onInitialize()
-            is Event.OnVmpSelected -> onVmpSelected(event.name)
+            is Event.OnLevelSelected -> onVmpSelected(event.name)
             Event.MoveForward -> onMoveForward()
             Event.MoveBackwards -> onMoveBackwards()
             Event.RotateRight -> onRotateRight()
@@ -43,16 +43,15 @@ class ViewConeDebugViewModel(
 
     private fun onInitialize() {
         viewModelScope.launch {
-            resourceRepository.listResources(".MAZ")
+            resourceRepository.listResources(".INF")
                 .onSuccess { vmpNames ->
                     _state.update {
                         it.copy(
-                            isLoading = false,
-                            allVmps = vmpNames.toImmutableList()
+                            levels = vmpNames.toImmutableList()
                         )
                     }
 
-                    onVmpSelected("LEVEL5.MAZ")
+                    onVmpSelected("LEVEL5.INF")
                 }
                 .onFailure {
                     Logger.e(it) { "Error while loading vmp names" }
@@ -62,26 +61,17 @@ class ViewConeDebugViewModel(
 
     private fun onVmpSelected(name: String) {
         viewModelScope.launch {
-            val currentState = _state.value
-            viewConeRepository.loadVmp(
-                name = name,
-                playerX = currentState.playerX,
-                playerY = currentState.playerY,
-                direction = currentState.direction
-            )
-                .onSuccess { vmp ->
+            viewConeRepository
+                .loadLevel(name = name)
+                .onSuccess { inf ->
                     _state.update {
-                        it.copy(
-                            isLoading = false,
-                            selectedMazName = name,
-                            selectedTiles = vmp
-                        )
+                        it.copy(inf = inf)
                     }
+                    renderViewPort()
                 }
                 .onFailure {
                     Logger.e(it) { "Error while loading vmp: $name" }
                 }
-
         }
     }
 
@@ -109,13 +99,25 @@ class ViewConeDebugViewModel(
                 playerY = normalizedY
             )
         }
-        _state.value.selectedMazName
-            ?.let { mazName -> onVmpSelected(mazName) }
+        renderViewPort()
     }
 
     private fun onDirectionChanged(direction: Direction) {
         _state.update { it.copy(direction = direction) }
-        _state.value.selectedMazName?.let { mazName -> onVmpSelected(mazName) }
+        renderViewPort()
+    }
+
+    private fun renderViewPort() {
+        viewModelScope.launch {
+            viewConeRepository.renderPosition(
+                sublevel = _state.value.inf!!.subLevels[0],
+                playerX = _state.value.playerX,
+                playerY = _state.value.playerY,
+                direction = _state.value.direction
+            ).onSuccess { viewPort ->
+                _state.update { it.copy(viewPort = viewPort) }
+            }
+        }
     }
 
     private fun onMoveForward() {
@@ -184,7 +186,7 @@ class ViewConeDebugViewModel(
 
     sealed class Event {
         data object Initialize : Event()
-        data class OnVmpSelected(val name: String) : Event()
+        data class OnLevelSelected(val name: String) : Event()
         data object MoveForward : Event()
         data object MoveBackwards : Event()
         data object RotateRight : Event()
@@ -192,11 +194,12 @@ class ViewConeDebugViewModel(
     }
 
     data class State(
-        val isLoading: Boolean = true,
-        val allVmps: ImmutableList<String> = persistentListOf(),
-        val selectedMazName: String? = null,
-        val selectedVmp: Vmp? = null,
-        val selectedTiles: ViewPort? = null,
+        val inf: Inf? = null,
+
+        val levels: ImmutableList<String> = persistentListOf(),
+
+        val viewPort: ViewPort? = null,
+
         val playerX: Int = 23,
         val playerY: Int = 25,
         val direction: Direction = Direction.NORTH
