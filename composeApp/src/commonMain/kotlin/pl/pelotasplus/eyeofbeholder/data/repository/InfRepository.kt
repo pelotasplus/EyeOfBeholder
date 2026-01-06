@@ -2,10 +2,9 @@ package pl.pelotasplus.eyeofbeholder.data.repository
 
 import co.touchlab.kermit.Logger
 import pl.pelotasplus.eyeofbeholder.data.ByteReader
-import pl.pelotasplus.eyeofbeholder.data.LCWHelper
 import pl.pelotasplus.eyeofbeholder.data.model.DamageDice
 import pl.pelotasplus.eyeofbeholder.data.model.Door
-import pl.pelotasplus.eyeofbeholder.data.model.Level
+import pl.pelotasplus.eyeofbeholder.data.model.Inf
 import pl.pelotasplus.eyeofbeholder.data.model.Location
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterGfx
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterProperty
@@ -41,7 +40,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.script.UpdateScreen
 import pl.pelotasplus.eyeofbeholder.data.model.script.Wait
 
 interface InfRepository {
-    suspend fun loadInf(name: String): Result<Level>
+    suspend fun loadInf(name: String): Result<Inf>
 
     suspend fun getAllInfNames(): Result<List<String>>
 }
@@ -52,38 +51,14 @@ class InfRepositoryImpl(
 
     private val TAG = "InfRepository"
 
-    override suspend fun loadInf(name: String): Result<Level> {
+    override suspend fun loadInf(name: String): Result<Inf> {
         return runCatching {
-            val bytes = resourceRepository.readResource("files/$name")
-            val reader = ByteReader(bytes)
-
-            Logger.d(TAG) { "Decompressing $name; On-disk file size ${bytes.size}" }
-
-            val sizeFromHeader = reader.readU16LE()
-            Logger.d(TAG) { "Header file size $sizeFromHeader" }
-
-            val compressionType = reader.readU16LE()
-            Logger.d(TAG) { "Compression Type $compressionType" }
-
-            val uncompressedSize = reader.readU32LE()
-            Logger.d(TAG) { "Uncompressed size $uncompressedSize" }
-
-            val paletteSize = reader.readU16LE()
-            check(paletteSize == 0) {
-                "Unexpected palette size: $paletteSize, expected 0"
-            }
-            Logger.d(TAG) { "Palette Size $paletteSize" }
-
-            val compressed = reader.readRemaining()
-            val decompressed = UByteArray(uncompressedSize)
-
-            LCWHelper.decompress(compressed, decompressed)
-
+            val decompressed = resourceRepository.decompressResource("files/$name")
             decodeInf(name, decompressed)
         }
     }
 
-    private fun decodeInf(name: String, bytes: UByteArray): Level {
+    private fun decodeInf(name: String, bytes: UByteArray): Inf {
         val reader = ByteReader(bytes)
 
         val offsetBlockB = reader.readU16LE()
@@ -260,14 +235,12 @@ class InfRepositoryImpl(
             "Expected empty reader after all INF parsing"
         }
 
-        return Level(
-            inf = name,
-            subLevels = subLevels,
+        return Inf(
+            name = name,
+            subLevels = subLevels.toList(),
             script = script,
             messages = messages
-        ).also {
-            Logger.d(TAG) { it.toString() }
-        }
+        )
     }
 
     private fun readScript(reader: ByteReader): Script {

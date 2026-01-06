@@ -66,7 +66,7 @@ private fun InfDebugContent(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text(
-                        text = "File: ${state.loadedLevel.inf}",
+                        text = "File: ${state.loadedLevel.name}",
                         style = MaterialTheme.typography.titleMedium
                     )
                     Text(

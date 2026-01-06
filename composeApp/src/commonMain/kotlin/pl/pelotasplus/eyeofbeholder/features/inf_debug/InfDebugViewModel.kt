@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import pl.pelotasplus.eyeofbeholder.data.model.Inf
 import pl.pelotasplus.eyeofbeholder.data.model.Level
 import pl.pelotasplus.eyeofbeholder.data.repository.InfRepository
 
@@ -57,7 +58,8 @@ class InfDebugViewModel(
                     _state.update {
                         it.copy(
                             isLoading = false,
-                            loadedLevel = level                        )
+                            loadedLevel = level
+                        )
                     }
                 }
                 .onFailure { exception ->
@@ -79,6 +81,6 @@ class InfDebugViewModel(
     data class State(
         val isLoading: Boolean = true,
         val allInfs: ImmutableList<String> = persistentListOf(),
-        val loadedLevel: Level? = null
+        val loadedLevel: Inf? = null
     )
 }
