@@ -67,3 +67,50 @@ data class Maz(
         }
     }
 }
+
+/**
+ * Get the wall on the specified side of this square
+ */
+fun Maz.Square.getWall(side: WallSide): Maz.WallType {
+    return when (side) {
+        WallSide.NORTH -> north
+        WallSide.EAST -> east
+        WallSide.SOUTH -> south
+        WallSide.WEST -> west
+    }
+}
+
+/**
+ * Categorize a wall type for filtering purposes
+ */
+fun Maz.WallType.category(): WallTypeCategory {
+    return when (this) {
+        is Maz.WallType.FixedWall -> WallTypeCategory.FIXED_WALL
+        is Maz.WallType.DoorTypeOneWithButton,
+        is Maz.WallType.DoorTypeOneWithoutButton,
+        is Maz.WallType.DoorTypeTwoWithButton,
+        is Maz.WallType.DoorTypeTwoWithoutButton,
+        is Maz.WallType.DoorPoleType1,
+        is Maz.WallType.DoorPoleType2,
+        is Maz.WallType.StuckDoorType1,
+        is Maz.WallType.StuckDoorType2 -> WallTypeCategory.DOOR
+        is Maz.WallType.StairUp,
+        is Maz.WallType.StairDown -> WallTypeCategory.STAIRS
+        else -> WallTypeCategory.SPECIAL
+    }
+}
+
+/**
+ * Extract the visual wall type index for rendering.
+ * For FixedWall, returns the wallType.
+ * For other types, this needs to be extended based on VMP structure.
+ */
+fun Maz.WallType.toRenderWallType(): Int? {
+    return when (this) {
+        is Maz.WallType.FixedWall -> wallType
+        is Maz.WallType.NoWall -> null
+        // TODO: Add mappings for doors, stairs, etc.
+        // These will need to map to appropriate VMP wall type indices
+        else -> null
+    }
+}

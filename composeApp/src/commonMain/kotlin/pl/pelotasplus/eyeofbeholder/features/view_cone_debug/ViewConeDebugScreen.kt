@@ -2,15 +2,20 @@ package pl.pelotasplus.eyeofbeholder.features.view_cone_debug
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
@@ -31,6 +36,18 @@ fun ViewConeDebugScreen(
         state = state,
         onVmpSelected = {
             viewModel.onEvent(ViewConeDebugViewModel.Event.OnVmpSelected(it))
+        },
+        onMoveNorth = {
+            viewModel.onEvent(ViewConeDebugViewModel.Event.PlayerMoveNorth)
+        },
+        onMoveSouth = {
+            viewModel.onEvent(ViewConeDebugViewModel.Event.PlayerMoveSouth)
+        },
+        onRotateEast = {
+            viewModel.onEvent(ViewConeDebugViewModel.Event.RotateEast)
+        },
+        onRotateWest = {
+            viewModel.onEvent(ViewConeDebugViewModel.Event.RotateWest)
         }
     )
 }
@@ -40,6 +57,10 @@ private fun ViewConeDebugContent(
     state: ViewConeDebugViewModel.State,
     modifier: Modifier = Modifier,
     onVmpSelected: (String) -> Unit = {},
+    onMoveNorth: () -> Unit = {},
+    onMoveSouth: () -> Unit = {},
+    onRotateEast: () -> Unit = {},
+    onRotateWest: () -> Unit = {},
 ) {
     if (state.isLoading) {
         CircularProgressIndicator()
@@ -51,6 +72,47 @@ private fun ViewConeDebugContent(
                         onClick = { onVmpSelected(vmpName) }
                     ) {
                         Text(text = vmpName)
+                    }
+                }
+            }
+
+            // Player position and direction controls
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // Player position and direction (read-only)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Player: (${state.playerX}, ${state.playerY})")
+                    Text("Direction: ${state.direction.name}")
+                }
+
+                // Navigation buttons
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Button(onClick = onRotateWest) {
+                        Text("W")
+                    }
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Button(onClick = onMoveNorth) {
+                            Text("N")
+                        }
+                        Button(onClick = onMoveSouth) {
+                            Text("S")
+                        }
+                    }
+                    Button(onClick = onRotateEast) {
+                        Text("E")
                     }
                 }
             }
