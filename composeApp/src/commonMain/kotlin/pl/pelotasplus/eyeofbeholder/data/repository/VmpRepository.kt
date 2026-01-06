@@ -6,7 +6,8 @@ import pl.pelotasplus.eyeofbeholder.data.model.ViewPort
 import pl.pelotasplus.eyeofbeholder.data.model.Vmp
 
 interface VmpRepository {
-    suspend fun loadVmp(name: String): Result<ViewPort>
+    suspend fun loadVmp(name: String): Result<Vmp>
+    suspend fun loadViewPort(name: String): Result<ViewPort>
 }
 
 class VmpRepositoryImpl(
@@ -14,11 +15,19 @@ class VmpRepositoryImpl(
     private val vcnRepository: VcnRepository,
     private val palRepository: PalRepository
 ) : VmpRepository {
-    override suspend fun loadVmp(name: String): Result<ViewPort> {
+
+    override suspend fun loadVmp(name: String): Result<Vmp> {
         return runCatching {
             val bytes = resourceRepository.readResource("files/$name")
-
             val vmp = readVmp(name, ByteReader(bytes))
+            Logger.d(TAG) { "VMP $vmp" }
+            vmp
+        }
+    }
+
+    override suspend fun loadViewPort(name: String): Result<ViewPort> {
+        return runCatching {
+            val vmp = loadVmp(name).getOrThrow()
             val vcn = vcnRepository.loadVcn(name.replace(".VMP", ".VCN")).getOrThrow()
             val pal = palRepository.loadPal(name.replace(".VMP", ".PAL")).getOrThrow()
 

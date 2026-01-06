@@ -2,9 +2,13 @@ package pl.pelotasplus.eyeofbeholder.data.repository
 
 import co.touchlab.kermit.Logger
 import eyeofbeholder.composeapp.generated.resources.Res
+import pl.pelotasplus.eyeofbeholder.data.ByteReader
+import pl.pelotasplus.eyeofbeholder.data.LCWHelper
 
 interface ResourceRepository {
     suspend fun readResource(path: String): UByteArray
+
+    suspend fun decompressResource(path: String): UByteArray
 
     suspend fun listResources(extension: String): Result<List<String>>
 }
@@ -251,6 +255,36 @@ class ResourceRepositoryImpl() : ResourceRepository {
 
     override suspend fun readResource(path: String): UByteArray {
         return Res.readBytes(path).asUByteArray()
+    }
+
+    override suspend fun decompressResource(path: String): UByteArray {
+        val bytes = readResource(path)
+
+        val reader = ByteReader(bytes)
+
+        Logger.d(TAG) { "Decompressing $path; On-disk file size ${bytes.size}" }
+
+        val sizeFromHeader = reader.readU16LE()
+        Logger.d(TAG) { "Header file size $sizeFromHeader" }
+
+        val compressionType = reader.readU16LE()
+        Logger.d(TAG) { "Compression Type $compressionType" }
+
+        val uncompressedSize = reader.readU32LE()
+        Logger.d(TAG) { "Uncompressed size $uncompressedSize" }
+
+        val paletteSize = reader.readU16LE()
+        check(paletteSize == 0) {
+            "Unexpected palette size: $paletteSize, expected 0"
+        }
+        Logger.d(TAG) { "Palette Size $paletteSize" }
+
+        val compressed = reader.readRemaining()
+        val decompressed = UByteArray(uncompressedSize)
+
+        LCWHelper.decompress(compressed, decompressed)
+
+        return decompressed
     }
 
     override suspend fun listResources(extension: String): Result<List<String>> {

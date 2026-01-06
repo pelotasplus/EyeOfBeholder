@@ -21,11 +21,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.scale
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.drawText
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import org.jetbrains.compose.ui.tooling.preview.Preview
 import org.koin.compose.viewmodel.koinViewModel
-import pl.pelotasplus.eyeofbeholder.data.model.isBlocked
+import pl.pelotasplus.eyeofbeholder.data.model.Maz
 
 @Composable
 fun MazDebugScreen(
@@ -79,50 +84,73 @@ private fun MazDebugContent(
 
                     val mazWidth = state.loadedMaz.width
 
-                    val blockedColor = Color(55, 55, 55)
-                    val wallColor = blockedColor
+                    val blockedColor = Color(200, 200, 200)
+                    val wallColor = Color(55, 55, 55)
+                    val textMeasurer = rememberTextMeasurer()
 
-                    BoxWithConstraints {
+                    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+                        val density = LocalDensity.current
+                        val containerWidthInPixels = with(density) { maxWidth.toPx() }.toInt()
+                        val cellSize = 8f
+                        val scaleFactor =
+                            (containerWidthInPixels / (32 * cellSize)).toInt().coerceAtLeast(1)
                         Canvas(modifier = Modifier.size(maxWidth)) {
-                            val cellSize = size.width / mazWidth
-                            state.loadedMaz.squares.forEachIndexed { index, square ->
-                                val x = (index % mazWidth) * cellSize
-                                val y = (index / mazWidth) * cellSize
-                                if (square.blockedAllSides) {
-                                    drawRect(
-                                        color = blockedColor,
-                                        topLeft = Offset(x, y),
-                                        size = Size(cellSize, cellSize)
+                            scale(scaleFactor.toFloat(), pivot = Offset.Zero) {
+                                state.loadedMaz.squares.forEachIndexed { index, square ->
+                                    val x = (index % mazWidth) * cellSize
+                                    val y = (index / mazWidth) * cellSize
+                                    if (square.blockedAllSides) {
+                                        drawRect(
+                                            color = blockedColor,
+                                            topLeft = Offset(x, y),
+                                            size = Size(cellSize, cellSize)
+                                        )
+                                    } else {
+                                        if (square.north is Maz.WallType.FixedWall) {
+                                            drawLine(
+                                                color = wallColor,
+                                                start = Offset(x, y),
+                                                end = Offset(x + cellSize, y)
+                                            )
+                                        }
+                                        if (square.east is Maz.WallType.FixedWall) {
+                                            drawLine(
+                                                color = wallColor,
+                                                start = Offset(x + cellSize, y),
+                                                end = Offset(x + cellSize, y + cellSize)
+                                            )
+                                        }
+                                        if (square.south is Maz.WallType.FixedWall) {
+                                            drawLine(
+                                                color = wallColor,
+                                                start = Offset(x, y + cellSize),
+                                                end = Offset(x + cellSize, y + cellSize)
+                                            )
+                                        }
+                                        if (square.west is Maz.WallType.FixedWall) {
+                                            drawLine(
+                                                color = wallColor,
+                                                start = Offset(x, y),
+                                                end = Offset(x, y + cellSize)
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                            // Draw coordinates outside scale block for readable text
+                            state.loadedMaz.squares.forEach { square ->
+                                val x = square.x * cellSize * scaleFactor
+                                val y = square.y * cellSize * scaleFactor
+                                if (!square.blockedAllSides) {
+                                    drawText(
+                                        textMeasurer = textMeasurer,
+                                        text = "${square.x},${square.y}",
+                                        topLeft = Offset(x + 2f, y + 2f),
+                                        style = TextStyle(
+                                            fontSize = 4.sp,
+                                            color = Color.Black
+                                        )
                                     )
-                                } else {
-                                    if (square.north.isBlocked()) {
-                                        drawLine(
-                                            color = wallColor,
-                                            start = Offset(x, y),
-                                            end = Offset(x + cellSize, y)
-                                        )
-                                    }
-                                    if (square.east.isBlocked()) {
-                                        drawLine(
-                                            color = wallColor,
-                                            start = Offset(x + cellSize, y),
-                                            end = Offset(x + cellSize, y + cellSize)
-                                        )
-                                    }
-                                    if (square.south.isBlocked()) {
-                                        drawLine(
-                                            color = wallColor,
-                                            start = Offset(x, y + cellSize),
-                                            end = Offset(x + cellSize, y + cellSize)
-                                        )
-                                    }
-                                    if (square.west.isBlocked()) {
-                                        drawLine(
-                                            color = wallColor,
-                                            start = Offset(x, y),
-                                            end = Offset(x, y + cellSize)
-                                        )
-                                    }
                                 }
                             }
                         }
@@ -131,12 +159,4 @@ private fun MazDebugContent(
             }
         }
     }
-}
-
-@Preview
-@Composable
-private fun PreviewMazDebugContent() {
-    MazDebugContent(
-        state = MazDebugViewModel.State()
-    )
 }
