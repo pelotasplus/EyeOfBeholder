@@ -83,11 +83,11 @@ private fun InfDebugContent(
                             style = MaterialTheme.typography.bodySmall
                         )
                         Text(
-                            text = "Maz name: ${it.mazName}",
+                            text = "Maz name: ${it.maz.name}",
                             style = MaterialTheme.typography.bodySmall
                         )
                         Text(
-                            text = "VMP: ${it.vmpData}",
+                            text = "VMP: ${it.vmp.name}",
                             style = MaterialTheme.typography.bodySmall
                         )
                         Text(

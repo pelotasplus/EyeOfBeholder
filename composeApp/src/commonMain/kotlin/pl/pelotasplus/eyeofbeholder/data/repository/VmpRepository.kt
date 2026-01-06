@@ -2,18 +2,14 @@ package pl.pelotasplus.eyeofbeholder.data.repository
 
 import co.touchlab.kermit.Logger
 import pl.pelotasplus.eyeofbeholder.data.ByteReader
-import pl.pelotasplus.eyeofbeholder.data.model.ViewPort
 import pl.pelotasplus.eyeofbeholder.data.model.Vmp
 
 interface VmpRepository {
     suspend fun loadVmp(name: String): Result<Vmp>
-    suspend fun loadViewPort(name: String): Result<ViewPort>
 }
 
 class VmpRepositoryImpl(
     private val resourceRepository: ResourceRepository,
-    private val vcnRepository: VcnRepository,
-    private val palRepository: PalRepository
 ) : VmpRepository {
 
     override suspend fun loadVmp(name: String): Result<Vmp> {
@@ -22,65 +18,6 @@ class VmpRepositoryImpl(
             val vmp = readVmp(name, ByteReader(bytes))
             Logger.d(TAG) { "VMP $vmp" }
             vmp
-        }
-    }
-
-    override suspend fun loadViewPort(name: String): Result<ViewPort> {
-        return runCatching {
-            val vmp = loadVmp(name).getOrThrow()
-            val vcn = vcnRepository.loadVcn(name.replace(".VMP", ".VCN")).getOrThrow()
-            val pal = palRepository.loadPal(name.replace(".VMP", ".PAL")).getOrThrow()
-
-            val viewPort = ViewPort()
-
-            viewPort.drawBackdrop(
-                vmp = vmp,
-                vcn = vcn,
-                pal = pal
-            )
-
-            /*
-             * 0 -> full wall, type 1
-             * 1 -> full wall, type 2
-             * 2 -> door
-             * 3 -> stairs up
-             * 4 -> stairs down
-             * 5 -> portal
-             */
-
-            viewPort.drawWall(
-                wallType = 5,
-                wallPosition = 16,
-                vmp = vmp,
-                vcn = vcn,
-                pal = pal
-            )
-
-            viewPort.drawWall(
-                wallType = 1,
-                wallPosition = 19,
-                vmp = vmp,
-                vcn = vcn,
-                pal = pal
-            )
-
-            viewPort.drawWall(
-                wallType = 1,
-                wallPosition = 23,
-                vmp = vmp,
-                vcn = vcn,
-                pal = pal
-            )
-
-            viewPort.drawWall(
-                wallType = 0,
-                wallPosition = 24,
-                vmp = vmp,
-                vcn = vcn,
-                pal = pal
-            )
-
-            viewPort
         }
     }
 

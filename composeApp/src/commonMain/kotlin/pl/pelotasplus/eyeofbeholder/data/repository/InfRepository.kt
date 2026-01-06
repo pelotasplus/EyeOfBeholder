@@ -46,7 +46,11 @@ interface InfRepository {
 }
 
 class InfRepositoryImpl(
-    private val resourceRepository: ResourceRepository
+    private val resourceRepository: ResourceRepository,
+    private val mazRepository: MazRepository,
+    private val vmpRepository: VmpRepository,
+    private val vcnRepository: VcnRepository,
+    private val palRepository: PalRepository
 ) : InfRepository {
 
     private val TAG = "InfRepository"
@@ -58,7 +62,7 @@ class InfRepositoryImpl(
         }
     }
 
-    private fun decodeInf(name: String, bytes: UByteArray): Inf {
+    private suspend fun decodeInf(name: String, bytes: UByteArray): Inf {
         val reader = ByteReader(bytes)
 
         val offsetBlockB = reader.readU16LE()
@@ -68,26 +72,35 @@ class InfRepositoryImpl(
 
         while (reader.offset < offsetBlockB) {
             val nextSubLevelOffset = reader.readU16LE()
-//            Logger.d(TAG) { "Starting sublevel at ${reader.offset} nextSubLevelOffset $nextSubLevelOffset offsetBlockB offset is $offsetBlockB" }
+            Logger.d(TAG) { "Starting sublevel at ${reader.offset} nextSubLevelOffset $nextSubLevelOffset offsetBlockB offset is $offsetBlockB" }
 
             var cmd = reader.readU8()
             check(cmd == 0xEC) { "expected 0xEC, got ${cmd.toHexString()}" }
 
-            val mazName = reader.readString(13)
+            val mazName = reader.readString(13).uppercase()
             Logger.d(TAG) { "Maz name '$mazName'" }
 
-            val vmpData = reader.readString(13)
-            Logger.d(TAG) { "VMP name '$vmpData'" }
+            val maz = mazRepository.loadMaz(mazName).getOrThrow()
+
+            val vmpName = reader.readString(13)
+                .uppercase() + ".VMP"
+            Logger.d(TAG) { "VMP name '$vmpName'" }
+            val vmp = vmpRepository.loadVmp(vmpName).getOrThrow()
+
+            val vcnName = vmpName.replace(".VMP", ".VCN")
+            Logger.d(TAG) { "VCN name '$vcnName'" }
+            val vcn = vcnRepository.loadVcn(vcnName).getOrThrow()
 
             cmd = reader.readU8()
             check(cmd == 0xFF || cmd == 0x01) { "expected 0xFF or 0x01, got 0x${cmd.toHexString()}" }
 
             val palette = if (cmd != 0xFF) {
-                reader.readString(13)
+                reader.readString(13).uppercase()
             } else {
-                null
+                vmpName.replace(".VMP", ".PAL")
             }
             Logger.d(TAG) { "Palette name '$palette'" }
+            val pal = palRepository.loadPal(palette).getOrThrow()
 
             val sound = reader.readString(13)
             Logger.d(TAG) { "Sound file '$sound'" }
@@ -167,14 +180,15 @@ class InfRepositoryImpl(
             subLevels.add(
                 SubLevel(
                     index = 0,
-                    mazName = mazName.uppercase(),
-                    vmpData = vmpData.uppercase(),
+                    maz = maz,
+                    vmp = vmp,
+                    vcn = vcn,
                     scriptTimers = scriptTimers,
                     monsters = monsters,
                     monsterGfx = monsterGfx,
                     sound = sound,
                     doors = doors,
-                    palette = palette?.uppercase()
+                    palette = pal
                 )
             )
 

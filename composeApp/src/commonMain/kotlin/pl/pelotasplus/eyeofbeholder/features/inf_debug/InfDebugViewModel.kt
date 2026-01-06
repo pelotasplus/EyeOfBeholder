@@ -12,7 +12,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import pl.pelotasplus.eyeofbeholder.data.model.Inf
-import pl.pelotasplus.eyeofbeholder.data.model.Level
 import pl.pelotasplus.eyeofbeholder.data.repository.InfRepository
 
 @Stable

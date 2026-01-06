@@ -19,7 +19,6 @@ import pl.pelotasplus.eyeofbeholder.features.maz_debug.MazDebugScreen
 import pl.pelotasplus.eyeofbeholder.features.pal_debug.PalDebugScreen
 import pl.pelotasplus.eyeofbeholder.features.vcn_debug.VcnDebugScreen
 import pl.pelotasplus.eyeofbeholder.features.view_cone_debug.ViewConeDebugScreen
-import pl.pelotasplus.eyeofbeholder.features.vmp_debug.VmpDebugScreen
 import pl.pelotasplus.eyeofbeholder.navigation.Route
 
 @Composable
@@ -57,9 +56,6 @@ fun App() {
                             onVcnDebugClick = {
                                 navController.navigate(Route.VcnDebug)
                             },
-                            onVmpDebugClick = {
-                                navController.navigate(Route.VmpDebug)
-                            },
                             onViewConeDebugClick = {
                                 navController.navigate(Route.ViewConeDebug)
                             }
@@ -79,9 +75,6 @@ fun App() {
                     }
                     composable<Route.VcnDebug> {
                         VcnDebugScreen()
-                    }
-                    composable<Route.VmpDebug> {
-                        VmpDebugScreen()
                     }
                     composable<Route.ViewConeDebug> {
                         ViewConeDebugScreen()

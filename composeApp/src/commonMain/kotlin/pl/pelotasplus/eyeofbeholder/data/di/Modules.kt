@@ -31,7 +31,7 @@ val sharedDataModule = module {
         CpsRepositoryImpl(get())
     }
     factory<InfRepository> {
-        InfRepositoryImpl(get())
+        InfRepositoryImpl(get(), get(), get(), get(), get())
     }
     factory<MazRepository> {
         MazRepositoryImpl(get())
@@ -40,9 +40,9 @@ val sharedDataModule = module {
         VcnRepositoryImpl(get(), get())
     }
     factory<VmpRepository> {
-        VmpRepositoryImpl(get(), get(), get())
+        VmpRepositoryImpl(get())
     }
     factory<ViewConeRepository> {
-        ViewConeRepositoryImpl(get(), get(), get(), get(), get())
+        ViewConeRepositoryImpl(get())
     }
 }

@@ -10,13 +10,13 @@ package pl.pelotasplus.eyeofbeholder.data.model
  */
 data class WallPositionMapping(
     /**
-     * Relative X offset from player position when facing SOUTH (baseline direction).
+     * Relative X offset from player position when facing NORTH (baseline direction).
      * Negative = left, Positive = right
      */
     val relativeX: Int,
 
     /**
-     * Relative Y offset from player position when facing SOUTH (baseline direction).
+     * Relative Y offset from player position when facing NORTH (baseline direction).
      * Negative = forward/ahead, Positive = backward
      */
     val relativeY: Int,
@@ -92,6 +92,17 @@ enum class Direction {
     }
 }
 
+/**
+ * Layer 5 (backdrop)
+ *                                   ─────────────────────────────────
+ * Layer 4                               A | B | C | D | E | F | G
+ *                                          ─── ─── ─── ─── ───
+ * Layer 3                                   H | I | J | K | L
+ *                                              ─── ─── ───
+ * Layer 2                                       M | N | O
+ *                                              ─── ─── ───
+ * Layer 1 (closest)                             P | ^ | Q
+ */
 /**
  * The 25 wall position mappings, corresponding to wallRenderData positions 0-24.
  *
