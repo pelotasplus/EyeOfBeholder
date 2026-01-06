@@ -16,7 +16,6 @@ import pl.pelotasplus.eyeofbeholder.data.model.ViewPort
 import pl.pelotasplus.eyeofbeholder.data.model.Vmp
 import pl.pelotasplus.eyeofbeholder.data.repository.ResourceRepository
 import pl.pelotasplus.eyeofbeholder.data.repository.ViewConeRepository
-import pl.pelotasplus.eyeofbeholder.data.repository.VmpRepository
 
 @Stable
 class ViewConeDebugViewModel(
@@ -35,13 +34,10 @@ class ViewConeDebugViewModel(
         when (event) {
             Event.Initialize -> onInitialize()
             is Event.OnVmpSelected -> onVmpSelected(event.name)
-            is Event.PlayerXChanged -> onPlayerXChanged(event.x)
-            is Event.PlayerYChanged -> onPlayerYChanged(event.y)
-            is Event.DirectionChanged -> onDirectionChanged(event.direction)
-            Event.PlayerMoveNorth -> onPlayerMoveNorth()
-            Event.PlayerMoveSouth -> onPlayerMoveSouth()
-            Event.RotateEast -> onRotateEast()
-            Event.RotateWest -> onRotateWest()
+            Event.MoveForward -> onMoveForward()
+            Event.MoveBackwards -> onMoveBackwards()
+            Event.RotateRight -> onRotateRight()
+            Event.RotateLeft -> onRotateLeft()
         }
     }
 
@@ -56,7 +52,7 @@ class ViewConeDebugViewModel(
                         )
                     }
 
-                    onVmpSelected("LEVEL4.MAZ")
+                    onVmpSelected("LEVEL5.MAZ")
                 }
                 .onFailure {
                     Logger.e(it) { "Error while loading vmp names" }
@@ -89,44 +85,88 @@ class ViewConeDebugViewModel(
         }
     }
 
-    private fun onPlayerXChanged(x: Int) {
-        _state.update { it.copy(playerX = x) }
-        // Reload viewport with new position
-        _state.value.selectedMazName?.let { mazName ->
-            onVmpSelected(mazName)
+    private fun onPlayerPositionChanged(x: Int? = null, y: Int? = null) {
+        check(x != null || y != null) {
+            "Either x or y must be non-null"
         }
-    }
-
-    private fun onPlayerYChanged(y: Int) {
-        _state.update { it.copy(playerY = y) }
-        // Reload viewport with new position
-        _state.value.selectedMazName?.let { mazName ->
-            onVmpSelected(mazName)
+        val normalizedX = if (x == null) {
+            _state.value.playerX
+        } else if (x < 0) {
+            0
+        } else {
+            x
         }
+        val normalizedY = if (y == null) {
+            _state.value.playerY
+        } else if (y < 0) {
+            0
+        } else {
+            y
+        }
+        _state.update {
+            it.copy(
+                playerX = normalizedX,
+                playerY = normalizedY
+            )
+        }
+        _state.value.selectedMazName
+            ?.let { mazName -> onVmpSelected(mazName) }
     }
 
     private fun onDirectionChanged(direction: Direction) {
         _state.update { it.copy(direction = direction) }
-        // Reload viewport with new direction
-        _state.value.selectedMazName?.let { mazName ->
-            onVmpSelected(mazName)
+        _state.value.selectedMazName?.let { mazName -> onVmpSelected(mazName) }
+    }
+
+    private fun onMoveForward() {
+        when (_state.value.direction) {
+            Direction.NORTH -> {
+                val newY = _state.value.playerY - 1
+                onPlayerPositionChanged(y = newY)
+            }
+
+            Direction.EAST -> {
+                val newX = _state.value.playerX + 1
+                onPlayerPositionChanged(x = newX)
+            }
+
+            Direction.SOUTH -> {
+                val newY = _state.value.playerY + 1
+                onPlayerPositionChanged(y = newY)
+            }
+
+            Direction.WEST -> {
+                val newX = _state.value.playerX - 1
+                onPlayerPositionChanged(x = newX)
+            }
         }
     }
 
-    private fun onPlayerMoveNorth() {
-        val newY = _state.value.playerY - 1
-        if (newY >= 0) {
-            onPlayerYChanged(newY)
+    private fun onMoveBackwards() {
+        when (_state.value.direction) {
+            Direction.NORTH -> {
+                val newY = _state.value.playerY + 1
+                onPlayerPositionChanged(y = newY)
+            }
+
+            Direction.EAST -> {
+                val newX = _state.value.playerX - 1
+                onPlayerPositionChanged(x = newX)
+            }
+
+            Direction.SOUTH -> {
+                val newY = _state.value.playerY - 1
+                onPlayerPositionChanged(y = newY)
+            }
+
+            Direction.WEST -> {
+                val newX = _state.value.playerX + 1
+                onPlayerPositionChanged(x = newX)
+            }
         }
     }
 
-    private fun onPlayerMoveSouth() {
-        val newY = _state.value.playerY + 1
-        // Allow any positive value, maze will handle bounds checking
-        onPlayerYChanged(newY)
-    }
-
-    private fun onRotateEast() {
+    private fun onRotateRight() {
         val currentDirection = _state.value.direction
         val directions = Direction.entries
         val currentIndex = directions.indexOf(currentDirection)
@@ -134,7 +174,7 @@ class ViewConeDebugViewModel(
         onDirectionChanged(directions[newIndex])
     }
 
-    private fun onRotateWest() {
+    private fun onRotateLeft() {
         val currentDirection = _state.value.direction
         val directions = Direction.entries
         val currentIndex = directions.indexOf(currentDirection)
@@ -145,13 +185,10 @@ class ViewConeDebugViewModel(
     sealed class Event {
         data object Initialize : Event()
         data class OnVmpSelected(val name: String) : Event()
-        data class PlayerXChanged(val x: Int) : Event()
-        data class PlayerYChanged(val y: Int) : Event()
-        data class DirectionChanged(val direction: Direction) : Event()
-        data object PlayerMoveNorth : Event()
-        data object PlayerMoveSouth : Event()
-        data object RotateEast : Event()
-        data object RotateWest : Event()
+        data object MoveForward : Event()
+        data object MoveBackwards : Event()
+        data object RotateRight : Event()
+        data object RotateLeft : Event()
     }
 
     data class State(
@@ -160,8 +197,8 @@ class ViewConeDebugViewModel(
         val selectedMazName: String? = null,
         val selectedVmp: Vmp? = null,
         val selectedTiles: ViewPort? = null,
-        val playerX: Int = 11,
-        val playerY: Int = 15,
+        val playerX: Int = 23,
+        val playerY: Int = 25,
         val direction: Direction = Direction.NORTH
     )
 }

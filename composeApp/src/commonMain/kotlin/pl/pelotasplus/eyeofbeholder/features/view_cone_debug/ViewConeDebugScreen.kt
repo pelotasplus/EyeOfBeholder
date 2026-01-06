@@ -38,16 +38,16 @@ fun ViewConeDebugScreen(
             viewModel.onEvent(ViewConeDebugViewModel.Event.OnVmpSelected(it))
         },
         onMoveNorth = {
-            viewModel.onEvent(ViewConeDebugViewModel.Event.PlayerMoveNorth)
+            viewModel.onEvent(ViewConeDebugViewModel.Event.MoveForward)
         },
         onMoveSouth = {
-            viewModel.onEvent(ViewConeDebugViewModel.Event.PlayerMoveSouth)
+            viewModel.onEvent(ViewConeDebugViewModel.Event.MoveBackwards)
         },
         onRotateEast = {
-            viewModel.onEvent(ViewConeDebugViewModel.Event.RotateEast)
+            viewModel.onEvent(ViewConeDebugViewModel.Event.RotateRight)
         },
         onRotateWest = {
-            viewModel.onEvent(ViewConeDebugViewModel.Event.RotateWest)
+            viewModel.onEvent(ViewConeDebugViewModel.Event.RotateLeft)
         }
     )
 }
