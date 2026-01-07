@@ -80,9 +80,9 @@ enum class Direction {
     fun transformWallSide(side: WallSide): WallSide {
         val rotationSteps = when (this) {
             NORTH -> 0  // Baseline
-            WEST -> 1   // 90° clockwise
+            EAST -> 1   // 90° clockwise
             SOUTH -> 2  // 180°
-            EAST -> 3   // 270° clockwise
+            WEST -> 3   // 270° clockwise
         }
 
         val sides = WallSide.entries

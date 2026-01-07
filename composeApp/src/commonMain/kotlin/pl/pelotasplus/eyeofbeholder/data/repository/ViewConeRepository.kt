@@ -64,7 +64,7 @@ class ViewConeRepositoryImpl(
             // Transform wall side based on player direction
             val actualWallSide = direction.transformWallSide(mapping.wallSide)
             val wallType = square.getWall(actualWallSide)
-            Logger.d(TAG) { "Wall type: $wallType for $mazX x $mazY side $actualWallSide" }
+            Logger.d(TAG) { "Wall wallPosition $wallPosition type: $wallType for $mazX x $mazY originalSide ${mapping.wallSide} actualWallSide $actualWallSide" }
 
             when (wallType) {
                 Maz.WallType.BottomPit -> TODO()
