@@ -11,5 +11,6 @@ data class SubLevel(
     val monsterGfx: List<MonsterGfx>,
     val sound: String,
     val doors: List<Door>,
+    val decorations: List<Decoration>,
 )
 

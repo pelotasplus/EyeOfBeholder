@@ -49,7 +49,7 @@ class MazRepositoryImpl(
                         east = Maz.WallType.fromInt(east)
                     )
 
-                    Logger.d(TAG) { "Square $square" }
+                    Logger.d(TAG) { "$square" }
 
                     squares.add(square)
                 }

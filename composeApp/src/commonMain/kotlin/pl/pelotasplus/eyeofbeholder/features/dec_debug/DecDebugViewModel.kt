@@ -1,4 +1,4 @@
-package pl.pelotasplus.eyeofbeholder.features.pal_debug
+package pl.pelotasplus.eyeofbeholder.features.dec_debug
 
 import androidx.compose.runtime.Stable
 import androidx.lifecycle.ViewModel
@@ -11,12 +11,12 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import pl.pelotasplus.eyeofbeholder.data.model.Palette
-import pl.pelotasplus.eyeofbeholder.data.repository.PalRepository
+import pl.pelotasplus.eyeofbeholder.data.model.Dec
+import pl.pelotasplus.eyeofbeholder.data.repository.DecRepository
 
 @Stable
-class PalDebugViewModel(
-    private val palRepository: PalRepository
+class DecDebugViewModel(
+    private val decRepository: DecRepository
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(State())
@@ -29,49 +29,49 @@ class PalDebugViewModel(
     fun onEvent(event: Event) {
         when (event) {
             Event.Initialize -> onInitialize()
-            is Event.OnPalSelected -> onPalSelected(event.name)
+            is Event.OnDecSelected -> onDecSelected(event.name)
         }
     }
 
     private fun onInitialize() {
         viewModelScope.launch {
-            palRepository.getAllPalNames()
-                .onSuccess { palNames ->
+            decRepository.getAllDecNames()
+                .onSuccess { decNames ->
                     _state.update {
                         it.copy(
-                            allPals = palNames.toImmutableList()
+                            allDecs = decNames.toImmutableList()
                         )
                     }
                 }
                 .onFailure {
-                    Logger.e(it) { "Error while loading pal names" }
+                    Logger.e(it) { "Error while loading dec names" }
                 }
         }
     }
 
-    private fun onPalSelected(name: String) {
+    private fun onDecSelected(name: String) {
         viewModelScope.launch {
-            palRepository.loadPal(name)
-                .onSuccess { pal ->
+            decRepository.loadDec(name)
+                .onSuccess { dec ->
                     _state.update {
                         it.copy(
-                            loadedPalette = pal
+                            loadedDec = dec
                         )
                     }
                 }
                 .onFailure { exception ->
-                    Logger.e(exception) { "Error while loading pal: $name" }
+                    Logger.e(exception) { "Error while loading dec: $name" }
                 }
         }
     }
 
     sealed class Event {
         data object Initialize : Event()
-        data class OnPalSelected(val name: String) : Event()
+        data class OnDecSelected(val name: String) : Event()
     }
 
     data class State(
-        val loadedPalette: Palette? = null,
-        val allPals: ImmutableList<String> = persistentListOf()
+        val loadedDec: Dec? = null,
+        val allDecs: ImmutableList<String> = persistentListOf()
     )
 }

@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -42,37 +41,33 @@ private fun PalDebugContent(
     modifier: Modifier = Modifier,
     onPalSelected: (String) -> Unit = {},
 ) {
-    if (state.isLoading) {
-        CircularProgressIndicator()
-    } else {
-        Column(modifier = modifier) {
-            LazyColumn(Modifier.weight(1f).fillMaxWidth()) {
-                items(state.allPals) { palName ->
-                    Button(
-                        onClick = { onPalSelected(palName) }
-                    ) {
-                        Text(text = palName)
-                    }
+    Column(modifier = modifier) {
+        LazyColumn(Modifier.weight(1f).fillMaxWidth()) {
+            items(state.allPals) { palName ->
+                Button(
+                    onClick = { onPalSelected(palName) }
+                ) {
+                    Text(text = palName)
                 }
             }
+        }
 
-            if (state.loadedPalette != null) {
-                BoxWithConstraints {
-                    Canvas(modifier = Modifier.size(maxWidth)) {
-                        val cellSize = size.width / 16
-                        state.loadedPalette.colors.forEachIndexed { index, color ->
-                            val x = (index % 16) * cellSize
-                            val y = (index / 16) * cellSize
-                            drawRect(
-                                color = Color(
-                                    color.red.toInt(),
-                                    color.green.toInt(),
-                                    color.blue.toInt()
-                                ),
-                                topLeft = Offset(x, y),
-                                size = Size(cellSize, cellSize)
-                            )
-                        }
+        if (state.loadedPalette != null) {
+            BoxWithConstraints {
+                Canvas(modifier = Modifier.size(maxWidth)) {
+                    val cellSize = size.width / 16
+                    state.loadedPalette.colors.forEachIndexed { index, color ->
+                        val x = (index % 16) * cellSize
+                        val y = (index / 16) * cellSize
+                        drawRect(
+                            color = Color(
+                                color.red,
+                                color.green,
+                                color.blue
+                            ),
+                            topLeft = Offset(x, y),
+                            size = Size(cellSize, cellSize)
+                        )
                     }
                 }
             }
@@ -84,8 +79,6 @@ private fun PalDebugContent(
 @Composable
 private fun PreviewCpsDebugContent() {
     PalDebugContent(
-        state = PalDebugViewModel.State(
-            isLoading = true
-        )
+        state = PalDebugViewModel.State()
     )
 }

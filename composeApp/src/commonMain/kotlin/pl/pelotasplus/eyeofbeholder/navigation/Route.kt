@@ -11,6 +11,9 @@ sealed interface Route {
     data object MainDebug : Route
 
     @Serializable
+    data object DecDebug : Route
+
+    @Serializable
     data object PalDebug : Route
 
     @Serializable

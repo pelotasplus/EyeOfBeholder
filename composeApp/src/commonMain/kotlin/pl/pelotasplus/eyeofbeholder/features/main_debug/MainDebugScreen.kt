@@ -12,6 +12,7 @@ import androidx.compose.ui.unit.dp
 fun MainDebugScreen(
     modifier: Modifier = Modifier,
     onCpsDebugClick: () -> Unit,
+    onDecDebugClick: () -> Unit,
     onPalDebugClick: () -> Unit,
     onInfDebugClick: () -> Unit,
     onMazDebugClick: () -> Unit,
@@ -26,6 +27,11 @@ fun MainDebugScreen(
             onClick = onCpsDebugClick,
         ) {
             Text("CPS Debug")
+        }
+        Button(
+            onClick = onDecDebugClick,
+        ) {
+            Text("DEC Debug")
         }
         Button(
             onClick = onPalDebugClick,

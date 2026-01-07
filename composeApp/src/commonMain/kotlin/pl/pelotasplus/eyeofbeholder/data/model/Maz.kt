@@ -15,12 +15,13 @@ data class Maz(
     }
 
     data class Square(
+        val x: Int,
+        val y: Int,
+
         val north: WallType,
         val east: WallType,
         val south: WallType,
         val west: WallType,
-        val x: Int,
-        val y: Int,
     ) {
         val blockedAllSides: Boolean
             get() = north is WallType.FixedWall && east is WallType.FixedWall
@@ -43,7 +44,7 @@ data class Maz(
         data object StuckDoorType1 : WallType()
         data object StuckDoorType2 : WallType()
         data object Teleport : WallType()
-        data class Unknown(val value: Int) : WallType()
+        data class Decoration(val decorationWallIndex: Int) : WallType()
 
         companion object {
             fun fromInt(value: Int): WallType = when (value) {
@@ -62,7 +63,7 @@ data class Maz(
                 31 -> StuckDoorType1
                 32 -> StuckDoorType2
                 45 -> Teleport
-                else -> Unknown(value)
+                else -> Decoration(value)
             }
         }
     }
@@ -100,17 +101,18 @@ fun Maz.WallType.category(): WallTypeCategory {
     }
 }
 
-/**
- * Extract the visual wall type index for rendering.
- * For FixedWall, returns the wallType.
- * For other types, this needs to be extended based on VMP structure.
- */
-fun Maz.WallType.toRenderWallType(): Int? {
-    return when (this) {
-        is Maz.WallType.FixedWall -> wallType
-        is Maz.WallType.NoWall -> null
-        // TODO: Add mappings for doors, stairs, etc.
-        // These will need to map to appropriate VMP wall type indices
-        else -> null
-    }
-}
+///**
+// * Extract the visual wall type index for rendering.
+// * For FixedWall, returns the wallType.
+// * For other types, this needs to be extended based on VMP structure.
+// */
+//fun Maz.WallType.toRenderWallType(): Int? {
+//    return when (this) {
+//        is Maz.WallType.FixedWall -> wallType
+//        is Maz.WallType.NoWall -> null
+//        is Maz.WallType.Decoration ->
+//        // TODO: Add mappings for doors, stairs, etc.
+//        // These will need to map to appropriate VMP wall type indices
+//        else -> null
+//    }
+//}

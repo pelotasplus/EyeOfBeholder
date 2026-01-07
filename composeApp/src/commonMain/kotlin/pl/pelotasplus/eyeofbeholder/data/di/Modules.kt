@@ -4,6 +4,8 @@ import org.jetbrains.compose.resources.ExperimentalResourceApi
 import org.koin.dsl.module
 import pl.pelotasplus.eyeofbeholder.data.repository.CpsRepository
 import pl.pelotasplus.eyeofbeholder.data.repository.CpsRepositoryImpl
+import pl.pelotasplus.eyeofbeholder.data.repository.DecRepository
+import pl.pelotasplus.eyeofbeholder.data.repository.DecRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.InfRepository
 import pl.pelotasplus.eyeofbeholder.data.repository.InfRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.MazRepository
@@ -30,8 +32,11 @@ val sharedDataModule = module {
     factory<CpsRepository> {
         CpsRepositoryImpl(get())
     }
+    factory<DecRepository> {
+        DecRepositoryImpl(get())
+    }
     factory<InfRepository> {
-        InfRepositoryImpl(get(), get(), get(), get(), get())
+        InfRepositoryImpl(get(), get(), get(), get(), get(), get(), get())
     }
     factory<MazRepository> {
         MazRepositoryImpl(get())

@@ -1,0 +1,75 @@
+package pl.pelotasplus.eyeofbeholder.data.repository
+
+import co.touchlab.kermit.Logger
+import kotlinx.collections.immutable.toImmutableList
+import pl.pelotasplus.eyeofbeholder.data.ByteReader
+import pl.pelotasplus.eyeofbeholder.data.model.Dec
+import pl.pelotasplus.eyeofbeholder.data.model.Dec.DecorationRectangle
+
+interface DecRepository {
+    suspend fun loadDec(name: String): Result<Dec>
+
+    suspend fun getAllDecNames(): Result<List<String>>
+}
+
+class DecRepositoryImpl(
+    private val resourceRepository: ResourceRepository
+) : DecRepository {
+    override suspend fun loadDec(name: String): Result<Dec> {
+        return runCatching {
+            val bytes = resourceRepository.readResource("files/$name")
+            val reader = ByteReader(bytes)
+
+            val numberOfDecorations = reader.readU16LE()
+            Logger.d(TAG) { "Number of decorations: $numberOfDecorations" }
+
+            val decorations = (0 until numberOfDecorations).map {
+                val rectangleIndices = (0 until 10).map { reader.readU8() }.toImmutableList()
+                val linkToNextDecoration = reader.readU8()
+                val flags = reader.readU8()
+                val xCoords = (0 until 10).map { reader.readU16LE() }.toImmutableList()
+                val yCoords = (0 until 10).map { reader.readU16LE() }.toImmutableList()
+
+                Dec.Decoration(
+                    rectangleIndices = rectangleIndices,
+                    linkToNextDecoration = linkToNextDecoration,
+                    flags = flags,
+                    xCoords = xCoords,
+                    yCoords = yCoords,
+                )
+            }.toImmutableList()
+
+            Logger.d(TAG) { "After reading decorations ${reader.remaining}" }
+
+            val numberOfDecorationRectangles = reader.readU16LE()
+            Logger.d(TAG) { "Number of decoration rectangles: $numberOfDecorationRectangles" }
+
+            val rectangles = (0 until numberOfDecorationRectangles).map {
+                DecorationRectangle(
+                    x = reader.readU16LE(),
+                    y = reader.readU16LE(),
+                    w = reader.readU16LE(),
+                    h = reader.readU16LE(),
+                )
+            }.toImmutableList()
+
+            check(reader.remaining == 0) {
+                "Expected 0 bytes remaining, but got ${reader.remaining}"
+            }
+
+            Dec(
+                name = name,
+                decorations = decorations,
+                rectangles = rectangles,
+            )
+        }
+    }
+
+    override suspend fun getAllDecNames(): Result<List<String>> {
+        return resourceRepository.listResources(".DEC")
+    }
+
+    companion object {
+        private const val TAG = "DecRepository"
+    }
+}

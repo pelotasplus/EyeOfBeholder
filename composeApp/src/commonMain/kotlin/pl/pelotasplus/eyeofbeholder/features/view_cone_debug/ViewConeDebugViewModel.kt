@@ -44,17 +44,17 @@ class ViewConeDebugViewModel(
     private fun onInitialize() {
         viewModelScope.launch {
             resourceRepository.listResources(".INF")
-                .onSuccess { vmpNames ->
+                .onSuccess { levelNames ->
                     _state.update {
                         it.copy(
-                            levels = vmpNames.toImmutableList()
+                            levels = levelNames.toImmutableList()
                         )
                     }
 
-                    onVmpSelected("LEVEL5.INF")
+                    onVmpSelected("LEVEL4.INF")
                 }
                 .onFailure {
-                    Logger.e(it) { "Error while loading vmp names" }
+                    Logger.e(it) { "Error while loading level names" }
                 }
         }
     }
@@ -200,8 +200,16 @@ class ViewConeDebugViewModel(
 
         val viewPort: ViewPort? = null,
 
-        val playerX: Int = 23,
-        val playerY: Int = 25,
-        val direction: Direction = Direction.NORTH
+        val playerX: Int = 15,
+        val playerY: Int = 14,
+        val direction: Direction = Direction.NORTH,
+
+//        val playerX: Int = 16,
+//        val playerY: Int = 6,
+//        val direction: Direction = Direction.NORTH
+
+//        val playerX: Int = 20,
+//        val playerY: Int = 7,
+//        val direction: Direction = Direction.NORTH
     )
 }

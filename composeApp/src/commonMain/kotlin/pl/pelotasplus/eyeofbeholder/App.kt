@@ -13,6 +13,7 @@ import androidx.navigation.compose.navigation
 import androidx.navigation.compose.rememberNavController
 import org.jetbrains.compose.ui.tooling.preview.Preview
 import pl.pelotasplus.eyeofbeholder.features.cps_debug.CpsDebugScreen
+import pl.pelotasplus.eyeofbeholder.features.dec_debug.DecDebugScreen
 import pl.pelotasplus.eyeofbeholder.features.inf_debug.InfDebugScreen
 import pl.pelotasplus.eyeofbeholder.features.main_debug.MainDebugScreen
 import pl.pelotasplus.eyeofbeholder.features.maz_debug.MazDebugScreen
@@ -44,6 +45,9 @@ fun App() {
                             onCpsDebugClick = {
                                 navController.navigate(Route.CpsDebug)
                             },
+                            onDecDebugClick = {
+                                navController.navigate(Route.DecDebug)
+                            },
                             onPalDebugClick = {
                                 navController.navigate(Route.PalDebug)
                             },
@@ -63,6 +67,9 @@ fun App() {
                     }
                     composable<Route.CpsDebug> {
                         CpsDebugScreen()
+                    }
+                    composable<Route.DecDebug> {
+                        DecDebugScreen()
                     }
                     composable<Route.PalDebug> {
                         PalDebugScreen()

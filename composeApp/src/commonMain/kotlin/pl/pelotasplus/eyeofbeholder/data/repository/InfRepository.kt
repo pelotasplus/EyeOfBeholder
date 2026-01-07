@@ -2,7 +2,10 @@ package pl.pelotasplus.eyeofbeholder.data.repository
 
 import co.touchlab.kermit.Logger
 import pl.pelotasplus.eyeofbeholder.data.ByteReader
+import pl.pelotasplus.eyeofbeholder.data.model.Cps
 import pl.pelotasplus.eyeofbeholder.data.model.DamageDice
+import pl.pelotasplus.eyeofbeholder.data.model.Dec
+import pl.pelotasplus.eyeofbeholder.data.model.Decoration
 import pl.pelotasplus.eyeofbeholder.data.model.Door
 import pl.pelotasplus.eyeofbeholder.data.model.Inf
 import pl.pelotasplus.eyeofbeholder.data.model.Location
@@ -50,7 +53,9 @@ class InfRepositoryImpl(
     private val mazRepository: MazRepository,
     private val vmpRepository: VmpRepository,
     private val vcnRepository: VcnRepository,
-    private val palRepository: PalRepository
+    private val palRepository: PalRepository,
+    private val cpsRepository: CpsRepository,
+    private val decRepository: DecRepository
 ) : InfRepository {
 
     private val TAG = "InfRepository"
@@ -126,15 +131,23 @@ class InfRepositoryImpl(
             cmd = reader.readU8()
             check(cmd == 0xEC) { "expected 0xFF, got 0x${cmd.toHexString()}" }
 
+            val decorations = mutableListOf<Decoration>()
+
+            var dec: Dec? = null
+            var cps: Cps? = null
+
             val decorationBlocks = reader.readU16LE()
             Logger.d(TAG) { "Decorations block count $decorationBlocks" }
             repeat(decorationBlocks) {
                 cmd = reader.readU8()
                 if (cmd == 0xEC) {
                     // read decorations
-                    val gfx = reader.readString(13)
-                    val dec = reader.readString(13)
-                    Logger.d(TAG) { "Decoration: gfc: $gfx dec: $dec" }
+                    val cpsName = reader.readString(13).uppercase() + ".CPS"
+                    val decName = reader.readString(13).uppercase()
+                    dec = decRepository.loadDec(decName).getOrThrow()
+                    cps = cpsRepository.loadCps(cpsName).getOrThrow()
+                    Logger.d(TAG) { "Decoration: CPS: $cps" }
+                    Logger.d(TAG) { "Decoration: DEC: $dec" }
                 } else if (cmd == 0xFB) {
                     // assign decorations
                     /**
@@ -155,6 +168,18 @@ class InfRepositoryImpl(
                     val specialType = reader.readU8()
                     val flags = reader.readU8()
                     Logger.d(TAG) { "Assigning decorations: wallIndex: $wallIndex wallType: $wallType decorationID: $decorationID specialType: $specialType flags: $flags" }
+
+                    decorations.add(
+                        Decoration(
+                            wallIndex = wallIndex,
+                            wallType = wallType,
+                            decorationID = decorationID,
+                            specialType = specialType,
+                            flags = flags,
+                            cps = cps!!,
+                            dec = dec!!
+                        )
+                    )
                 } else {
                     check(false) { "Unexpected cmd $cmd" }
                 }
@@ -188,7 +213,8 @@ class InfRepositoryImpl(
                     monsterGfx = monsterGfx,
                     sound = sound,
                     doors = doors,
-                    palette = pal
+                    palette = pal,
+                    decorations = decorations
                 )
             )
 

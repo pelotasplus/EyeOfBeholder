@@ -71,6 +71,15 @@ class CpsDebugViewModel(
         viewModelScope.launch {
             cpsRepository.loadCps(name)
                 .onSuccess { cps ->
+                    palRepository.loadPal(name.replace(".CPS", ".PAL"))
+                        .onSuccess { pal ->
+                            _state.update {
+                                it.copy(
+                                    loadedPalette = pal
+                                )
+                            }
+                        }
+
                     _state.update {
                         it.copy(
                             isLoading = false,
