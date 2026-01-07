@@ -6,7 +6,6 @@ import pl.pelotasplus.eyeofbeholder.data.model.Inf
 import pl.pelotasplus.eyeofbeholder.data.model.Maz
 import pl.pelotasplus.eyeofbeholder.data.model.SubLevel
 import pl.pelotasplus.eyeofbeholder.data.model.ViewPort
-import pl.pelotasplus.eyeofbeholder.data.model.decorationPositions
 import pl.pelotasplus.eyeofbeholder.data.model.getWall
 import pl.pelotasplus.eyeofbeholder.data.model.wallPositionMappings
 
@@ -39,8 +38,6 @@ class ViewConeRepositoryImpl(
             pal = sublevel.palette
         )
 
-        println("XXX position $playerX x $playerY direction $direction")
-
         // Data-driven wall rendering using wallPositionMappings
         wallPositionMappings.forEachIndexed { wallPosition, mapping ->
             // Transform coordinates based on player direction
@@ -69,29 +66,29 @@ class ViewConeRepositoryImpl(
             when (wallType) {
                 Maz.WallType.BottomPit -> TODO()
                 is Maz.WallType.Decoration -> {
-                    println("XXX decorationWallIndex ${wallType.decorationWallIndex}")
                     val levelDecoration =
                         sublevel.decorations.find { it.wallIndex == wallType.decorationWallIndex }
-                    println("XXX matching de    coration $levelDecoration")
-                    check(levelDecoration != null) {
+                    if (levelDecoration == null) {
                         "Decoration not found for index ${wallType.decorationWallIndex}"
                     }
 
-                    if (levelDecoration.wallType != 0) {
-                        viewPort.drawWall(
-                            wallType = levelDecoration.wallType,
+                    if (levelDecoration != null) {
+                        if (levelDecoration.wallType != 0) {
+                            viewPort.drawWall(
+                                wallType = levelDecoration.wallType,
+                                wallPosition = wallPosition,
+                                vmp = sublevel.vmp,
+                                vcn = sublevel.vcn,
+                                pal = sublevel.palette
+                            )
+                        }
+
+                        viewPort.drawDecoration(
+                            decoration = levelDecoration,
+                            palette = sublevel.palette,
                             wallPosition = wallPosition,
-                            vmp = sublevel.vmp,
-                            vcn = sublevel.vcn,
-                            pal = sublevel.palette
                         )
                     }
-
-                    viewPort.drawDecoration(
-                        decoration = levelDecoration,
-                        palette = sublevel.palette,
-                        wallPosition = wallPosition,
-                    )
                 }
 
                 Maz.WallType.DoorPoleType1 -> {
@@ -99,9 +96,15 @@ class ViewConeRepositoryImpl(
                 }
 
                 Maz.WallType.DoorPoleType2 -> TODO()
-                is Maz.WallType.DoorTypeOneWithButton -> TODO()
-                is Maz.WallType.DoorTypeOneWithoutButton -> TODO()
-                is Maz.WallType.DoorTypeTwoWithButton -> TODO()
+                is Maz.WallType.DoorTypeOneWithButton -> {
+                    // fixme
+                }
+                is Maz.WallType.DoorTypeOneWithoutButton -> {
+                    // fixme
+                }
+                is Maz.WallType.DoorTypeTwoWithButton -> {
+                    // fixme
+                }
                 is Maz.WallType.DoorTypeTwoWithoutButton -> TODO()
                 is Maz.WallType.FixedWall -> {
                     viewPort.drawWall(
@@ -118,8 +121,22 @@ class ViewConeRepositoryImpl(
                 }
 
                 Maz.WallType.PidgeonHole -> TODO()
-                Maz.WallType.StairDown -> TODO()
-                Maz.WallType.StairUp -> TODO()
+                Maz.WallType.StairDown -> {
+                    viewPort.drawStairsDown(
+                        wallPosition = wallPosition,
+                        vmp = sublevel.vmp,
+                        vcn = sublevel.vcn,
+                        pal = sublevel.palette
+                    )
+                }
+                Maz.WallType.StairUp -> {
+                    viewPort.drawStairsUp(
+                        wallPosition = wallPosition,
+                        vmp = sublevel.vmp,
+                        vcn = sublevel.vcn,
+                        pal = sublevel.palette
+                    )
+                }
                 Maz.WallType.StuckDoorType1 -> TODO()
                 Maz.WallType.StuckDoorType2 -> TODO()
                 Maz.WallType.Teleport -> {
@@ -127,29 +144,6 @@ class ViewConeRepositoryImpl(
                 }
             }
         }
-
-//        decorationPositions.forEachIndexed { index, position ->
-//            println("XXX position $position")
-//
-//            if (index == 0) {
-//                val square = sublevel.maz[playerX, playerY]
-//                val wallType = square.north
-//                if (wallType is Maz.WallType.Decoration) {
-//                    val levelDecoration =
-//                        sublevel.decorations.find { it.wallIndex == wallType.decorationWallIndex }
-//                    println("XXX matching decoration $levelDecoration")
-//                    check(levelDecoration != null) {
-//                        "Decoration not found for index ${wallType.decorationWallIndex}"
-//                    }
-//
-//                    viewPort.drawDecoration(
-//                        decoration = levelDecoration,
-//                        palette = sublevel.palette,
-//                        wallPosition = index,
-//                    )
-//                }
-//            }
-//        }
 
         return Result.success(viewPort)
     }

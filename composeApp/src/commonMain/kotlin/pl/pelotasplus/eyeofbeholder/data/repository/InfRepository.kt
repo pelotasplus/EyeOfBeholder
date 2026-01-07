@@ -244,9 +244,9 @@ class InfRepositoryImpl(
         }
 
         val script = readScript(reader)
-//        script.tokens.forEach {
-//            Logger.d(TAG) { "Got script token: $it" }
-//        }
+        script.tokens.forEach {
+            Logger.d(TAG) { "Got script token: $it" }
+        }
 
         val messages = mutableListOf<String>()
         while (reader.offset < offsetBlockC) {

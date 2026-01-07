@@ -1,5 +1,6 @@
 package pl.pelotasplus.eyeofbeholder.data.model
 
+import co.touchlab.kermit.Logger
 import kotlinx.collections.immutable.ImmutableList
 
 /**
@@ -119,6 +120,36 @@ class ViewPort {
                 }
             }
         }
+    }
+
+    fun drawStairsDown(
+        wallPosition: Int,
+        vmp: Vmp,
+        vcn: Vcn,
+        pal: Palette
+    ) {
+        drawWall(
+            wallType = 4,
+            wallPosition = wallPosition,
+            vmp = vmp,
+            vcn = vcn,
+            pal = pal
+        )
+    }
+
+    fun drawStairsUp(
+        wallPosition: Int,
+        vmp: Vmp,
+        vcn: Vcn,
+        pal: Palette
+    ) {
+        drawWall(
+            wallType = 3,
+            wallPosition = wallPosition,
+            vmp = vmp,
+            vcn = vcn,
+            pal = pal
+        )
     }
 
     fun drawWall(
@@ -242,16 +273,11 @@ class ViewPort {
         wallPosition: Int,
         isAtWall: Boolean,
     ) {
-        println("XXX drawDecorationPart isAtWall $isAtWall")
-        println("XXX drawDecorationPart wallPosition $wallPosition")
-
         if (wallPosition !in decorationPositions.indices) {
-            println("XXX drawDecorationPart SKIP: position $wallPosition out of range")
             return
         }
 
         val decPos = decorationPositions[wallPosition]
-        println("XXX drawDecorationPart decPos $decPos")
 
         // Calculate horizontal shift
         val dx = if (isAtWall) {
@@ -259,19 +285,16 @@ class ViewPort {
         } else {
             floorDecorationOffsets[wallPosition] ?: 0
         }
-        println("XXX drawDecorationPart dx $dx")
 
         // Get decoration wall position (0-9)
         val pos = decPos.wall
         if (pos < 0 || pos >= decoration.rectangleIndices.size) {
-            println("XXX drawDecorationPart SKIP: pos=$pos out of range (wall=-1 means no decoration here)")
             return
         }
 
         // Get rectangle index for this view position
         val rectIndex = decoration.rectangleIndices[pos]
         if (rectIndex == 0xFF || rectIndex >= rectangles.size) {
-            println("XXX drawDecorationPart SKIP: rectIndex=$rectIndex (0xFF means no rect for this position)")
             return
         }
 
@@ -290,12 +313,12 @@ class ViewPort {
         val srcWidth = rect.w * 8
         val srcHeight = rect.h
 
-        println("XXX drawDecorationPart:")
-        println("  wallPosition=$wallPosition -> decPos(xFlip=${decPos.xFlip}, wall=${decPos.wall}, xDelta=${decPos.xDelta})")
-        println("  pos=$pos, rectIndex=$rectIndex, rect=(${rect.x},${rect.y},${rect.w},${rect.h})")
-        println("  screenX=$screenX, screenY=$screenY, dx=$dx, mirrored=$mirrored")
-        println("  srcX=$srcX, srcY=$srcY, srcWidth=$srcWidth, srcHeight=$srcHeight")
-        println("  cps.width=${cps.width}, cps.height=${cps.height}")
+        Logger.d(TAG) { "drawDecorationPart:" }
+        Logger.d(TAG) { "  wallPosition=$wallPosition -> decPos(xFlip=${decPos.xFlip}, wall=${decPos.wall}, xDelta=${decPos.xDelta})" }
+        Logger.d(TAG) { "  pos=$pos, rectIndex=$rectIndex, rect=(${rect.x},${rect.y},${rect.w},${rect.h})" }
+        Logger.d(TAG) { "  screenX=$screenX, screenY=$screenY, dx=$dx, mirrored=$mirrored" }
+        Logger.d(TAG) { "  srcX=$srcX, srcY=$srcY, srcWidth=$srcWidth, srcHeight=$srcHeight" }
+        Logger.d(TAG) { "  cps.width=${cps.width}, cps.height=${cps.height}" }
 
         // Draw pixels
         var targetY = screenY
@@ -347,6 +370,7 @@ class ViewPort {
     }
 
     companion object {
+        private const val TAG = "ViewPort"
         const val ROWS = 120
         const val COLS = 176
         const val TILE_SIZE = 8
@@ -354,4 +378,3 @@ class ViewPort {
         const val TILES_PER_COL = 15
     }
 }
-
