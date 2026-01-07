@@ -97,13 +97,28 @@ class ViewConeRepositoryImpl(
 
                 Maz.WallType.DoorPoleType2 -> TODO()
                 is Maz.WallType.DoorTypeOneWithButton -> {
-                    // fixme
+                    viewPort.drawDoorFrame(
+                        wallPosition = wallPosition,
+                        vmp = sublevel.vmp,
+                        vcn = sublevel.vcn,
+                        pal = sublevel.palette
+                    )
                 }
                 is Maz.WallType.DoorTypeOneWithoutButton -> {
-                    // fixme
+                    viewPort.drawDoorFrame(
+                        wallPosition = wallPosition,
+                        vmp = sublevel.vmp,
+                        vcn = sublevel.vcn,
+                        pal = sublevel.palette
+                    )
                 }
                 is Maz.WallType.DoorTypeTwoWithButton -> {
-                    // fixme
+                    viewPort.drawDoorFrame(
+                        wallPosition = wallPosition,
+                        vmp = sublevel.vmp,
+                        vcn = sublevel.vcn,
+                        pal = sublevel.palette
+                    )
                 }
                 is Maz.WallType.DoorTypeTwoWithoutButton -> TODO()
                 is Maz.WallType.FixedWall -> {

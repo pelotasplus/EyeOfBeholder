@@ -244,9 +244,9 @@ class InfRepositoryImpl(
         }
 
         val script = readScript(reader)
-        script.tokens.forEach {
-            Logger.d(TAG) { "Got script token: $it" }
-        }
+//        script.tokens.forEach {
+//            Logger.d(TAG) { "Got script token: $it" }
+//        }
 
         val messages = mutableListOf<String>()
         while (reader.offset < offsetBlockC) {
@@ -419,7 +419,7 @@ class InfRepositoryImpl(
         return monsterGfxList
     }
 
-    private fun readDoors(reader: ByteReader): List<Door> {
+    private suspend fun readDoors(reader: ByteReader): List<Door> {
         val doors = mutableListOf<Door>()
 
         repeat(2) {
@@ -428,15 +428,22 @@ class InfRepositoryImpl(
                 val doorName = reader.readString(13)
                 val idx = reader.readU8()
 
-                reader.readU8() // type
-                reader.readU8() // knob
+                val type = reader.readU8() // type
+                val knob = reader.readU8() // knob
 
                 // door rectangles
-                repeat(2) {
-                    reader.readU16LE()
-                    reader.readU16LE()
-                    reader.readU16LE()
-                    reader.readU16LE()
+                val rectangles = List(3) {
+                    val x = reader.readU16LE()
+                    val y = reader.readU16LE()
+                    val w = reader.readU16LE()
+                    val h = reader.readU16LE()
+                    Logger.d(TAG) { "Door $doorName x $x y $y w $w h $h" }
+                    Door.Rectangle(
+                        x = x,
+                        y = y,
+                        w = w,
+                        h = h
+                    )
                 }
 
                 // button rectangles
@@ -449,13 +456,21 @@ class InfRepositoryImpl(
 
                 // button positions
                 repeat(2) {
-                    reader.readU16LE()
-                    reader.readU16LE()
-                    reader.readU16LE()
-                    reader.readU16LE()
+                    reader.readU8()
+                    reader.readU8()
+                    reader.readU8()
+                    reader.readU8()
                 }
 
-                doors.add(Door(file = doorName, index = idx))
+                doors.add(
+                    Door(
+                        index = idx,
+                        type = type,
+                        knob = knob,
+                        rectangles = rectangles,
+                        cps = cpsRepository.loadCps(doorName.uppercase() + ".CPS").getOrThrow()
+                    )
+                )
             }
         }
 

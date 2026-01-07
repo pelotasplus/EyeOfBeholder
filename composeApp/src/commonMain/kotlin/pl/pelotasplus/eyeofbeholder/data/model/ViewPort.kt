@@ -122,6 +122,21 @@ class ViewPort {
         }
     }
 
+    fun drawDoorFrame(
+        wallPosition: Int,
+        vmp: Vmp,
+        vcn: Vcn,
+        pal: Palette
+    ) {
+        drawWall(
+            wallType = 2,
+            wallPosition = wallPosition,
+            vmp = vmp,
+            vcn = vcn,
+            pal = pal
+        )
+    }
+
     fun drawStairsDown(
         wallPosition: Int,
         vmp: Vmp,
