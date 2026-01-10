@@ -1,6 +1,7 @@
 package pl.pelotasplus.eyeofbeholder.data.repository
 
 import kotlinx.collections.immutable.toImmutableList
+import pl.pelotasplus.eyeofbeholder.data.ByteReader
 import pl.pelotasplus.eyeofbeholder.data.model.Palette
 import pl.pelotasplus.eyeofbeholder.data.model.RGB
 
@@ -16,17 +17,22 @@ class PalRepositoryImpl(
     override suspend fun loadPal(name: String): Result<Palette> {
         return runCatching {
             val bytes = resourceRepository.readResource("files/$name")
+            val reader = ByteReader(bytes)
 
-            val colors = bytes
-                .take(PALETTE_SIZE * BYTES_PER_COLOR)
-                .chunked(BYTES_PER_COLOR)
-                .map { (r, g, b) ->
-                    RGB(
-                        red = convert6bitTo8bit(r),
-                        green = convert6bitTo8bit(g),
-                        blue = convert6bitTo8bit(b),
-                    )
-                }
+            val colors = List(PALETTE_SIZE) {
+                val r = convert6bitTo8bit(reader.readU8())
+                val g = convert6bitTo8bit(reader.readU8())
+                val b = convert6bitTo8bit(reader.readU8())
+                RGB(r, g, b, it == 0)
+            }
+
+            check(reader.remaining == 0) {
+                "Unexpected bytes after palette data in $name"
+            }
+            check(colors[0].transparent) {
+                "First color must be transparent in $name"
+            }
+
             Palette(name = name, colors = colors.toImmutableList())
         }
     }
@@ -35,12 +41,11 @@ class PalRepositoryImpl(
         return resourceRepository.listResources(".PAL")
     }
 
-    private fun convert6bitTo8bit(byte: UByte): Int {
-        return ((byte.toInt() * 255) / 63)
+    private fun convert6bitTo8bit(byte: Int): Int {
+        return ((byte * 255) / 63)
     }
 
     companion object {
         private const val PALETTE_SIZE = 256
-        private const val BYTES_PER_COLOR = 3
     }
 }

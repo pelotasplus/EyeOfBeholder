@@ -115,7 +115,7 @@ private fun ViewConeDebugContent(
 
         if (state.viewPort != null) {
             BoxWithConstraints(
-                modifier = Modifier.weight(0.5f).fillMaxWidth().background(Color.Cyan)
+                modifier = Modifier.weight(0.5f).fillMaxWidth()
             ) {
                 val density = LocalDensity.current
                 val containerWidthInPixels = with(density) { maxWidth.toPx() }.toInt()

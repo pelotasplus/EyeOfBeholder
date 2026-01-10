@@ -57,7 +57,7 @@ class CpsDebugViewModel(
         viewModelScope.launch {
             cpsRepository.loadCps(name)
                 .onSuccess { cps ->
-                    palRepository.loadPal("AZURE.PAL")
+                    palRepository.loadPal("MEZZ.PAL")
                         .onSuccess { pal ->
                             _state.update {
                                 it.copy(

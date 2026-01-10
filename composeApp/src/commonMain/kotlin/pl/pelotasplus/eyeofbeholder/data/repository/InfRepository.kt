@@ -426,18 +426,18 @@ class InfRepositoryImpl(
             val cmd = reader.readU8()
             if (cmd == 0xEC || cmd == 0xEA) {
                 val doorName = reader.readString(13)
-                val idx = reader.readU8()
 
+                val idx = reader.readU8()
                 val type = reader.readU8() // type
                 val knob = reader.readU8() // knob
 
                 // door rectangles
                 val rectangles = List(3) {
-                    val x = reader.readU16LE()
+                    val x = reader.readU16LE() shl 3
                     val y = reader.readU16LE()
-                    val w = reader.readU16LE()
+                    val w = reader.readU16LE() shl 3
                     val h = reader.readU16LE()
-                    Logger.d(TAG) { "Door $doorName x $x y $y w $w h $h" }
+                    Logger.d(TAG) { "XXX Door $doorName x $x y $y w $w h $h" }
                     Door.Rectangle(
                         x = x,
                         y = y,
@@ -446,20 +446,29 @@ class InfRepositoryImpl(
                     )
                 }
 
-                // button rectangles
-                repeat(2) {
-                    reader.readU16LE()
-                    reader.readU16LE()
-                    reader.readU16LE()
-                    reader.readU16LE()
-                }
+                val buttons = List(2) {
+                    // rectangle
+                    val x = reader.readU16LE()
+                    val y = reader.readU16LE()
+                    val w = reader.readU16LE()
+                    val h = reader.readU16LE()
+                    Logger.d(TAG) { "XXX Knob size x $x y $y w $w h $h" }
 
-                // button positions
-                repeat(2) {
-                    reader.readU8()
-                    reader.readU8()
-                    reader.readU8()
-                    reader.readU8()
+                    // position x
+                    val posX = reader.readU16LE()
+
+                    // position y
+                    val posY = reader.readU16LE()
+                    Logger.d(TAG) { "XXX Position $posX x $posY" }
+
+                    Door.Button(
+                        x = x,
+                        y = y,
+                        w = w,
+                        h = h,
+                        posX = posX,
+                        posY = posY
+                    )
                 }
 
                 doors.add(
@@ -468,6 +477,7 @@ class InfRepositoryImpl(
                         type = type,
                         knob = knob,
                         rectangles = rectangles,
+                        buttons = buttons,
                         cps = cpsRepository.loadCps(doorName.uppercase() + ".CPS").getOrThrow()
                     )
                 )

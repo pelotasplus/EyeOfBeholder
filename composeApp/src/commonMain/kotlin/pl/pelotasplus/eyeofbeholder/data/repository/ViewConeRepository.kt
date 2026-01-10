@@ -6,6 +6,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.Inf
 import pl.pelotasplus.eyeofbeholder.data.model.Maz
 import pl.pelotasplus.eyeofbeholder.data.model.SubLevel
 import pl.pelotasplus.eyeofbeholder.data.model.ViewPort
+import pl.pelotasplus.eyeofbeholder.data.model.doorRenderData
 import pl.pelotasplus.eyeofbeholder.data.model.getWall
 import pl.pelotasplus.eyeofbeholder.data.model.wallPositionMappings
 
@@ -97,21 +98,23 @@ class ViewConeRepositoryImpl(
 
                 Maz.WallType.DoorPoleType2 -> TODO()
                 is Maz.WallType.DoorTypeOneWithButton -> {
-                    viewPort.drawDoorFrame(
-                        wallPosition = wallPosition,
-                        vmp = sublevel.vmp,
-                        vcn = sublevel.vcn,
-                        pal = sublevel.palette
-                    )
+//                    viewPort.drawDoorFrame(
+//                        wallPosition = wallPosition,
+//                        vmp = sublevel.vmp,
+//                        vcn = sublevel.vcn,
+//                        pal = sublevel.palette
+//                    )
                 }
+
                 is Maz.WallType.DoorTypeOneWithoutButton -> {
-                    viewPort.drawDoorFrame(
-                        wallPosition = wallPosition,
-                        vmp = sublevel.vmp,
-                        vcn = sublevel.vcn,
-                        pal = sublevel.palette
-                    )
+//                    viewPort.drawDoorFrame(
+//                        wallPosition = wallPosition,
+//                        vmp = sublevel.vmp,
+//                        vcn = sublevel.vcn,
+//                        pal = sublevel.palette
+//                    )
                 }
+
                 is Maz.WallType.DoorTypeTwoWithButton -> {
                     viewPort.drawDoorFrame(
                         wallPosition = wallPosition,
@@ -119,7 +122,53 @@ class ViewConeRepositoryImpl(
                         vcn = sublevel.vcn,
                         pal = sublevel.palette
                     )
+
+                    val door = sublevel.doors[1]
+
+                    println("XXX wallPosition $wallPosition")
+
+                    val rectangleIndex = if (wallPosition >= 21) {
+                        0
+                    } else if (wallPosition >= 16) {
+                        1
+                    } else {
+                        2
+                    }
+
+                    val renderData = doorRenderData[wallPosition]
+
+//                    val deltaX = if (wallPosition >= 21) {
+//                        52
+//                    } else if (wallPosition >= 16) {
+//                        60
+//                    } else {
+//                        72
+//                    }
+//
+//                    val deltaY = if (wallPosition >= 21) {
+//                        16
+//                    } else if (wallPosition >= 16) {
+//                        24
+//                    } else {
+//                        30
+//                    }
+
+                    val rectangle = door.rectangles[rectangleIndex]
+
+                    val cps = door.cps
+
+                    for (srcX in rectangle.x until rectangle.x + rectangle.w) {
+                        for (srcY in rectangle.y until rectangle.y + rectangle.h) {
+                            val pixel = cps.pixels[srcY * cps.width + srcX]
+                            val color = sublevel.palette.colors[pixel]
+
+                            val targetX = srcX - rectangle.x + renderData.offsetInViewPortX
+                            val targetY = srcY - rectangle.y + renderData.offsetInViewPortY
+                            viewPort.draw(targetX, targetY, color)
+                        }
+                    }
                 }
+
                 is Maz.WallType.DoorTypeTwoWithoutButton -> TODO()
                 is Maz.WallType.FixedWall -> {
                     viewPort.drawWall(
@@ -144,6 +193,7 @@ class ViewConeRepositoryImpl(
                         pal = sublevel.palette
                     )
                 }
+
                 Maz.WallType.StairUp -> {
                     viewPort.drawStairsUp(
                         wallPosition = wallPosition,
@@ -152,6 +202,7 @@ class ViewConeRepositoryImpl(
                         pal = sublevel.palette
                     )
                 }
+
                 Maz.WallType.StuckDoorType1 -> TODO()
                 Maz.WallType.StuckDoorType2 -> TODO()
                 Maz.WallType.Teleport -> {

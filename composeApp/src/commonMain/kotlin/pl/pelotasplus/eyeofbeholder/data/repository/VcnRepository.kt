@@ -2,8 +2,6 @@ package pl.pelotasplus.eyeofbeholder.data.repository
 
 import co.touchlab.kermit.Logger
 import pl.pelotasplus.eyeofbeholder.data.ByteReader
-import pl.pelotasplus.eyeofbeholder.data.LCWHelper
-import pl.pelotasplus.eyeofbeholder.data.model.Palette
 import pl.pelotasplus.eyeofbeholder.data.model.Vcn
 
 interface VcnRepository {
@@ -16,40 +14,13 @@ class VcnRepositoryImpl(
 ) : VcnRepository {
     override suspend fun loadVcn(name: String): Result<Vcn> {
         return runCatching {
-            val bytes = resourceRepository.readResource("files/$name")
+            val bytes = resourceRepository.decompressResource("files/$name")
             val reader = ByteReader(bytes)
-
-            Logger.d(TAG) { "Decompressing $name; On-disk file size ${bytes.size}" }
-
-            val sizeFromHeader = reader.readU16LE()
-            Logger.d(TAG) { "Header file size $sizeFromHeader" }
-
-            val compressionType = reader.readU16LE()
-            Logger.d(TAG) { "Compression Type $compressionType" }
-
-            val uncompressedSize = reader.readU32LE()
-            Logger.d(TAG) { "Uncompressed size $uncompressedSize" }
-
-            val paletteSize = reader.readU16LE()
-            check(paletteSize == 0) {
-                "Unexpected palette size: $paletteSize, expected 0"
-            }
-            Logger.d(TAG) { "Palette Size $paletteSize" }
-
-            val compressed = reader.readRemaining()
-            val decompressed = UByteArray(uncompressedSize)
-
-            LCWHelper.decompress(compressed, decompressed)
-
-            val pal = palRepository.loadPal(name.replace(".VNC", ".PLAN"))
-                .getOrThrow()
-
-            decodeVcn(name, pal, decompressed)
+            decodeVcn(name, reader)
         }
     }
 
-    private fun decodeVcn(name: String, palette: Palette, decompressed: UByteArray): Vcn {
-        val vcnReader = ByteReader(decompressed)
+    private fun decodeVcn(name: String, vcnReader: ByteReader): Vcn {
         val tilesCount = vcnReader.readU16LE()
 
         val backdropPaletteColor = MutableList(16) { 0 }

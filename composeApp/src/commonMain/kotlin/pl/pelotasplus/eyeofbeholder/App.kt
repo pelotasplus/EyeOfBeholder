@@ -6,11 +6,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.safeContentPadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.navigation
 import androidx.navigation.compose.rememberNavController
+import kotlinx.coroutines.delay
 import org.jetbrains.compose.ui.tooling.preview.Preview
 import pl.pelotasplus.eyeofbeholder.features.cps_debug.CpsDebugScreen
 import pl.pelotasplus.eyeofbeholder.features.dec_debug.DecDebugScreen
@@ -33,6 +35,10 @@ fun App() {
                 .safeContentPadding()
                 .fillMaxSize(),
         ) {
+            LaunchedEffect(Unit) {
+                delay(1000)
+                navController.navigate(Route.ViewConeDebug)
+            }
             NavHost(
                 navController = navController,
                 startDestination = Route.DebugGraph,

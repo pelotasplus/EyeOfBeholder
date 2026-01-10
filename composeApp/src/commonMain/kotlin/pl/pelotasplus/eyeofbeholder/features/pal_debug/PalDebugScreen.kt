@@ -59,6 +59,7 @@ private fun PalDebugContent(
                     state.loadedPalette.colors.forEachIndexed { index, color ->
                         val x = (index % 16) * cellSize
                         val y = (index / 16) * cellSize
+                        if (color.transparent) return@forEachIndexed
                         drawRect(
                             color = Color(
                                 color.red,

@@ -17,6 +17,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.scale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.jetbrains.compose.ui.tooling.preview.Preview
 import org.koin.compose.viewmodel.koinViewModel
@@ -58,23 +60,28 @@ private fun CpsDebugContent(
             }
 
             if (state.loadedCps != null && state.loadedPalette != null) {
-                BoxWithConstraints(Modifier.background(Color.Gray)) {
+                BoxWithConstraints(Modifier.background(Color.Cyan)) {
+                    val density = LocalDensity.current
+                    val containerWidthInPixels = with(density) { maxWidth.toPx() }.toInt()
+                    val scaleFactor = (containerWidthInPixels / 320f).toInt().coerceAtLeast(1)
+                    val cellSize = 1f
                     Canvas(modifier = Modifier.size(maxWidth)) {
-                        val cellSize = maxWidth / 320
-                        state.loadedCps.pixels.forEachIndexed { index, colorIndex ->
-                            val x = (index % 320) * cellSize.toPx()
-                            val y = (index / 320) * cellSize.toPx()
-                            val color = state.loadedPalette.colors[colorIndex]
-                            if (color.transparent) return@forEachIndexed
-                            drawRect(
-                                color = Color(
-                                    color.red,
-                                    color.green,
-                                    color.blue
-                                ),
-                                topLeft = Offset(x, y),
-                                size = Size(cellSize.toPx(), cellSize.toPx())
-                            )
+                        scale(scaleFactor.toFloat(), pivot = Offset.Zero) {
+                            state.loadedCps.pixels.forEachIndexed { index, colorIndex ->
+                                val x = (index % 320) * cellSize
+                                val y = (index / 320) * cellSize
+                                val color = state.loadedPalette.colors[colorIndex]
+                                if (color.transparent) return@forEachIndexed
+                                drawRect(
+                                    color = Color(
+                                        color.red,
+                                        color.green,
+                                        color.blue
+                                    ),
+                                    topLeft = Offset(x, y),
+                                    size = Size(cellSize, cellSize)
+                                )
+                            }
                         }
                     }
                 }

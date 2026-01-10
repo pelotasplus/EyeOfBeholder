@@ -100,6 +100,7 @@ class ViewPort {
     }
 
     fun draw(x: Int, y: Int, rgb: RGB) {
+        if (rgb.transparent) return
         pixels[y * COLS + x] = rgb
     }
 
