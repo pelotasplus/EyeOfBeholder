@@ -244,15 +244,15 @@ class InfRepositoryImpl(
         }
 
         val script = readScript(reader)
-//        script.tokens.forEach {
-//            Logger.d(TAG) { "Got script token: $it" }
-//        }
+        script.tokens.forEach {
+            Logger.d(TAG) { "Got script token: $it" }
+        }
 
         val messages = mutableListOf<String>()
         while (reader.offset < offsetBlockC) {
             val message = reader.readString()
             messages.add(message)
-            // Logger.d(TAG) { "Got message: $message" }
+             Logger.d(TAG) { "Got message: $message" }
         }
 
         Logger.d(TAG) { "After block B offset is ${reader.offset} remaining ${reader.remaining}" }
@@ -437,7 +437,6 @@ class InfRepositoryImpl(
                     val y = reader.readU16LE()
                     val w = reader.readU16LE() shl 3
                     val h = reader.readU16LE()
-                    Logger.d(TAG) { "XXX Door $doorName x $x y $y w $w h $h" }
                     Door.Rectangle(
                         x = x,
                         y = y,
@@ -452,14 +451,12 @@ class InfRepositoryImpl(
                     val y = reader.readU16LE()
                     val w = reader.readU16LE()
                     val h = reader.readU16LE()
-                    Logger.d(TAG) { "XXX Knob size x $x y $y w $w h $h" }
 
                     // position x
                     val posX = reader.readU16LE()
 
                     // position y
                     val posY = reader.readU16LE()
-                    Logger.d(TAG) { "XXX Position $posX x $posY" }
 
                     Door.Button(
                         x = x,
