@@ -1,6 +1,7 @@
 package pl.pelotasplus.eyeofbeholder.data.model.script
 
 import pl.pelotasplus.eyeofbeholder.data.ByteReader
+import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.Location
 
 /**
@@ -19,7 +20,7 @@ sealed class NewLevelOrMonster : ScriptToken {
         val level: Int,
         val subLevel: Int,
         val location: Location,
-        val direction: Int?  // null if 0xFF (keep current direction)
+        val direction: Direction? // null means keep current direction
     ) : NewLevelOrMonster()
 
     /**
@@ -46,7 +47,7 @@ sealed class NewLevelOrMonster : ScriptToken {
                     level = index,
                     subLevel = subLevel,
                     location = location,
-                    direction = if (dir != 0xFF) dir else null
+                    direction = if (dir != 0xFF) Direction.entries[dir] else null
                 )
             } else { // load monster shapes
                 val monsterCmd = reader.readI8()
