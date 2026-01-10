@@ -51,33 +51,21 @@ class CpsDebugViewModel(
                     Logger.e(it) { "Error while loading pal names" }
                 }
         }
-
-        viewModelScope.launch {
-            palRepository.loadPal("AZURE.PAL")
-                .onSuccess { pal ->
-                    _state.update {
-                        it.copy(
-                            loadedPalette = pal,
-                        )
-                    }
-                }
-                .onFailure {
-                    Logger.e(it) { "Error while loading PAL" }
-                }
-        }
     }
 
     private fun onCpsSelected(name: String) {
         viewModelScope.launch {
             cpsRepository.loadCps(name)
                 .onSuccess { cps ->
-                    palRepository.loadPal(name.replace(".CPS", ".PAL"))
+                    palRepository.loadPal("AZURE.PAL")
                         .onSuccess { pal ->
                             _state.update {
                                 it.copy(
                                     loadedPalette = pal
                                 )
                             }
+                        }.onFailure {
+                            Logger.e(it) { "Error while loading pal" }
                         }
 
                     _state.update {

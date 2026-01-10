@@ -1,9 +1,12 @@
 package pl.pelotasplus.eyeofbeholder
 
-import platform.UIKit.UIDevice
+import pl.pelotasplus.eyeofbeholder.data.model.Cps
+import pl.pelotasplus.eyeofbeholder.data.model.Palette
 
-class IOSPlatform: Platform {
-    override val name: String = UIDevice.currentDevice.systemName() + " " + UIDevice.currentDevice.systemVersion
+actual fun saveCpsImage(
+    cps: Cps,
+    palette: Palette,
+    outputPath: String
+) {
+    TODO("Not yet implemented")
 }
-
-actual fun getPlatform(): Platform = IOSPlatform()

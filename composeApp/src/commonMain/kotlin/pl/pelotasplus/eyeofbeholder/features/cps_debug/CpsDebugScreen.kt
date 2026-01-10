@@ -64,12 +64,13 @@ private fun CpsDebugContent(
                         state.loadedCps.pixels.forEachIndexed { index, colorIndex ->
                             val x = (index % 320) * cellSize.toPx()
                             val y = (index / 320) * cellSize.toPx()
-                            val color = state.loadedPalette.colors[colorIndex.toInt()]
+                            val color = state.loadedPalette.colors[colorIndex]
+                            if (color.transparent) return@forEachIndexed
                             drawRect(
                                 color = Color(
-                                    color.red.toInt(),
-                                    color.green.toInt(),
-                                    color.blue.toInt()
+                                    color.red,
+                                    color.green,
+                                    color.blue
                                 ),
                                 topLeft = Offset(x, y),
                                 size = Size(cellSize.toPx(), cellSize.toPx())

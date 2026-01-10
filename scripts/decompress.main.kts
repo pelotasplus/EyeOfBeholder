@@ -46,7 +46,6 @@ fun decompress(source: ByteArray, dest: ByteArray) {
             if (b6 == 0) {
                 val count = com and 0x3F
                 if (count == 0) {
-                    println("EOF marker found; sp $sp dp $dp; decompression complete")
                     break
                 }
 
