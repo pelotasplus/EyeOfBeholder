@@ -99,7 +99,9 @@ class ViewPort {
         RGB(0, 0, 0, true)
     }
 
-    fun draw(x: Int, y: Int, rgb: RGB) {
+    private fun draw(x: Int, y: Int, rgb: RGB) {
+        if (x !in 0..<COLS) return
+        if (y !in 0..<ROWS) return
         if (rgb.transparent) return
         pixels[y * COLS + x] = rgb
     }
@@ -239,6 +241,51 @@ class ViewPort {
         }
     }
 
+    fun drawDoor(
+        wallPosition: Int,
+        vmp: Vmp,
+        vcn: Vcn,
+        palette: Palette,
+        door: Door
+    ) {
+        drawDoorFrame(
+            wallPosition = wallPosition,
+            vmp = vmp,
+            vcn = vcn,
+            pal = palette
+        )
+
+        val rectangleIndex = if (wallPosition >= 21) {
+            0
+        } else if (wallPosition >= 15) {
+            1
+        } else {
+            2
+        }
+
+        val renderData = doorRenderData[wallPosition]
+
+        if (renderData.offsetInViewPortX == -1) {
+            Logger.d(TAG) { "Skipping door rendering for wallPosition $wallPosition as offsetInViewPortX is -1"}
+            return
+        }
+
+        val rectangle = door.rectangles[rectangleIndex]
+
+        val cps = door.cps
+
+        for (srcX in rectangle.x until rectangle.x + rectangle.w) {
+            for (srcY in rectangle.y until rectangle.y + rectangle.h) {
+                val pixel = cps.pixels[srcY * cps.width + srcX]
+                val color = palette.colors[pixel]
+
+                val targetX = srcX - rectangle.x + renderData.offsetInViewPortX
+                val targetY = srcY - rectangle.y + renderData.offsetInViewPortY
+                draw(targetX, targetY, color)
+            }
+        }
+    }
+
     /**
      * Draws a complete decoration, following the linked list of decoration parts.
      *
@@ -329,12 +376,12 @@ class ViewPort {
         val srcWidth = rect.w * 8
         val srcHeight = rect.h
 
-        Logger.d(TAG) { "drawDecorationPart:" }
-        Logger.d(TAG) { "  wallPosition=$wallPosition -> decPos(xFlip=${decPos.xFlip}, wall=${decPos.wall}, xDelta=${decPos.xDelta})" }
-        Logger.d(TAG) { "  pos=$pos, rectIndex=$rectIndex, rect=(${rect.x},${rect.y},${rect.w},${rect.h})" }
-        Logger.d(TAG) { "  screenX=$screenX, screenY=$screenY, dx=$dx, mirrored=$mirrored" }
-        Logger.d(TAG) { "  srcX=$srcX, srcY=$srcY, srcWidth=$srcWidth, srcHeight=$srcHeight" }
-        Logger.d(TAG) { "  cps.width=${cps.width}, cps.height=${cps.height}" }
+//        Logger.d(TAG) { "drawDecorationPart:" }
+//        Logger.d(TAG) { "  wallPosition=$wallPosition -> decPos(xFlip=${decPos.xFlip}, wall=${decPos.wall}, xDelta=${decPos.xDelta})" }
+//        Logger.d(TAG) { "  pos=$pos, rectIndex=$rectIndex, rect=(${rect.x},${rect.y},${rect.w},${rect.h})" }
+//        Logger.d(TAG) { "  screenX=$screenX, screenY=$screenY, dx=$dx, mirrored=$mirrored" }
+//        Logger.d(TAG) { "  srcX=$srcX, srcY=$srcY, srcWidth=$srcWidth, srcHeight=$srcHeight" }
+//        Logger.d(TAG) { "  cps.width=${cps.width}, cps.height=${cps.height}" }
 
         // Draw pixels
         var targetY = screenY

@@ -70,7 +70,7 @@ class ViewConeRepositoryImpl(
                     val levelDecoration =
                         sublevel.decorations.find { it.wallIndex == wallType.decorationWallIndex }
                     if (levelDecoration == null) {
-                        "Decoration not found for index ${wallType.decorationWallIndex}"
+                        Logger.e(TAG) { "Decoration not found for index ${wallType.decorationWallIndex}" }
                     }
 
                     if (levelDecoration != null) {
@@ -98,21 +98,29 @@ class ViewConeRepositoryImpl(
 
                 Maz.WallType.DoorPoleType2 -> TODO()
                 is Maz.WallType.DoorTypeOneWithButton -> {
-//                    viewPort.drawDoorFrame(
-//                        wallPosition = wallPosition,
-//                        vmp = sublevel.vmp,
-//                        vcn = sublevel.vcn,
-//                        pal = sublevel.palette
-//                    )
+                    viewPort.drawDoorFrame(
+                        wallPosition = wallPosition,
+                        vmp = sublevel.vmp,
+                        vcn = sublevel.vcn,
+                        pal = sublevel.palette
+                    )
                 }
 
                 is Maz.WallType.DoorTypeOneWithoutButton -> {
-//                    viewPort.drawDoorFrame(
-//                        wallPosition = wallPosition,
-//                        vmp = sublevel.vmp,
-//                        vcn = sublevel.vcn,
-//                        pal = sublevel.palette
-//                    )
+                    viewPort.drawDoorFrame(
+                        wallPosition = wallPosition,
+                        vmp = sublevel.vmp,
+                        vcn = sublevel.vcn,
+                        pal = sublevel.palette
+                    )
+
+                    viewPort.drawDoor(
+                        wallPosition = wallPosition,
+                        door = sublevel.doors[0],
+                        vmp = sublevel.vmp,
+                        vcn = sublevel.vcn,
+                        palette = sublevel.palette
+                    )
                 }
 
                 is Maz.WallType.DoorTypeTwoWithButton -> {
@@ -123,50 +131,13 @@ class ViewConeRepositoryImpl(
                         pal = sublevel.palette
                     )
 
-                    val door = sublevel.doors[1]
-
-                    println("XXX wallPosition $wallPosition")
-
-                    val rectangleIndex = if (wallPosition >= 21) {
-                        0
-                    } else if (wallPosition >= 16) {
-                        1
-                    } else {
-                        2
-                    }
-
-                    val renderData = doorRenderData[wallPosition]
-
-//                    val deltaX = if (wallPosition >= 21) {
-//                        52
-//                    } else if (wallPosition >= 16) {
-//                        60
-//                    } else {
-//                        72
-//                    }
-//
-//                    val deltaY = if (wallPosition >= 21) {
-//                        16
-//                    } else if (wallPosition >= 16) {
-//                        24
-//                    } else {
-//                        30
-//                    }
-
-                    val rectangle = door.rectangles[rectangleIndex]
-
-                    val cps = door.cps
-
-                    for (srcX in rectangle.x until rectangle.x + rectangle.w) {
-                        for (srcY in rectangle.y until rectangle.y + rectangle.h) {
-                            val pixel = cps.pixels[srcY * cps.width + srcX]
-                            val color = sublevel.palette.colors[pixel]
-
-                            val targetX = srcX - rectangle.x + renderData.offsetInViewPortX
-                            val targetY = srcY - rectangle.y + renderData.offsetInViewPortY
-                            viewPort.draw(targetX, targetY, color)
-                        }
-                    }
+                    viewPort.drawDoor(
+                        wallPosition = wallPosition,
+                        door = sublevel.doors[1],
+                        vmp = sublevel.vmp,
+                        vcn = sublevel.vcn,
+                        palette = sublevel.palette
+                    )
                 }
 
                 is Maz.WallType.DoorTypeTwoWithoutButton -> TODO()
