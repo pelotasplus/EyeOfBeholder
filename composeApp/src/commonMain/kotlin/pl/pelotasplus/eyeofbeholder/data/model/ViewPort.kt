@@ -96,10 +96,10 @@ private val frontWallPositions = setOf(6, 7, 8, 9, 10, 15, 16, 17, 20, 21, 22, 2
 @OptIn(ExperimentalUnsignedTypes::class)
 class ViewPort {
     private val pixels = MutableList(ROWS * COLS) {
-        RGB(0, 0, 0)
+        RGB(0, 0, 0, true)
     }
 
-    private fun draw(x: Int, y: Int, rgb: RGB) {
+    fun draw(x: Int, y: Int, rgb: RGB) {
         pixels[y * COLS + x] = rgb
     }
 
