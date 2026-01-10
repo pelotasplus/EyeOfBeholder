@@ -128,6 +128,7 @@ private fun ViewConeDebugContent(
                     scale(scaleFactor.toFloat(), pivot = Offset.Zero) {
                         state.viewPort.getRows().forEachIndexed { y, row ->
                             row.forEachIndexed { x, rgb ->
+                                if (rgb.transparent) return@forEachIndexed
                                 drawRect(
                                     color = Color(rgb.red, rgb.green, rgb.blue),
                                     topLeft = Offset(x.toFloat(), y.toFloat()),

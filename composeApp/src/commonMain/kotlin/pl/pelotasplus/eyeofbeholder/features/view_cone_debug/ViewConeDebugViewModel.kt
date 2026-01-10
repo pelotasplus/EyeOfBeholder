@@ -208,8 +208,12 @@ class ViewConeDebugViewModel(
 //        val playerY: Int = 6,
 //        val direction: Direction = Direction.NORTH
 
-        val playerX: Int = 14,
+//        val playerX: Int = 14,
+//        val playerY: Int = 9,
+//        val direction: Direction = Direction.NORTH
+
+        val playerX: Int = 12,
         val playerY: Int = 9,
-        val direction: Direction = Direction.NORTH
+        val direction: Direction = Direction.WEST
     )
 }
