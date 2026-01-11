@@ -6,7 +6,6 @@ import pl.pelotasplus.eyeofbeholder.data.model.Inf
 import pl.pelotasplus.eyeofbeholder.data.model.Maz
 import pl.pelotasplus.eyeofbeholder.data.model.SubLevel
 import pl.pelotasplus.eyeofbeholder.data.model.ViewPort
-import pl.pelotasplus.eyeofbeholder.data.model.doorRenderData
 import pl.pelotasplus.eyeofbeholder.data.model.getWall
 import pl.pelotasplus.eyeofbeholder.data.model.wallPositionMappings
 
@@ -96,13 +95,25 @@ class ViewConeRepositoryImpl(
                     // TODO()
                 }
 
-                Maz.WallType.DoorPoleType2 -> TODO()
+                Maz.WallType.DoorPoleType2 -> {
+                    TODO()
+                }
+
                 is Maz.WallType.DoorTypeOneWithButton -> {
                     viewPort.drawDoorFrame(
                         wallPosition = wallPosition,
                         vmp = sublevel.vmp,
                         vcn = sublevel.vcn,
                         pal = sublevel.palette
+                    )
+
+                    viewPort.drawDoor(
+                        wallPosition = wallPosition,
+                        door = sublevel.doors[0],
+                        vmp = sublevel.vmp,
+                        vcn = sublevel.vcn,
+                        palette = sublevel.palette,
+                        showButton = true
                     )
                 }
 
@@ -119,7 +130,8 @@ class ViewConeRepositoryImpl(
                         door = sublevel.doors[0],
                         vmp = sublevel.vmp,
                         vcn = sublevel.vcn,
-                        palette = sublevel.palette
+                        palette = sublevel.palette,
+                        showButton = false
                     )
                 }
 
@@ -136,7 +148,8 @@ class ViewConeRepositoryImpl(
                         door = sublevel.doors[1],
                         vmp = sublevel.vmp,
                         vcn = sublevel.vcn,
-                        palette = sublevel.palette
+                        palette = sublevel.palette,
+                        showButton = true
                     )
                 }
 
@@ -174,8 +187,14 @@ class ViewConeRepositoryImpl(
                     )
                 }
 
-                Maz.WallType.StuckDoorType1 -> TODO()
-                Maz.WallType.StuckDoorType2 -> TODO()
+                Maz.WallType.StuckDoorType1 -> {
+                    TODO()
+                }
+
+                Maz.WallType.StuckDoorType2 -> {
+                    TODO()
+                }
+
                 Maz.WallType.Teleport -> {
                     // TODO()
                 }

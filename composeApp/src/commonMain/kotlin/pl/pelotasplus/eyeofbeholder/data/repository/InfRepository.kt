@@ -446,38 +446,22 @@ class InfRepositoryImpl(
 
                 // door rectangles
                 val rectangles = List(3) {
-                    val x = reader.readU16LE() shl 3
-                    val y = reader.readU16LE()
-                    val w = reader.readU16LE() shl 3
-                    val h = reader.readU16LE()
                     Door.Rectangle(
-                        x = x,
-                        y = y,
-                        w = w,
-                        h = h
+                        x = reader.readU16LE() shl 3,
+                        y = reader.readU16LE(),
+                        w = reader.readU16LE() shl 3,
+                        h = reader.readU16LE()
                     )
                 }
 
                 val buttons = List(2) {
-                    // rectangle
-                    val x = reader.readU16LE()
-                    val y = reader.readU16LE()
-                    val w = reader.readU16LE()
-                    val h = reader.readU16LE()
-
-                    // position x
-                    val posX = reader.readU16LE()
-
-                    // position y
-                    val posY = reader.readU16LE()
-
                     Door.Button(
-                        x = x,
-                        y = y,
-                        w = w,
-                        h = h,
-                        posX = posX,
-                        posY = posY
+                        x = reader.readU16LE() shl 3,
+                        y = reader.readU16LE(),
+                        w = reader.readU16LE() shl 3,
+                        h = reader.readU16LE(),
+                        posX = reader.readU16LE(),
+                        posY = reader.readU16LE()
                     )
                 }
 

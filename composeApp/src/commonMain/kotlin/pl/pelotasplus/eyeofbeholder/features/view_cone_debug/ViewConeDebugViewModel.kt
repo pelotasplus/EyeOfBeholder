@@ -79,16 +79,12 @@ class ViewConeDebugViewModel(
 //                        direction = Direction.SOUTH
 //                    )
 
-                    onVmpSelected(
-                        "LEVEL6.INF",
-                        playerX = 10,
-                        playerY = 3,
-                        direction = Direction.NORTH
-                    )
-
-//                    20:51:46.403  D  Got script token: ChangeLevel(level=6, subLevel=0, location=Location(x=10, y=3), direction=NORTH)
-//                    20:51:46.403  D  Got script token: ChangeLevel(level=1, subLevel=0, location=Location(x=10, y=12), direction=SOUTH)
-//                    20:51:46.406  D  Got script token: ChangeLevel(level=7, subLevel=0, location=Location(x=15, y=6), direction=EAST)
+//                    onVmpSelected(
+//                        "LEVEL6.INF",
+//                        playerX = 17, //10,
+//                        playerY = 8, // 3,
+//                        direction = Direction.EAST, // Direction.NORTH
+//                    )
                 }
                 .onFailure {
                     Logger.e(it) { "Error while loading level names" }

@@ -246,7 +246,8 @@ class ViewPort {
         vmp: Vmp,
         vcn: Vcn,
         palette: Palette,
-        door: Door
+        door: Door,
+        showButton: Boolean
     ) {
         drawDoorFrame(
             wallPosition = wallPosition,
@@ -263,10 +264,18 @@ class ViewPort {
             2
         }
 
+        val buttonIndex = if (wallPosition >= 21) {
+            0
+        } else if (wallPosition >= 15) {
+            1
+        } else {
+            null
+        }
+
         val renderData = doorRenderData[wallPosition]
 
         if (renderData.offsetInViewPortX == -1) {
-            Logger.d(TAG) { "Skipping door rendering for wallPosition $wallPosition as offsetInViewPortX is -1"}
+            Logger.d(TAG) { "Skipping door rendering for wallPosition $wallPosition as offsetInViewPortX is -1" }
             return
         }
 
@@ -282,6 +291,21 @@ class ViewPort {
                 val targetX = srcX - rectangle.x + renderData.offsetInViewPortX
                 val targetY = srcY - rectangle.y + renderData.offsetInViewPortY
                 draw(targetX, targetY, color)
+            }
+        }
+
+        if (showButton && buttonIndex != null) {
+            val button = door.buttons[buttonIndex]
+
+            for (srcX in button.x until button.x + button.w) {
+                for (srcY in button.y until button.y + button.h) {
+                    val pixel = cps.pixels[srcY * cps.width + srcX]
+                    val color = palette.colors[pixel]
+
+                    val targetX = srcX - button.x + button.posX
+                    val targetY = srcY - button.y + button.posY
+                    draw(targetX, targetY, color)
+                }
             }
         }
     }
