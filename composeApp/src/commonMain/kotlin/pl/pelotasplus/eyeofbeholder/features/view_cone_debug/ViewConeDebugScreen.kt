@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -62,8 +64,8 @@ private fun ViewConeDebugContent(
     onRotateWest: () -> Unit = {},
 ) {
     Column(modifier = modifier) {
-        Column(Modifier.weight(0.5f)) {
-            state.levels.forEach { vmpName ->
+        LazyColumn(Modifier.weight(0.5f)) {
+            items(state.levels) { vmpName ->
                 Button(
                     onClick = { onLevelSelected(vmpName) }
                 ) {

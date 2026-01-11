@@ -51,7 +51,44 @@ class ViewConeDebugViewModel(
                         )
                     }
 
-                    onVmpSelected("LEVEL5.INF")
+//                    onVmpSelected(
+//                        "LEVEL4.INF",
+//                        playerX = 12,
+//                        playerY = 4,
+//                        direction = Direction.SOUTH
+//                    )
+
+                    onVmpSelected(
+                        "LEVEL5.INF",
+                        playerX = 14,
+                        playerY = 9,
+                        direction = Direction.WEST
+                    )
+
+//                    onVmpSelected(
+//                        "LEVEL7.INF",
+//                        playerX = 15,
+//                        playerY = 6,
+//                        direction = Direction.NORTH
+//                    )
+
+//                    onVmpSelected(
+//                        "LEVEL1.INF",
+//                        playerX = 10,
+//                        playerY = 3,
+//                        direction = Direction.SOUTH
+//                    )
+
+                    onVmpSelected(
+                        "LEVEL6.INF",
+                        playerX = 10,
+                        playerY = 3,
+                        direction = Direction.NORTH
+                    )
+
+//                    20:51:46.403  D  Got script token: ChangeLevel(level=6, subLevel=0, location=Location(x=10, y=3), direction=NORTH)
+//                    20:51:46.403  D  Got script token: ChangeLevel(level=1, subLevel=0, location=Location(x=10, y=12), direction=SOUTH)
+//                    20:51:46.406  D  Got script token: ChangeLevel(level=7, subLevel=0, location=Location(x=15, y=6), direction=EAST)
                 }
                 .onFailure {
                     Logger.e(it) { "Error while loading level names" }
@@ -59,13 +96,23 @@ class ViewConeDebugViewModel(
         }
     }
 
-    private fun onVmpSelected(name: String) {
+    private fun onVmpSelected(
+        name: String,
+        playerX: Int? = null,
+        playerY: Int? = null,
+        direction: Direction? = null
+    ) {
         viewModelScope.launch {
             viewConeRepository
                 .loadLevel(name = name)
                 .onSuccess { inf ->
                     _state.update {
-                        it.copy(inf = inf)
+                        it.copy(
+                            inf = inf,
+                            playerY = playerY ?: it.playerY,
+                            playerX = playerX ?: it.playerX,
+                            direction = direction ?: it.direction
+                        )
                     }
                     renderViewPort()
                 }

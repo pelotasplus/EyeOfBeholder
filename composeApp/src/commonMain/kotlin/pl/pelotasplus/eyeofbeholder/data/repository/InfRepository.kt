@@ -31,7 +31,6 @@ import pl.pelotasplus.eyeofbeholder.data.model.script.NewLevelOrMonster
 import pl.pelotasplus.eyeofbeholder.data.model.script.OpenDoor
 import pl.pelotasplus.eyeofbeholder.data.model.script.Return
 import pl.pelotasplus.eyeofbeholder.data.model.script.Script
-import pl.pelotasplus.eyeofbeholder.data.model.script.ScriptToken
 import pl.pelotasplus.eyeofbeholder.data.model.script.SetFlag
 import pl.pelotasplus.eyeofbeholder.data.model.script.SetWall
 import pl.pelotasplus.eyeofbeholder.data.model.script.Sound
@@ -100,7 +99,7 @@ class InfRepositoryImpl(
             check(cmd == 0xFF || cmd == 0x01) { "expected 0xFF or 0x01, got 0x${cmd.toHexString()}" }
 
             val palette = if (cmd != 0xFF) {
-                reader.readString(13).uppercase()
+                reader.readString(13).uppercase() + ".PAL"
             } else {
                 vmpName.replace(".VMP", ".PAL")
             }
@@ -244,7 +243,7 @@ class InfRepositoryImpl(
         }
 
         val script = readScript(reader)
-        script.tokens.forEach {
+        script.forEach {
             Logger.d(TAG) { "Got script token: $it" }
         }
 
@@ -252,7 +251,9 @@ class InfRepositoryImpl(
         while (reader.offset < offsetBlockC) {
             val message = reader.readString()
             messages.add(message)
-             Logger.d(TAG) { "Got message: $message" }
+        }
+        messages.forEachIndexed { index, message ->
+            Logger.d(TAG) { "Got message: $index -> $message" }
         }
 
         Logger.d(TAG) { "After block B offset is ${reader.offset} remaining ${reader.remaining}" }
@@ -266,13 +267,22 @@ class InfRepositoryImpl(
             val flag = reader.readU16LE()
             val scriptOffset = reader.readU16LE()
 
-            Logger.d(TAG) { "Got special block for location: $location flag: $flag scriptOffset: $scriptOffset" }
+            val matchingScript = script.first { it.offset == scriptOffset }
+
+            Logger.d(TAG) { "Got special block for location: $location flag: $flag matchingScript: $matchingScript" }
         }
 
         Logger.d(TAG) { "After block C offset is ${reader.offset} remaining ${reader.remaining}" }
 
         check(reader.remaining == 0) {
             "Expected empty reader after all INF parsing"
+        }
+
+        // verify that script steps point to an existing message
+        script.forEach { scriptToken ->
+            if (scriptToken.token is Message) {
+                val message = messages[scriptToken.token.messageId]
+            }
         }
 
         return Inf(
@@ -283,8 +293,8 @@ class InfRepositoryImpl(
         )
     }
 
-    private fun readScript(reader: ByteReader): Script {
-        val tokens = mutableListOf<ScriptToken>()
+    private fun readScript(reader: ByteReader): List<Script> {
+        val tokens = mutableListOf<Script>()
         val scriptStartOffset = reader.offset
         val scriptLength = reader.readU16LE()
 
@@ -334,12 +344,15 @@ class InfRepositoryImpl(
                 else -> error("Unsupported script opcode: 0x${opcode.toHexString()}")
             }
 
-//            Logger.d(TAG) { "Reader offset ${reader.offset} remaining ${reader.remaining}" }
-
-            tokens.add(scriptToken)
+            tokens.add(
+                Script(
+                    offset = tokenOffset,
+                    token = scriptToken
+                )
+            )
         }
 
-        return Script(tokens = tokens)
+        return tokens
     }
 
     /**

@@ -22,7 +22,7 @@ sealed class Teleport : ScriptToken {
             override val source: Location,
             val srcLevel: Int,
             val dstLevel: Int,
-            val dstBlk: Location
+            val dstLocation: Location
         ) : MoveItem()
 
         data class ToBlock(
@@ -91,7 +91,7 @@ sealed class Teleport : ScriptToken {
                             source = source,
                             srcLevel = srcLevel,
                             dstLevel = reader.readU8(),
-                            dstBlk = Location.read(reader)
+                            dstLocation = Location.read(reader)
                         )
                         0xEB -> MoveItem.ToBlock(
                             source = source,

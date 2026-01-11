@@ -8,8 +8,6 @@ class ByteReader(private val bytes: UByteArray) {
 
     val remaining: Int get() = bytes.size - offset
 
-    val hasRemaining: Boolean get() = offset < bytes.size
-
     fun readU8(): Int {
         check(offset < bytes.size) { "Read past end of buffer" }
         return bytes[offset++].toInt()
@@ -60,10 +58,6 @@ class ByteReader(private val bytes: UByteArray) {
         return result
     }
 
-    fun readChar(): Char {
-        return readU8().toChar()
-    }
-
     fun readString(length: Int, nullTerminated: Boolean = true): String {
         val bytes = readBytes(length)
         return if (nullTerminated) {
@@ -86,21 +80,5 @@ class ByteReader(private val bytes: UByteArray) {
     fun skip(count: Int) {
         check(offset + count <= bytes.size) { "Skip past end of buffer" }
         offset += count
-    }
-
-    fun seek(position: Int) {
-        check(position in 0..bytes.size) { "Seek position out of bounds" }
-        offset = position
-    }
-
-    fun peekU8(): Int {
-        check(offset < bytes.size) { "Peek past end of buffer" }
-        return bytes[offset].toInt()
-    }
-
-    fun peekU16LE(): Int {
-        check(offset + 1 < bytes.size) { "Peek past end of buffer" }
-        return (bytes[offset].toInt()) +
-                (bytes[offset + 1].toInt() shl 8)
     }
 }
