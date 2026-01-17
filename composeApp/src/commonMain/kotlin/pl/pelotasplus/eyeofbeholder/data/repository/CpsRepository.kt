@@ -2,15 +2,11 @@ package pl.pelotasplus.eyeofbeholder.data.repository
 
 import pl.pelotasplus.eyeofbeholder.data.ByteReader
 import pl.pelotasplus.eyeofbeholder.data.model.Cps
-import pl.pelotasplus.eyeofbeholder.data.model.Palette
-import pl.pelotasplus.eyeofbeholder.saveCpsImage
 
 interface CpsRepository {
     suspend fun loadCps(name: String): Result<Cps>
 
     suspend fun getAllCpsNames(): Result<List<String>>
-
-    suspend fun saveCpsAsJpg(cps: Cps, palette: Palette, outputPath: String)
 }
 
 class CpsRepositoryImpl(
@@ -33,10 +29,6 @@ class CpsRepositoryImpl(
 
     override suspend fun getAllCpsNames(): Result<List<String>> {
         return resourceRepository.listResources(".CPS")
-    }
-
-    override suspend fun saveCpsAsJpg(cps: Cps, palette: Palette, outputPath: String) {
-        saveCpsImage(cps, palette, outputPath)
     }
 
     companion object {

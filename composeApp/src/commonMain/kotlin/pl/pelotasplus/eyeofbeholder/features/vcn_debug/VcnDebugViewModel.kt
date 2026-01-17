@@ -41,7 +41,6 @@ class VcnDebugViewModel(
                 .onSuccess { vcnNames ->
                     _state.update {
                         it.copy(
-                            isLoading = false,
                             allVcns = vcnNames.toImmutableList()
                         )
                     }
@@ -58,7 +57,6 @@ class VcnDebugViewModel(
                 .onSuccess { vcn ->
                     _state.update {
                         it.copy(
-                            isLoading = false,
                             selectedVcn = vcn
                         )
                     }
@@ -76,7 +74,6 @@ class VcnDebugViewModel(
     }
 
     data class State(
-        val isLoading: Boolean = true,
         val allVcns: ImmutableList<String> = persistentListOf(),
         val selectedVcn: Vcn? = null
     )
