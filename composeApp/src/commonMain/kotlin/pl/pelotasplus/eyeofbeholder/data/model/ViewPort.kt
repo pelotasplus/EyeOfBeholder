@@ -421,7 +421,7 @@ class ViewPort {
                 val cpsIndex = j * cps.width + i
                 if (cpsIndex < 0 || cpsIndex >= cps.pixels.size) continue
 
-                val pixelIndex = cps.pixels[cpsIndex].toInt()
+                val pixelIndex = cps.pixels[cpsIndex]
 
                 // Skip transparent pixels (index 0)
                 if (pixelIndex == 0) {
