@@ -125,7 +125,7 @@ class ViewPort {
         }
     }
 
-    fun drawDoorFrame(
+    private fun drawDoorFrame(
         wallPosition: Int,
         vmp: Vmp,
         vcn: Vcn,
@@ -177,6 +177,8 @@ class ViewPort {
         vcn: Vcn,
         pal: Palette
     ) {
+        Logger.d(TAG) { "drawWall wallPosition: $wallPosition wallType: $wallType"}
+
         val renderData = wallRenderData[wallPosition]
 
         val flipX = renderData.flipFlag == 1

@@ -64,31 +64,38 @@ class ViewConeRepositoryImpl(
             Logger.d(TAG) { "Wall wallPosition $wallPosition type: $wallType for $mazX x $mazY originalSide ${mapping.wallSide} actualWallSide $actualWallSide" }
 
             when (wallType) {
-                Maz.WallType.BottomPit -> TODO()
+                Maz.WallType.BottomPit -> {
+                    // FIXME
+                }
+
                 is Maz.WallType.Decoration -> {
                     val levelDecoration =
                         sublevel.decorations.find { it.wallIndex == wallType.decorationWallIndex }
+                    Logger.d(TAG) { "Matching decoration $levelDecoration" }
                     if (levelDecoration == null) {
                         Logger.e(TAG) { "Decoration not found for index ${wallType.decorationWallIndex}" }
+                        return@forEachIndexed
+                    }
+                    if (levelDecoration.decorationID == -1) {
+                        Logger.e(TAG) { "Skipping decoration due to decorationId == 01" }
+                        return@forEachIndexed
                     }
 
-                    if (levelDecoration != null) {
-                        if (levelDecoration.wallType != 0) {
-                            viewPort.drawWall(
-                                wallType = levelDecoration.wallType,
-                                wallPosition = wallPosition,
-                                vmp = sublevel.vmp,
-                                vcn = sublevel.vcn,
-                                pal = sublevel.palette
-                            )
-                        }
-
-                        viewPort.drawDecoration(
-                            decoration = levelDecoration,
-                            palette = sublevel.palette,
+                    if (levelDecoration.wallType != 0) {
+                        viewPort.drawWall(
+                            wallType = levelDecoration.wallType,
                             wallPosition = wallPosition,
+                            vmp = sublevel.vmp,
+                            vcn = sublevel.vcn,
+                            pal = sublevel.palette
                         )
                     }
+
+                    viewPort.drawDecoration(
+                        decoration = levelDecoration,
+                        palette = sublevel.palette,
+                        wallPosition = wallPosition,
+                    )
                 }
 
                 Maz.WallType.DoorPoleType1 -> {
@@ -100,12 +107,12 @@ class ViewConeRepositoryImpl(
                 }
 
                 is Maz.WallType.DoorTypeOneWithButton -> {
-                    viewPort.drawDoorFrame(
-                        wallPosition = wallPosition,
-                        vmp = sublevel.vmp,
-                        vcn = sublevel.vcn,
-                        pal = sublevel.palette
-                    )
+//                    viewPort.drawDoorFrame(
+//                        wallPosition = wallPosition,
+//                        vmp = sublevel.vmp,
+//                        vcn = sublevel.vcn,
+//                        pal = sublevel.palette
+//                    )
 
                     viewPort.drawDoor(
                         wallPosition = wallPosition,
@@ -118,12 +125,12 @@ class ViewConeRepositoryImpl(
                 }
 
                 is Maz.WallType.DoorTypeOneWithoutButton -> {
-                    viewPort.drawDoorFrame(
-                        wallPosition = wallPosition,
-                        vmp = sublevel.vmp,
-                        vcn = sublevel.vcn,
-                        pal = sublevel.palette
-                    )
+//                    viewPort.drawDoorFrame(
+//                        wallPosition = wallPosition,
+//                        vmp = sublevel.vmp,
+//                        vcn = sublevel.vcn,
+//                        pal = sublevel.palette
+//                    )
 
                     viewPort.drawDoor(
                         wallPosition = wallPosition,
@@ -136,12 +143,12 @@ class ViewConeRepositoryImpl(
                 }
 
                 is Maz.WallType.DoorTypeTwoWithButton -> {
-                    viewPort.drawDoorFrame(
-                        wallPosition = wallPosition,
-                        vmp = sublevel.vmp,
-                        vcn = sublevel.vcn,
-                        pal = sublevel.palette
-                    )
+//                    viewPort.drawDoorFrame(
+//                        wallPosition = wallPosition,
+//                        vmp = sublevel.vmp,
+//                        vcn = sublevel.vcn,
+//                        pal = sublevel.palette
+//                    )
 
                     viewPort.drawDoor(
                         wallPosition = wallPosition,
