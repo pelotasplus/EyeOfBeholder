@@ -256,30 +256,14 @@ class ViewPort {
             pal = palette
         )
 
-        val rectangleIndex = if (wallPosition >= 21) {
-            0
-        } else if (wallPosition >= 15) {
-            1
-        } else {
-            2
-        }
-
-        val buttonIndex = if (wallPosition >= 21) {
-            0
-        } else if (wallPosition >= 15) {
-            1
-        } else {
-            null
-        }
-
         val renderData = doorRenderData[wallPosition]
 
-        if (renderData.offsetInViewPortX == -1) {
+        if (renderData.offsetInViewPortX == null) {
             Logger.d(TAG) { "Skipping door rendering for wallPosition $wallPosition as offsetInViewPortX is -1" }
             return
         }
 
-        val rectangle = door.rectangles[rectangleIndex]
+        val rectangle = door.rectangles[renderData.rectangleIndex]
 
         val cps = door.cps
 
@@ -294,8 +278,8 @@ class ViewPort {
             }
         }
 
-        if (showButton && buttonIndex != null) {
-            val button = door.buttons[buttonIndex]
+        if (showButton && renderData.buttonIndex != null) {
+            val button = door.buttons[renderData.buttonIndex]
 
             for (srcX in button.x until button.x + button.w) {
                 for (srcY in button.y until button.y + button.h) {

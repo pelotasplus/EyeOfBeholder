@@ -1,12 +1,10 @@
 package pl.pelotasplus.eyeofbeholder.data.model
 
 data class DoorRenderData(
-    val offsetInViewPortX: Int,
+    val offsetInViewPortX: Int?,
     val offsetInViewPortY: Int,
-    val visibleWidthInBlocks: Int,
-    val visibleHeightInBlocks: Int,
-    val skipValue: Int,
-    val flipFlag: Int,
+    val buttonIndex: Int?,
+    val rectangleIndex: Int,
 )
 
 /**
@@ -24,73 +22,73 @@ data class DoorRenderData(
 val doorRenderData: List<DoorRenderData> = listOf(
     // Side-Walls left back
     // A-east       //   0
-    DoorRenderData(-1, 66, 5, 1, 2, 0),
+    DoorRenderData(null, 66, null, 2),
     // B-east       //   1
-    DoorRenderData(-1, 68, 5, 3, 0, 0),
+    DoorRenderData(null, 68, null, 2),
     // C-east       //   2
-    DoorRenderData(-1, 74, 5, 1, 0, 0),
+    DoorRenderData(null, 74, null, 2),
 
     // Side-Walls right back
     // E-west       //   3
-    DoorRenderData(-1, 79, 5, 1, 0, 1),
+    DoorRenderData(null, 79, null, 2),
     // F-west       //   4
-    DoorRenderData(-1, 83, 5, 3, 0, 1),
+    DoorRenderData(null, 83, null, 2),
     // G-west       //   5
-    DoorRenderData(-1, 87, 5, 1, 2, 1),
+    DoorRenderData(null, 87, null, 2),
 
     // Front walls back
     // B-south      //   6
-    DoorRenderData(-24, 30, 5, 2, 4, 0),
+    DoorRenderData(-24, 30, null, 2),
     // C-south      //   7
-    DoorRenderData(24, 30, 5, 6, 0, 0),
+    DoorRenderData(24, 30, null, 2),
     // D-south      //   8
-    DoorRenderData(72, 30, 5, 6, 0, 0),
+    DoorRenderData(72, 30, null, 2),
     // E-south      //   9
-    DoorRenderData(120, 30, 5, 6, 0, 0),
+    DoorRenderData(120, 30, null, 2),
     // F-south      //  10
-    DoorRenderData(168, 30,0, 5, 2,  0),
+    DoorRenderData(168, 30, null, 2),
 
     // Side walls middle back left
     // H-east       //  11
-    DoorRenderData(-1, 66, 6, 2, 0, 0),
+    DoorRenderData(-1, 66, null, 2),
     // I-east       //  12
-    DoorRenderData(-1, 50, 8, 2, 0, 0),
+    DoorRenderData(-1, 50, null, 2),
 
     // Side walls middle back right
     // K-west       //  13
-    DoorRenderData(-1, 58, 8, 2, 0, 1),
+    DoorRenderData(-1, 58, null, 2),
     // L-west       //  14
-    DoorRenderData(-1, 86, 6, 2, 0, 1),
+    DoorRenderData(-1, 86, null, 2),
 
     // Front walls middle back
     // I-south      //  15
-    DoorRenderData(0, 24, 8, 6, 4, 0),
+    DoorRenderData(0, 24, null, 1),
     // J-south       // 16
-    DoorRenderData(60, 24, 8, 10, 0, 0),
+    DoorRenderData(60, 24, 1, 1),
     // K-south       // 17
-    DoorRenderData(140, 24, 8, 6, 4, 0),
+    DoorRenderData(140, 24, null, 1),
 
     // Side walls middle front left
     // M-east        // 18
-    DoorRenderData(-1, 25, 12, 3, 0, 0),
+    DoorRenderData(null, 25, null, 1),
 
     // Side walls middle front right
     // O-west        // 19
-    DoorRenderData(-1, 38, 12, 3, 0, 1),
+    DoorRenderData(null, 38, null, 1),
 
     // Front walls middle front
     // M-south       // 20
-    DoorRenderData(-1, -1, 12, 3, 13, 0),
+    DoorRenderData(null, -1, null, 1),
     // N-south       // 21
-    DoorRenderData(52, 16, 12, 16, 0, 0),
+    DoorRenderData(52, 16, 0, 0),
     // O-south       // 22
-    DoorRenderData(-1, -1, 12, 3, 13, 0),
+    DoorRenderData(null, -1, 0, 0),
 
     // Side wall front left
     // P-east        // 23
-    DoorRenderData(-1, 0, 15, 3, 0, 0),
+    DoorRenderData(null, 0, 0, 0),
 
     // Side wall front right
     // Q-west        // 24
-    DoorRenderData(-1, 19, 15, 3, 0, 1),
+    DoorRenderData(null, 19, 0, 9),
 )
