@@ -107,14 +107,7 @@ class ViewConeRepositoryImpl(
                 }
 
                 is Maz.WallType.DoorTypeOneWithButton -> {
-//                    viewPort.drawDoorFrame(
-//                        wallPosition = wallPosition,
-//                        vmp = sublevel.vmp,
-//                        vcn = sublevel.vcn,
-//                        pal = sublevel.palette
-//                    )
-
-                    viewPort.drawDoor(
+                     viewPort.drawDoor(
                         wallPosition = wallPosition,
                         door = sublevel.doors[0],
                         vmp = sublevel.vmp,
@@ -125,13 +118,6 @@ class ViewConeRepositoryImpl(
                 }
 
                 is Maz.WallType.DoorTypeOneWithoutButton -> {
-//                    viewPort.drawDoorFrame(
-//                        wallPosition = wallPosition,
-//                        vmp = sublevel.vmp,
-//                        vcn = sublevel.vcn,
-//                        pal = sublevel.palette
-//                    )
-
                     viewPort.drawDoor(
                         wallPosition = wallPosition,
                         door = sublevel.doors[0],
@@ -143,13 +129,6 @@ class ViewConeRepositoryImpl(
                 }
 
                 is Maz.WallType.DoorTypeTwoWithButton -> {
-//                    viewPort.drawDoorFrame(
-//                        wallPosition = wallPosition,
-//                        vmp = sublevel.vmp,
-//                        vcn = sublevel.vcn,
-//                        pal = sublevel.palette
-//                    )
-
                     viewPort.drawDoor(
                         wallPosition = wallPosition,
                         door = sublevel.doors[1],

@@ -10,13 +10,16 @@ data class DoorRenderData(
 /**
  * Layer 5 (backdrop)
  *                                   ─────────────────────────────────
- * Layer 4                               A | B | C | D | E | F | G
- *                                          ─── ─── ─── ─── ───
- * Layer 3                                   H | I | J | K | L
- *                                              ─── ─── ───
- * Layer 2                                       M | N | O
- *                                              ─── ─── ───
- * Layer 1 (closest)                             P | ^ | Q
+ * Layer 4                       A 0 | B 1  |  C 2  | D  | 3 E   | 4 F | 5 G
+ *                                   | 6    |  7    | 8  |   9   |  10 |
+ *                                    ────── ─────── ──── ─────── ─────
+ * Layer 3                             H 11 | I  12 | J  | 13 K  | 14 L
+ *                                          | 15    | 16 |    17 |
+ *                                           ─────── ──── ───────
+ * Layer 2                                     M 18 | N  | 19 O
+ *                                            20    | 21 |    22
+ *                                           ─────── ──── ───────
+ * Layer 1 (closest)                           P 23 | ^  | 24 Q
  */
 
 val doorRenderData: List<DoorRenderData> = listOf(
