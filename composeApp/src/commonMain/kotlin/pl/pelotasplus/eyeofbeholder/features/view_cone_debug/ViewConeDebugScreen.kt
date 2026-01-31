@@ -3,11 +3,14 @@ package pl.pelotasplus.eyeofbeholder.features.view_cone_debug
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
@@ -49,6 +52,9 @@ fun ViewConeDebugScreen(
         },
         onRotateWest = {
             viewModel.onEvent(ViewConeDebugViewModel.Event.RotateLeft)
+        },
+        onGoBack = {
+            viewModel.onEvent(ViewConeDebugViewModel.Event.GoBack)
         }
     )
 }
@@ -61,71 +67,36 @@ private fun ViewConeDebugContent(
     onMoveNorth: () -> Unit = {},
     onMoveSouth: () -> Unit = {},
     onRotateEast: () -> Unit = {},
+    onGoBack: () -> Unit = {},
     onRotateWest: () -> Unit = {},
 ) {
-    Column(modifier = modifier) {
-        LazyColumn(Modifier.weight(0.5f)) {
-            items(state.levels) { vmpName ->
-                Button(
-                    onClick = { onLevelSelected(vmpName) }
-                ) {
-                    Text(text = vmpName)
-                }
-            }
-        }
+    BoxWithConstraints(modifier = modifier, contentAlignment = Alignment.Center) {
+        val screenWidth = this.maxWidth
+        val screenHeight = this.maxHeight
 
-        // Player position and direction controls
-        Column(
-            modifier = Modifier.fillMaxWidth().padding(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            // Player position and direction (read-only)
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text("Player: (${state.playerX}, ${state.playerY})")
-                Text("Direction: ${state.direction.name}")
-            }
-
-            // Navigation buttons
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Button(onClick = onRotateWest) {
-                    Text("W")
-                }
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Button(onClick = onMoveNorth) {
-                        Text("N")
+        if (state.viewPort == null) {
+            LazyColumn {
+                items(state.levels) { vmpName ->
+                    Button(
+                        onClick = { onLevelSelected(vmpName) }
+                    ) {
+                        Text(text = vmpName)
                     }
-                    Button(onClick = onMoveSouth) {
-                        Text("S")
-                    }
-                }
-                Button(onClick = onRotateEast) {
-                    Text("E")
                 }
             }
         }
 
         if (state.viewPort != null) {
-            BoxWithConstraints(
-                modifier = Modifier.weight(0.5f).fillMaxWidth()
+            Box(
+                Modifier.width(screenWidth)
+                    .height(screenHeight)
+                    .background(Color.Cyan)
             ) {
                 val density = LocalDensity.current
-                val containerWidthInPixels = with(density) { maxWidth.toPx() }.toInt()
+                val containerWidthInPixels = with(density) { screenWidth.toPx() }.toInt()
                 val scaleFactor = (containerWidthInPixels / 176f).toInt().coerceAtLeast(1)
                 Canvas(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .background(Color.Cyan)
                 ) {
                     scale(scaleFactor.toFloat(), pivot = Offset.Zero) {
                         state.viewPort.getRows().forEachIndexed { y, row ->
@@ -139,6 +110,48 @@ private fun ViewConeDebugContent(
                             }
                         }
                     }
+                }
+            }
+        }
+
+        // Player position and direction controls
+        if (state.viewPort != null) {
+            Box(
+                modifier = Modifier.fillMaxWidth().padding(8.dp).align(Alignment.BottomCenter),
+            ) {
+                // Player position and direction (read-only)
+                Row(Modifier.background(Color.White).align(Alignment.BottomStart)) {
+                    Text("Player: (${state.playerX}, ${state.playerY})")
+                    Text("Direction: ${state.direction.name}")
+                }
+
+                // Navigation buttons
+                Row(
+                    modifier = Modifier.fillMaxWidth().align(Alignment.Center),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.Bottom
+                ) {
+                    Button(onClick = onRotateWest) {
+                        Text("W")
+                    }
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Button(onClick = onMoveNorth) {
+                            Text("N")
+                        }
+                        Button(onClick = onMoveSouth) {
+                            Text("S")
+                        }
+                    }
+                    Button(onClick = onRotateEast) {
+                        Text("E")
+                    }
+                }
+
+                Button(onClick = onGoBack, modifier = Modifier.align(Alignment.BottomEnd)) {
+                    Text("<")
                 }
             }
         }

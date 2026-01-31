@@ -107,7 +107,7 @@ class ViewConeRepositoryImpl(
                 }
 
                 is Maz.WallType.DoorTypeOneWithButton -> {
-                     viewPort.drawDoor(
+                    viewPort.drawDoor(
                         wallPosition = wallPosition,
                         door = sublevel.doors[0],
                         vmp = sublevel.vmp,
@@ -139,7 +139,10 @@ class ViewConeRepositoryImpl(
                     )
                 }
 
-                is Maz.WallType.DoorTypeTwoWithoutButton -> TODO()
+                is Maz.WallType.DoorTypeTwoWithoutButton -> {
+                    TODO()
+                }
+
                 is Maz.WallType.FixedWall -> {
                     viewPort.drawWall(
                         wallType = wallType.wallType,
@@ -154,7 +157,10 @@ class ViewConeRepositoryImpl(
                     // no-wall to render
                 }
 
-                Maz.WallType.PidgeonHole -> TODO()
+                Maz.WallType.PidgeonHole -> {
+                    TODO()
+                }
+
                 Maz.WallType.StairDown -> {
                     viewPort.drawStairsDown(
                         wallPosition = wallPosition,
@@ -174,7 +180,7 @@ class ViewConeRepositoryImpl(
                 }
 
                 Maz.WallType.StuckDoorType1 -> {
-                    TODO()
+                    // TODO()
                 }
 
                 Maz.WallType.StuckDoorType2 -> {

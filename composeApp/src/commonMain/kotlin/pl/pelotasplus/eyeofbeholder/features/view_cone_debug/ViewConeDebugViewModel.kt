@@ -38,6 +38,13 @@ class ViewConeDebugViewModel(
             Event.MoveBackwards -> onMoveBackwards()
             Event.RotateRight -> onRotateRight()
             Event.RotateLeft -> onRotateLeft()
+            Event.GoBack -> onGoBack()
+        }
+    }
+
+    private fun onGoBack() {
+        _state.update {
+            it.copy(viewPort = null)
         }
     }
 
@@ -51,13 +58,7 @@ class ViewConeDebugViewModel(
                         )
                     }
 
-//                    onVmpSelected(
-//                        "LEVEL4.INF",
-//                        playerX = 12,
-//                        playerY = 4,
-//                        direction = Direction.SOUTH
-//                    )
-
+                    // enter to the temple
 //                    onVmpSelected(
 //                        "LEVEL5.INF",
 //                        playerX = 14,
@@ -65,33 +66,13 @@ class ViewConeDebugViewModel(
 //                        direction = Direction.WEST
 //                    )
 
+                    // entrance to the temple, stairs down
                     onVmpSelected(
-                        "LEVEL5.INF",
-                        playerX = 7,
-                        playerY = 9,
-                        direction = Direction.WEST
+                        "LEVEL1.INF",
+                        playerX = 10,
+                        playerY = 12,
+                        direction = Direction.SOUTH
                     )
-
-//                    onVmpSelected(
-//                        "LEVEL7.INF",
-//                        playerX = 15,
-//                        playerY = 6,
-//                        direction = Direction.NORTH
-//                    )
-
-//                    onVmpSelected(
-//                        "LEVEL1.INF",
-//                        playerX = 10,
-//                        playerY = 3,
-//                        direction = Direction.SOUTH
-//                    )
-
-//                    onVmpSelected(
-//                        "LEVEL6.INF",
-//                        playerX = 17, //10,
-//                        playerY = 8, // 3,
-//                        direction = Direction.EAST, // Direction.NORTH
-//                    )
                 }
                 .onFailure {
                     Logger.e(it) { "Error while loading level names" }
@@ -241,6 +222,7 @@ class ViewConeDebugViewModel(
         data object MoveBackwards : Event()
         data object RotateRight : Event()
         data object RotateLeft : Event()
+        data object GoBack : Event()
     }
 
     data class State(

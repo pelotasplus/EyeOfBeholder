@@ -53,15 +53,15 @@ val doorRenderData: List<DoorRenderData> = listOf(
 
     // Side walls middle back left
     // H-east       //  11
-    DoorRenderData(-1, 66, null, 2),
+    DoorRenderData(null, 66, null, 2),
     // I-east       //  12
-    DoorRenderData(-1, 50, null, 2),
+    DoorRenderData(null, 50, null, 2),
 
     // Side walls middle back right
     // K-west       //  13
-    DoorRenderData(-1, 58, null, 2),
+    DoorRenderData(null, 58, null, 2),
     // L-west       //  14
-    DoorRenderData(-1, 86, null, 2),
+    DoorRenderData(null, 86, null, 2),
 
     // Front walls middle back
     // I-south      //  15
