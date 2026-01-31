@@ -25,7 +25,11 @@ data class Dec(
         val flags: Int,
         val xCoords: ImmutableList<Int>,
         val yCoords: ImmutableList<Int>,
-    )
+    ) {
+        override fun toString(): String {
+            return "Decoration(rectangleIndices=..., linkToNextDecoration=$linkToNextDecoration, flags=$flags, xCoords=..., yCoords=...)"
+        }
+    }
 
     /**
      * Represents a rectangle used for decoration rendering.

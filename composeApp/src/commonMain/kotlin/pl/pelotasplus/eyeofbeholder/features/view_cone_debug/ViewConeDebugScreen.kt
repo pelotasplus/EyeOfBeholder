@@ -121,8 +121,7 @@ private fun ViewConeDebugContent(
             ) {
                 // Player position and direction (read-only)
                 Row(Modifier.background(Color.White).align(Alignment.BottomStart)) {
-                    Text("Player: (${state.playerX}, ${state.playerY})")
-                    Text("Direction: ${state.direction.name}")
+                    Text("${state.playerX}x${state.playerY} ${state.direction.name}")
                 }
 
                 // Navigation buttons

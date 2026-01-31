@@ -10,4 +10,8 @@ data class Decoration(
     val flags: Int,
     val dec: Dec,
     val cps: Cps
-)
+) {
+    override fun toString(): String {
+        return "Decoration(wallIndex=$wallIndex, wallType=$wallType, decorationID=$decorationID, specialType=$specialType, flags=$flags, dec=..., cps=...)"
+    }
+}

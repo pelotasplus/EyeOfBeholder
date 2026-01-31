@@ -26,12 +26,6 @@ data class WallPositionMapping(
      * NORTH/EAST/SOUTH/WEST relative to the maze, not player.
      */
     val wallSide: WallSide,
-
-    /**
-     * Optional: Wall types to render (null = all types)
-     * Allows filtering to only show FixedWall, or include Doors, Stairs, etc.
-     */
-    val acceptedTypes: Set<WallTypeCategory>? = null
 )
 
 /**
@@ -39,16 +33,6 @@ data class WallPositionMapping(
  */
 enum class WallSide {
     NORTH, EAST, SOUTH, WEST
-}
-
-/**
- * Categories of wall types for filtering what gets rendered
- */
-enum class WallTypeCategory {
-    FIXED_WALL,
-    DOOR,
-    STAIRS,
-    SPECIAL
 }
 
 /**

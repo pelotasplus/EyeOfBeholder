@@ -64,20 +64,12 @@ class ViewConeRepositoryImpl(
             Logger.d(TAG) { "Wall wallPosition $wallPosition type: $wallType for $mazX x $mazY originalSide ${mapping.wallSide} actualWallSide $actualWallSide" }
 
             when (wallType) {
-                Maz.WallType.BottomPit -> {
-                    // FIXME
-                }
-
                 is Maz.WallType.Decoration -> {
                     val levelDecoration =
                         sublevel.decorations.find { it.wallIndex == wallType.decorationWallIndex }
                     Logger.d(TAG) { "Matching decoration $levelDecoration" }
                     if (levelDecoration == null) {
                         Logger.e(TAG) { "Decoration not found for index ${wallType.decorationWallIndex}" }
-                        return@forEachIndexed
-                    }
-                    if (levelDecoration.decorationID == -1) {
-                        Logger.e(TAG) { "Skipping decoration due to decorationId == 01" }
                         return@forEachIndexed
                     }
 
@@ -96,14 +88,6 @@ class ViewConeRepositoryImpl(
                         palette = sublevel.palette,
                         wallPosition = wallPosition,
                     )
-                }
-
-                Maz.WallType.DoorPoleType1 -> {
-                    // TODO()
-                }
-
-                Maz.WallType.DoorPoleType2 -> {
-                    TODO()
                 }
 
                 is Maz.WallType.DoorTypeOneWithButton -> {
@@ -140,7 +124,14 @@ class ViewConeRepositoryImpl(
                 }
 
                 is Maz.WallType.DoorTypeTwoWithoutButton -> {
-                    TODO()
+                    viewPort.drawDoor(
+                        wallPosition = wallPosition,
+                        door = sublevel.doors[1],
+                        vmp = sublevel.vmp,
+                        vcn = sublevel.vcn,
+                        palette = sublevel.palette,
+                        showButton = false
+                    )
                 }
 
                 is Maz.WallType.FixedWall -> {
@@ -155,10 +146,6 @@ class ViewConeRepositoryImpl(
 
                 Maz.WallType.NoWall -> {
                     // no-wall to render
-                }
-
-                Maz.WallType.PidgeonHole -> {
-                    TODO()
                 }
 
                 Maz.WallType.StairDown -> {
@@ -177,18 +164,6 @@ class ViewConeRepositoryImpl(
                         vcn = sublevel.vcn,
                         pal = sublevel.palette
                     )
-                }
-
-                Maz.WallType.StuckDoorType1 -> {
-                    // TODO()
-                }
-
-                Maz.WallType.StuckDoorType2 -> {
-                    TODO()
-                }
-
-                Maz.WallType.Teleport -> {
-                    // TODO()
                 }
             }
         }
