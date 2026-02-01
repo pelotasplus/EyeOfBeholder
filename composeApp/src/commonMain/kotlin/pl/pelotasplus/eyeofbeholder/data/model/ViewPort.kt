@@ -249,7 +249,8 @@ class ViewPort {
         vcn: Vcn,
         palette: Palette,
         door: Door,
-        showButton: Boolean
+        showButton: Boolean,
+        stuckDoor: Boolean = false
     ) {
         drawDoorFrame(
             wallPosition = wallPosition,
@@ -269,13 +270,19 @@ class ViewPort {
 
         val cps = door.cps
 
+        val deltaY = if (stuckDoor) {
+            5
+        } else {
+            0
+        }
+
         for (srcX in rectangle.x until rectangle.x + rectangle.w) {
-            for (srcY in rectangle.y until rectangle.y + rectangle.h) {
+            for (srcY in rectangle.y + deltaY until rectangle.y + rectangle.h) {
                 val pixel = cps.pixels[srcY * cps.width + srcX]
                 val color = palette.colors[pixel]
 
                 val targetX = srcX - rectangle.x + renderData.offsetInViewPortX
-                val targetY = srcY - rectangle.y + renderData.offsetInViewPortY
+                val targetY = srcY - rectangle.y + renderData.offsetInViewPortY - deltaY
                 draw(targetX, targetY, color)
             }
         }

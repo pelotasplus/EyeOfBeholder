@@ -13,9 +13,6 @@ data class Vmp(
     val backdrop: List<TileIndex>
         get() = tileIndexes.subList(0, BACKDROP_SIZE)
 
-    val wallTypesCount: Int
-        get() = (tileIndexes.size - BACKDROP_SIZE) / WALL_TYPE_SIZE
-
     fun getWallType(index: Int): List<TileIndex> {
         return tileIndexes.subList(
             BACKDROP_SIZE + (index * WALL_TYPE_SIZE),
