@@ -59,20 +59,20 @@ class ViewConeDebugViewModel(
                     }
 
                     // enter to the temple
-//                    onVmpSelected(
-//                        "LEVEL5.INF",
-//                        playerX = 14,
-//                        playerY = 9,
-//                        direction = Direction.WEST
-//                    )
+                    onVmpSelected(
+                        "LEVEL5.INF",
+                        playerX = 14,
+                        playerY = 9,
+                        direction = Direction.WEST
+                    )
 
                     // entrance to the temple, stairs down
-                    onVmpSelected(
-                        "LEVEL1.INF",
-                        playerX = 10,
-                        playerY = 12,
-                        direction = Direction.SOUTH
-                    )
+//                    onVmpSelected(
+//                        "LEVEL1.INF",
+//                        playerX = 10,
+//                        playerY = 12,
+//                        direction = Direction.SOUTH
+//                    )
                 }
                 .onFailure {
                     Logger.e(it) { "Error while loading level names" }

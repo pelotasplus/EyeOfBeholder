@@ -13,7 +13,6 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.navigation
 import androidx.navigation.compose.rememberNavController
 import kotlinx.coroutines.delay
-import androidx.compose.ui.tooling.preview.Preview
 import pl.pelotasplus.eyeofbeholder.features.cps_debug.CpsDebugScreen
 import pl.pelotasplus.eyeofbeholder.features.dec_debug.DecDebugScreen
 import pl.pelotasplus.eyeofbeholder.features.inf_debug.InfDebugScreen
@@ -25,7 +24,6 @@ import pl.pelotasplus.eyeofbeholder.features.view_cone_debug.ViewConeDebugScreen
 import pl.pelotasplus.eyeofbeholder.navigation.Route
 
 @Composable
-@Preview
 fun App() {
     MaterialTheme {
         val navController = rememberNavController()
