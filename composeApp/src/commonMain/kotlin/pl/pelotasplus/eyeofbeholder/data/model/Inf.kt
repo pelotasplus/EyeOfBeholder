@@ -7,4 +7,5 @@ data class Inf(
     val subLevels: List<SubLevel>,
     val script: List<Script>,
     val messages: List<String>,
+    val items: List<Item>
 )

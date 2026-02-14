@@ -21,7 +21,8 @@ interface ViewConeRepository {
 }
 
 class ViewConeRepositoryImpl(
-    private val infRepository: InfRepository
+    private val infRepository: InfRepository,
+    private val itemsRepository: ItemsRepository
 ) : ViewConeRepository {
 
     private val viewPort = ViewPort()
@@ -185,7 +186,8 @@ class ViewConeRepositoryImpl(
     override suspend fun loadLevel(
         name: String,
     ): Result<Inf> {
-        return infRepository.loadInf(name.replace(".MAZ", ".INF"))
+        val items = itemsRepository.loadItems().getOrThrow()
+        return infRepository.loadInf(name.replace(".MAZ", ".INF"), items)
     }
 
     companion object {

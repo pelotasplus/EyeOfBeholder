@@ -8,6 +8,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.Dec
 import pl.pelotasplus.eyeofbeholder.data.model.Decoration
 import pl.pelotasplus.eyeofbeholder.data.model.Door
 import pl.pelotasplus.eyeofbeholder.data.model.Inf
+import pl.pelotasplus.eyeofbeholder.data.model.Item
 import pl.pelotasplus.eyeofbeholder.data.model.Location
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterGfx
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterProperty
@@ -42,7 +43,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.script.UpdateScreen
 import pl.pelotasplus.eyeofbeholder.data.model.script.Wait
 
 interface InfRepository {
-    suspend fun loadInf(name: String): Result<Inf>
+    suspend fun loadInf(name: String, items: List<Item>): Result<Inf>
 
     suspend fun getAllInfNames(): Result<List<String>>
 }
@@ -59,14 +60,14 @@ class InfRepositoryImpl(
 
     private val TAG = "InfRepository"
 
-    override suspend fun loadInf(name: String): Result<Inf> {
+    override suspend fun loadInf(name: String, items: List<Item>): Result<Inf> {
         return runCatching {
             val decompressed = resourceRepository.decompressResource("files/$name")
-            decodeInf(name, decompressed)
+            decodeInf(name, decompressed, items)
         }
     }
 
-    private suspend fun decodeInf(name: String, bytes: UByteArray): Inf {
+    private suspend fun decodeInf(name: String, bytes: UByteArray, items: List<Item>): Inf {
         val reader = ByteReader(bytes)
 
         val offsetBlockB = reader.readU16LE()
@@ -289,11 +290,16 @@ class InfRepositoryImpl(
             }
         }
 
+        items.forEach {
+            Logger.d(TAG) { "XXX Got item: $it" }
+        }
+
         return Inf(
             name = name,
             subLevels = subLevels.toList(),
             script = script,
-            messages = messages
+            messages = messages,
+            items = items
         )
     }
 

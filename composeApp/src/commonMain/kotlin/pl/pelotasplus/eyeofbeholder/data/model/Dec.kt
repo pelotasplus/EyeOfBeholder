@@ -46,4 +46,8 @@ data class Dec(
         val w: Int,
         val h: Int,
     )
+
+    override fun toString(): String {
+        return "Dec(name='$name', decorations=${decorations.size}, rectangles=${rectangles.size})"
+    }
 }

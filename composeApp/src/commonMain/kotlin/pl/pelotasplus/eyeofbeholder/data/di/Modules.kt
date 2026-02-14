@@ -8,6 +8,8 @@ import pl.pelotasplus.eyeofbeholder.data.repository.DecRepository
 import pl.pelotasplus.eyeofbeholder.data.repository.DecRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.InfRepository
 import pl.pelotasplus.eyeofbeholder.data.repository.InfRepositoryImpl
+import pl.pelotasplus.eyeofbeholder.data.repository.ItemsRepository
+import pl.pelotasplus.eyeofbeholder.data.repository.ItemsRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.MazRepository
 import pl.pelotasplus.eyeofbeholder.data.repository.MazRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.PalRepository
@@ -32,6 +34,9 @@ val sharedDataModule = module {
     factory<CpsRepository> {
         CpsRepositoryImpl(get())
     }
+    factory<ItemsRepository> {
+        ItemsRepositoryImpl(get())
+    }
     factory<DecRepository> {
         DecRepositoryImpl(get())
     }
@@ -48,6 +53,6 @@ val sharedDataModule = module {
         VmpRepositoryImpl(get())
     }
     factory<ViewConeRepository> {
-        ViewConeRepositoryImpl(get())
+        ViewConeRepositoryImpl(get(), get())
     }
 }

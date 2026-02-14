@@ -52,7 +52,7 @@ class InfDebugViewModel(
 
     private fun onInfSelected(name: String) {
         viewModelScope.launch {
-            infRepository.loadInf(name)
+            infRepository.loadInf(name, emptyList())
                 .onSuccess { level ->
                     _state.update {
                         it.copy(
