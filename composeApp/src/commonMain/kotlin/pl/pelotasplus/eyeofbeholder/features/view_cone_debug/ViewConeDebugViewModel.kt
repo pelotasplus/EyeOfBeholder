@@ -150,6 +150,7 @@ class ViewConeDebugViewModel(
     private fun renderViewPort() {
         viewModelScope.launch {
             viewConeRepository.renderPosition(
+                items = _state.value.inf!!.items,
                 sublevel = _state.value.inf!!.subLevels[0],
                 playerX = _state.value.playerX,
                 playerY = _state.value.playerY,

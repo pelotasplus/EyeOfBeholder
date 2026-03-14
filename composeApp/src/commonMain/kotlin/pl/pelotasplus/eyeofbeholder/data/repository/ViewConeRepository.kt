@@ -3,6 +3,7 @@ package pl.pelotasplus.eyeofbeholder.data.repository
 import co.touchlab.kermit.Logger
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.Inf
+import pl.pelotasplus.eyeofbeholder.data.model.Item
 import pl.pelotasplus.eyeofbeholder.data.model.Maz
 import pl.pelotasplus.eyeofbeholder.data.model.SubLevel
 import pl.pelotasplus.eyeofbeholder.data.model.ViewPort
@@ -13,6 +14,7 @@ interface ViewConeRepository {
     suspend fun loadLevel(name: String): Result<Inf>
 
     suspend fun renderPosition(
+        items: List<Item>,
         sublevel: SubLevel,
         playerX: Int,
         playerY: Int,
@@ -28,6 +30,7 @@ class ViewConeRepositoryImpl(
     private val viewPort = ViewPort()
 
     override suspend fun renderPosition(
+        items: List<Item>,
         sublevel: SubLevel,
         playerX: Int,
         playerY: Int,
@@ -41,11 +44,31 @@ class ViewConeRepositoryImpl(
 
         // Data-driven wall rendering using wallPositionMappings
         wallPositionMappings.forEachIndexed { wallPosition, mapping ->
+            println("XXX wallPosition $wallPosition")
+
             // Transform coordinates based on player direction
             val (dx, dy) = direction.transformCoordinates(
                 mapping.relativeX,
                 mapping.relativeY
             )
+
+            println("XXX wallPosition $wallPosition -> dx $dx dy $dy")
+
+            println("XXX level ${sublevel.index} playerX $playerX playerY $playerY dx $dx dy $dy}")
+
+            val matchingItems = items.filter {
+                it.level == sublevel.level &&
+                it.location.x == playerX + dx &&
+                it.location.y == playerY + dy
+            }
+
+            matchingItems.forEach { item ->
+                println("XXX matching item ${item.nameUnidentified} -> icon: ${item.icon} -> type: ${item.type} -> pos: ${item.pos}")
+
+                check(item.pos == 8 || item.pos < 4) {
+                    "Invalid item position: ${item.pos}"
+                }
+            }
 
             // Calculate actual maze position
             val mazX = playerX + dx

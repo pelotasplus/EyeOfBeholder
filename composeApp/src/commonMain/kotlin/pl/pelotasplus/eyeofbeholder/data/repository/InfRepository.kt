@@ -68,6 +68,8 @@ class InfRepositoryImpl(
     }
 
     private suspend fun decodeInf(name: String, bytes: UByteArray, items: List<Item>): Inf {
+        val levelNumber = name.replace("LEVEL", "").replace(".INF", "").toInt()
+
         val reader = ByteReader(bytes)
 
         val offsetBlockB = reader.readU16LE()
@@ -75,6 +77,7 @@ class InfRepositoryImpl(
 
         val subLevels = mutableListOf<SubLevel>()
 
+        var subLevelIndex = 0
         while (reader.offset < offsetBlockB) {
             val nextSubLevelOffset = reader.readU16LE()
             Logger.d(TAG) { "Starting sublevel at ${reader.offset} nextSubLevelOffset $nextSubLevelOffset offsetBlockB offset is $offsetBlockB" }
@@ -208,7 +211,8 @@ class InfRepositoryImpl(
 
             subLevels.add(
                 SubLevel(
-                    index = 0,
+                    level = levelNumber,
+                    index = subLevelIndex,
                     maz = maz,
                     vmp = vmp,
                     vcn = vcn,
@@ -221,6 +225,8 @@ class InfRepositoryImpl(
                     decorations = decorations
                 )
             )
+
+            subLevelIndex += 1
 
             Logger.d(TAG) { "Done reading sublevel offset is ${reader.offset} offsetBlockB $offsetBlockB" }
         }
@@ -290,8 +296,8 @@ class InfRepositoryImpl(
             }
         }
 
-        items.forEach {
-            Logger.d(TAG) { "XXX Got item: $it" }
+        items.filter { it.level == levelNumber }.forEachIndexed { index, item ->
+            Logger.d(TAG) { "XXX Got item: $index -> $item" }
         }
 
         return Inf(
