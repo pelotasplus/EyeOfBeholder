@@ -1,6 +1,7 @@
 package pl.pelotasplus.eyeofbeholder.data.repository
 
 import co.touchlab.kermit.Logger
+import pl.pelotasplus.eyeofbeholder.data.model.Cps
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.Inf
 import pl.pelotasplus.eyeofbeholder.data.model.Item
@@ -24,10 +25,18 @@ interface ViewConeRepository {
 
 class ViewConeRepositoryImpl(
     private val infRepository: InfRepository,
-    private val itemsRepository: ItemsRepository
+    private val itemsRepository: ItemsRepository,
+    private val cpsRepository: CpsRepository,
 ) : ViewConeRepository {
 
     private val viewPort = ViewPort()
+    private var itemIconsCps: Cps? = null
+
+    private suspend fun getItemIconsCps(): Cps {
+        return itemIconsCps ?: cpsRepository.loadCps("ITEMS1.CPS").getOrThrow().also {
+            itemIconsCps = it
+        }
+    }
 
     override suspend fun renderPosition(
         items: List<Item>,
@@ -42,32 +51,20 @@ class ViewConeRepositoryImpl(
             pal = sublevel.palette
         )
 
+        val smallIcons = getItemIconsCps()
+
         // Data-driven wall rendering using wallPositionMappings
         wallPositionMappings.forEachIndexed { wallPosition, mapping ->
-            println("XXX wallPosition $wallPosition")
-
             // Transform coordinates based on player direction
             val (dx, dy) = direction.transformCoordinates(
                 mapping.relativeX,
                 mapping.relativeY
             )
 
-            println("XXX wallPosition $wallPosition -> dx $dx dy $dy")
-
-            println("XXX level ${sublevel.index} playerX $playerX playerY $playerY dx $dx dy $dy}")
-
             val matchingItems = items.filter {
                 it.level == sublevel.level &&
-                it.location.x == playerX + dx &&
-                it.location.y == playerY + dy
-            }
-
-            matchingItems.forEach { item ->
-                println("XXX matching item ${item.nameUnidentified} -> icon: ${item.icon} -> type: ${item.type} -> pos: ${item.pos}")
-
-                check(item.pos == 8 || item.pos < 4) {
-                    "Invalid item position: ${item.pos}"
-                }
+                        it.location.x == playerX + dx &&
+                        it.location.y == playerY + dy
             }
 
             // Calculate actual maze position
@@ -200,6 +197,21 @@ class ViewConeRepositoryImpl(
                         pal = sublevel.palette
                     )
                 }
+            }
+
+            for (item in matchingItems) {
+                Logger.d(TAG) { "drawItem ${item.nameUnidentified} icon=${item.icon} type=${item.type} pos=${item.pos}" }
+                if (item.pos != 8 && item.pos >= 4) {
+                    Logger.w(TAG) { "Unexpected item position: ${item.pos}, skipping" }
+                    continue
+                }
+                viewPort.drawItem(
+                    wallPosition = wallPosition,
+                    itemIconsCps = smallIcons,
+                    palette = sublevel.palette,
+                    iconIdx = item.icon,
+                    iconPosition = item.pos
+                )
             }
         }
 

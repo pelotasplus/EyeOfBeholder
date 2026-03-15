@@ -29,15 +29,15 @@ class ItemsRepositoryImpl(
                         Item(
                             nameUnidentifiedId = reader.readU8(),
                             nameIdentifiedId = reader.readU8(),
-                            flags = reader.readU8(),
-                            icon = reader.readI8(),
-                            type = reader.readI8(),
-                            pos = reader.readI8(),
+                            flags = reader.readU8(), // flags (e.g. 128 = identified)
+                            icon = reader.readI8(), // icon index (→ ITEMICN + shape map)
+                            type = reader.readI8(), // item type index (→ itemtype.dat)
+                            pos = reader.readI8(), // position (0-3 floor, 8 niche)
                             location = Location.read(reader),
                             next = reader.readI16LE(),
                             prev = reader.readI16LE(),
                             level = reader.readU8(),
-                            value = reader.readI8()
+                            value = reader.readI8() // magical bonus value
                         )
                     )
                 }
