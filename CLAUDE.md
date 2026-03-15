@@ -5,7 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Project Overview
 
 Eye of Beholder is a Kotlin Multiplatform project (Android, iOS, Web, Desktop) built with Compose Multiplatform.
-It's a game asset viewer/debugger for parsing and rendering classic Eye of the Beholder game files including level data (INF), mazes (MAZ), tiles (VCN), viewport mappings (VMP), palettes (PAL), and graphics (CPS).
+It's a game asset viewer/debugger for parsing and rendering classic Eye of the Beholder game files including level data (INF), mazes (MAZ), tiles (VCN), viewport mappings (VMP), palettes (PAL), graphics (CPS), decorations (DEC), items (ITEM.DAT), and more.
 Eventually it will be a full Eye of Beholder recreation.
 
 ## Common Commands
@@ -78,19 +78,21 @@ The codebase follows clean MVVM architecture with clear separation:
 composeApp/src/commonMain/kotlin/pl/pelotasplus/eyeofbeholder/
 ├── di/                    # Dependency Injection (Koin)
 ├── data/
-│   ├── model/            # Domain models (Inf, Maz, Vcn, Vmp, etc.)
-│   ├── repository/       # Data access layer
+│   ├── model/            # Domain models (Inf, Maz, Vcn, Vmp, Item, etc.)
+│   │   └── script/       # Script token types (29 opcodes)
+│   ├── repository/       # Data access layer (10 repositories)
 │   ├── ByteReader.kt     # Binary file parsing utility
 │   └── LCWHelper.kt      # LCW compression/decompression
 ├── features/             # Feature modules (each self-contained)
+│   ├── main_debug/      # Main menu / navigation hub
 │   ├── inf_debug/       # Level information debugging
 │   ├── maz_debug/       # Maze layout debugging
 │   ├── vcn_debug/       # Tile set debugging
-│   ├── vmp_debug/       # Viewport mapping debugging
 │   ├── pal_debug/       # Palette debugging
 │   ├── cps_debug/       # Graphics debugging
-│   └── view_cone_debug/ # 3D view rendering
-└── navigation/          # Navigation routing
+│   ├── dec_debug/       # Decoration debugging
+│   └── view_cone_debug/ # 3D viewport rendering
+└── navigation/          # Navigation routing (8 routes)
 ```
 
 ### Feature Module Pattern
@@ -136,7 +138,10 @@ val sharedFeaturesMyModule = module {
    - **MazRepository**: `.MAZ` → `Maz` (32x32 dungeon grid)
    - **VcnRepository**: `.VCN` → `Vcn` (8x8 pixel tiles)
    - **VmpRepository**: `.VMP` → `Vmp` (viewport mapping data)
-   - **InfRepository**: `.INF` → `Inf` (level data + scripts)
+   - **InfRepository**: `.INF` → `Inf` (level data, scripts, items)
+   - **CpsRepository**: `.CPS` → `Cps` (graphics/images)
+   - **DecRepository**: `.DEC` → `Dec` (wall decorations)
+   - **ItemsRepository**: `ITEM.DAT` → `List<Item>` (game items with types and names)
    - **ViewConeRepository**: Orchestrates multiple repos to render 3D viewport
 
 3. **Result-Oriented Error Handling**: All repository methods return `Result<T>`
@@ -149,8 +154,8 @@ val sharedFeaturesMyModule = module {
 ### Key Domain Models
 
 **Inf (Level Information)**
-- Contains sublevel definitions, game scripts, and messages
-- Scripts use 20+ opcodes (SetWall, OpenDoor, CreateMonster, etc.)
+- Contains sublevel definitions, game scripts, messages, and items
+- Scripts use 29 opcodes (SetWall, OpenDoor, CreateMonster, NewItem, ConsumeItem, etc.)
 - Compressed with LCW algorithm
 
 **Maz (Maze Layout)**
@@ -169,10 +174,40 @@ val sharedFeaturesMyModule = module {
 - Backdrop layer (330 tiles) + 25 wall positions for 3D depth
 - Tile indices encode: z-mask (bit 15), mirror_x (bit 14), tile_index (bits 0-13)
 
+**Item & ItemType**
+- `Item`: Individual item instance with location, level, linked-list pointers (next/prev), icon, flags
+- `ItemType`: Category definition with RPG stats (damage dice, armor class, allowed classes, required hands)
+- Items are parsed from `ITEM.DAT` and integrated into level data via `InfRepository`
+
+**SubLevel**
+- Composite of maz, vmp, vcn, palette, scripts, monsters, doors, decorations, and sound
+- Represents a single floor/area within a level
+
 **ViewPort (3D Rendering)**
 - Composite view combining backdrop + wall layers
-- 25 wall positions create 3D depth illusion
-- Supports wall flipping and transparency
+- 25 wall positions create 3D depth illusion across 4 rendering layers
+- Supports wall flipping, transparency, doors (with stuck variants), stairs, and decorations
+- Draws decorations via linked-list parts with position mapping
+
+**WallPositionMapping & Direction**
+- 25-element mapping from viewport wall positions to maze-relative coordinates
+- `Direction` enum with `transformCoordinates()` and `transformWallSide()` for rotating coordinates based on player facing direction
+- `WallSide` enum for cardinal directions in absolute maze coordinates
+
+**WallRenderData & DoorRenderData**
+- Pixel-level rendering configuration for each of the 25 wall positions
+- Door-specific rendering offsets and dimensions
+
+**Location**
+- Simple x,y coordinate wrapper with parsing from packed byte format
+
+**Script Tokens (29 types)**
+- Control flow: Goto, GoSub, Return, End, Conditional, Eval
+- World manipulation: SetWall, ToggleWall, OpenDoor, CloseDoor, Teleport
+- Items: NewItem, ConsumeItem (DeleteHandItem/DeleteBlockItem)
+- Entities: CreateMonster, Encounter, NewLevelOrMonster
+- Effects: Message, Dialog, Sound, Damage, Launcher, SpecialEvent
+- Other: SetFlag, ClearFlag, Wait, Turn, UpdateScreen
 
 ### Important Patterns
 
@@ -230,6 +265,16 @@ The project uses Koin for DI with a modular structure:
 2. **Data module** in `data/di/Modules.kt` (repositories)
 3. **Feature modules** in `features/*/di/Modules.kt` (ViewModels)
 
+Currently registered modules:
+- `sharedDataModule` — all repositories
+- `sharedFeaturesPalDebugModule`
+- `sharedFeaturesCpsDebugModule`
+- `sharedFeaturesDecDebugModule`
+- `sharedFeaturesInfDebugModule`
+- `sharedFeaturesMazDebugModule`
+- `sharedFeaturesVcnDebugModule`
+- `sharedFeaturesViewConeDebugModule`
+
 To add a new feature:
 ```kotlin
 // 1. Create feature DI module
@@ -270,7 +315,7 @@ Logger.e { "Error message" }
 Game assets are loaded via Compose Multiplatform resources (`Res.readBytes()`). The `ResourceRepository` maintains a manifest of 250+ asset files (CPS, MAZ, VCN, VMP, PAL, INF, etc.).
 
 ### Navigation
-Type-safe navigation using `androidx.navigation.compose` with sealed class routes defined in `navigation/Route.kt`.
+Type-safe navigation using `androidx.navigation.compose` with `@Serializable` sealed interface routes defined in `navigation/Route.kt`. Routes: `DebugGraph`, `MainDebug`, `DecDebug`, `PalDebug`, `CpsDebug`, `InfDebug`, `MazDebug`, `VcnDebug`, `ViewConeDebug`.
 
 ## Adding a New Feature
 
