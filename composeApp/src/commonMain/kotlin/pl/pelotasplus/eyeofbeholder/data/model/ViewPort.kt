@@ -177,7 +177,7 @@ class ViewPort {
         vcn: Vcn,
         pal: Palette
     ) {
-        Logger.d(TAG) { "drawWall wallPosition: $wallPosition wallType: $wallType"}
+        Logger.d(TAG) { "drawWall wallPosition: $wallPosition wallType: $wallType" }
 
         val renderData = wallRenderData[wallPosition]
 
@@ -448,6 +448,124 @@ class ViewPort {
     fun getRows(): List<List<RGB>> {
         return pixels.chunked(COLS)
     }
+
+    fun drawItem(
+        itemIconsCps: Cps,
+        palette: Palette,
+        iconIdx: Int,
+        iconPosition: Int,
+        wallPosition: Int
+    ) {
+        val origItemIcon = itemIconsCps.getItemIcon(iconIdx) ?: return
+
+        val itemIcon = if (iconPosition == 8) {
+            when (wallPosition) {
+                21 -> {
+                    scaleDown(origItemIcon)
+                }
+
+                15, 16, 17 -> {
+                    scaleDown(scaleDown(origItemIcon))
+                }
+
+                8 -> {
+                    // too far even though shelf/niche is visible in-game
+                    return
+                }
+
+                else -> {
+                    // not showing at position
+                    return
+                }
+            }
+        } else {
+            return
+        }
+
+        val startY = if (iconPosition == 8) {
+            when (wallPosition) {
+                21 -> 40
+                15, 16, 17 -> 39
+                else -> 0
+            }
+        } else {
+            0
+        }
+
+        val startX = if (iconPosition == 8) {
+            when (wallPosition) {
+                21 -> (COLS - itemIcon.w) / 2
+                17 -> (COLS - itemIcon.w) / 2 + 80
+                16 -> (COLS - itemIcon.w) / 2
+                15 -> 0
+                8 -> (COLS - itemIcon.w) / 2
+                else -> 0
+            }
+        } else {
+            0
+        }
+
+        for (y in 0 until itemIcon.h) {
+            for (x in 0 until itemIcon.w) {
+                val pixelIndex = itemIcon.pixels[y * itemIcon.w + x]
+                if (pixelIndex == 0) continue
+                val color = palette.colors[pixelIndex]
+                draw(startX + x, startY + y, color)
+            }
+        }
+    }
+
+    private fun scaleDown(
+        itemIcon: Cps.ItemIcon
+    ): Cps.ItemIcon {
+        val output = mutableListOf<Int>()
+
+        // --- Row pass: keep row 0, keep row 1, skip row 2, repeat ---
+        var row = 0
+        while (row < itemIcon.h) {
+            // keep row
+            val rowStart = row * itemIcon.w
+            output.addAll(scaleRow(itemIcon.pixels.subList(rowStart, rowStart + itemIcon.w)))
+            row++
+
+            if (row >= itemIcon.h) break
+
+            // keep row
+            val rowStart2 = row * itemIcon.w
+            output.addAll(scaleRow(itemIcon.pixels.subList(rowStart2, rowStart2 + itemIcon.w)))
+            row++
+
+            if (row >= itemIcon.h) break
+
+            // skip row
+            row++
+        }
+
+        val outWidth = scaleRow(itemIcon.pixels.subList(0, itemIcon.w)).size
+        val outHeight = output.size / outWidth
+        return Cps.ItemIcon(w = outWidth, h = outHeight, pixels = output)
+    }
+
+    // Column pass: for every 6 pixels keep [0,1,3,4], drop [2,5]
+    private fun scaleRow(row: List<Int>): List<Int> {
+        val out = mutableListOf<Int>()
+        var col = 0
+        while (col + 5 < row.size) {
+            out.add(row[col])      // keep p0
+            out.add(row[col + 1])  // keep p1
+            // drop row[col + 2]   // drop p2
+            out.add(row[col + 3])  // keep p3
+            out.add(row[col + 4])  // keep p4
+            // drop row[col + 5]   // drop p5
+            col += 6
+        }
+        // remainder: keep whatever is left (1 or 2 pixels)
+        while (col < row.size) {
+            out.add(row[col++])
+        }
+        return out
+    }
+
 
     companion object {
         private const val TAG = "ViewPort"

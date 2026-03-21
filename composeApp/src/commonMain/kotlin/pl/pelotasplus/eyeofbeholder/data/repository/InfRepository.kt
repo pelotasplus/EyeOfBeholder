@@ -8,6 +8,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.Dec
 import pl.pelotasplus.eyeofbeholder.data.model.Decoration
 import pl.pelotasplus.eyeofbeholder.data.model.Door
 import pl.pelotasplus.eyeofbeholder.data.model.Inf
+import pl.pelotasplus.eyeofbeholder.data.model.Item
 import pl.pelotasplus.eyeofbeholder.data.model.Location
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterGfx
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterProperty
@@ -42,7 +43,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.script.UpdateScreen
 import pl.pelotasplus.eyeofbeholder.data.model.script.Wait
 
 interface InfRepository {
-    suspend fun loadInf(name: String): Result<Inf>
+    suspend fun loadInf(name: String, items: List<Item>): Result<Inf>
 
     suspend fun getAllInfNames(): Result<List<String>>
 }
@@ -59,14 +60,16 @@ class InfRepositoryImpl(
 
     private val TAG = "InfRepository"
 
-    override suspend fun loadInf(name: String): Result<Inf> {
+    override suspend fun loadInf(name: String, items: List<Item>): Result<Inf> {
         return runCatching {
             val decompressed = resourceRepository.decompressResource("files/$name")
-            decodeInf(name, decompressed)
+            decodeInf(name, decompressed, items)
         }
     }
 
-    private suspend fun decodeInf(name: String, bytes: UByteArray): Inf {
+    private suspend fun decodeInf(name: String, bytes: UByteArray, items: List<Item>): Inf {
+        val levelNumber = name.replace("LEVEL", "").replace(".INF", "").toInt()
+
         val reader = ByteReader(bytes)
 
         val offsetBlockB = reader.readU16LE()
@@ -74,6 +77,7 @@ class InfRepositoryImpl(
 
         val subLevels = mutableListOf<SubLevel>()
 
+        var subLevelIndex = 0
         while (reader.offset < offsetBlockB) {
             val nextSubLevelOffset = reader.readU16LE()
             Logger.d(TAG) { "Starting sublevel at ${reader.offset} nextSubLevelOffset $nextSubLevelOffset offsetBlockB offset is $offsetBlockB" }
@@ -207,7 +211,8 @@ class InfRepositoryImpl(
 
             subLevels.add(
                 SubLevel(
-                    index = 0,
+                    level = levelNumber,
+                    index = subLevelIndex,
                     maz = maz,
                     vmp = vmp,
                     vcn = vcn,
@@ -220,6 +225,8 @@ class InfRepositoryImpl(
                     decorations = decorations
                 )
             )
+
+            subLevelIndex += 1
 
             Logger.d(TAG) { "Done reading sublevel offset is ${reader.offset} offsetBlockB $offsetBlockB" }
         }
@@ -289,11 +296,16 @@ class InfRepositoryImpl(
             }
         }
 
+        items.filter { it.level == levelNumber }.forEachIndexed { index, item ->
+            Logger.d(TAG) { "XXX Got item: $index -> $item" }
+        }
+
         return Inf(
             name = name,
             subLevels = subLevels.toList(),
             script = script,
-            messages = messages
+            messages = messages,
+            items = items
         )
     }
 

@@ -1,8 +1,10 @@
 package pl.pelotasplus.eyeofbeholder.data.repository
 
 import co.touchlab.kermit.Logger
+import pl.pelotasplus.eyeofbeholder.data.model.Cps
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.Inf
+import pl.pelotasplus.eyeofbeholder.data.model.Item
 import pl.pelotasplus.eyeofbeholder.data.model.Maz
 import pl.pelotasplus.eyeofbeholder.data.model.SubLevel
 import pl.pelotasplus.eyeofbeholder.data.model.ViewPort
@@ -13,6 +15,7 @@ interface ViewConeRepository {
     suspend fun loadLevel(name: String): Result<Inf>
 
     suspend fun renderPosition(
+        items: List<Item>,
         sublevel: SubLevel,
         playerX: Int,
         playerY: Int,
@@ -21,12 +24,22 @@ interface ViewConeRepository {
 }
 
 class ViewConeRepositoryImpl(
-    private val infRepository: InfRepository
+    private val infRepository: InfRepository,
+    private val itemsRepository: ItemsRepository,
+    private val cpsRepository: CpsRepository,
 ) : ViewConeRepository {
 
     private val viewPort = ViewPort()
+    private var itemIconsCps: Cps? = null
+
+    private suspend fun getItemIconsCps(): Cps {
+        return itemIconsCps ?: cpsRepository.loadCps("ITEMS1.CPS").getOrThrow().also {
+            itemIconsCps = it
+        }
+    }
 
     override suspend fun renderPosition(
+        items: List<Item>,
         sublevel: SubLevel,
         playerX: Int,
         playerY: Int,
@@ -38,6 +51,8 @@ class ViewConeRepositoryImpl(
             pal = sublevel.palette
         )
 
+        val smallIcons = getItemIconsCps()
+
         // Data-driven wall rendering using wallPositionMappings
         wallPositionMappings.forEachIndexed { wallPosition, mapping ->
             // Transform coordinates based on player direction
@@ -45,6 +60,12 @@ class ViewConeRepositoryImpl(
                 mapping.relativeX,
                 mapping.relativeY
             )
+
+            val matchingItems = items.filter {
+                it.level == sublevel.level &&
+                        it.location.x == playerX + dx &&
+                        it.location.y == playerY + dy
+            }
 
             // Calculate actual maze position
             val mazX = playerX + dx
@@ -177,6 +198,21 @@ class ViewConeRepositoryImpl(
                     )
                 }
             }
+
+            for (item in matchingItems) {
+                Logger.d(TAG) { "drawItem ${item.nameUnidentified} icon=${item.icon} type=${item.type} pos=${item.pos}" }
+                if (item.pos != 8 && item.pos >= 4) {
+                    Logger.w(TAG) { "Unexpected item position: ${item.pos}, skipping" }
+                    continue
+                }
+                viewPort.drawItem(
+                    wallPosition = wallPosition,
+                    itemIconsCps = smallIcons,
+                    palette = sublevel.palette,
+                    iconIdx = item.icon,
+                    iconPosition = item.pos
+                )
+            }
         }
 
         return Result.success(viewPort)
@@ -185,7 +221,8 @@ class ViewConeRepositoryImpl(
     override suspend fun loadLevel(
         name: String,
     ): Result<Inf> {
-        return infRepository.loadInf(name.replace(".MAZ", ".INF"))
+        val items = itemsRepository.loadItems().getOrThrow()
+        return infRepository.loadInf(name.replace(".MAZ", ".INF"), items)
     }
 
     companion object {

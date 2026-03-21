@@ -1,6 +1,7 @@
 package pl.pelotasplus.eyeofbeholder.data.model
 
 data class SubLevel(
+    val level: Int,
     val index: Int,
     val maz: Maz,
     val vmp: Vmp,

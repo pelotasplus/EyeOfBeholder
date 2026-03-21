@@ -20,6 +20,10 @@ data class Vmp(
         )
     }
 
+    override fun toString(): String {
+        return "Vmp(name='$name', tileIndexes=${tileIndexes.size})"
+    }
+
     companion object {
         const val BACKDROP_SIZE = 330
         const val WALL_TYPE_SIZE = 431

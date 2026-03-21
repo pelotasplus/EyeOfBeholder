@@ -59,11 +59,20 @@ class ViewConeDebugViewModel(
                     }
 
                     // enter to the temple
+//                    onVmpSelected(
+//                        "LEVEL5.INF",
+//                        playerX = 14,
+//                        playerY = 9,
+//                        direction = Direction.WEST
+//                    )
+
+                    // temple level 2
+                    // https://gamerwalkthroughs.com/eye-of-the-beholder-2/temple-level-2/
                     onVmpSelected(
-                        "LEVEL5.INF",
-                        playerX = 14,
-                        playerY = 9,
-                        direction = Direction.WEST
+                        "LEVEL6.INF",
+                        playerX = 20, //10,
+                        playerY = 5, //3,
+                        direction = Direction.EAST, // Direction.NORTH
                     )
 
                     // entrance to the temple, stairs down
@@ -141,6 +150,7 @@ class ViewConeDebugViewModel(
     private fun renderViewPort() {
         viewModelScope.launch {
             viewConeRepository.renderPosition(
+                items = _state.value.inf!!.items,
                 sublevel = _state.value.inf!!.subLevels[0],
                 playerX = _state.value.playerX,
                 playerY = _state.value.playerY,
