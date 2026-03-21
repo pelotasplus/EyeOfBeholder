@@ -8,6 +8,9 @@ import pl.pelotasplus.eyeofbeholder.data.model.Item
 import pl.pelotasplus.eyeofbeholder.data.model.Maz
 import pl.pelotasplus.eyeofbeholder.data.model.SubLevel
 import pl.pelotasplus.eyeofbeholder.data.model.ViewPort
+import pl.pelotasplus.eyeofbeholder.data.model.WallSide
+import pl.pelotasplus.eyeofbeholder.data.model.dungeon.DungeonState
+import pl.pelotasplus.eyeofbeholder.data.model.dungeon.getWall
 import pl.pelotasplus.eyeofbeholder.data.model.getWall
 import pl.pelotasplus.eyeofbeholder.data.model.wallPositionMappings
 
@@ -42,6 +45,16 @@ import pl.pelotasplus.eyeofbeholder.data.model.wallPositionMappings
 interface ViewConeRepository {
     suspend fun loadLevel(name: String): Result<Inf>
 
+    /** Render from mutable dungeon state (gameplay mode). */
+    suspend fun renderPosition(
+        dungeonState: DungeonState,
+        subLevelIndex: Int,
+        playerX: Int,
+        playerY: Int,
+        direction: Direction
+    ): Result<ViewPort>
+
+    /** Render from immutable parsed data (debug/viewer mode). */
     suspend fun renderPosition(
         items: List<Item>,
         sublevel: SubLevel,
@@ -245,6 +258,173 @@ class ViewConeRepositoryImpl(
                     iconPosition = item.pos
                 )
             }
+        }
+
+        return Result.success(viewPort)
+    }
+
+    override suspend fun renderPosition(
+        dungeonState: DungeonState,
+        subLevelIndex: Int,
+        playerX: Int,
+        playerY: Int,
+        direction: Direction
+    ): Result<ViewPort> {
+        val sublevel = dungeonState.subLevels[subLevelIndex]
+        Logger.d(TAG) { "Render position (dungeon) $playerX x $playerY level ${sublevel.level}" }
+
+        viewPort.drawBackdrop(
+            vmp = sublevel.vmp,
+            vcn = sublevel.vcn,
+            pal = sublevel.palette
+        )
+
+        val smallIcons = getItemIconsCps()
+
+        wallPositionMappings.forEachIndexed { wallPosition, mapping ->
+            val (dx, dy) = direction.transformCoordinates(
+                mapping.relativeX,
+                mapping.relativeY
+            )
+
+            val mazX = playerX + dx
+            val mazY = playerY + dy
+
+            if (mazX !in 0 until dungeonState.width || mazY !in 0 until dungeonState.height) {
+                return@forEachIndexed
+            }
+
+            val square = dungeonState[mazX, mazY]
+
+            val actualWallSide = direction.transformWallSide(mapping.wallSide)
+
+            // Render walls (same dispatch logic as the immutable overload)
+            when (val wallType = square.getWall(actualWallSide)) {
+                is Maz.WallType.Decoration -> {
+                    val levelDecoration =
+                        sublevel.decorations.find { it.wallIndex == wallType.decorationWallIndex }
+                    if (levelDecoration == null) {
+                        Logger.e(TAG) { "Decoration not found for index ${wallType.decorationWallIndex}" }
+                        return@forEachIndexed
+                    }
+
+                    if (levelDecoration.specialType == 5) {
+                        viewPort.drawDoor(
+                            wallPosition = wallPosition,
+                            vmp = sublevel.vmp,
+                            vcn = sublevel.vcn,
+                            palette = sublevel.palette,
+                            door = sublevel.doors[0],
+                            showButton = false,
+                            stuckDoor = true
+                        )
+                    } else if (levelDecoration.wallType != 0) {
+                        viewPort.drawWall(
+                            wallType = levelDecoration.wallType,
+                            wallPosition = wallPosition,
+                            vmp = sublevel.vmp,
+                            vcn = sublevel.vcn,
+                            pal = sublevel.palette
+                        )
+                    }
+
+                    viewPort.drawDecoration(
+                        decoration = levelDecoration,
+                        palette = sublevel.palette,
+                        wallPosition = wallPosition,
+                    )
+                }
+
+                is Maz.WallType.DoorTypeOneWithButton -> {
+                    viewPort.drawDoor(
+                        wallPosition = wallPosition,
+                        door = sublevel.doors[0],
+                        vmp = sublevel.vmp,
+                        vcn = sublevel.vcn,
+                        palette = sublevel.palette,
+                        showButton = true
+                    )
+                }
+
+                is Maz.WallType.DoorTypeOneWithoutButton -> {
+                    viewPort.drawDoor(
+                        wallPosition = wallPosition,
+                        door = sublevel.doors[0],
+                        vmp = sublevel.vmp,
+                        vcn = sublevel.vcn,
+                        palette = sublevel.palette,
+                        showButton = false
+                    )
+                }
+
+                is Maz.WallType.DoorTypeTwoWithButton -> {
+                    viewPort.drawDoor(
+                        wallPosition = wallPosition,
+                        door = sublevel.doors[1],
+                        vmp = sublevel.vmp,
+                        vcn = sublevel.vcn,
+                        palette = sublevel.palette,
+                        showButton = true
+                    )
+                }
+
+                is Maz.WallType.DoorTypeTwoWithoutButton -> {
+                    viewPort.drawDoor(
+                        wallPosition = wallPosition,
+                        door = sublevel.doors[1],
+                        vmp = sublevel.vmp,
+                        vcn = sublevel.vcn,
+                        palette = sublevel.palette,
+                        showButton = false
+                    )
+                }
+
+                is Maz.WallType.FixedWall -> {
+                    viewPort.drawWall(
+                        wallType = wallType.wallType,
+                        wallPosition = wallPosition,
+                        vmp = sublevel.vmp,
+                        vcn = sublevel.vcn,
+                        pal = sublevel.palette
+                    )
+                }
+
+                Maz.WallType.NoWall -> { }
+
+                Maz.WallType.StairDown -> {
+                    viewPort.drawStairsDown(
+                        wallPosition = wallPosition,
+                        vmp = sublevel.vmp,
+                        vcn = sublevel.vcn,
+                        pal = sublevel.palette
+                    )
+                }
+
+                Maz.WallType.StairUp -> {
+                    viewPort.drawStairsUp(
+                        wallPosition = wallPosition,
+                        vmp = sublevel.vmp,
+                        vcn = sublevel.vcn,
+                        pal = sublevel.palette
+                    )
+                }
+            }
+
+            // Draw niche items for the wall side we're looking at
+            val nicheItems = square.nicheItems[actualWallSide]
+            if (nicheItems != null) {
+                for (item in nicheItems) {
+                    viewPort.drawItem(
+                        wallPosition = wallPosition,
+                        itemIconsCps = smallIcons,
+                        palette = sublevel.palette,
+                        iconIdx = item.icon,
+                        iconPosition = 8 // niche position
+                    )
+                }
+            }
+
+            // TODO: Draw floor items (pos 0-3) when floor item rendering is implemented
         }
 
         return Result.success(viewPort)

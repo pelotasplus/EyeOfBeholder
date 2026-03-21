@@ -14,6 +14,7 @@ import kotlinx.coroutines.launch
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.Inf
 import pl.pelotasplus.eyeofbeholder.data.model.ViewPort
+import pl.pelotasplus.eyeofbeholder.data.model.dungeon.DungeonState
 import pl.pelotasplus.eyeofbeholder.data.repository.ResourceRepository
 import pl.pelotasplus.eyeofbeholder.data.repository.ViewConeRepository
 
@@ -59,19 +60,19 @@ class ViewConeDebugViewModel(
                     }
 
                     // silver tower 1 -- start
-//                    onVmpSelected(
-//                        "LEVEL7.INF",
-//                        playerX = 15,
-//                        playerY = 6,
-//                        direction = Direction.EAST
-//                    )
-
                     onVmpSelected(
                         "LEVEL7.INF",
-                        playerX = 27,
-                        playerY = 11,
-                        direction = Direction.NORTH
+                        playerX = 15,
+                        playerY = 6,
+                        direction = Direction.EAST
                     )
+
+//                    onVmpSelected(
+//                        "LEVEL7.INF",
+//                        playerX = 27,
+//                        playerY = 11,
+//                        direction = Direction.NORTH
+//                    )
 
                     // temple level 2
                     // https://gamerwalkthroughs.com/eye-of-the-beholder-2/temple-level-2/
@@ -106,9 +107,11 @@ class ViewConeDebugViewModel(
             viewConeRepository
                 .loadLevel(name = name)
                 .onSuccess { inf ->
+                    val dungeonState = DungeonState.fromInf(inf)
                     _state.update {
                         it.copy(
                             inf = inf,
+                            dungeonState = dungeonState,
                             playerY = playerY ?: it.playerY,
                             playerX = playerX ?: it.playerX,
                             direction = direction ?: it.direction
@@ -156,12 +159,14 @@ class ViewConeDebugViewModel(
 
     private fun renderViewPort() {
         viewModelScope.launch {
+            val state = _state.value
+            val dungeonState = state.dungeonState ?: return@launch
             viewConeRepository.renderPosition(
-                items = _state.value.inf!!.items,
-                sublevel = _state.value.inf!!.subLevels[0],
-                playerX = _state.value.playerX,
-                playerY = _state.value.playerY,
-                direction = _state.value.direction
+                dungeonState = dungeonState,
+                subLevelIndex = 0,
+                playerX = state.playerX,
+                playerY = state.playerY,
+                direction = state.direction
             ).onSuccess { viewPort ->
                 _state.update { it.copy(viewPort = viewPort) }
             }
@@ -169,51 +174,33 @@ class ViewConeDebugViewModel(
     }
 
     private fun onMoveForward() {
-        when (_state.value.direction) {
-            Direction.NORTH -> {
-                val newY = _state.value.playerY - 1
-                onPlayerPositionChanged(y = newY)
-            }
-
-            Direction.EAST -> {
-                val newX = _state.value.playerX + 1
-                onPlayerPositionChanged(x = newX)
-            }
-
-            Direction.SOUTH -> {
-                val newY = _state.value.playerY + 1
-                onPlayerPositionChanged(y = newY)
-            }
-
-            Direction.WEST -> {
-                val newX = _state.value.playerX - 1
-                onPlayerPositionChanged(x = newX)
-            }
+        val state = _state.value
+        val (newX, newY) = when (state.direction) {
+            Direction.NORTH -> state.playerX to (state.playerY - 1)
+            Direction.EAST -> (state.playerX + 1) to state.playerY
+            Direction.SOUTH -> state.playerX to (state.playerY + 1)
+            Direction.WEST -> (state.playerX - 1) to state.playerY
         }
+        val dungeonState = state.dungeonState
+        if (dungeonState != null && !dungeonState.canEnter(state.playerX, state.playerY, newX, newY)) {
+            return
+        }
+        onPlayerPositionChanged(x = newX, y = newY)
     }
 
     private fun onMoveBackwards() {
-        when (_state.value.direction) {
-            Direction.NORTH -> {
-                val newY = _state.value.playerY + 1
-                onPlayerPositionChanged(y = newY)
-            }
-
-            Direction.EAST -> {
-                val newX = _state.value.playerX - 1
-                onPlayerPositionChanged(x = newX)
-            }
-
-            Direction.SOUTH -> {
-                val newY = _state.value.playerY - 1
-                onPlayerPositionChanged(y = newY)
-            }
-
-            Direction.WEST -> {
-                val newX = _state.value.playerX + 1
-                onPlayerPositionChanged(x = newX)
-            }
+        val state = _state.value
+        val (newX, newY) = when (state.direction) {
+            Direction.NORTH -> state.playerX to (state.playerY + 1)
+            Direction.EAST -> (state.playerX - 1) to state.playerY
+            Direction.SOUTH -> state.playerX to (state.playerY - 1)
+            Direction.WEST -> (state.playerX + 1) to state.playerY
         }
+        val dungeonState = state.dungeonState
+        if (dungeonState != null && !dungeonState.canEnter(state.playerX, state.playerY, newX, newY)) {
+            return
+        }
+        onPlayerPositionChanged(x = newX, y = newY)
     }
 
     private fun onRotateRight() {
@@ -244,6 +231,7 @@ class ViewConeDebugViewModel(
 
     data class State(
         val inf: Inf? = null,
+        val dungeonState: DungeonState? = null,
 
         val levels: ImmutableList<String> = persistentListOf(),
 
