@@ -42,6 +42,45 @@ import pl.pelotasplus.eyeofbeholder.data.model.script.Turn
 import pl.pelotasplus.eyeofbeholder.data.model.script.UpdateScreen
 import pl.pelotasplus.eyeofbeholder.data.model.script.Wait
 
+/**
+ * Parses .INF files — the most complex game data format, containing complete level data.
+ *
+ * An INF file is LCW-compressed and structured as three sequential blocks:
+ *
+ * ## Block A — SubLevels (from start to offsetBlockB)
+ * A linked list of sublevel definitions. Each sublevel contains:
+ * - Maze reference (.MAZ filename → loaded via [MazRepository])
+ * - Viewport mapping reference (.VMP → [VmpRepository])
+ * - Tile set reference (.VCN, derived from VMP name → [VcnRepository])
+ * - Palette (.PAL → [PalRepository], either custom or derived from VMP name)
+ * - Sound filename
+ * - 2 door definitions with CPS graphics, rectangles, and buttons
+ * - Monster graphics (up to 2 CPS sprite sheets)
+ * - Monster properties (AD&D stats, terminated by 0xFF)
+ * - Decoration blocks (DEC+CPS pairs, then wall-to-decoration mappings)
+ * - Script timers (function/ticks pairs, terminated by 0xFFFF)
+ * - 0xFFFF padding between sublevels
+ *
+ * ## Block B — Scripts & Messages (from offsetBlockB to offsetBlockC)
+ * - Monster instance data (30 entries)
+ * - Script bytecode (29 opcodes, see ScriptToken hierarchy)
+ * - Null-terminated message strings
+ *
+ * ## Block C — Trigger Map (from offsetBlockC to end)
+ * - Count of trigger entries
+ * - Each entry: packed location, flags, script offset
+ *
+ * ## Opcode table (Block B script)
+ * ```
+ * 0xFF=SetWall  0xFE=ToggleWall  0xFD=OpenDoor   0xFC=CloseDoor
+ * 0xFB=CreateMonster  0xFA=Teleport  0xF8=Message  0xF7=SetFlag
+ * 0xF6=Sound  0xF5=ClearFlag  0xF3=Damage  0xF2=Goto  0xF1=End
+ * 0xF0=Return  0xEF=GoSub  0xEE=Eval  0xED=ConsumeItem
+ * 0xEC=NewLevelOrMonster  0xEA=NewItem  0xE9=Launcher  0xE8=Turn
+ * 0xE6=Encounter  0xE5=Wait  0xE4=UpdateScreen  0xE3=Dialog
+ * 0xE2=SpecialEvent
+ * ```
+ */
 interface InfRepository {
     suspend fun loadInf(name: String, items: List<Item>): Result<Inf>
 

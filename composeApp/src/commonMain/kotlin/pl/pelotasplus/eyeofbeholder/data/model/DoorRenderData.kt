@@ -1,5 +1,21 @@
 package pl.pelotasplus.eyeofbeholder.data.model
 
+/**
+ * Door-specific rendering parameters for one of the 25 wall positions.
+ *
+ * When a wall position contains a door, the renderer first draws the door frame
+ * (VCN wall type 2), then overlays the door panel from the door's CPS graphic
+ * using these offsets.
+ *
+ * @property offsetInViewPortX Screen X position to draw the door panel;
+ *           null means the door panel is not visible at this wall position
+ *           (only the frame is drawn, e.g. for side-view doors)
+ * @property offsetInViewPortY Screen Y position for the door panel
+ * @property buttonIndex Which button definition from [Door.buttons] to use;
+ *           null = no button rendered at this position
+ * @property rectangleIndex Which rectangle from [Door.rectangles] to use
+ *           (0=close, 1=medium, 2=far distance)
+ */
 data class DoorRenderData(
     val offsetInViewPortX: Int?,
     val offsetInViewPortY: Int,

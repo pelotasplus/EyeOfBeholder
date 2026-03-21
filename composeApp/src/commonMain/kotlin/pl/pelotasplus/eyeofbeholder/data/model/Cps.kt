@@ -1,5 +1,30 @@
 package pl.pelotasplus.eyeofbeholder.data.model
 
+/**
+ * Parsed .CPS file — a LCW-compressed 320×200 image used for various game graphics.
+ *
+ * CPS files are the primary image format in Eye of the Beholder. They store:
+ * - Door graphics (DOOR1.CPS, DOOR2.CPS)
+ * - Decoration overlays (wall paintings, levers, alcoves, etc.)
+ * - Item icon sprite sheets (ITEMS1.CPS — all small/large item icons)
+ * - UI elements, portraits, cutscene images, etc.
+ *
+ * Pixels are palette indices (0-255) that reference the current sublevel's .PAL file.
+ * Index 0 is always transparent.
+ *
+ * ## Item icon sprite sheet (ITEMS1.CPS)
+ * Contains all item icons packed in a grid. Icons come in two sizes:
+ * - Large items: 64×24 pixels (weapons, shields, armor)
+ * - Small items: 32×24 pixels (potions, keys, gems, scrolls)
+ *
+ * The [shapeMap] array maps an item's icon index to a "shape slot" that
+ * determines the icon's position and size within the sprite sheet.
+ *
+ * @property name Original filename
+ * @property width Image width (always 320)
+ * @property height Image height (always 200)
+ * @property pixels Flat array of palette indices, row-major (width × height entries)
+ */
 data class Cps(
     val name: String,
     val width: Int,

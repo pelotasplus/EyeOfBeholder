@@ -2,6 +2,31 @@ package pl.pelotasplus.eyeofbeholder.data
 
 import co.touchlab.kermit.Logger
 
+/**
+ * LCW (Lempel-Castle-Welch) decompression — the compression algorithm used by
+ * Westwood Studios in Eye of the Beholder and other games of the era.
+ *
+ * LCW-compressed data appears in .CPS (images), .VCN (tilesets), and .INF (level data)
+ * files. The compressed data follows a file header that specifies the uncompressed size.
+ *
+ * ## Command types
+ * The algorithm uses a byte-level command stream with 5 command types:
+ *
+ * 1. **Copy-as-is** (bit7=1, bit6=0): Copy N bytes verbatim from source to destination.
+ *    Count 0 = end-of-data marker.
+ * 2. **Short copy** (bit7=0): Copy 3-9 bytes from a recent position in the destination
+ *    (12-bit relative back-reference).
+ * 3. **Large copy** (bit7=1, bit6=1, count<0x3E): Copy N+3 bytes from a 16-bit
+ *    back-reference (relative or absolute depending on mode).
+ * 4. **Fill** (count==0x3E): Fill N bytes with a single value (run-length encoding).
+ * 5. **Very large copy** (count==0x3F): Copy N bytes with both count and position
+ *    as 16-bit values (for large back-references).
+ *
+ * ## Addressing modes
+ * If the first byte of compressed data is 0x00, addresses are **relative** (offset
+ * from current destination position). Otherwise, addresses are **absolute** (direct
+ * index into the destination buffer).
+ */
 object LCWHelper {
     fun decompress(source: UByteArray, dest: UByteArray) {
         var sp = 0 // Source Pointer

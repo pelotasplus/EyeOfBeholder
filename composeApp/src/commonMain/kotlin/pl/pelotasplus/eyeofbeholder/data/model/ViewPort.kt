@@ -93,6 +93,44 @@ private val floorDecorationOffsets = mapOf(
 /** Front wall positions where mirroring flag (bit 0) applies */
 private val frontWallPositions = setOf(6, 7, 8, 9, 10, 15, 16, 17, 20, 21, 22, 25)
 
+/**
+ * The 3D dungeon viewport renderer — the heart of the visual engine.
+ *
+ * Produces a 176×120 pixel image (22×15 tiles of 8×8) that simulates a
+ * first-person 3D view of the dungeon, matching the original EoB DOS renderer.
+ *
+ * ## Rendering pipeline (called from ViewConeRepository.renderPosition)
+ * 1. **Backdrop** — fill the viewport with floor/ceiling tiles from the VMP backdrop
+ * 2. **Walls** — for each of the 25 wall positions (back-to-front, 4 layers):
+ *    - Transform position from player-relative to maze-absolute coordinates
+ *    - Determine wall type at that maze position
+ *    - Draw the appropriate tiles: solid wall, door, stairs, or decoration
+ * 3. **Items** — draw item icons at visible positions (scaled by distance)
+ *
+ * ## Wall position system
+ * The viewport shows walls at 25 positions organized in 4 depth layers:
+ * ```
+ * Layer 4 (3 tiles ahead):  positions 0-10  (7 columns: A B C D E F G)
+ * Layer 3 (2 tiles ahead):  positions 11-17 (5 columns: H I J K L)
+ * Layer 2 (1 tile ahead):   positions 18-22 (3 columns: M N O)
+ * Layer 1 (current row):    positions 23-24 (2 side walls: P Q)
+ * ```
+ * Each position has both a maze mapping ([wallPositionMappings]) and render
+ * config ([wallRenderData]). Positions are rendered back-to-front so closer
+ * walls naturally occlude farther ones.
+ *
+ * ## Item rendering
+ * Items in wall niches (pos=8) are drawn at positions 21, 15-17 with
+ * distance-based scaling (closer = larger). Items on the floor (pos 0-3)
+ * are not yet rendered.
+ *
+ * ## Decoration rendering
+ * Decorations follow a linked list via [Dec.Decoration.linkToNextDecoration]
+ * to draw multi-part overlays (e.g. an alcove frame + shelf + items).
+ * Position mapping uses the [decorationPositions] table which maps each of
+ * the 26 view positions to one of 10 "decoration wall slots" with mirroring
+ * and horizontal offset.
+ */
 @OptIn(ExperimentalUnsignedTypes::class)
 class ViewPort {
     private val pixels = MutableList(ROWS * COLS) {

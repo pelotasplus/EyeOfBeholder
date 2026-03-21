@@ -3,8 +3,9 @@ package pl.pelotasplus.eyeofbeholder.data.model.script
 import pl.pelotasplus.eyeofbeholder.data.ByteReader
 
 /**
- * UpdateScreen script token.
- * Triggers a screen update/refresh.
+ * Pauses script execution for a number of game ticks. Opcode 0xE5.
+ *
+ * @property delay Number of ticks to wait before continuing script execution
  */
 data class Wait(
     val delay: Int

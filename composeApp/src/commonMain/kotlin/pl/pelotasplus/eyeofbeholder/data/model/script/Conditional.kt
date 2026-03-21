@@ -4,8 +4,26 @@ import pl.pelotasplus.eyeofbeholder.data.ByteReader
 import pl.pelotasplus.eyeofbeholder.data.model.Location
 
 /**
- * Conditional opcodes for scripting system.
- * See https://github.com/scummvm/scummvm/blob/master/engines/kyra/script/script_eob.cpp
+ * Conditional expression opcodes used by [Eval] for branching logic.
+ *
+ * The scripting engine uses a stack-based expression evaluator. Each [Eval]
+ * token contains a sequence of Conditional opcodes that push values onto
+ * the stack, then comparison/logic operators consume stack values and push
+ * results. If the final stack value is true, execution continues; otherwise
+ * it jumps to the [Eval.goto] offset.
+ *
+ * ## Expression evaluation model
+ * - Value producers push onto the stack: GetWallNumber, GetLevelFlag, ImmediateShort, etc.
+ * - Comparisons pop 2 values, push boolean: Equals, NotEquals, MoreThan, LessThan, etc.
+ * - Logical operators combine booleans: And, Or
+ * - Else (0xEE) terminates the condition expression
+ *
+ * ## Example: "if wall at (5,3) == 1, goto offset 0x42"
+ * ```
+ * Eval(tokens=[GetWallNumber(5,3), ImmediateShort(1), Equals], goto=0x42)
+ * ```
+ *
+ * Reference: https://github.com/scummvm/scummvm/blob/master/engines/kyra/script/script_eob.cpp
  */
 sealed interface Conditional {
 

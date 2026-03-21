@@ -6,6 +6,23 @@ import pl.pelotasplus.eyeofbeholder.data.ByteReader
 import pl.pelotasplus.eyeofbeholder.data.model.Dec
 import pl.pelotasplus.eyeofbeholder.data.model.Dec.DecorationRectangle
 
+/**
+ * Parses .DEC files — decoration layout definitions.
+ *
+ * ## Binary format (.DEC, uncompressed)
+ * - decorationCount (u16)
+ * - For each decoration:
+ *   - 10 rectangle indices (u8 each) — which CPS rectangle to use at each of
+ *     10 viewing distances/angles (0xFF = not visible at that distance)
+ *   - linkToNextDecoration (u8) — chains multi-part decorations (0 = end of chain)
+ *   - flags (u8) — bit 0 = mirror on front walls
+ *   - 10 x-coordinates (u16 each) — screen X position for each viewing distance
+ *   - 10 y-coordinates (u16 each) — screen Y position for each viewing distance
+ * - rectangleCount (u16)
+ * - For each rectangle: x, y, w, h (u16 each)
+ *   - x and w are in 8-pixel units (multiply by 8 for actual pixel coordinates)
+ *   - y and h are in pixel units
+ */
 interface DecRepository {
     suspend fun loadDec(name: String): Result<Dec>
 

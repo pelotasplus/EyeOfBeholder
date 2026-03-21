@@ -4,6 +4,17 @@ import co.touchlab.kermit.Logger
 import pl.pelotasplus.eyeofbeholder.data.ByteReader
 import pl.pelotasplus.eyeofbeholder.data.model.Maz
 
+/**
+ * Parses .MAZ files — the dungeon floor layout.
+ *
+ * ## Binary format (.MAZ)
+ * - Header: width (u16), height (u16), bytesPerSquare (u16) — always 32, 32, 4
+ * - Body: 32×32 = 1024 squares in row-major order (y outer loop, x inner loop)
+ * - Each square: 4 bytes → north wall, east wall, south wall, west wall
+ * - Each wall byte maps to [Maz.WallType] via [Maz.WallType.fromInt]
+ *
+ * Total file size: 6 (header) + 4096 (squares) = 4102 bytes, always uncompressed.
+ */
 interface MazRepository {
     suspend fun loadMaz(name: String): Result<Maz>
 }

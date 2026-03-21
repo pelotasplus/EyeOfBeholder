@@ -1,7 +1,4 @@
 package pl.pelotasplus.eyeofbeholder.data.model.script
 
-/**
- * UpdateScreen script token.
- * Triggers a screen update/refresh.
- */
+/** Returns from a GoSub subroutine call, popping the return address. Opcode 0xF0. */
 data object Return : ScriptToken

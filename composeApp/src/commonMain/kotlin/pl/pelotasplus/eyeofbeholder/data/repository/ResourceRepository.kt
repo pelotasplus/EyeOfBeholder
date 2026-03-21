@@ -5,6 +5,23 @@ import eyeofbeholder.composeapp.generated.resources.Res
 import pl.pelotasplus.eyeofbeholder.data.ByteReader
 import pl.pelotasplus.eyeofbeholder.data.LCWHelper
 
+/**
+ * Foundation layer for reading raw game asset files.
+ *
+ * All game data files are bundled as Compose Multiplatform resources and
+ * accessed via `Res.readBytes()`. This repository handles:
+ * - Raw file I/O ([readResource])
+ * - LCW decompression ([decompressResource]) for .CPS, .VCN, .INF files
+ * - Asset discovery via [listResources] from the 250+ file manifest
+ *
+ * ## Compressed file header format
+ * Files like .CPS and .VCN have a standard header before the LCW data:
+ * - sizeFromHeader (u16) — reported file size
+ * - compressionType (u16) — compression method identifier
+ * - uncompressedSize (u32) — size of decompressed output buffer
+ * - paletteSize (u16) — embedded palette size (always 0 in EoB1)
+ * - Remaining bytes: LCW-compressed payload
+ */
 interface ResourceRepository {
     suspend fun readResource(path: String): UByteArray
 

@@ -3,8 +3,10 @@ package pl.pelotasplus.eyeofbeholder.data.model.script
 import pl.pelotasplus.eyeofbeholder.data.ByteReader
 
 /**
- * Encounter script token.
- * Triggers various sequences and encounters.
+ * Triggers a special encounter or cutscene sequence. Opcode 0xE6.
+ *
+ * These are the game's major narrative events: NPC conversations, the death
+ * sequence, portal animations, and password-protected doors.
  */
 sealed class Encounter : ScriptToken {
 

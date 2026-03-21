@@ -4,8 +4,18 @@ import pl.pelotasplus.eyeofbeholder.data.ByteReader
 import pl.pelotasplus.eyeofbeholder.data.model.Location
 
 /**
- * NewItem script token.
- * Adds a new item at a specified location.
+ * Places a new item in the dungeon at runtime. Opcode 0xEA.
+ *
+ * Used by scripts to spawn quest items, treasure, or key items when events trigger.
+ * The [flags] field controls which optional properties follow in the bytecode:
+ * - bit 0: itemValue present (magical bonus, charges, key ID)
+ * - bit 1: itemFlag present (additional item flags)
+ * - bit 2: itemIcon present (override the item's default icon)
+ *
+ * @property itemId Index into the global item table (ITEM.DAT)
+ * @property location Maze position to place the item
+ * @property subPos Position within the square (0-3 = floor quadrant, 8 = wall niche)
+ * @property flags Bitmask controlling which optional fields are present
  */
 data class NewItem(
     val itemId: Int,

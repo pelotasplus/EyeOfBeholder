@@ -3,8 +3,11 @@ package pl.pelotasplus.eyeofbeholder.data.model.script
 import pl.pelotasplus.eyeofbeholder.data.ByteReader
 
 /**
- * SpecialEvent script token.
- * Triggers various special game events.
+ * Triggers engine-level special events not expressible as other opcodes. Opcode 0xE2.
+ *
+ * These are hardcoded game engine behaviors that go beyond the normal scripting
+ * system — visual effects, character progression, NPC initialization, and
+ * runtime data loading.
  */
 sealed class SpecialEvent : ScriptToken {
 

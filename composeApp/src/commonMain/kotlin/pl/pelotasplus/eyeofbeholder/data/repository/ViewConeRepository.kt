@@ -11,6 +11,34 @@ import pl.pelotasplus.eyeofbeholder.data.model.ViewPort
 import pl.pelotasplus.eyeofbeholder.data.model.getWall
 import pl.pelotasplus.eyeofbeholder.data.model.wallPositionMappings
 
+/**
+ * Orchestrates level loading and 3D viewport rendering.
+ *
+ * This is the highest-level repository, combining data from all other
+ * repositories to produce the final rendered viewport image.
+ *
+ * ## Level loading flow
+ * [loadLevel] → loads items from ITEM.DAT, then delegates to [InfRepository]
+ * which cascades to MAZ, VMP, VCN, PAL, DEC, CPS repositories.
+ *
+ * ## Rendering flow ([renderPosition])
+ * Given a player position (x, y), facing direction, and sublevel:
+ * 1. Draw the backdrop (floor/ceiling) from VMP+VCN
+ * 2. For each of 25 wall positions (back-to-front):
+ *    a. Transform relative coordinates by player direction
+ *    b. Look up the maze square and wall type
+ *    c. Draw wall/door/stairs/decoration as appropriate
+ *    d. Draw any items at that location
+ * 3. Return the completed ViewPort pixel buffer
+ *
+ * ## Wall type dispatch
+ * - NoWall → skip (open passage)
+ * - FixedWall → draw VCN wall tiles
+ * - DoorType* → draw door frame + CPS door panel (± button)
+ * - StairUp/Down → draw stair tiles
+ * - Decoration → look up decoration, optionally draw base wall, then overlay
+ *   (specialType 5 = stuck door gets special treatment)
+ */
 interface ViewConeRepository {
     suspend fun loadLevel(name: String): Result<Inf>
 

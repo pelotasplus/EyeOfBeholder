@@ -1,5 +1,37 @@
 package pl.pelotasplus.eyeofbeholder.data.model
 
+/**
+ * Represents a parsed .MAZ file — the dungeon floor layout for a sublevel.
+ *
+ * The maze is a fixed 32x32 grid of [Square]s. Each square has four walls
+ * (north, east, south, west) whose type determines what the player sees
+ * and can interact with: solid stone, open passage, doors, stairs, or
+ * decorations like levers, alcoves, and paintings.
+ *
+ * ## Binary format (.MAZ)
+ * - Header: width (u16), height (u16), bytesPerSquare (u16) — always 32, 32, 4
+ * - Body: 1024 squares in row-major order (y outer, x inner)
+ * - Each square: 4 bytes → north, east, south, west wall type
+ *
+ * ## Coordinate system
+ * - (0,0) is the top-left corner of the maze
+ * - X increases to the east, Y increases to the south
+ * - Squares are stored and accessed in row-major order: index = y * width + x
+ *
+ * ## Wall type encoding (single byte per wall)
+ * ```
+ * 0       = NoWall (open passage, party can walk through)
+ * 1-2     = FixedWall (solid wall, wallType 0 or 1 → indexes into VMP wall tile sets)
+ * 3-7     = DoorTypeOneWithButton (state 0-4: closed/opening/open/closing/stuck)
+ * 8-12    = DoorTypeOneWithoutButton (state 0-4)
+ * 13-17   = DoorTypeTwoWithButton (state 0-4, uses second door CPS graphic)
+ * 18-22   = DoorTypeTwoWithoutButton (state 0-4)
+ * 23      = StairUp
+ * 24      = StairDown
+ * 25+     = Decoration (the byte value IS the wallIndex, used to look up
+ *           decoration definitions from the sublevel's decoration list)
+ * ```
+ */
 data class Maz(
     val name: String,
     val width: Int,

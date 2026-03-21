@@ -1,5 +1,23 @@
 package pl.pelotasplus.eyeofbeholder.data
 
+/**
+ * Sequential binary data reader for parsing DOS-era game file formats.
+ *
+ * All Eye of the Beholder data files use little-endian byte order and a mix
+ * of unsigned/signed integer types. This reader provides safe, sequential
+ * access with bounds checking on every read.
+ *
+ * ## Common patterns in EoB file formats
+ * - u8: single byte (wall types, flags, palette indices, opcodes)
+ * - i8: signed byte (item values, monster AC, coordinates that can be negative)
+ * - u16LE: 2 bytes little-endian (file offsets, counts, packed locations)
+ * - i16LE: signed 16-bit (linked-list pointers where -1 = "no link")
+ * - u32LE: 4 bytes (uncompressed file sizes in CPS/VCN headers)
+ * - Fixed-length strings: null-terminated within a fixed buffer (filenames = 13 chars)
+ *
+ * The [offset] advances automatically with each read. Use [remaining] to check
+ * how many bytes are left (all parsers verify remaining == 0 at the end).
+ */
 class ByteReader(private val bytes: UByteArray) {
     var offset: Int = 0
         private set

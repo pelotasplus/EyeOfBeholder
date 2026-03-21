@@ -3,8 +3,17 @@ package pl.pelotasplus.eyeofbeholder.data.model.script
 import pl.pelotasplus.eyeofbeholder.data.ByteReader
 
 /**
- * SetFlag script token.
- * Sets various flags: level, global, monster, dialog result, or prevent rest.
+ * Sets a game state flag. Opcode 0xF7.
+ *
+ * Flags are the primary mechanism for tracking game progress and state.
+ * Scripts check flags via [Conditional.GetLevelFlag] and [Conditional.GetGlobalFlag]
+ * in [Eval] expressions, and set/clear them to record events.
+ *
+ * - **LevelFlag**: persists only for the current level (reset when leaving)
+ * - **GlobalFlag**: persists across all levels (quest progress, key events)
+ * - **MonsterFlag**: per-monster state (alerted, fleeing, etc.)
+ * - **DialogResult**: marks a dialog as completed
+ * - **PreventRest**: disables the party's ability to rest/sleep (dangerous area)
  */
 sealed class SetFlag : ScriptToken {
 

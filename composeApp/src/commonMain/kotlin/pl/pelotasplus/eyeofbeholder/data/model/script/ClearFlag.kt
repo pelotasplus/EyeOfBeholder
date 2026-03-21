@@ -3,8 +3,10 @@ package pl.pelotasplus.eyeofbeholder.data.model.script
 import pl.pelotasplus.eyeofbeholder.data.ByteReader
 
 /**
- * ClearFlag script token.
- * Clears various flags: level, global, event, or party.
+ * Clears a game state flag. Opcode 0xF5.
+ *
+ * The inverse of [SetFlag] — resets a flag to 0/false.
+ * Used to re-arm triggers, reset quest states, or re-enable resting.
  */
 sealed class ClearFlag : ScriptToken {
 

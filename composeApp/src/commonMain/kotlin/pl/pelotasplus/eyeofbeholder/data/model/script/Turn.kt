@@ -3,8 +3,10 @@ package pl.pelotasplus.eyeofbeholder.data.model.script
 import pl.pelotasplus.eyeofbeholder.data.ByteReader
 
 /**
- * Turn script token.
- * Turns the party or flying objects.
+ * Forces a direction change on the party or flying projectiles. Opcode 0xE8.
+ *
+ * Used by spinners (squares that randomly rotate the party), scripted
+ * teleport sequences, and projectile redirection traps.
  */
 sealed class Turn : ScriptToken {
 

@@ -4,8 +4,11 @@ import pl.pelotasplus.eyeofbeholder.data.ByteReader
 import pl.pelotasplus.eyeofbeholder.data.model.Location
 
 /**
- * ConsumeItem script token.
- * Deletes items from hand or from a block.
+ * Removes an item from the game. Opcode 0xED.
+ *
+ * Used when a key is consumed by a lock, a quest item is turned in, or
+ * a potion is drunk. Items can be removed from a character's hand or
+ * from a specific maze location.
  */
 sealed class ConsumeItem : ScriptToken {
 

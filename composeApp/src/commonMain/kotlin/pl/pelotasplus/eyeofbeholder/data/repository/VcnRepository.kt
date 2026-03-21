@@ -4,6 +4,23 @@ import co.touchlab.kermit.Logger
 import pl.pelotasplus.eyeofbeholder.data.ByteReader
 import pl.pelotasplus.eyeofbeholder.data.model.Vcn
 
+/**
+ * Parses .VCN files — tile sets for the 3D dungeon viewport.
+ *
+ * VCN files are LCW-compressed. After decompression:
+ *
+ * ## Binary format (decompressed)
+ * - tilesCount (u16)
+ * - backdropPalette: 16 bytes (sub-palette for floor/ceiling tiles)
+ * - wallPalette: 16 bytes (sub-palette for wall tiles)
+ * - Tile data: tilesCount × 32 bytes
+ *
+ * ## Tile encoding
+ * Each tile is 8×8 pixels stored as 32 bytes (2 pixels per byte).
+ * High nibble = first pixel, low nibble = second pixel.
+ * Each 4-bit value (0-15) indexes into the 16-entry sub-palette,
+ * which then indexes into the full 256-color .PAL file.
+ */
 interface VcnRepository {
     suspend fun loadVcn(name: String): Result<Vcn>
 }

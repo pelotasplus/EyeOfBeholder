@@ -4,8 +4,14 @@ import pl.pelotasplus.eyeofbeholder.data.ByteReader
 import pl.pelotasplus.eyeofbeholder.data.model.Location
 
 /**
- * Launcher script token.
- * Launches items or magic objects.
+ * Launches a flying projectile in the dungeon. Opcode 0xE9.
+ *
+ * Creates a projectile (arrow, dart, magic bolt, etc.) that travels in a
+ * direction from a starting location. Used for arrow traps, spell effects,
+ * and thrown items triggered by scripts.
+ *
+ * @see MagicObject for spell projectiles (fireball, magic missile, etc.)
+ * @see PhysicalItem for physical projectiles (arrows, darts, rocks)
  */
 sealed class Launcher : ScriptToken {
 

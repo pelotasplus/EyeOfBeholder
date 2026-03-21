@@ -3,9 +3,19 @@ package pl.pelotasplus.eyeofbeholder.data.model.script
 import pl.pelotasplus.eyeofbeholder.data.ByteReader
 
 /**
- * Damage script token.
- * Inflicts damage to character(s).
- * charIndex = -1 means all characters.
+ * Inflicts damage on party characters. Opcode 0xF3.
+ *
+ * Used for traps, environmental hazards, and scripted damage events.
+ * Damage is rolled as [times]d[itemOrPips]+[useStrModifierOrBase] following
+ * AD&D dice notation.
+ *
+ * @property charIndex Target character (0-5), or -1 for the entire party
+ * @property times Number of damage dice to roll
+ * @property itemOrPips Dice size (e.g. 6 for d6), or item type for special damage
+ * @property useStrModifierOrBase Base damage bonus (or flag to apply STR modifier)
+ * @property flags Damage type flags (fire, cold, etc.) — EOB2 extended field
+ * @property savingThrowType Type of saving throw allowed (0 = none) — EOB2 extended
+ * @property savingThrowEffect Effect on successful save (half damage, no damage, etc.) — EOB2 extended
  */
 data class Damage(
     val charIndex: Int,           // -1 for all characters

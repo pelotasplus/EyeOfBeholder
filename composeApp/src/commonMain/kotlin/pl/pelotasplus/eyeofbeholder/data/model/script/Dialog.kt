@@ -2,6 +2,14 @@ package pl.pelotasplus.eyeofbeholder.data.model.script
 
 import pl.pelotasplus.eyeofbeholder.data.ByteReader
 
+/**
+ * Controls the dialog/cutscene UI system. Opcode 0xE3.
+ *
+ * Manages NPC conversation screens, picture displays, and interactive
+ * dialog choices. Dialog sequences are composed of multiple Dialog tokens
+ * in sequence: display a picture, draw the dialog box, show text, then
+ * run the dialog with button choices.
+ */
 sealed class Dialog : ScriptToken {
 
     data class DisplayPicture(

@@ -5,6 +5,37 @@ import pl.pelotasplus.eyeofbeholder.data.ByteReader
 import pl.pelotasplus.eyeofbeholder.data.model.Item
 import pl.pelotasplus.eyeofbeholder.data.model.Location
 
+/**
+ * Parses the global ITEM.DAT file containing all item instances in the game.
+ *
+ * ## ITEM.DAT binary format
+ * - itemsCount (u16) — total number of items
+ * - For each item (12 bytes):
+ *   - nameUnidentifiedId (u8) — index into name table
+ *   - nameIdentifiedId (u8) — index into name table
+ *   - flags (u8) — bit 7 = identified, others = cursed/magical/etc.
+ *   - icon (i8) — index into ITEMS1.CPS shape map for rendering
+ *   - type (i8) — item category (references ITEMTYPE.DAT)
+ *   - pos (i8) — position within a square: 0-3 = floor quadrant, 8 = wall niche
+ *   - location (u16 packed) — maze grid position (x in bits 0-4, y = value/32)
+ *   - next (i16LE) — linked-list pointer to next item at same location (-1 = end)
+ *   - prev (i16LE) — linked-list pointer to previous item (-1 = start)
+ *   - level (u8) — which dungeon level this item belongs to
+ *   - value (i8) — context-dependent: magical bonus, charges, key ID, etc.
+ * - itemNamesCount (u16)
+ * - For each name: 35-char fixed-length null-terminated string
+ *
+ * ## Item linked lists
+ * Items at the same location form a doubly-linked list via next/prev indices.
+ * This mirrors the original game's memory-efficient storage where each maze
+ * square only stores the head item index, and you follow the chain to find all items.
+ *
+ * ## Item positions (pos field)
+ * ```
+ * 0-3 = floor quadrants (NW=0, NE=1, SW=2, SE=3) — items lying on the ground
+ * 8   = wall niche/alcove — items placed in a wall recess (visible in viewport)
+ * ```
+ */
 interface ItemsRepository {
     suspend fun loadItems(): Result<List<Item>>
 }
