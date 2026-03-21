@@ -58,22 +58,29 @@ class ViewConeDebugViewModel(
                         )
                     }
 
-                    // enter to the temple
+                    // silver tower 1 -- start
 //                    onVmpSelected(
-//                        "LEVEL5.INF",
-//                        playerX = 14,
-//                        playerY = 9,
-//                        direction = Direction.WEST
+//                        "LEVEL7.INF",
+//                        playerX = 15,
+//                        playerY = 6,
+//                        direction = Direction.EAST
 //                    )
+
+                    onVmpSelected(
+                        "LEVEL7.INF",
+                        playerX = 27,
+                        playerY = 11,
+                        direction = Direction.NORTH
+                    )
 
                     // temple level 2
                     // https://gamerwalkthroughs.com/eye-of-the-beholder-2/temple-level-2/
-                    onVmpSelected(
-                        "LEVEL6.INF",
-                        playerX = 20, //10,
-                        playerY = 5, //3,
-                        direction = Direction.EAST, // Direction.NORTH
-                    )
+//                    onVmpSelected(
+//                        "LEVEL6.INF",
+//                        playerX = 27, // 20, //10,
+//                        playerY = 29, //3,
+//                        direction = Direction.NORTH, // Direction.NORTH
+//                    )
 
                     // entrance to the temple, stairs down
 //                    onVmpSelected(

@@ -45,6 +45,8 @@ class ViewConeRepositoryImpl(
         playerY: Int,
         direction: Direction
     ): Result<ViewPort> {
+        Logger.d(TAG) { "Render position $playerX x $playerY level ${sublevel.level}"}
+
         viewPort.drawBackdrop(
             vmp = sublevel.vmp,
             vcn = sublevel.vcn,
@@ -61,12 +63,6 @@ class ViewConeRepositoryImpl(
                 mapping.relativeY
             )
 
-            val matchingItems = items.filter {
-                it.level == sublevel.level &&
-                        it.location.x == playerX + dx &&
-                        it.location.y == playerY + dy
-            }
-
             // Calculate actual maze position
             val mazX = playerX + dx
             val mazY = playerY + dy
@@ -76,13 +72,21 @@ class ViewConeRepositoryImpl(
                 return@forEachIndexed
             }
 
+            val matchingItems = items.filter {
+                it.level == sublevel.level &&
+                        it.location.x == mazX &&
+                        it.location.y == mazY
+            }
+
             // Get the maze square at the calculated position
             val square = sublevel.maz[mazX, mazY]
 
             // Transform wall side based on player direction
             val actualWallSide = direction.transformWallSide(mapping.wallSide)
             val wallType = square.getWall(actualWallSide)
+
             Logger.d(TAG) { "Wall wallPosition $wallPosition type: $wallType for $mazX x $mazY originalSide ${mapping.wallSide} actualWallSide $actualWallSide" }
+            Logger.d(TAG) { "Matching items $matchingItems" }
 
             when (wallType) {
                 is Maz.WallType.Decoration -> {
