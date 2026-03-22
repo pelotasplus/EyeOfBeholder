@@ -58,11 +58,18 @@ class ViewConeRepositoryImpl(
 ) : ViewConeRepository {
 
     private val viewPort = ViewPort()
-    private var itemIconsCps: Cps? = null
+    private var smallItemIcons: Cps? = null
+    private var largeItemIcons: Cps? = null
 
-    private suspend fun getItemIconsCps(): Cps {
-        return itemIconsCps ?: cpsRepository.loadCps("ITEMS1.CPS").getOrThrow().also {
-            itemIconsCps = it
+    private suspend fun getSmallItemIcons(): Cps {
+        return smallItemIcons ?: cpsRepository.loadCps("ITEMS1.CPS").getOrThrow().also {
+            smallItemIcons = it
+        }
+    }
+
+    private suspend fun getLargeItemIcons(): Cps {
+        return largeItemIcons ?: cpsRepository.loadCps("ITEML1.CPS").getOrThrow().also {
+            largeItemIcons = it
         }
     }
 
@@ -81,7 +88,8 @@ class ViewConeRepositoryImpl(
             pal = sublevel.palette
         )
 
-        val smallIcons = getItemIconsCps()
+        val smallIcons = getSmallItemIcons()
+        val largeIcons = getLargeItemIcons()
 
         // Data-driven wall rendering using wallPositionMappings
         wallPositionMappings.forEachIndexed { wallPosition, mapping ->
@@ -239,12 +247,34 @@ class ViewConeRepositoryImpl(
                 }
                 viewPort.drawItem(
                     wallPosition = wallPosition,
-                    itemIconsCps = smallIcons,
+                    smallIcons = smallIcons,
+                    largeIcons = largeIcons,
                     palette = sublevel.palette,
                     iconIdx = item.icon,
                     iconPosition = item.pos
                 )
             }
+        }
+
+        val matchingItems = items.filter {
+            it.level == sublevel.level &&
+                    it.location.x == playerX &&
+                    it.location.y == playerY
+        }
+        for (item in matchingItems) {
+            Logger.d(TAG) { "drawItem ${item.nameUnidentified} icon=${item.icon} type=${item.type} pos=${item.pos}" }
+            if (item.pos == 8 && item.pos >= 4) {
+                Logger.w(TAG) { "Unexpected item position: ${item.pos}, skipping" }
+                continue
+            }
+            viewPort.drawItem(
+                wallPosition = 21,
+                smallIcons = smallIcons,
+                largeIcons = largeIcons,
+                palette = sublevel.palette,
+                iconIdx = item.icon,
+                iconPosition = item.pos
+            )
         }
 
         return Result.success(viewPort)

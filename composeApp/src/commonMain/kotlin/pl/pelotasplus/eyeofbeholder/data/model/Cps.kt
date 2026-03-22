@@ -32,8 +32,7 @@ data class Cps(
     val pixels: List<Int>, // each pixel index to an entry from the color palette (PAL file)
 ) {
     fun getItemIcon(icon: Int): ItemIcon? {
-        val shape = locate(icon)
-        return when (shape) {
+        return when (val shape = locate(icon)) {
             is ShapeLocation.SmallItem -> ItemIcon(
                 w = shape.w,
                 h = shape.h,

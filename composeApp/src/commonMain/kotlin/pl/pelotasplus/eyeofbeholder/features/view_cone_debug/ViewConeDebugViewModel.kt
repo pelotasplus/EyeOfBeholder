@@ -68,9 +68,9 @@ class ViewConeDebugViewModel(
 
                     onVmpSelected(
                         "LEVEL7.INF",
-                        playerX = 27,
-                        playerY = 11,
-                        direction = Direction.NORTH
+                        playerX = 29,
+                        playerY = 15,
+                        direction = Direction.SOUTH
                     )
 
                     // temple level 2

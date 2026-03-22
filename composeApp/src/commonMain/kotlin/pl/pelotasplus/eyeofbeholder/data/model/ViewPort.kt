@@ -490,15 +490,18 @@ class ViewPort {
     }
 
     fun drawItem(
-        itemIconsCps: Cps,
+        smallIcons: Cps,
+        largeIcons: Cps,
         palette: Palette,
         iconIdx: Int,
         iconPosition: Int,
         wallPosition: Int
     ) {
-        val origItemIcon = itemIconsCps.getItemIcon(iconIdx) ?: return
+        Logger.d(TAG) { "Draw item $iconIdx pos=$iconPosition wallPosition=$wallPosition"}
 
         val itemIcon = if (iconPosition == 8) {
+            val origItemIcon = smallIcons.getItemIcon(iconIdx) ?: return
+
             when (wallPosition) {
                 21 -> {
                     scaleDown(origItemIcon)
@@ -519,7 +522,27 @@ class ViewPort {
                 }
             }
         } else {
-            return
+            val origItemIcon = largeIcons.getItemIcon(iconIdx) ?: return
+
+            when (wallPosition) {
+                21 -> {
+                    scaleDown(origItemIcon)
+                }
+
+                15, 16, 17 -> {
+                    scaleDown(scaleDown(origItemIcon))
+                }
+
+                8 -> {
+                    // too far even though shelf/niche is visible in-game
+                    return
+                }
+
+                else -> {
+                    // not showing at position
+                    return
+                }
+            }
         }
 
         val startY = if (iconPosition == 8) {
@@ -529,7 +552,11 @@ class ViewPort {
                 else -> 0
             }
         } else {
-            0
+            when (wallPosition) {
+                21 -> 72
+                15, 16, 17 -> 60
+                else -> 0
+            }
         }
 
         val startX = if (iconPosition == 8) {
@@ -542,7 +569,14 @@ class ViewPort {
                 else -> 0
             }
         } else {
-            0
+            when (wallPosition) {
+                21 -> (COLS - itemIcon.w) / 2 + 22
+                17 -> (COLS - itemIcon.w) / 2 + 80
+                16 -> (COLS - itemIcon.w) / 2 + 14
+                15 -> 0
+                8 -> (COLS - itemIcon.w) / 2
+                else -> 0
+            }
         }
 
         for (y in 0 until itemIcon.h) {
