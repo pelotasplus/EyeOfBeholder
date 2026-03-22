@@ -38,6 +38,7 @@ data class Dec(
      * @param yCoords Y coordinates in the game view where to render the overlay (10 entries)
      */
     data class Decoration(
+        val index: Int,
         val rectangleIndices: ImmutableList<Int>,
         val linkToNextDecoration: Int,
         val flags: Int,
@@ -45,7 +46,7 @@ data class Dec(
         val yCoords: ImmutableList<Int>,
     ) {
         override fun toString(): String {
-            return "Decoration(rectangleIndices=..., linkToNextDecoration=$linkToNextDecoration, flags=$flags, xCoords=..., yCoords=...)"
+            return "Decoration(index=$index, rectangleIndices=..., linkToNextDecoration=$linkToNextDecoration, flags=$flags, xCoords=..., yCoords=...)"
         }
     }
 

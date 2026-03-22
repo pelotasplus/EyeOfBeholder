@@ -119,7 +119,7 @@ class ViewConeRepositoryImpl(
             when (wallType) {
                 is Maz.WallType.Decoration -> {
                     val levelDecoration =
-                        sublevel.decorations.find { it.wallIndex == wallType.decorationWallIndex }
+                        sublevel.decorations.find { it.decorationWallIndex == wallType.decorationWallIndex }
                     Logger.d(TAG) { "Wall wallPosition $wallPosition matching decoration $levelDecoration" }
                     if (levelDecoration == null) {
                         Logger.e(TAG) { "Decoration not found for index ${wallType.decorationWallIndex}" }
@@ -137,9 +137,9 @@ class ViewConeRepositoryImpl(
                             showButton = false,
                             stuckDoor = true
                         )
-                    } else if (levelDecoration.wallType != 0) {
+                    } else if ((levelDecoration.wallType - 1) >= 0) {
                         viewPort.drawWall(
-                            wallType = levelDecoration.wallType,
+                            wallType = levelDecoration.wallType - 1,
                             wallPosition = wallPosition,
                             vmp = sublevel.vmp,
                             vcn = sublevel.vcn,

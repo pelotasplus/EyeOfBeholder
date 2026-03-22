@@ -190,8 +190,8 @@ class InfRepositoryImpl(
                     cps = cpsRepository.loadCps(cpsName).getOrThrow()
                     Logger.d(TAG) { "Decoration: CPS: $cps" }
                     Logger.d(TAG) { "Decoration: DEC: $dec" }
-                    dec.decorations.forEachIndexed { index, decoration ->
-                        Logger.d(TAG) { "Decoration #$index -> $decoration" }
+                    dec.decorations.forEach { decoration ->
+                        Logger.d(TAG) { "Decoration $decoration" }
                     }
                 } else if (cmd == 0xFB) {
                     // assign decorations
@@ -207,17 +207,25 @@ class InfRepositoryImpl(
                      *    unsigned char unknownFlags2;
                      * };
                      */
-                    val wallIndex = reader.readU8() // wallIndex
+                    val decorationWallIndex = reader.readU8() // wallIndex
                     val wallType = reader.readU8() // vmpIndex
                     val decorationID = reader.readI8() // decIndex
                     val specialType = reader.readU8() // specialType
                     val flags = reader.readU8() // flags
 
-                    Logger.d(TAG) { "Assigning decorations: wallIndex: $wallIndex wallType: $wallType decorationID: $decorationID specialType: $specialType flags: $flags" }
+                    Logger.d(TAG) { "Assigning decorations: decorationWallIndex: $decorationWallIndex wallType: $wallType decorationID: $decorationID specialType: $specialType flags: $flags" }
+
+                    if (decorationID != -1) {
+                        val matchingDecoration =
+                            dec!!.decorations.firstOrNull { it.index == decorationID }
+                        check(matchingDecoration != null) {
+                            "Decoration ID $decorationID not found in DEC"
+                        }
+                    }
 
                     decorations.add(
                         Decoration(
-                            wallIndex = wallIndex,
+                            decorationWallIndex = decorationWallIndex,
                             wallType = wallType,
                             decorationID = decorationID,
                             specialType = specialType,

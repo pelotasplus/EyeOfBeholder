@@ -93,8 +93,11 @@ private fun ViewConeDebugContent(
                     .background(Color.Cyan)
             ) {
                 val density = LocalDensity.current
-                val containerWidthInPixels = with(density) { screenWidth.toPx() }.toInt()
-                val scaleFactor = (containerWidthInPixels / 176f).toInt().coerceAtLeast(1)
+                val containerWidthPx = with(density) { screenWidth.toPx() }.toInt()
+                val containerHeightPx = with(density) { screenHeight.toPx() }.toInt()
+                val scaleByWidth = containerWidthPx / 176
+                val scaleByHeight = containerHeightPx / 120
+                val scaleFactor = minOf(scaleByWidth, scaleByHeight).coerceAtLeast(1)
                 Canvas(
                     modifier = Modifier
                 ) {

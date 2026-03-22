@@ -25,7 +25,7 @@ package pl.pelotasplus.eyeofbeholder.data.model
  * @property cps CPS image containing the decoration overlay pixels
  */
 data class Decoration(
-    val wallIndex: Int, /* This is the index used by the .maz file. */
+    val decorationWallIndex: Int, /* This is the index used by the .maz file. */
     val wallType: Int,  /* Index to what backdrop wall type that is being used. */
     val decorationID: Int, /* Index to and optional overlay decoration image in
                                   the DecorationData.decorations array in the
@@ -36,6 +36,6 @@ data class Decoration(
     val cps: Cps
 ) {
     override fun toString(): String {
-        return "Decoration(wallIndex=$wallIndex, wallType=$wallType, decorationID=$decorationID, specialType=$specialType, flags=$flags, dec=..., cps=...)"
+        return "Decoration(decorationWallIndex=$decorationWallIndex, wallType=$wallType, decorationID=$decorationID, specialType=$specialType, flags=$flags, dec=..., cps=...)"
     }
 }

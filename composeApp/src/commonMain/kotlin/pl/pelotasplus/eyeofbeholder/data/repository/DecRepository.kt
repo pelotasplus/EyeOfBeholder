@@ -40,7 +40,7 @@ class DecRepositoryImpl(
             val numberOfDecorations = reader.readU16LE()
             Logger.d(TAG) { "Number of decorations: $numberOfDecorations" }
 
-            val decorations = (0 until numberOfDecorations).map {
+            val decorations = (0 until numberOfDecorations).map { index ->
                 val rectangleIndices = (0 until 10).map { reader.readU8() }.toImmutableList()
                 val linkToNextDecoration = reader.readU8()
                 val flags = reader.readU8()
@@ -48,6 +48,7 @@ class DecRepositoryImpl(
                 val yCoords = (0 until 10).map { reader.readU16LE() }.toImmutableList()
 
                 Dec.Decoration(
+                    index = index,
                     rectangleIndices = rectangleIndices,
                     linkToNextDecoration = linkToNextDecoration,
                     flags = flags,
