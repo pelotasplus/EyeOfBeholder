@@ -83,7 +83,7 @@ val doorRenderData: List<DoorRenderData> = listOf(
     // I-south      //  15
     DoorRenderData(0, 24, null, 1),
     // J-south       // 16
-    DoorRenderData(60, 24, 1, 1),
+    DoorRenderData(60, 25, 1, 1),
     // K-south       // 17
     DoorRenderData(140, 24, null, 1),
 
@@ -99,7 +99,7 @@ val doorRenderData: List<DoorRenderData> = listOf(
     // M-south       // 20
     DoorRenderData(null, -1, null, 1),
     // N-south       // 21
-    DoorRenderData(52, 16, 0, 0),
+    DoorRenderData(52, 17, 0, 0),
     // O-south       // 22
     DoorRenderData(null, -1, 0, 0),
 
