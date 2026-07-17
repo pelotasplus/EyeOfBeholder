@@ -224,13 +224,13 @@ class ViewPort {
 
         val wallTiles = vmp.getWallType(wallType)
 
-        for (y in 0 until renderData.visibleWidthInBlocks) {
-            for (x in 0 until renderData.visibleHeightInBlocks) {
+        for (y in 0 until renderData.heightInTiles) {
+            for (x in 0 until renderData.widthInTiles) {
                 val blockIndex = if (!flipX) {
                     x + y * TILES_PER_ROW + renderData.offsetInViewPort
                 } else {
                     renderData.offsetInViewPort +
-                            renderData.visibleHeightInBlocks - 1 - x +
+                            renderData.widthInTiles - 1 - x +
                             y * TILES_PER_ROW
                 }
 

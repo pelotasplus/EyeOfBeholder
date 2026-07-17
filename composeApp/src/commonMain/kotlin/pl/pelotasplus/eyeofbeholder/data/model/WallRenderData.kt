@@ -13,8 +13,8 @@ package pl.pelotasplus.eyeofbeholder.data.model
  * @property baseOffset Starting index into the VMP wall type tile array (431 tiles per type)
  * @property offsetInViewPort Starting position on the 22×15 viewport tile grid
  *           (row-major: position = y * 22 + x)
- * @property visibleWidthInBlocks Number of tile rows to draw (height in tiles)
- * @property visibleHeightInBlocks Number of tile columns to draw (width in tiles)
+ * @property heightInTiles Number of tile rows to draw (vertical size)
+ * @property widthInTiles Number of tile columns to draw (horizontal size)
  * @property skipValue Tiles to skip in the VMP array between rows (for non-contiguous layouts)
  * @property flipFlag 1 = mirror the wall horizontally (used for right-side walls to
  *           reuse left-side tile data)
@@ -22,8 +22,8 @@ package pl.pelotasplus.eyeofbeholder.data.model
 data class WallRenderData(
     val baseOffset: Int,
     val offsetInViewPort: Int,
-    val visibleWidthInBlocks: Int,
-    val visibleHeightInBlocks: Int,
+    val heightInTiles: Int,
+    val widthInTiles: Int,
     val skipValue: Int,
     val flipFlag: Int,
 )
