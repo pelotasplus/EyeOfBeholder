@@ -9,7 +9,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.Maz
 import pl.pelotasplus.eyeofbeholder.data.model.SubLevel
 import pl.pelotasplus.eyeofbeholder.data.model.ViewPort
 import pl.pelotasplus.eyeofbeholder.data.model.getWall
-import pl.pelotasplus.eyeofbeholder.data.model.wallPositionMappings
+import pl.pelotasplus.eyeofbeholder.data.model.viewSlots
 
 /**
  * Orchestrates level loading and 3D viewport rendering.
@@ -91,12 +91,12 @@ class ViewConeRepositoryImpl(
         val smallIcons = getSmallItemIcons()
         val largeIcons = getLargeItemIcons()
 
-        // Data-driven wall rendering using wallPositionMappings
-        wallPositionMappings.forEachIndexed { wallPosition, mapping ->
+        // Data-driven wall rendering using the viewSlots table
+        viewSlots.forEachIndexed { wallPosition, slot ->
             // Transform coordinates based on player direction
             val (dx, dy) = direction.transformCoordinates(
-                mapping.relativeX,
-                mapping.relativeY
+                slot.relativeX,
+                slot.relativeY
             )
 
             // Calculate actual maze position
@@ -118,10 +118,10 @@ class ViewConeRepositoryImpl(
             val square = sublevel.maz[mazX, mazY]
 
             // Transform wall side based on player direction
-            val actualWallSide = direction.transformWallSide(mapping.wallSide)
+            val actualWallSide = direction.transformWallSide(slot.wallSide)
             val wallType = square.getWall(actualWallSide)
 
-            Logger.d(TAG) { "Wall wallPosition $wallPosition type: $wallType for $mazX x $mazY originalSide ${mapping.wallSide} actualWallSide $actualWallSide" }
+            Logger.d(TAG) { "Wall wallPosition $wallPosition type: $wallType for $mazX x $mazY originalSide ${slot.wallSide} actualWallSide $actualWallSide" }
             Logger.d(TAG) { "Matching items $matchingItems" }
 
             when (wallType) {

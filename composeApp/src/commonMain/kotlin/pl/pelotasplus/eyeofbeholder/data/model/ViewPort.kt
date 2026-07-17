@@ -4,96 +4,6 @@ import co.touchlab.kermit.Logger
 import kotlinx.collections.immutable.ImmutableList
 
 /**
- * Maps view positions (0-25) to decoration wall positions (0-9).
- * @param xFlip 0=left side wall, 1=right side wall (for mirroring)
- * @param wall decoration position 0-9, -1=none available for this position
- * @param xDelta horizontal shift (multiply by 8 for pixels)
- */
-data class DecorationPosition(
-    val xFlip: Int,
-    val wall: Int,
-    val xDelta: Int,
-)
-
-/**
- * Decoration wall positions grid (0-9) relative to party:
- * ```
- * 9 7 3 7 9
- * 8 6 2 6 8
- * 8 5 1 5 8
- *   4 0 4
- *     ^=party pos.
- * ```
- */
-/*
-						// 0 Center
-						// 1 Front near
-						// 2 Front middle
-						// 3 Front far
-						// 4 Side near
-						// 5 Side middle
-						// 6 Side far
-						// 7 Side very far
-						// 8 Side-Side far
-						// 9 Side-Side very far
- */
-val decorationPositions = listOf(
-    DecorationPosition(xFlip = 0, wall = -1, xDelta = 0),   // 0
-    DecorationPosition(xFlip = 0, wall = 9, xDelta = 0),    // 1
-    DecorationPosition(xFlip = 0, wall = 7, xDelta = 0),    // 2
-
-    DecorationPosition(xFlip = 1, wall = 7, xDelta = 0),    // 3
-    DecorationPosition(xFlip = 1, wall = 9, xDelta = 0),    // 4
-    DecorationPosition(xFlip = 0, wall = -1, xDelta = 0),   // 5
-
-    DecorationPosition(xFlip = 0, wall = 3, xDelta = -12),  // 6
-    DecorationPosition(xFlip = 0, wall = 3, xDelta = -6),   // 7
-    DecorationPosition(xFlip = 0, wall = 3, xDelta = 0),    // 8 - middle front wall
-    DecorationPosition(xFlip = 0, wall = 3, xDelta = 6),    // 9
-    DecorationPosition(xFlip = 0, wall = 3, xDelta = 12),   // 10
-
-    DecorationPosition(xFlip = 0, wall = 8, xDelta = 0),    // 11
-    DecorationPosition(xFlip = 0, wall = 6, xDelta = 0),    // 12
-
-    DecorationPosition(xFlip = 1, wall = 6, xDelta = 0),    // 13
-    DecorationPosition(xFlip = 1, wall = 8, xDelta = 0),    // 14
-
-    DecorationPosition(xFlip = 0, wall = 2, xDelta = -10),  // 15
-    DecorationPosition(xFlip = 0, wall = 2, xDelta = 0),    // 16 - middle front wall
-    DecorationPosition(xFlip = 0, wall = 2, xDelta = 10),   // 17
-
-    DecorationPosition(xFlip = 0, wall = 5, xDelta = 0),    // 18
-    DecorationPosition(xFlip = 1, wall = 5, xDelta = 0),    // 19
-
-    DecorationPosition(xFlip = 0, wall = 1, xDelta = -16),  // 20
-    DecorationPosition(xFlip = 0, wall = 1, xDelta = 0),    // 21 - middle front wall
-    DecorationPosition(xFlip = 0, wall = 1, xDelta = 16),   // 22
-
-    DecorationPosition(xFlip = 0, wall = 4, xDelta = 0),    // 23
-
-    DecorationPosition(xFlip = 1, wall = 4, xDelta = 0),    // 24
-    DecorationPosition(xFlip = 0, wall = 0, xDelta = 0),    // 25
-)
-
-/** Floor decoration offsets for non-wall decorations (pits, pressure plates, etc.) */
-private val floorDecorationOffsets = mapOf(
-    6 to -88,
-    7 to -40,
-
-    9 to 40,
-    10 to 88,
-
-    15 to -59,
-    17 to 59,
-
-    20 to -98,
-    22 to 98,
-)
-
-/** Front wall positions where mirroring flag (bit 0) applies */
-private val frontWallPositions = setOf(6, 7, 8, 9, 10, 15, 16, 17, 20, 21, 22, 25)
-
-/**
  * The 3D dungeon viewport renderer — the heart of the visual engine.
  *
  * Produces a 176×120 pixel image (22×15 tiles of 8×8) that simulates a
@@ -115,9 +25,9 @@ private val frontWallPositions = setOf(6, 7, 8, 9, 10, 15, 16, 17, 20, 21, 22, 2
  * Layer 2 (1 tile ahead):   positions 18-22 (3 columns: M N O)
  * Layer 1 (current row):    positions 23-24 (2 side walls: P Q)
  * ```
- * Each position has both a maze mapping ([wallPositionMappings]) and render
- * config ([wallRenderData]). Positions are rendered back-to-front so closer
- * walls naturally occlude farther ones.
+ * Each position is fully described by one [ViewSlot] row in [viewSlots]:
+ * maze mapping, wall/door render config, and decoration slot. Positions are
+ * rendered back-to-front so closer walls naturally occlude farther ones.
  *
  * ## Item rendering
  * Items in wall niches (pos=8) are drawn at positions 21, 15-17 with
@@ -127,9 +37,8 @@ private val frontWallPositions = setOf(6, 7, 8, 9, 10, 15, 16, 17, 20, 21, 22, 2
  * ## Decoration rendering
  * Decorations follow a linked list via [Dec.Decoration.linkToNextDecoration]
  * to draw multi-part overlays (e.g. an alcove frame + shelf + items).
- * Position mapping uses the [decorationPositions] table which maps each of
- * the 26 view positions to one of 10 "decoration wall slots" with mirroring
- * and horizontal offset.
+ * Position mapping uses [ViewSlot.decoration] which maps each view position
+ * to one of 10 "decoration wall slots" with mirroring and horizontal offset.
  */
 @OptIn(ExperimentalUnsignedTypes::class)
 class ViewPort {
@@ -217,7 +126,7 @@ class ViewPort {
     ) {
         Logger.d(TAG) { "drawWall wallPosition: $wallPosition wallType: $wallType" }
 
-        val renderData = wallRenderData[wallPosition]
+        val renderData = viewSlots[wallPosition].wall
 
         val flipX = renderData.flipFlag == 1
         var offset = renderData.baseOffset
@@ -297,7 +206,7 @@ class ViewPort {
             pal = palette
         )
 
-        val renderData = doorRenderData[wallPosition]
+        val renderData = viewSlots[wallPosition].door
 
         if (renderData.offsetInViewPortX == null) {
             Logger.d(TAG) { "Skipping door rendering for wallPosition $wallPosition as offsetInViewPortX is -1" }
@@ -393,17 +302,18 @@ class ViewPort {
         wallPosition: Int,
         isAtWall: Boolean,
     ) {
-        if (wallPosition !in decorationPositions.indices) {
+        if (wallPosition !in viewSlots.indices) {
             return
         }
 
-        val decPos = decorationPositions[wallPosition]
+        val slot = viewSlots[wallPosition]
+        val decPos = slot.decoration
 
         // Calculate horizontal shift
         val dx = if (isAtWall) {
             8 * decPos.xDelta
         } else {
-            floorDecorationOffsets[wallPosition] ?: 0
+            slot.floorDecorationX
         }
 
         // Get decoration wall position (0-9)
@@ -421,7 +331,7 @@ class ViewPort {
         val rect = rectangles[rectIndex]
 
         // Check if mirroring applies (bit 0 of flags, only for front walls)
-        val mirrored = wallPosition in frontWallPositions && (decoration.flags and 0x01) != 0
+        val mirrored = slot.isFrontWall && (decoration.flags and 0x01) != 0
 
         // Get screen coordinates from decoration data
         val screenY = decoration.yCoords[pos]

@@ -48,6 +48,10 @@ class ViewPortGoldenTest {
     fun `level1 stairs down`() =
         checkGolden("level1-stairs", "LEVEL1.INF", x = 10, y = 12, direction = Direction.SOUTH)
 
+    @Test
+    fun `level1 door with button up close`() =
+        checkGolden("level1-door", "LEVEL1.INF", x = 9, y = 13, direction = Direction.WEST)
+
     private fun checkGolden(name: String, level: String, x: Int, y: Int, direction: Direction) {
         val actual = renderFrame(level, x, y, direction).toImage()
         val goldenFile = goldensDir.resolve("$name.png")

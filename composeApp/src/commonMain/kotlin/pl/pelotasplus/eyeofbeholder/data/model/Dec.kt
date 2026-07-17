@@ -11,7 +11,7 @@ import kotlinx.collections.immutable.ImmutableList
  *
  * ## Decoration rendering pipeline
  * 1. Each [Decoration] entry has 10 slots corresponding to 10 "wall positions"
- *    (distances/angles relative to the party — see ViewPort.decorationPositions)
+ *    (distances/angles relative to the party — see ViewSlot.decoration)
  * 2. For a given view position, look up [rectangleIndices][slot] → rectangle in CPS
  * 3. Draw that CPS rectangle at screen position ([xCoords][slot], [yCoords][slot])
  * 4. Follow [linkToNextDecoration] to draw chained parts (e.g. separate top/bottom pieces)
