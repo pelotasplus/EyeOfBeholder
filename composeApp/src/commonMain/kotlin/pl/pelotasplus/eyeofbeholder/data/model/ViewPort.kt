@@ -40,6 +40,39 @@ import kotlinx.collections.immutable.ImmutableList
  * Position mapping uses [ViewSlot.decoration] which maps each view position
  * to one of 10 "decoration wall slots" with mirroring and horizontal offset.
  */
+/**
+ * Where and how large to draw an item icon at a given view position.
+ *
+ * @property scaleSteps How many times to shrink the icon (once per distance layer)
+ * @property y Screen Y of the icon's top edge
+ * @property xOffsetFromCenter Screen X relative to a horizontally centered icon;
+ *           null = flush with the left edge (x = 0)
+ */
+private data class ItemRenderSpec(
+    val scaleSteps: Int,
+    val y: Int,
+    val xOffsetFromCenter: Int?,
+)
+
+/**
+ * Item rendering specs keyed by view position. Items only render on the
+ * center columns of the two closest layers (positions 21 and 15-17);
+ * position 8 is skipped as too far, even though its niche is visible in-game.
+ */
+private val nicheItemSpecs = mapOf( // iconPosition 8 → small icons
+    21 to ItemRenderSpec(scaleSteps = 1, y = 40, xOffsetFromCenter = 0),
+    15 to ItemRenderSpec(scaleSteps = 2, y = 39, xOffsetFromCenter = null),
+    16 to ItemRenderSpec(scaleSteps = 2, y = 39, xOffsetFromCenter = 0),
+    17 to ItemRenderSpec(scaleSteps = 2, y = 39, xOffsetFromCenter = 80),
+)
+
+private val floorItemSpecs = mapOf( // iconPosition 0-3 → large icons
+    21 to ItemRenderSpec(scaleSteps = 1, y = 72, xOffsetFromCenter = 22),
+    15 to ItemRenderSpec(scaleSteps = 2, y = 60, xOffsetFromCenter = null),
+    16 to ItemRenderSpec(scaleSteps = 2, y = 60, xOffsetFromCenter = 14),
+    17 to ItemRenderSpec(scaleSteps = 2, y = 60, xOffsetFromCenter = 80),
+)
+
 @OptIn(ExperimentalUnsignedTypes::class)
 class ViewPort(
     private val vmp: Vmp,
@@ -110,12 +143,8 @@ class ViewPort(
 
                 val blockFlip = tile.mirrorX xor flipX
 
-                val tilePixels = vcn.getTileAsWall(tile.tileIndex).pixels.map { pixel ->
-                    if (pixel == 0) {
-                        RGB(0, 0, 0, transparent = true)
-                    } else {
-                        palette.colors[pixel]
-                    }
+                val tilePixels = vcn.getTileAsWall(tile.tileIndex).pixels.map {
+                    palette.colorOrTransparent(it)
                 }
 
                 drawBlock(xpos * TILE_SIZE, ypos * TILE_SIZE, tilePixels, flipX = blockFlip)
@@ -130,12 +159,8 @@ class ViewPort(
         for (y in 0 until TILES_PER_COL) {
             for (x in 0 until TILES_PER_ROW) {
                 val tile = vmp.backdrop[y * TILES_PER_ROW + x]
-                val tilePixels = vcn.getTileAsBackdrop(tile.tileIndex).pixels.map { pixel ->
-                    if (pixel == 0) {
-                        RGB(0, 0, 0, transparent = true)
-                    } else {
-                        palette.colors[pixel]
-                    }
+                val tilePixels = vcn.getTileAsBackdrop(tile.tileIndex).pixels.map {
+                    palette.colorOrTransparent(it)
                 }
 
                 val xpos = x * TILE_SIZE
@@ -308,15 +333,8 @@ class ViewPort(
                 val cpsIndex = j * cps.width + i
                 if (cpsIndex < 0 || cpsIndex >= cps.pixels.size) continue
 
-                val pixelIndex = cps.pixels[cpsIndex]
-
-                // Skip transparent pixels (index 0)
-                if (pixelIndex == 0) {
-                    if (mirrored) targetX-- else targetX++
-                    continue
-                }
-
-                val color = palette.colors[pixelIndex]
+                // draw() skips transparent (index 0) and out-of-bounds pixels
+                val color = palette.colorOrTransparent(cps.pixels[cpsIndex])
 
                 // Calculate final screen position
                 val finalX = if (mirrored) {
@@ -328,10 +346,7 @@ class ViewPort(
                     targetX + dx
                 }
 
-                // Draw pixel if within bounds
-                if (finalX in 0 until COLS && targetY in 0 until ROWS) {
-                    draw(finalX, targetY, color)
-                }
+                draw(finalX, targetY, color)
 
                 if (mirrored) targetX-- else targetX++
             }
@@ -352,92 +367,18 @@ class ViewPort(
     ) {
         Logger.d(TAG) { "Draw item $iconIdx pos=$iconPosition wallPosition=$wallPosition"}
 
-        val itemIcon = if (iconPosition == 8) {
-            val origItemIcon = smallIcons.getItemIcon(iconIdx) ?: return
+        val inNiche = iconPosition == 8
+        val spec = (if (inNiche) nicheItemSpecs else floorItemSpecs)[wallPosition] ?: return
 
-            when (wallPosition) {
-                21 -> {
-                    scaleDown(origItemIcon)
-                }
+        var itemIcon = (if (inNiche) smallIcons else largeIcons).getItemIcon(iconIdx) ?: return
+        repeat(spec.scaleSteps) { itemIcon = scaleDown(itemIcon) }
 
-                15, 16, 17 -> {
-                    scaleDown(scaleDown(origItemIcon))
-                }
-
-                8 -> {
-                    // too far even though shelf/niche is visible in-game
-                    return
-                }
-
-                else -> {
-                    // not showing at position
-                    return
-                }
-            }
-        } else {
-            val origItemIcon = largeIcons.getItemIcon(iconIdx) ?: return
-
-            when (wallPosition) {
-                21 -> {
-                    scaleDown(origItemIcon)
-                }
-
-                15, 16, 17 -> {
-                    scaleDown(scaleDown(origItemIcon))
-                }
-
-                8 -> {
-                    // too far even though shelf/niche is visible in-game
-                    return
-                }
-
-                else -> {
-                    // not showing at position
-                    return
-                }
-            }
-        }
-
-        val startY = if (iconPosition == 8) {
-            when (wallPosition) {
-                21 -> 40
-                15, 16, 17 -> 39
-                else -> 0
-            }
-        } else {
-            when (wallPosition) {
-                21 -> 72
-                15, 16, 17 -> 60
-                else -> 0
-            }
-        }
-
-        val startX = if (iconPosition == 8) {
-            when (wallPosition) {
-                21 -> (COLS - itemIcon.w) / 2
-                17 -> (COLS - itemIcon.w) / 2 + 80
-                16 -> (COLS - itemIcon.w) / 2
-                15 -> 0
-                8 -> (COLS - itemIcon.w) / 2
-                else -> 0
-            }
-        } else {
-            when (wallPosition) {
-                21 -> (COLS - itemIcon.w) / 2 + 22
-                17 -> (COLS - itemIcon.w) / 2 + 80
-                16 -> (COLS - itemIcon.w) / 2 + 14
-                15 -> 0
-                8 -> (COLS - itemIcon.w) / 2
-                else -> 0
-            }
-        }
+        val startX = spec.xOffsetFromCenter?.let { (COLS - itemIcon.w) / 2 + it } ?: 0
 
         for (y in 0 until itemIcon.h) {
             for (x in 0 until itemIcon.w) {
-                val pixelIndex = itemIcon.pixels[y * itemIcon.w + x]
-                if (pixelIndex == 0) continue
-                val color = palette.colors[pixelIndex]
-                draw(startX + x, startY + y, color)
+                val color = palette.colorOrTransparent(itemIcon.pixels[y * itemIcon.w + x])
+                draw(startX + x, spec.y + y, color)
             }
         }
     }

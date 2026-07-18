@@ -17,4 +17,17 @@ import kotlinx.collections.immutable.ImmutableList
 data class Palette(
     val name: String,
     val colors: ImmutableList<RGB>,
-)
+) {
+    /**
+     * Color at [index], honoring the universal convention that index 0 means
+     * "no pixel": it maps to a transparent color that the renderer skips.
+     * Door graphics are the one exception — they draw index 0 as an opaque
+     * color and read [colors] directly.
+     */
+    fun colorOrTransparent(index: Int): RGB =
+        if (index == 0) TRANSPARENT else colors[index]
+
+    companion object {
+        private val TRANSPARENT = RGB(0, 0, 0, transparent = true)
+    }
+}
