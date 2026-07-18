@@ -39,8 +39,11 @@ Eventually it will be a full Eye of Beholder recreation.
 # Run all tests
 ./gradlew allTests
 
-# Run JVM tests only
+# Run JVM tests only (includes the golden-image rendering tests)
 ./gradlew jvmTest
+
+# Accept intentional rendering changes / bootstrap new golden scenes
+UPDATE_GOLDENS=1 ./gradlew :composeApp:jvmTest
 
 # Run JS browser tests
 ./gradlew jsBrowserTest
@@ -60,6 +63,35 @@ Eventually it will be a full Eye of Beholder recreation.
 # Check for configuration errors
 ./gradlew check
 ```
+
+## Golden-Image Rendering Tests
+
+The 3D viewport renderer is guarded by golden-image tests in
+`composeApp/src/jvmTest/kotlin/.../rendering/ViewPortGoldenTest.kt`. Each test
+renders a known player position with the real game assets and byte-compares
+the 176×120 frame against a reference PNG in `composeApp/src/jvmTest/goldens/`.
+On failure, the actual frame and a red-highlighted diff mask are written to
+`composeApp/build/golden-failures/` for visual inspection.
+
+**Workflow rules for rendering changes:**
+
+- Every change to the rendering pipeline must be verified with
+  `./gradlew :composeApp:jvmTest` BEFORE committing.
+- Pure refactors must show **0 pixels changed**. Behavior changes must show
+  exactly which goldens changed; review the diff images and get explicit user
+  approval before accepting them with `UPDATE_GOLDENS=1`.
+- New render features follow: render → visually review the candidate PNG in
+  `build/golden-failures/` → freeze it as a golden.
+- Adding a scene is one line: `checkGolden("name", "LEVELX.INF", x, y, direction)`.
+- For risky refactors, prove equivalence: generate the golden with the new
+  code, `git stash` back to the old code, and run the test against it — a
+  byte-identical pass proves the refactor changed nothing.
+- Commits and pushes always wait for explicit user approval.
+
+Current scenes: walls + floor item (`level7-start`), decorations
+(`level7-silver-tower`), niche item (`level6-temple`), stairs
+(`level1-stairs`), door with button (`level1-door`), plus a
+`toImageBitmap` pixel-equivalence test.
 
 ## Architecture
 
@@ -84,6 +116,7 @@ composeApp/src/commonMain/kotlin/pl/pelotasplus/eyeofbeholder/
 │   ├── ByteReader.kt     # Binary file parsing utility
 │   └── LCWHelper.kt      # LCW compression/decompression
 ├── features/             # Feature modules (each self-contained)
+│                          # (golden-image tests live in composeApp/src/jvmTest/)
 │   ├── main_debug/      # Main menu / navigation hub
 │   ├── inf_debug/       # Level information debugging
 │   ├── maz_debug/       # Maze layout debugging
@@ -161,7 +194,7 @@ val sharedFeaturesMyModule = module {
 **Maz (Maze Layout)**
 - 32x32 grid of squares
 - Each square has 4 walls (north, east, south, west)
-- WallType is a sealed class: `NoWall`, `FixedWall`, `DoorType*`, `StairUp/Down`, `Teleport`, etc.
+- WallType is a sealed class: `NoWall`, `FixedWall`, `Door(doorIndex, hasButton, state)`, `StairUp/Down`, `Decoration`
 - Supports 2D indexing: `maz[x, y]`
 
 **Vcn (Tile Set)**
@@ -184,19 +217,28 @@ val sharedFeaturesMyModule = module {
 - Represents a single floor/area within a level
 
 **ViewPort (3D Rendering)**
-- Composite view combining backdrop + wall layers
+- Renders one 176×120 frame; constructed fresh per frame with the sublevel's
+  `vmp`/`vcn`/`palette`
 - 25 wall positions create 3D depth illusion across 4 rendering layers
-- Supports wall flipping, transparency, doors (with stuck variants), stairs, and decorations
-- Draws decorations via linked-list parts with position mapping
+- Supports wall flipping, transparency, doors (with stuck variants), stairs,
+  decorations, and item icons (placement driven by `ItemRenderSpec` tables)
+- `ViewPort.toImageBitmap()` (in `ViewPortImage.kt`) rasterizes the frame into
+  a Compose `ImageBitmap`; screens display it with one `drawImage` blit using
+  `FilterQuality.None`
 
-**WallPositionMapping & Direction**
-- 25-element mapping from viewport wall positions to maze-relative coordinates
+**ViewSlot — the single source of truth for the 25 view positions**
+- One row per position in `ViewSlot.kt`: label (e.g. "J-south"), maze-relative
+  coordinates + wall side, `WallRenderData` (viewport tile geometry),
+  `DoorRenderData` (door panel screen offsets), and `DecorationPosition`
+  (mapping into the DEC file's 10-slot coordinate space — NOT screen pixels;
+  decoration screen x/y comes from the DEC data itself)
+- Editing how a position renders means editing one row in one file
+- `WallSet` enum (in `Vmp.kt`) names the fixed VMP wall tile sets:
+  `DOOR_FRAME(2)`, `STAIRS_UP(3)`, `STAIRS_DOWN(4)`
+
+**Direction & WallSide**
 - `Direction` enum with `transformCoordinates()` and `transformWallSide()` for rotating coordinates based on player facing direction
 - `WallSide` enum for cardinal directions in absolute maze coordinates
-
-**WallRenderData & DoorRenderData**
-- Pixel-level rendering configuration for each of the 25 wall positions
-- Door-specific rendering offsets and dimensions
 
 **Location**
 - Simple x,y coordinate wrapper with parsing from packed byte format
@@ -216,7 +258,7 @@ val sharedFeaturesMyModule = module {
 sealed class WallType {
     data object NoWall : WallType()
     data class FixedWall(val wallType: Int) : WallType()
-    data class DoorTypeOneWithButton(val state: Int) : WallType()
+    data class Door(val doorIndex: Int, val hasButton: Boolean, val state: Int) : WallType()
     // ... exhaustive when expressions required
 }
 ```
