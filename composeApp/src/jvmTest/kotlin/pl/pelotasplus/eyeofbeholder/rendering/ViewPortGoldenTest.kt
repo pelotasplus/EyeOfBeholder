@@ -1,8 +1,11 @@
 package pl.pelotasplus.eyeofbeholder.rendering
 
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.graphics.toPixelMap
 import kotlinx.coroutines.runBlocking
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.ViewPort
+import pl.pelotasplus.eyeofbeholder.data.model.toImageBitmap
 import pl.pelotasplus.eyeofbeholder.data.repository.CpsRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.DecRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.InfRepositoryImpl
@@ -51,6 +54,27 @@ class ViewPortGoldenTest {
     @Test
     fun `level1 door with button up close`() =
         checkGolden("level1-door", "LEVEL1.INF", x = 9, y = 13, direction = Direction.WEST)
+
+    @Test
+    fun `toImageBitmap matches the raw pixel buffer`() {
+        val viewPort = renderFrame("LEVEL7.INF", x = 29, y = 15, direction = Direction.SOUTH)
+        val fromBuffer = viewPort.toImage()
+        val fromBitmap = viewPort.toImageBitmap().toPixelMap()
+
+        var differing = 0
+        for (y in 0 until ViewPort.ROWS) {
+            for (x in 0 until ViewPort.COLS) {
+                val expected = fromBuffer.getRGB(x, y)
+                val actual = fromBitmap[x, y].toArgb()
+                // compare only visible pixels; both encode transparent as alpha 0
+                val same = if ((expected ushr 24) == 0) (actual ushr 24) == 0 else expected == actual
+                if (!same) differing++
+            }
+        }
+        if (differing > 0) {
+            fail("toImageBitmap differs from the pixel buffer at $differing pixels")
+        }
+    }
 
     private fun checkGolden(name: String, level: String, x: Int, y: Int, direction: Direction) {
         val actual = renderFrame(level, x, y, direction).toImage()

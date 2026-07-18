@@ -11,9 +11,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import androidx.compose.ui.graphics.ImageBitmap
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.Inf
-import pl.pelotasplus.eyeofbeholder.data.model.ViewPort
+import pl.pelotasplus.eyeofbeholder.data.model.toImageBitmap
 import pl.pelotasplus.eyeofbeholder.data.repository.ResourceRepository
 import pl.pelotasplus.eyeofbeholder.data.repository.ViewConeRepository
 
@@ -163,7 +164,7 @@ class ViewConeDebugViewModel(
                 playerY = _state.value.playerY,
                 direction = _state.value.direction
             ).onSuccess { viewPort ->
-                _state.update { it.copy(viewPort = viewPort) }
+                _state.update { it.copy(viewPort = viewPort.toImageBitmap()) }
             }
         }
     }
@@ -247,7 +248,7 @@ class ViewConeDebugViewModel(
 
         val levels: ImmutableList<String> = persistentListOf(),
 
-        val viewPort: ViewPort? = null,
+        val viewPort: ImageBitmap? = null,
 
         val playerX: Int = 14,
         val playerY: Int = 9,

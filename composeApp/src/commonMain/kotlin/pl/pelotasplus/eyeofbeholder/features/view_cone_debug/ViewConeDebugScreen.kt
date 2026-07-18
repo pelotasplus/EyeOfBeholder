@@ -19,11 +19,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.scale
+import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.koin.compose.viewmodel.koinViewModel
@@ -95,24 +94,21 @@ private fun ViewConeDebugContent(
                 val density = LocalDensity.current
                 val containerWidthPx = with(density) { screenWidth.toPx() }.toInt()
                 val containerHeightPx = with(density) { screenHeight.toPx() }.toInt()
-                val scaleByWidth = containerWidthPx / 176
-                val scaleByHeight = containerHeightPx / 120
+                val scaleByWidth = containerWidthPx / state.viewPort.width
+                val scaleByHeight = containerHeightPx / state.viewPort.height
                 val scaleFactor = minOf(scaleByWidth, scaleByHeight).coerceAtLeast(1)
                 Canvas(
                     modifier = Modifier
                 ) {
-                    scale(scaleFactor.toFloat(), pivot = Offset.Zero) {
-                        state.viewPort.getRows().forEachIndexed { y, row ->
-                            row.forEachIndexed { x, rgb ->
-                                if (rgb.transparent) return@forEachIndexed
-                                drawRect(
-                                    color = Color(rgb.red, rgb.green, rgb.blue),
-                                    topLeft = Offset(x.toFloat(), y.toFloat()),
-                                    size = Size(1f, 1f)
-                                )
-                            }
-                        }
-                    }
+                    drawImage(
+                        image = state.viewPort,
+                        dstSize = IntSize(
+                            state.viewPort.width * scaleFactor,
+                            state.viewPort.height * scaleFactor
+                        ),
+                        // nearest-neighbor keeps the retro pixels crisp
+                        filterQuality = FilterQuality.None
+                    )
                 }
             }
         }
