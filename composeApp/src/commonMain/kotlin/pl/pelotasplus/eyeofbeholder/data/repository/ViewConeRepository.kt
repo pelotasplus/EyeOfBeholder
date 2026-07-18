@@ -12,6 +12,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.ViewPort
 import pl.pelotasplus.eyeofbeholder.data.model.WallSet
 import pl.pelotasplus.eyeofbeholder.data.model.cutFrame
 import pl.pelotasplus.eyeofbeholder.data.model.getWall
+import pl.pelotasplus.eyeofbeholder.data.model.itemScaleSteps
 import pl.pelotasplus.eyeofbeholder.data.model.monsterBlockRows
 import pl.pelotasplus.eyeofbeholder.data.model.monsterFrameRects
 import pl.pelotasplus.eyeofbeholder.data.model.monsterFrameSelect
@@ -105,12 +106,15 @@ class ViewConeRepositoryImpl(
 
         // Data-driven wall rendering using the viewSlots table
         viewSlots.forEachIndexed { wallPosition, slot ->
-            // Monsters of a depth row draw after that row's walls and before
-            // the next (nearer) row's walls, so closer walls occlude them.
+            // Items and monsters of a depth row draw after that row's walls
+            // and before the next (nearer) row's walls, so closer walls
+            // occlude them. Items draw first so monsters stand in front.
             when (wallPosition) {
-                11 -> drawMonstersAtRow(-3, viewPort, monsters, monsterFrames, sublevel, playerX, playerY, direction)
-                18 -> drawMonstersAtRow(-2, viewPort, monsters, monsterFrames, sublevel, playerX, playerY, direction)
-                23 -> drawMonstersAtRow(-1, viewPort, monsters, monsterFrames, sublevel, playerX, playerY, direction)
+                11, 18, 23 -> {
+                    val relY = if (wallPosition == 11) -3 else if (wallPosition == 18) -2 else -1
+                    drawItemsAtRow(relY, viewPort, items, smallIcons, largeIcons, sublevel, playerX, playerY, direction)
+                    drawMonstersAtRow(relY, viewPort, monsters, monsterFrames, sublevel, playerX, playerY, direction)
+                }
             }
             // Transform coordinates based on player direction
             val (dx, dy) = direction.transformCoordinates(
@@ -127,12 +131,6 @@ class ViewConeRepositoryImpl(
                 return@forEachIndexed
             }
 
-            val matchingItems = items.filter {
-                it.level == sublevel.level &&
-                        it.location.x == mazX &&
-                        it.location.y == mazY
-            }
-
             // Get the maze square at the calculated position
             val square = sublevel.maz[mazX, mazY]
 
@@ -141,7 +139,6 @@ class ViewConeRepositoryImpl(
             val wallType = square.getWall(actualWallSide)
 
             Logger.d(TAG) { "Wall wallPosition $wallPosition type: $wallType for $mazX x $mazY originalSide ${slot.wallSide} actualWallSide $actualWallSide" }
-            Logger.d(TAG) { "Matching items $matchingItems" }
 
             when (wallType) {
                 is Maz.WallType.Decoration -> {
@@ -196,41 +193,17 @@ class ViewConeRepositoryImpl(
                 }
             }
 
-            for (item in matchingItems) {
-                Logger.d(TAG) { "drawItem ${item.nameUnidentified} icon=${item.icon} type=${item.type} pos=${item.pos}" }
-                if (item.pos != 8 && item.pos >= 4) {
-                    Logger.w(TAG) { "Unexpected item position: ${item.pos}, skipping" }
-                    continue
-                }
-                viewPort.drawItem(
-                    wallPosition = wallPosition,
-                    smallIcons = smallIcons,
-                    largeIcons = largeIcons,
-                    iconIdx = item.icon,
-                    iconPosition = item.pos
-                )
-            }
         }
 
-        val matchingItems = items.filter {
-            it.level == sublevel.level &&
-                    it.location.x == playerX &&
-                    it.location.y == playerY
-        }
-        for (item in matchingItems) {
-            Logger.d(TAG) { "drawItem ${item.nameUnidentified} icon=${item.icon} type=${item.type} pos=${item.pos}" }
-            if (item.pos != 8 && item.pos >= 4) {
-                Logger.w(TAG) { "Unexpected item position: ${item.pos}, skipping" }
-                continue
-            }
-            viewPort.drawItem(
-                wallPosition = 21,
-                smallIcons = smallIcons,
-                largeIcons = largeIcons,
-                iconIdx = item.icon,
-                iconPosition = item.pos
-            )
-        }
+        // Items on the party's own square (visible block 16, dim 3): only the
+        // two quadrants ahead of the party are visible; rear quadrants are
+        // behind the camera and niche items beside it are never drawn.
+        drawItemsAtBlock(
+            viewPort, items, smallIcons, largeIcons, sublevel,
+            mazX = playerX, mazY = playerY,
+            blockIndex = ViewPort.OWN_BLOCK_INDEX, dim = 3,
+            playerDir = direction.ordinal,
+        )
 
         return Result.success(viewPort)
     }
@@ -251,6 +224,74 @@ class ViewConeRepositoryImpl(
                     .map { cps -> monsterFrameRects[gfx.sizeClass].map { cps.cutFrame(it) } }
                     .onFailure { Logger.e(TAG) { "Failed to load monster sheet $cpsName: $it" } }
                     .getOrDefault(emptyList())
+            }
+        }
+    }
+
+    private fun drawItemsAtRow(
+        relativeY: Int,
+        viewPort: ViewPort,
+        items: List<Item>,
+        smallIcons: Cps,
+        largeIcons: Cps,
+        sublevel: SubLevel,
+        playerX: Int,
+        playerY: Int,
+        direction: Direction,
+    ) {
+        val dim = when (relativeY) {
+            -3 -> 0
+            -2 -> 1
+            else -> 2
+        }
+
+        for (block in monsterBlockRows.getValue(relativeY)) {
+            val (dx, dy) = direction.transformCoordinates(block.relativeX, block.relativeY)
+            drawItemsAtBlock(
+                viewPort, items, smallIcons, largeIcons, sublevel,
+                mazX = playerX + dx, mazY = playerY + dy,
+                blockIndex = block.blockIndex, dim = dim,
+                playerDir = direction.ordinal,
+            )
+        }
+    }
+
+    private fun drawItemsAtBlock(
+        viewPort: ViewPort,
+        items: List<Item>,
+        smallIcons: Cps,
+        largeIcons: Cps,
+        sublevel: SubLevel,
+        mazX: Int,
+        mazY: Int,
+        blockIndex: Int,
+        dim: Int,
+        playerDir: Int,
+    ) {
+        val itemsHere = items.filter {
+            it.level == sublevel.level && it.location.x == mazX && it.location.y == mazY
+        }
+
+        for (item in itemsHere) {
+            Logger.d(TAG) { "drawItem ${item.nameUnidentified} icon=${item.icon} at ($mazX, $mazY) pos=${item.pos} block=$blockIndex" }
+
+            when {
+                item.pos == 8 -> {
+                    // niche items are hidden when too far (dim 0) or on the own square (dim 3)
+                    if (dim == 1 || dim == 2) {
+                        viewPort.drawNicheItem(smallIcons, item.icon, blockIndex, dim)
+                    }
+                }
+
+                item.pos < 4 -> {
+                    val quadrant = viewRelativePos(playerDir, item.pos)
+                    val scaleSteps = itemScaleSteps[dim * 4 + quadrant]
+                    if (scaleSteps >= 0) {
+                        viewPort.drawFloorItem(largeIcons, item.icon, blockIndex, quadrant, scaleSteps)
+                    }
+                }
+
+                else -> Logger.w(TAG) { "Unexpected item position: ${item.pos}, skipping" }
             }
         }
     }

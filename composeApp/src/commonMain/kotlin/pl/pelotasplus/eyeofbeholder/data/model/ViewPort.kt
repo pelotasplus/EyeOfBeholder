@@ -40,39 +40,6 @@ import kotlinx.collections.immutable.ImmutableList
  * Position mapping uses [ViewSlot.decoration] which maps each view position
  * to one of 10 "decoration wall slots" with mirroring and horizontal offset.
  */
-/**
- * Where and how large to draw an item icon at a given view position.
- *
- * @property scaleSteps How many times to shrink the icon (once per distance layer)
- * @property y Screen Y of the icon's top edge
- * @property xOffsetFromCenter Screen X relative to a horizontally centered icon;
- *           null = flush with the left edge (x = 0)
- */
-private data class ItemRenderSpec(
-    val scaleSteps: Int,
-    val y: Int,
-    val xOffsetFromCenter: Int?,
-)
-
-/**
- * Item rendering specs keyed by view position. Items only render on the
- * center columns of the two closest layers (positions 21 and 15-17);
- * position 8 is skipped as too far, even though its niche is visible in-game.
- */
-private val nicheItemSpecs = mapOf( // iconPosition 8 → small icons
-    21 to ItemRenderSpec(scaleSteps = 1, y = 40, xOffsetFromCenter = 0),
-    15 to ItemRenderSpec(scaleSteps = 2, y = 39, xOffsetFromCenter = null),
-    16 to ItemRenderSpec(scaleSteps = 2, y = 39, xOffsetFromCenter = 0),
-    17 to ItemRenderSpec(scaleSteps = 2, y = 39, xOffsetFromCenter = 80),
-)
-
-private val floorItemSpecs = mapOf( // iconPosition 0-3 → large icons
-    21 to ItemRenderSpec(scaleSteps = 1, y = 72, xOffsetFromCenter = 22),
-    15 to ItemRenderSpec(scaleSteps = 2, y = 60, xOffsetFromCenter = null),
-    16 to ItemRenderSpec(scaleSteps = 2, y = 60, xOffsetFromCenter = 14),
-    17 to ItemRenderSpec(scaleSteps = 2, y = 60, xOffsetFromCenter = 80),
-)
-
 @OptIn(ExperimentalUnsignedTypes::class)
 class ViewPort(
     private val vmp: Vmp,
@@ -358,27 +325,71 @@ class ViewPort(
         return pixels.chunked(COLS)
     }
 
-    fun drawItem(
-        smallIcons: Cps,
+    /**
+     * Draws a floor item (pos 0-3) lying in one quadrant of a visible block.
+     *
+     * Placement is quadrant-accurate via [blockScreenCoords] (baseline y 124),
+     * so an item keeps its side of the square as the party approaches and
+     * steps onto it. On the party's own square (block 16) only the two
+     * quadrants ahead are visible — [scaleSteps] is -1 for the rear ones and
+     * the caller skips them. (ScummVM drawBlockItems; per-item screen jitter
+     * is not yet implemented.)
+     *
+     * @param largeIcons The floor-item icon sheet (ITEML1.CPS)
+     * @param iconIdx Item icon index
+     * @param blockIndex Visible-block index 0-17 into [blockScreenCoords]
+     * @param viewQuadrant View-relative sub-position 0-3
+     * @param scaleSteps 2/3 shrink steps from [itemScaleSteps]
+     */
+    fun drawFloorItem(
         largeIcons: Cps,
         iconIdx: Int,
-        iconPosition: Int,
-        wallPosition: Int
+        blockIndex: Int,
+        viewQuadrant: Int,
+        scaleSteps: Int,
     ) {
-        Logger.d(TAG) { "Draw item $iconIdx pos=$iconPosition wallPosition=$wallPosition"}
+        Logger.d(TAG) { "drawFloorItem $iconIdx block=$blockIndex quadrant=$viewQuadrant scale=$scaleSteps" }
 
-        val inNiche = iconPosition == 8
-        val spec = (if (inNiche) nicheItemSpecs else floorItemSpecs)[wallPosition] ?: return
+        var icon = largeIcons.getItemIcon(iconIdx) ?: return
+        repeat(scaleSteps) { icon = scaleDown(icon) }
 
-        var itemIcon = (if (inNiche) smallIcons else largeIcons).getItemIcon(iconIdx) ?: return
-        repeat(spec.scaleSteps) { itemIcon = scaleDown(itemIcon) }
+        val coordIndex = (blockIndex * 5 + viewQuadrant) * 2
+        val startX = blockScreenCoords[coordIndex] + 88 - icon.w / 2
+        val startY = blockScreenCoords[coordIndex + 1] + 124 - icon.h
 
-        val startX = spec.xOffsetFromCenter?.let { (COLS - itemIcon.w) / 2 + it } ?: 0
+        drawIcon(icon, startX, startY)
+    }
 
-        for (y in 0 until itemIcon.h) {
-            for (x in 0 until itemIcon.w) {
-                val color = palette.colorOrTransparent(itemIcon.pixels[y * itemIcon.w + x])
-                draw(startX + x, spec.y + y, color)
+    /**
+     * Draws a niche/shelf item (pos 8) centered in its alcove.
+     *
+     * @param smallIcons The niche-item icon sheet (ITEMS1.CPS)
+     * @param iconIdx Item icon index
+     * @param blockIndex Visible-block index 0-17 into [nicheItemX]
+     * @param dim Depth row 0-3 (0 = three rows ahead); selects baseline and scale
+     */
+    fun drawNicheItem(
+        smallIcons: Cps,
+        iconIdx: Int,
+        blockIndex: Int,
+        dim: Int,
+    ) {
+        Logger.d(TAG) { "drawNicheItem $iconIdx block=$blockIndex dim=$dim" }
+
+        var icon = smallIcons.getItemIcon(iconIdx) ?: return
+        repeat(itemScaleSteps[dim * 4]) { icon = scaleDown(icon) }
+
+        val startX = nicheItemX[blockIndex] - icon.w / 2
+        val startY = nicheItemY[dim] - icon.h
+
+        drawIcon(icon, startX, startY)
+    }
+
+    private fun drawIcon(icon: Cps.ItemIcon, startX: Int, startY: Int) {
+        for (y in 0 until icon.h) {
+            for (x in 0 until icon.w) {
+                val color = palette.colorOrTransparent(icon.pixels[y * icon.w + x])
+                draw(startX + x, startY + y, color)
             }
         }
     }
@@ -387,7 +398,7 @@ class ViewPort(
      * Draws a monster pose at one of the visible blocks.
      *
      * @param frame Near-size pose cut from the sprite sheet
-     * @param blockIndex Visible-block index 0-17 into [monsterScreenCoords]
+     * @param blockIndex Visible-block index 0-17 into [blockScreenCoords]
      * @param subPosition View-relative sub-position: 0-3 (quadrant) or 4 (center)
      * @param mirrored Draw horizontally flipped (for right-facing side poses)
      * @param scaleSteps Number of 2/3 shrink steps for distance
@@ -405,8 +416,8 @@ class ViewPort(
         repeat(scaleSteps) { icon = scaleDown(icon) }
 
         val coordIndex = (blockIndex * 5 + subPosition) * 2
-        val startX = monsterScreenCoords[coordIndex] + 88 - icon.w / 2
-        val startY = monsterScreenCoords[coordIndex + 1] + 127 - icon.h
+        val startX = blockScreenCoords[coordIndex] + 88 - icon.w / 2
+        val startY = blockScreenCoords[coordIndex + 1] + 127 - icon.h
 
         for (y in 0 until icon.h) {
             for (x in 0 until icon.w) {
@@ -476,5 +487,8 @@ class ViewPort(
         const val TILE_SIZE = 8
         const val TILES_PER_ROW = 22
         const val TILES_PER_COL = 15
+
+        /** Visible-block index of the party's own square in [blockScreenCoords]. */
+        const val OWN_BLOCK_INDEX = 16
     }
 }

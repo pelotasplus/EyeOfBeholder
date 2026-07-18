@@ -60,6 +60,10 @@ class ViewPortGoldenTest {
         checkGolden("level1-guards", "LEVEL1.INF", x = 10, y = 18, direction = Direction.SOUTH)
 
     @Test
+    fun `level7 sword at the party's feet`() =
+        checkGolden("level7-sword-at-feet", "LEVEL7.INF", x = 29, y = 16, direction = Direction.SOUTH)
+
+    @Test
     fun `toImageBitmap matches the raw pixel buffer`() {
         val viewPort = renderFrame("LEVEL7.INF", x = 29, y = 15, direction = Direction.SOUTH)
         val fromBuffer = viewPort.toImage()

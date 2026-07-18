@@ -73,7 +73,7 @@ fun Cps.cutFrame(rect: MonsterFrameRect): Cps.ItemIcon {
  * @property relativeX X offset from the player when facing NORTH (negative = left)
  * @property relativeY Y offset from the player when facing NORTH (negative = ahead)
  * @property blockIndex The original engine's visible-block index (0-17) used to
- *           address [monsterScreenCoords]
+ *           address [blockScreenCoords]
  * @property scaleSteps 2/3-shrink steps applied at this distance
  */
 data class MonsterBlock(
@@ -91,12 +91,14 @@ val monsterBlockRows: Map<Int, List<MonsterBlock>> = mapOf(
 )
 
 /**
- * Screen coordinates for monsters: 18 visible blocks × 5 sub-positions ×
- * (x, y). x is relative to the viewport horizontal center (88), y to the
- * baseline (127); the sprite is drawn centered on x with its feet on y.
+ * Screen coordinates for objects in the view cone: 18 visible blocks ×
+ * 5 sub-positions × (x, y). x is relative to the viewport horizontal center
+ * (88); y to the baseline — 127 for monsters, 124 for items. The sprite is
+ * drawn centered on x with its feet on y. Shared by monsters everywhere and
+ * by items lying on the party's own square (block 16).
  * (kEoB2DscShapeCoordsDOS, converted from unsigned hex to signed.)
  */
-val monsterScreenCoords: List<Int> = listOf(
+val blockScreenCoords: List<Int> = listOf(
     // blocks 0-6: three rows ahead
     -111, -63, -95, -63, -139, -59, -117, -59, -120, -61,
     -76, -63, -60, -63, -95, -59, -74, -59, -80, -61,
@@ -122,9 +124,38 @@ val monsterScreenCoords: List<Int> = listOf(
 )
 
 /**
- * Rotates a monster's absolute sub-position (0=NW, 1=NE, 2=SW, 3=SE in maze
+ * Item scale steps by depth row and view-relative quadrant:
+ * index = dim * 4 + quadrant, where dim is 0 (three rows ahead) to 3 (the
+ * party's own square). -1 = the item is not drawn there (too far, or behind
+ * the camera on the own square). Niche items use quadrant 0.
+ * (kEoB2DscItemScaleIndexDOS)
+ */
+val itemScaleSteps: List<Int> = listOf(
+    -1, -1, 3, 3,
+    2, 2, 2, 2,
+    1, 1, 1, 1,
+    0, 0, -1, -1,
+)
+
+/**
+ * Niche-item screen X (absolute, before centering on icon width) per visible
+ * block. (kEoB2DscItemShpXDOS, signed)
+ */
+val nicheItemX: List<Int> = listOf(
+    -56, -8, 40, 88, 136, 184, 232,
+    -72, 8, 88, 168, 248,
+    -40, 88, 216,
+    -88, 88, 264,
+)
+
+/** Niche-item baseline Y per depth row (dim 0-3); the icon's bottom edge. */
+val nicheItemY: List<Int> = listOf(37, 49, 56, 0)
+
+/**
+ * Rotates an object's absolute sub-position (0=NW, 1=NE, 2=SW, 3=SE in maze
  * coordinates) into a view-relative one, per player facing direction.
- * Index: playerDirection * 4 + pos. (kEoB2DscItemPosIndexDOS)
+ * Shared by items and monsters. Index: playerDirection * 4 + pos.
+ * (kEoB2DscItemPosIndexDOS)
  */
 val monsterPosIndex: List<Int> = listOf(
     0, 1, 2, 3,

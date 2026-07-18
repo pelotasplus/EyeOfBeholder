@@ -69,8 +69,8 @@ class ViewConeDebugViewModel(
 
                     onVmpSelected(
                         "LEVEL7.INF",
-                        playerX = 29,
-                        playerY = 15,
+                        playerX = 13,
+                        playerY = 3,
                         direction = Direction.SOUTH
                     )
 
