@@ -201,7 +201,7 @@ class ViewConeRepositoryImpl(
         }
         for (item in matchingItems) {
             Logger.d(TAG) { "drawItem ${item.nameUnidentified} icon=${item.icon} type=${item.type} pos=${item.pos}" }
-            if (item.pos == 8 && item.pos >= 4) {
+            if (item.pos != 8 && item.pos >= 4) {
                 Logger.w(TAG) { "Unexpected item position: ${item.pos}, skipping" }
                 continue
             }
