@@ -27,6 +27,19 @@ package pl.pelotasplus.eyeofbeholder.data.model
  * @property name Original filename (e.g. "DUNG.VMP")
  * @property tileIndexes All tile indices: backdrop + N wall type groups
  */
+/**
+ * Named VMP wall-type tile sets with a fixed, well-known index.
+ *
+ * Sets 0 and 1 are the level's solid wall variants and are addressed
+ * dynamically from maze data ([Maz.WallType.FixedWall.wallType]), so they
+ * have no entry here.
+ */
+enum class WallSet(val vmpIndex: Int) {
+    DOOR_FRAME(2),
+    STAIRS_UP(3),
+    STAIRS_DOWN(4),
+}
+
 data class Vmp(
     val name: String,
     val tileIndexes: List<TileIndex>,

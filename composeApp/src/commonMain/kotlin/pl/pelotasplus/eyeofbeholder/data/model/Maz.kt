@@ -22,10 +22,10 @@ package pl.pelotasplus.eyeofbeholder.data.model
  * ```
  * 0       = NoWall (open passage, party can walk through)
  * 1-2     = FixedWall (solid wall, wallType 0 or 1 → indexes into VMP wall tile sets)
- * 3-7     = DoorTypeOneWithButton (state 0-4: closed/opening/open/closing/stuck)
- * 8-12    = DoorTypeOneWithoutButton (state 0-4)
- * 13-17   = DoorTypeTwoWithButton (state 0-4, uses second door CPS graphic)
- * 18-22   = DoorTypeTwoWithoutButton (state 0-4)
+ * 3-7     = Door 1 with button (state 0-4: closed/opening/open/closing/stuck)
+ * 8-12    = Door 1 without button (state 0-4)
+ * 13-17   = Door 2 with button (state 0-4, uses second door CPS graphic)
+ * 18-22   = Door 2 without button (state 0-4)
  * 23      = StairUp
  * 24      = StairDown
  * 25+     = Decoration (the byte value IS the wallIndex, used to look up
@@ -63,10 +63,18 @@ data class Maz(
     sealed class WallType {
         data object NoWall : WallType()
         data class FixedWall(val wallType: Int) : WallType()
-        data class DoorTypeOneWithButton(val state: Int) : WallType()
-        data class DoorTypeOneWithoutButton(val state: Int) : WallType()
-        data class DoorTypeTwoWithButton(val state: Int) : WallType()
-        data class DoorTypeTwoWithoutButton(val state: Int) : WallType()
+
+        /**
+         * @property doorIndex Which door definition to use (0 or 1 → [SubLevel.doors])
+         * @property hasButton Whether the door has a clickable open/close button
+         * @property state 0-4: closed/opening/open/closing/stuck
+         */
+        data class Door(
+            val doorIndex: Int,
+            val hasButton: Boolean,
+            val state: Int,
+        ) : WallType()
+
         data object StairUp : WallType()
         data object StairDown : WallType()
         data class Decoration(val decorationWallIndex: Int) : WallType()
@@ -75,10 +83,10 @@ data class Maz(
             fun fromInt(value: Int): WallType = when (value) {
                 0 -> NoWall
                 1, 2 -> FixedWall(wallType = value - 1)
-                in 3..7 -> DoorTypeOneWithButton(state = value - 3)
-                in 8..12 -> DoorTypeOneWithoutButton(state = value - 8)
-                in 13..17 -> DoorTypeTwoWithButton(state = value - 13)
-                in 18..22 -> DoorTypeTwoWithoutButton(state = value - 18)
+                in 3..7 -> Door(doorIndex = 0, hasButton = true, state = value - 3)
+                in 8..12 -> Door(doorIndex = 0, hasButton = false, state = value - 8)
+                in 13..17 -> Door(doorIndex = 1, hasButton = true, state = value - 13)
+                in 18..22 -> Door(doorIndex = 1, hasButton = false, state = value - 18)
                 23 -> StairUp
                 24 -> StairDown
                 else -> Decoration(value)

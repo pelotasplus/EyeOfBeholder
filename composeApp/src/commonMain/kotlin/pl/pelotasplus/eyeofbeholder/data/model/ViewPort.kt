@@ -41,7 +41,11 @@ import kotlinx.collections.immutable.ImmutableList
  * to one of 10 "decoration wall slots" with mirroring and horizontal offset.
  */
 @OptIn(ExperimentalUnsignedTypes::class)
-class ViewPort {
+class ViewPort(
+    private val vmp: Vmp,
+    private val vcn: Vcn,
+    private val palette: Palette,
+) {
     private val pixels = MutableList(ROWS * COLS) {
         RGB(0, 0, 0, true)
     }
@@ -72,66 +76,22 @@ class ViewPort {
         }
     }
 
-    private fun drawDoorFrame(
-        wallPosition: Int,
-        vmp: Vmp,
-        vcn: Vcn,
-        pal: Palette
-    ) {
-        drawWall(
-            wallType = 2,
-            wallPosition = wallPosition,
-            vmp = vmp,
-            vcn = vcn,
-            pal = pal
-        )
-    }
-
-    fun drawStairsDown(
-        wallPosition: Int,
-        vmp: Vmp,
-        vcn: Vcn,
-        pal: Palette
-    ) {
-        drawWall(
-            wallType = 4,
-            wallPosition = wallPosition,
-            vmp = vmp,
-            vcn = vcn,
-            pal = pal
-        )
-    }
-
-    fun drawStairsUp(
-        wallPosition: Int,
-        vmp: Vmp,
-        vcn: Vcn,
-        pal: Palette
-    ) {
-        drawWall(
-            wallType = 3,
-            wallPosition = wallPosition,
-            vmp = vmp,
-            vcn = vcn,
-            pal = pal
-        )
+    fun drawWall(wallSet: WallSet, wallPosition: Int) {
+        drawWall(wallSet.vmpIndex, wallPosition)
     }
 
     fun drawWall(
-        wallType: Int,
+        wallSetIndex: Int,
         wallPosition: Int,
-        vmp: Vmp,
-        vcn: Vcn,
-        pal: Palette
     ) {
-        Logger.d(TAG) { "drawWall wallPosition: $wallPosition wallType: $wallType" }
+        Logger.d(TAG) { "drawWall wallPosition: $wallPosition wallSetIndex: $wallSetIndex" }
 
         val renderData = viewSlots[wallPosition].wall
 
         val flipX = renderData.flipFlag == 1
         var offset = renderData.baseOffset
 
-        val wallTiles = vmp.getWallType(wallType)
+        val wallTiles = vmp.getWallType(wallSetIndex)
 
         for (y in 0 until renderData.heightInTiles) {
             for (x in 0 until renderData.widthInTiles) {
@@ -154,7 +114,7 @@ class ViewPort {
                     if (pixel == 0) {
                         RGB(0, 0, 0, transparent = true)
                     } else {
-                        pal.colors[pixel]
+                        palette.colors[pixel]
                     }
                 }
 
@@ -166,11 +126,7 @@ class ViewPort {
         }
     }
 
-    fun drawBackdrop(
-        vmp: Vmp,
-        vcn: Vcn,
-        pal: Palette
-    ) {
+    fun drawBackdrop() {
         for (y in 0 until TILES_PER_COL) {
             for (x in 0 until TILES_PER_ROW) {
                 val tile = vmp.backdrop[y * TILES_PER_ROW + x]
@@ -178,7 +134,7 @@ class ViewPort {
                     if (pixel == 0) {
                         RGB(0, 0, 0, transparent = true)
                     } else {
-                        pal.colors[pixel]
+                        palette.colors[pixel]
                     }
                 }
 
@@ -192,19 +148,11 @@ class ViewPort {
 
     fun drawDoor(
         wallPosition: Int,
-        vmp: Vmp,
-        vcn: Vcn,
-        palette: Palette,
         door: Door,
         showButton: Boolean,
         stuckDoor: Boolean = false
     ) {
-        drawDoorFrame(
-            wallPosition = wallPosition,
-            vmp = vmp,
-            vcn = vcn,
-            pal = palette
-        )
+        drawWall(WallSet.DOOR_FRAME, wallPosition)
 
         val renderData = viewSlots[wallPosition].door
 
@@ -254,12 +202,10 @@ class ViewPort {
      * Draws a complete decoration, following the linked list of decoration parts.
      *
      * @param decoration The sublevel decoration containing Dec and Cps data
-     * @param palette Color palette for rendering
-     * @param wallPosition View position (0-25) where to render the decoration
+     * @param wallPosition View position (0-24) where to render the decoration
      */
     fun drawDecoration(
         decoration: Decoration,
-        palette: Palette,
         wallPosition: Int,
     ) {
         val dec = decoration.dec
@@ -279,7 +225,6 @@ class ViewPort {
                 decoration = decDecoration,
                 rectangles = dec.rectangles,
                 cps = cps,
-                palette = palette,
                 wallPosition = wallPosition,
                 isAtWall = isAtWall,
             )
@@ -298,7 +243,6 @@ class ViewPort {
         decoration: Dec.Decoration,
         rectangles: ImmutableList<Dec.DecorationRectangle>,
         cps: Cps,
-        palette: Palette,
         wallPosition: Int,
         isAtWall: Boolean,
     ) {
@@ -402,7 +346,6 @@ class ViewPort {
     fun drawItem(
         smallIcons: Cps,
         largeIcons: Cps,
-        palette: Palette,
         iconIdx: Int,
         iconPosition: Int,
         wallPosition: Int

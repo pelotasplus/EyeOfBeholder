@@ -8,6 +8,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.Item
 import pl.pelotasplus.eyeofbeholder.data.model.Maz
 import pl.pelotasplus.eyeofbeholder.data.model.SubLevel
 import pl.pelotasplus.eyeofbeholder.data.model.ViewPort
+import pl.pelotasplus.eyeofbeholder.data.model.WallSet
 import pl.pelotasplus.eyeofbeholder.data.model.getWall
 import pl.pelotasplus.eyeofbeholder.data.model.viewSlots
 
@@ -34,7 +35,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.viewSlots
  * ## Wall type dispatch
  * - NoWall → skip (open passage)
  * - FixedWall → draw VCN wall tiles
- * - DoorType* → draw door frame + CPS door panel (± button)
+ * - Door → draw door frame + CPS door panel (± button)
  * - StairUp/Down → draw stair tiles
  * - Decoration → look up decoration, optionally draw base wall, then overlay
  *   (specialType 5 = stuck door gets special treatment)
@@ -57,7 +58,6 @@ class ViewConeRepositoryImpl(
     private val cpsRepository: CpsRepository,
 ) : ViewConeRepository {
 
-    private val viewPort = ViewPort()
     private var smallItemIcons: Cps? = null
     private var largeItemIcons: Cps? = null
 
@@ -82,11 +82,12 @@ class ViewConeRepositoryImpl(
     ): Result<ViewPort> {
         Logger.d(TAG) { "Render position $playerX x $playerY level ${sublevel.level}"}
 
-        viewPort.drawBackdrop(
+        val viewPort = ViewPort(
             vmp = sublevel.vmp,
             vcn = sublevel.vcn,
-            pal = sublevel.palette
+            palette = sublevel.palette
         )
+        viewPort.drawBackdrop()
 
         val smallIcons = getSmallItemIcons()
         val largeIcons = getLargeItemIcons()
@@ -138,82 +139,30 @@ class ViewConeRepositoryImpl(
                     if (levelDecoration.specialType == 5) {
                         viewPort.drawDoor(
                             wallPosition = wallPosition,
-                            vmp = sublevel.vmp,
-                            vcn = sublevel.vcn,
-                            palette = sublevel.palette,
                             door = sublevel.doors[0],
                             showButton = false,
                             stuckDoor = true
                         )
                     } else if ((levelDecoration.wallType - 1) >= 0) {
-                        viewPort.drawWall(
-                            wallType = levelDecoration.wallType - 1,
-                            wallPosition = wallPosition,
-                            vmp = sublevel.vmp,
-                            vcn = sublevel.vcn,
-                            pal = sublevel.palette
-                        )
+                        viewPort.drawWall(levelDecoration.wallType - 1, wallPosition)
                     }
 
                     viewPort.drawDecoration(
                         decoration = levelDecoration,
-                        palette = sublevel.palette,
                         wallPosition = wallPosition,
                     )
                 }
 
-                is Maz.WallType.DoorTypeOneWithButton -> {
+                is Maz.WallType.Door -> {
                     viewPort.drawDoor(
                         wallPosition = wallPosition,
-                        door = sublevel.doors[0],
-                        vmp = sublevel.vmp,
-                        vcn = sublevel.vcn,
-                        palette = sublevel.palette,
-                        showButton = true
-                    )
-                }
-
-                is Maz.WallType.DoorTypeOneWithoutButton -> {
-                    viewPort.drawDoor(
-                        wallPosition = wallPosition,
-                        door = sublevel.doors[0],
-                        vmp = sublevel.vmp,
-                        vcn = sublevel.vcn,
-                        palette = sublevel.palette,
-                        showButton = false
-                    )
-                }
-
-                is Maz.WallType.DoorTypeTwoWithButton -> {
-                    viewPort.drawDoor(
-                        wallPosition = wallPosition,
-                        door = sublevel.doors[1],
-                        vmp = sublevel.vmp,
-                        vcn = sublevel.vcn,
-                        palette = sublevel.palette,
-                        showButton = true
-                    )
-                }
-
-                is Maz.WallType.DoorTypeTwoWithoutButton -> {
-                    viewPort.drawDoor(
-                        wallPosition = wallPosition,
-                        door = sublevel.doors[1],
-                        vmp = sublevel.vmp,
-                        vcn = sublevel.vcn,
-                        palette = sublevel.palette,
-                        showButton = false
+                        door = sublevel.doors[wallType.doorIndex],
+                        showButton = wallType.hasButton
                     )
                 }
 
                 is Maz.WallType.FixedWall -> {
-                    viewPort.drawWall(
-                        wallType = wallType.wallType,
-                        wallPosition = wallPosition,
-                        vmp = sublevel.vmp,
-                        vcn = sublevel.vcn,
-                        pal = sublevel.palette
-                    )
+                    viewPort.drawWall(wallType.wallType, wallPosition)
                 }
 
                 Maz.WallType.NoWall -> {
@@ -221,21 +170,11 @@ class ViewConeRepositoryImpl(
                 }
 
                 Maz.WallType.StairDown -> {
-                    viewPort.drawStairsDown(
-                        wallPosition = wallPosition,
-                        vmp = sublevel.vmp,
-                        vcn = sublevel.vcn,
-                        pal = sublevel.palette
-                    )
+                    viewPort.drawWall(WallSet.STAIRS_DOWN, wallPosition)
                 }
 
                 Maz.WallType.StairUp -> {
-                    viewPort.drawStairsUp(
-                        wallPosition = wallPosition,
-                        vmp = sublevel.vmp,
-                        vcn = sublevel.vcn,
-                        pal = sublevel.palette
-                    )
+                    viewPort.drawWall(WallSet.STAIRS_UP, wallPosition)
                 }
             }
 
@@ -249,7 +188,6 @@ class ViewConeRepositoryImpl(
                     wallPosition = wallPosition,
                     smallIcons = smallIcons,
                     largeIcons = largeIcons,
-                    palette = sublevel.palette,
                     iconIdx = item.icon,
                     iconPosition = item.pos
                 )
@@ -271,7 +209,6 @@ class ViewConeRepositoryImpl(
                 wallPosition = 21,
                 smallIcons = smallIcons,
                 largeIcons = largeIcons,
-                palette = sublevel.palette,
                 iconIdx = item.icon,
                 iconPosition = item.pos
             )
