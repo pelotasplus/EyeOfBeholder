@@ -6,11 +6,18 @@ import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.Inf
 import pl.pelotasplus.eyeofbeholder.data.model.Item
 import pl.pelotasplus.eyeofbeholder.data.model.Maz
+import pl.pelotasplus.eyeofbeholder.data.model.MonsterInstance
 import pl.pelotasplus.eyeofbeholder.data.model.SubLevel
 import pl.pelotasplus.eyeofbeholder.data.model.ViewPort
 import pl.pelotasplus.eyeofbeholder.data.model.WallSet
+import pl.pelotasplus.eyeofbeholder.data.model.cutFrame
 import pl.pelotasplus.eyeofbeholder.data.model.getWall
+import pl.pelotasplus.eyeofbeholder.data.model.monsterBlockRows
+import pl.pelotasplus.eyeofbeholder.data.model.monsterFrameRects
+import pl.pelotasplus.eyeofbeholder.data.model.monsterFrameSelect
+import pl.pelotasplus.eyeofbeholder.data.model.monsterPosIndex
 import pl.pelotasplus.eyeofbeholder.data.model.viewSlots
+import kotlin.math.abs
 
 /**
  * Orchestrates level loading and 3D viewport rendering.
@@ -45,6 +52,7 @@ interface ViewConeRepository {
 
     suspend fun renderPosition(
         items: List<Item>,
+        monsters: List<MonsterInstance>,
         sublevel: SubLevel,
         playerX: Int,
         playerY: Int,
@@ -60,6 +68,7 @@ class ViewConeRepositoryImpl(
 
     private var smallItemIcons: Cps? = null
     private var largeItemIcons: Cps? = null
+    private val monsterFrameCache = mutableMapOf<String, List<Cps.ItemIcon>>()
 
     private suspend fun getSmallItemIcons(): Cps {
         return smallItemIcons ?: cpsRepository.loadCps("ITEMS1.CPS").getOrThrow().also {
@@ -75,6 +84,7 @@ class ViewConeRepositoryImpl(
 
     override suspend fun renderPosition(
         items: List<Item>,
+        monsters: List<MonsterInstance>,
         sublevel: SubLevel,
         playerX: Int,
         playerY: Int,
@@ -91,9 +101,17 @@ class ViewConeRepositoryImpl(
 
         val smallIcons = getSmallItemIcons()
         val largeIcons = getLargeItemIcons()
+        val monsterFrames = loadMonsterFrames(sublevel)
 
         // Data-driven wall rendering using the viewSlots table
         viewSlots.forEachIndexed { wallPosition, slot ->
+            // Monsters of a depth row draw after that row's walls and before
+            // the next (nearer) row's walls, so closer walls occlude them.
+            when (wallPosition) {
+                11 -> drawMonstersAtRow(-3, viewPort, monsters, monsterFrames, sublevel, playerX, playerY, direction)
+                18 -> drawMonstersAtRow(-2, viewPort, monsters, monsterFrames, sublevel, playerX, playerY, direction)
+                23 -> drawMonstersAtRow(-1, viewPort, monsters, monsterFrames, sublevel, playerX, playerY, direction)
+            }
             // Transform coordinates based on player direction
             val (dx, dy) = direction.transformCoordinates(
                 slot.relativeX,
@@ -223,6 +241,62 @@ class ViewConeRepositoryImpl(
         val items = itemsRepository.loadItems().getOrThrow()
         return infRepository.loadInf(name.replace(".MAZ", ".INF"), items)
     }
+
+    /** Loads and caches the 6 near-size poses for each of the sublevel's sprite sheets. */
+    private suspend fun loadMonsterFrames(sublevel: SubLevel): List<List<Cps.ItemIcon>> {
+        return sublevel.monsterGfx.map { gfx ->
+            val cpsName = gfx.name.filter { it.code in 33..126 }.uppercase() + ".CPS"
+            monsterFrameCache.getOrPut(cpsName) {
+                cpsRepository.loadCps(cpsName)
+                    .map { cps -> monsterFrameRects[gfx.sizeClass].map { cps.cutFrame(it) } }
+                    .onFailure { Logger.e(TAG) { "Failed to load monster sheet $cpsName: $it" } }
+                    .getOrDefault(emptyList())
+            }
+        }
+    }
+
+    private fun drawMonstersAtRow(
+        relativeY: Int,
+        viewPort: ViewPort,
+        monsters: List<MonsterInstance>,
+        monsterFrames: List<List<Cps.ItemIcon>>,
+        sublevel: SubLevel,
+        playerX: Int,
+        playerY: Int,
+        direction: Direction,
+    ) {
+        val playerDir = direction.ordinal
+
+        for (block in monsterBlockRows.getValue(relativeY)) {
+            val (dx, dy) = direction.transformCoordinates(block.relativeX, block.relativeY)
+            val mazX = playerX + dx
+            val mazY = playerY + dy
+
+            val monstersHere = monsters
+                .filter { it.subLevelIndex == sublevel.index && it.x == mazX && it.y == mazY }
+                .sortedBy { viewRelativePos(playerDir, it.pos) }
+
+            for (monster in monstersHere) {
+                val frames = monsterFrames.getOrNull(monster.gfxIndex) ?: continue
+                val frameSelect = monsterFrameSelect[(playerDir shl 2) or (monster.direction and 3)]
+                val frame = frames.getOrNull(abs(frameSelect) - 1) ?: continue
+
+                Logger.d(TAG) { "drawMonster type=${monster.type} at ($mazX, $mazY) pos=${monster.pos} dir=${monster.direction}" }
+
+                viewPort.drawMonster(
+                    frame = frame,
+                    blockIndex = block.blockIndex,
+                    subPosition = viewRelativePos(playerDir, monster.pos),
+                    mirrored = frameSelect < 0,
+                    scaleSteps = block.scaleSteps,
+                )
+            }
+        }
+    }
+
+    /** Rotates an absolute sub-position into a view-relative one; 4 = center stays put. */
+    private fun viewRelativePos(playerDir: Int, pos: Int): Int =
+        if (pos == 4) 4 else monsterPosIndex[playerDir * 4 + pos]
 
     companion object {
         private const val TAG = "ViewConeRepository"

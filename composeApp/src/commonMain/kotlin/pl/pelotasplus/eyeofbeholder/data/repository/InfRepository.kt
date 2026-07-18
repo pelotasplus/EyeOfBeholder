@@ -11,6 +11,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.Inf
 import pl.pelotasplus.eyeofbeholder.data.model.Item
 import pl.pelotasplus.eyeofbeholder.data.model.Location
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterGfx
+import pl.pelotasplus.eyeofbeholder.data.model.MonsterInstance
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterProperty
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptTimer
 import pl.pelotasplus.eyeofbeholder.data.model.SubLevel
@@ -290,7 +291,7 @@ class InfRepositoryImpl(
         val ec = reader.readU8()
         check(ec == 0xEC || ec == 0xFF) { "Expected 0xEC or 0xFF but got 0x${ec.toHexString()}" }
 
-        if (ec == 0xEC) {
+        val monsterInstances = if (ec == 0xEC) {
             reader.readU8()
             reader.readU8()
             reader.readU8()
@@ -298,6 +299,8 @@ class InfRepositoryImpl(
             reader.readU8()
 
             readMonsterData(reader)
+        } else {
+            emptyList()
         }
 
         val script = readScript(reader)
@@ -352,7 +355,8 @@ class InfRepositoryImpl(
             subLevels = subLevels.toList(),
             script = script,
             messages = messages,
-            items = items
+            items = items,
+            monsterInstances = monsterInstances
         )
     }
 
@@ -435,7 +439,8 @@ class InfRepositoryImpl(
      *     y_pos = pos & 0x1F;
      */
 
-    fun readMonsterData(reader: ByteReader) {
+    fun readMonsterData(reader: ByteReader): List<MonsterInstance> {
+        val monsters = mutableListOf<MonsterInstance>()
         repeat(30) { idx ->
             val monsterIndex = reader.readU8()
             if (monsterIndex != 0xFF) {
@@ -449,16 +454,33 @@ class InfRepositoryImpl(
                 val shpIndex = reader.readU8()
 
                 val mode = reader.readU8()
-                val i = reader.readU8()
+                val pause = reader.readU8()
 
                 val weapon = reader.readU16LE()
                 val pocketItem = reader.readU16LE()
                 Logger.d(TAG) { "Monster index $idx -> monsterIndex $monsterIndex unit $unit block $block location $pos $dir type $type" }
+
+                monsters.add(
+                    MonsterInstance(
+                        index = monsterIndex,
+                        subLevelIndex = unit,
+                        block = block,
+                        pos = pos,
+                        direction = dir,
+                        type = type,
+                        gfxIndex = shpIndex,
+                        mode = mode,
+                        pause = pause,
+                        weapon = weapon,
+                        pocketItem = pocketItem,
+                    )
+                )
             } else {
                 Logger.d(TAG) { "Monster index $idx -> skip" }
                 reader.skip(13)
             }
         }
+        return monsters
     }
 
     fun readScriptTimers(reader: ByteReader): List<ScriptTimer> {
@@ -484,11 +506,18 @@ class InfRepositoryImpl(
         repeat(2) {
             val cmd = reader.readU8()
             if (cmd == 0xEC || cmd == 0xEA) {
-                reader.readU8() // unknown
-                reader.readU8() // unknown
+                val sizeClass = reader.readU8()
+                val slot = reader.readU8()
                 val name = reader.readString(13)
-                reader.readU8() // unknown
-                monsterGfxList.add(MonsterGfx(name = name))
+                val dcrFlag = reader.readU8()
+                monsterGfxList.add(
+                    MonsterGfx(
+                        name = name,
+                        sizeClass = sizeClass,
+                        slot = slot,
+                        hasDecorations = dcrFlag != 0,
+                    )
+                )
             }
         }
 

@@ -74,6 +74,14 @@ class ViewConeDebugViewModel(
                         direction = Direction.SOUTH
                     )
 
+                    // four guards at (10,20)
+//                    onVmpSelected(
+//                        "LEVEL1.INF",
+//                        playerX = 10,
+//                        playerY = 18,
+//                        direction = Direction.SOUTH
+//                    )
+
                     // temple level 2
                     // https://gamerwalkthroughs.com/eye-of-the-beholder-2/temple-level-2/
 //                    onVmpSelected(
@@ -159,6 +167,7 @@ class ViewConeDebugViewModel(
         viewModelScope.launch {
             viewConeRepository.renderPosition(
                 items = _state.value.inf!!.items,
+                monsters = _state.value.inf!!.monsterInstances,
                 sublevel = _state.value.inf!!.subLevels[0],
                 playerX = _state.value.playerX,
                 playerY = _state.value.playerY,

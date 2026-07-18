@@ -383,6 +383,40 @@ class ViewPort(
         }
     }
 
+    /**
+     * Draws a monster pose at one of the visible blocks.
+     *
+     * @param frame Near-size pose cut from the sprite sheet
+     * @param blockIndex Visible-block index 0-17 into [monsterScreenCoords]
+     * @param subPosition View-relative sub-position: 0-3 (quadrant) or 4 (center)
+     * @param mirrored Draw horizontally flipped (for right-facing side poses)
+     * @param scaleSteps Number of 2/3 shrink steps for distance
+     */
+    fun drawMonster(
+        frame: Cps.ItemIcon,
+        blockIndex: Int,
+        subPosition: Int,
+        mirrored: Boolean,
+        scaleSteps: Int,
+    ) {
+        Logger.d(TAG) { "drawMonster block=$blockIndex subPos=$subPosition mirrored=$mirrored scale=$scaleSteps" }
+
+        var icon = frame
+        repeat(scaleSteps) { icon = scaleDown(icon) }
+
+        val coordIndex = (blockIndex * 5 + subPosition) * 2
+        val startX = monsterScreenCoords[coordIndex] + 88 - icon.w / 2
+        val startY = monsterScreenCoords[coordIndex + 1] + 127 - icon.h
+
+        for (y in 0 until icon.h) {
+            for (x in 0 until icon.w) {
+                val srcX = if (mirrored) icon.w - 1 - x else x
+                val color = palette.colorOrTransparent(icon.pixels[y * icon.w + srcX])
+                draw(startX + x, startY + y, color)
+            }
+        }
+    }
+
     private fun scaleDown(
         itemIcon: Cps.ItemIcon
     ): Cps.ItemIcon {

@@ -56,6 +56,10 @@ class ViewPortGoldenTest {
         checkGolden("level1-door", "LEVEL1.INF", x = 9, y = 13, direction = Direction.WEST)
 
     @Test
+    fun `level1 four guards two rows ahead`() =
+        checkGolden("level1-guards", "LEVEL1.INF", x = 10, y = 18, direction = Direction.SOUTH)
+
+    @Test
     fun `toImageBitmap matches the raw pixel buffer`() {
         val viewPort = renderFrame("LEVEL7.INF", x = 29, y = 15, direction = Direction.SOUTH)
         val fromBuffer = viewPort.toImage()
@@ -136,6 +140,7 @@ class ViewPortGoldenTest {
             val inf = repository.loadLevel(level).getOrThrow()
             repository.renderPosition(
                 items = inf.items,
+                monsters = inf.monsterInstances,
                 sublevel = inf.subLevels[0],
                 playerX = x,
                 playerY = y,
