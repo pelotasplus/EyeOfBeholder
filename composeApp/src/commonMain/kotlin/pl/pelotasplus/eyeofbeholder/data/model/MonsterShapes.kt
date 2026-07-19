@@ -20,8 +20,8 @@ package pl.pelotasplus.eyeofbeholder.data.model
  * runtime (2/3 per distance step, same algorithm as item icons).
  *
  * Not yet implemented (future work): DCR overlay decorations, per-instance
- * palette variants, attack/walk animation frames, distance darkening,
- * monsters on the party's own row.
+ * palette variants, attack/walk animation frames, monsters on the party's
+ * own row.
  */
 data class MonsterFrameRect(val x: Int, val y: Int, val w: Int, val h: Int)
 

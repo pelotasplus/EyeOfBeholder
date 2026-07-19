@@ -93,6 +93,23 @@ Current scenes: walls + floor item (`level7-start`), decorations
 (`level1-stairs`), door with button (`level1-door`), plus a
 `toImageBitmap` pixel-equivalence test.
 
+## Reference Sources
+
+The parent directory (`../`) holds an EoB research library. Most important:
+
+- `../scummvm` — full ScummVM checkout. `engines/kyra/` is the authoritative
+  reverse-engineered reimplementation of the EoB engines (this project targets
+  EoB2/Darkmoon: `darkmoon.cpp`, `sprites_eob.cpp`, `scene_eob.cpp`,
+  `screen_eob.cpp`, `eobcommon.cpp`). The original game's lookup tables live
+  verbatim in `devtools/create_kyradat/resources/eob2_dos.h` (`kEoB2Dsc*`).
+  Rendering tables transcribed into this codebase cite these names in KDoc —
+  verify against the checkout rather than re-deriving.
+- `../eye-of-the-beholder-file-formats` — file format documentation.
+- `../EOB1`, `../EOB2` — original game data.
+
+ScummVM is GPL-2.0+; it is used as a reference for understanding formats and
+algorithms, with data tables originating from the original game binaries.
+
 ## Architecture
 
 ### Pattern: MVVM (Model-View-ViewModel)

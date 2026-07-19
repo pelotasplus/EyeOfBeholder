@@ -357,7 +357,7 @@ class ViewPort(
         val startX = blockScreenCoords[coordIndex] + 88 - icon.w / 2
         val startY = blockScreenCoords[coordIndex + 1] + 124 - icon.h
 
-        drawIcon(icon, startX, startY)
+        drawIcon(icon, startX, startY, fadeSteps = scaleSteps)
     }
 
     /**
@@ -376,20 +376,21 @@ class ViewPort(
     ) {
         Logger.d(TAG) { "drawNicheItem $iconIdx block=$blockIndex dim=$dim" }
 
+        val scaleSteps = itemScaleSteps[dim * 4]
         var icon = smallIcons.getItemIcon(iconIdx) ?: return
-        repeat(itemScaleSteps[dim * 4]) { icon = scaleDown(icon) }
+        repeat(scaleSteps) { icon = scaleDown(icon) }
 
         val startX = nicheItemX[blockIndex] - icon.w / 2
         val startY = nicheItemY[dim] - icon.h
 
-        drawIcon(icon, startX, startY)
+        drawIcon(icon, startX, startY, fadeSteps = scaleSteps)
     }
 
-    private fun drawIcon(icon: Cps.ItemIcon, startX: Int, startY: Int) {
+    private fun drawIcon(icon: Cps.ItemIcon, startX: Int, startY: Int, fadeSteps: Int = 0) {
         for (y in 0 until icon.h) {
             for (x in 0 until icon.w) {
-                val color = palette.colorOrTransparent(icon.pixels[y * icon.w + x])
-                draw(startX + x, startY + y, color)
+                val pixel = palette.fadedIndex(icon.pixels[y * icon.w + x], fadeSteps)
+                draw(startX + x, startY + y, palette.colorOrTransparent(pixel))
             }
         }
     }
@@ -422,8 +423,8 @@ class ViewPort(
         for (y in 0 until icon.h) {
             for (x in 0 until icon.w) {
                 val srcX = if (mirrored) icon.w - 1 - x else x
-                val color = palette.colorOrTransparent(icon.pixels[y * icon.w + srcX])
-                draw(startX + x, startY + y, color)
+                val pixel = palette.fadedIndex(icon.pixels[y * icon.w + srcX], scaleSteps)
+                draw(startX + x, startY + y, palette.colorOrTransparent(pixel))
             }
         }
     }
