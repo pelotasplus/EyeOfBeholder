@@ -1,0 +1,14 @@
+# Cloudflare config for the web (wasmJs) build.
+#
+# eob2.pelotasplus.dev is a Worker with static assets (Workers Assets), same
+# setup as the Dreszcz project. Deploy with:
+#   ./gradlew :composeApp:wasmJsBrowserDistribution
+#   wrangler deploy
+#
+# `name` MUST match the existing Worker, or a new one is created. Check with:
+#   npx wrangler deployments list --name eob2
+name = "eob2"
+compatibility_date = "2024-11-01"
+
+[assets]
+directory = "composeApp/build/dist/wasmJs/productionExecutable"
