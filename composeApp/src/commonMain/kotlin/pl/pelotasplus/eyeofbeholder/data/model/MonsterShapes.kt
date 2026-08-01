@@ -58,7 +58,7 @@ val monsterFrameRects: List<List<MonsterFrameRect>> = listOf(
 
 /** Cuts one monster pose out of a sprite sheet CPS. */
 fun Cps.cutFrame(rect: MonsterFrameRect): Cps.ItemIcon {
-    val out = ArrayList<Int>(rect.w * rect.h)
+    val out = ArrayList<PaletteIndex>(rect.w * rect.h)
     for (y in rect.y until rect.y + rect.h) {
         for (x in rect.x until rect.x + rect.w) {
             out.add(pixels[y * width + x])

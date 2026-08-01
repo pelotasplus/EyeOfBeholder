@@ -25,8 +25,8 @@ data class Palette(
      * Door graphics are the one exception — they draw index 0 as an opaque
      * color and read [colors] directly.
      */
-    fun colorOrTransparent(index: Int): RGB =
-        if (index == 0) TRANSPARENT else colors[index]
+    fun colorOrTransparent(index: PaletteIndex): RGB =
+        if (index.isTransparent) TRANSPARENT else colors[index.value]
 
     /**
      * Palette-index remap for distance darkening ("depth cueing"): every
@@ -77,10 +77,10 @@ data class Palette(
     }
 
     /** [index] remapped [steps] times through [distanceFadeTable]. */
-    fun fadedIndex(index: Int, steps: Int): Int {
-        var idx = index
+    fun fadedIndex(index: PaletteIndex, steps: Int): PaletteIndex {
+        var idx = index.value
         repeat(steps) { idx = distanceFadeTable[idx] }
-        return idx
+        return PaletteIndex(idx)
     }
 
     private fun to6bit(v8: Int): Int = (v8 * 63 + 127) / 255

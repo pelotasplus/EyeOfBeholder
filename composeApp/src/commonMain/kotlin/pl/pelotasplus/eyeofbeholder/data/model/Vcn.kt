@@ -37,35 +37,21 @@ data class Vcn(
     val tilesCount: Int,
     val tiles: List<Tile>, // list of 8x8 tiles of pixels
 
-    val backdropPalette: List<Int>, // list of 16 color values pointing to colors in relevant .PAL
-    val wallPalette: List<Int>, // list of 16 color values pointing to colors in relevant .PAL
+    val backdropPalette: List<PaletteIndex>,
+    val wallPalette: List<PaletteIndex>,
 ) {
+    /** Raw tile: each pixel is a 4-bit index into [backdropPalette] or [wallPalette]. */
     data class Tile(
-        val pixels: List<Int> // each pixel points to a color in the palette in the Vcn class
+        val pixels: List<Int>
     )
 
-    fun getTileAsBackdrop(tileIndex: Int): Tile {
-        return Tile(
-            pixels = tiles[tileIndex].pixels.map { pixel ->
-                if (pixel == 0) {
-                    0
-                } else {
-                    backdropPalette[pixel]
-                }
-            }
-        )
-    }
+    fun getTileAsBackdrop(tileIndex: Int): List<PaletteIndex> =
+        tiles[tileIndex].pixels.map { pixel ->
+            if (pixel == 0) PaletteIndex.TRANSPARENT else backdropPalette[pixel]
+        }
 
-    fun getTileAsWall(tileIndex: Int): Tile {
-        val tile = tiles[tileIndex]
-        return Tile(
-            pixels = tile.pixels.map { pixel ->
-                if (pixel == 0) {
-                    0
-                } else {
-                    wallPalette[pixel]
-                }
-            }
-        )
-    }
+    fun getTileAsWall(tileIndex: Int): List<PaletteIndex> =
+        tiles[tileIndex].pixels.map { pixel ->
+            if (pixel == 0) PaletteIndex.TRANSPARENT else wallPalette[pixel]
+        }
 }

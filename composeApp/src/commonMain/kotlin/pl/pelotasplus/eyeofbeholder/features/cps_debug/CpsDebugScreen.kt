@@ -111,7 +111,7 @@ private fun CpsDebugContent(
                             cps.pixels.forEachIndexed { index, colorIndex ->
                                 val x = (index % cps.width) * cellSize
                                 val y = (index / cps.width) * cellSize
-                                val color = state.loadedPalette.colors[colorIndex]
+                                val color = state.loadedPalette.colors[colorIndex.value]
                                 if (color.transparent) return@forEachIndexed
                                 drawRect(
                                     color = Color(

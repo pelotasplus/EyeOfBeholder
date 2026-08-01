@@ -2,6 +2,7 @@ package pl.pelotasplus.eyeofbeholder.data.repository
 
 import co.touchlab.kermit.Logger
 import pl.pelotasplus.eyeofbeholder.data.ByteReader
+import pl.pelotasplus.eyeofbeholder.data.model.PaletteIndex
 import pl.pelotasplus.eyeofbeholder.data.model.Vcn
 
 /**
@@ -91,8 +92,8 @@ class VcnRepositoryImpl(
         return Vcn(
             name = name,
             tilesCount = tilesCount,
-            backdropPalette = backdropPaletteColor,
-            wallPalette = wallPaletteColor,
+            backdropPalette = backdropPaletteColor.map { PaletteIndex(it) },
+            wallPalette = wallPaletteColor.map { PaletteIndex(it) },
             tiles = tiles
         )
     }

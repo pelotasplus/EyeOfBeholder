@@ -2,6 +2,7 @@ package pl.pelotasplus.eyeofbeholder.data.repository
 
 import pl.pelotasplus.eyeofbeholder.data.ByteReader
 import pl.pelotasplus.eyeofbeholder.data.model.Cps
+import pl.pelotasplus.eyeofbeholder.data.model.PaletteIndex
 
 /**
  * Parses .CPS files — LCW-compressed 320×200 images.
@@ -33,7 +34,7 @@ class CpsRepositoryImpl(
                 name = name,
                 width = IMAGE_WIDTH,
                 height = IMAGE_HEIGHT,
-                pixels = reader.readRemaining().map { it.toInt() }.toList(),
+                pixels = reader.readRemaining().map { PaletteIndex(it.toInt()) },
                 palette = resource.palette
             )
         }

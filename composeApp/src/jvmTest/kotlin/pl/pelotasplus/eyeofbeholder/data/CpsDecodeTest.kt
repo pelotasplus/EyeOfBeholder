@@ -1,6 +1,7 @@
 package pl.pelotasplus.eyeofbeholder.data
 
 import kotlinx.coroutines.runBlocking
+import pl.pelotasplus.eyeofbeholder.data.model.PaletteIndex
 import pl.pelotasplus.eyeofbeholder.data.repository.CpsRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.ResourceRepositoryImpl
 import java.io.File
@@ -126,16 +127,16 @@ class CpsDecodeTest {
     private suspend fun describeDecode(name: String): String =
         cpsRepository.loadCps(name).fold(
             onSuccess = { cps ->
-                val painted = cps.pixels.indexOfLast { it != 0 } + 1
+                val painted = cps.pixels.indexOfLast { !it.isTransparent } + 1
                 "ok sha256=${sha256(cps.pixels)} painted=$painted/${cps.pixels.size} " +
                         "palette=${if (cps.palette != null) "embedded" else "external"}"
             },
             onFailure = { "rejected: ${it.message}" }
         )
 
-    private fun sha256(pixels: List<Int>): String {
+    private fun sha256(pixels: List<PaletteIndex>): String {
         val digest = MessageDigest.getInstance("SHA-256")
-        digest.update(ByteArray(pixels.size) { pixels[it].toByte() })
+        digest.update(ByteArray(pixels.size) { pixels[it].value.toByte() })
         return digest.digest().joinToString("") { "%02x".format(it) }
     }
 

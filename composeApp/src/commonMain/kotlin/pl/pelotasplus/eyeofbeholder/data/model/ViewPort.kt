@@ -110,7 +110,7 @@ class ViewPort(
 
                 val blockFlip = tile.mirrorX xor flipX
 
-                val tilePixels = vcn.getTileAsWall(tile.tileIndex).pixels.map {
+                val tilePixels = vcn.getTileAsWall(tile.tileIndex).map {
                     palette.colorOrTransparent(it)
                 }
 
@@ -126,7 +126,7 @@ class ViewPort(
         for (y in 0 until TILES_PER_COL) {
             for (x in 0 until TILES_PER_ROW) {
                 val tile = vmp.backdrop[y * TILES_PER_ROW + x]
-                val tilePixels = vcn.getTileAsBackdrop(tile.tileIndex).pixels.map {
+                val tilePixels = vcn.getTileAsBackdrop(tile.tileIndex).map {
                     palette.colorOrTransparent(it)
                 }
 
@@ -166,7 +166,7 @@ class ViewPort(
         for (srcX in rectangle.x until rectangle.x + rectangle.w) {
             for (srcY in rectangle.y + deltaY until rectangle.y + rectangle.h) {
                 val pixel = cps.pixels[srcY * cps.width + srcX]
-                val color = palette.colors[pixel]
+                val color = palette.colors[pixel.value]
 
                 val targetX = srcX - rectangle.x + renderData.offsetInViewPortX
                 val targetY = srcY - rectangle.y + renderData.offsetInViewPortY - deltaY
@@ -180,7 +180,7 @@ class ViewPort(
             for (srcX in button.x until button.x + button.w) {
                 for (srcY in button.y until button.y + button.h) {
                     val pixel = cps.pixels[srcY * cps.width + srcX]
-                    val color = palette.colors[pixel]
+                    val color = palette.colors[pixel.value]
 
                     val targetX = srcX - button.x + button.posX
                     val targetY = srcY - button.y + button.posY
@@ -432,7 +432,7 @@ class ViewPort(
     private fun scaleDown(
         itemIcon: Cps.ItemIcon
     ): Cps.ItemIcon {
-        val output = mutableListOf<Int>()
+        val output = mutableListOf<PaletteIndex>()
 
         // --- Row pass: keep row 0, keep row 1, skip row 2, repeat ---
         var row = 0
@@ -461,8 +461,8 @@ class ViewPort(
     }
 
     // Column pass: for every 6 pixels keep [0,1,3,4], drop [2,5]
-    private fun scaleRow(row: List<Int>): List<Int> {
-        val out = mutableListOf<Int>()
+    private fun scaleRow(row: List<PaletteIndex>): List<PaletteIndex> {
+        val out = mutableListOf<PaletteIndex>()
         var col = 0
         while (col + 5 < row.size) {
             out.add(row[col])      // keep p0

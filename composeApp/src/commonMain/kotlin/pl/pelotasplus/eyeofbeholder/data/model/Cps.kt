@@ -31,7 +31,7 @@ data class Cps(
     val name: String,
     val width: Int,
     val height: Int,
-    val pixels: List<Int>, // each pixel index to an entry from the color palette (PAL file)
+    val pixels: List<PaletteIndex>,
     val palette: Palette? = null,
 ) {
     fun getItemIcon(icon: Int): ItemIcon? {
@@ -52,14 +52,14 @@ data class Cps(
         }
     }
 
-    private fun extractRect(x: Int, y: Int, w: Int, h: Int): List<Int> {
+    private fun extractRect(x: Int, y: Int, w: Int, h: Int): List<PaletteIndex> {
         return buildList(w * h) {
             for (row in y until y + h) {
                 for (col in x until x + w) {
                     if (row in 0 until height && col in 0 until width) {
                         add(pixels[row * width + col])
                     } else {
-                        add(0)
+                        add(PaletteIndex.TRANSPARENT)
                     }
                 }
             }
@@ -73,7 +73,7 @@ data class Cps(
     data class ItemIcon(
         val w: Int,
         val h: Int,
-        val pixels: List<Int>,
+        val pixels: List<PaletteIndex>,
     )
 
 
