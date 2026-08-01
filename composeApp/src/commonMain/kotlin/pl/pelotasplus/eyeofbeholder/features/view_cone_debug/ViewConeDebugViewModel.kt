@@ -17,7 +17,6 @@ import pl.pelotasplus.eyeofbeholder.data.model.DialogueScene
 import pl.pelotasplus.eyeofbeholder.data.model.DialogueScene.Companion.MORE
 import pl.pelotasplus.eyeofbeholder.data.model.DialogueText
 import pl.pelotasplus.eyeofbeholder.data.model.Font
-import pl.pelotasplus.eyeofbeholder.data.model.GameFlags
 import pl.pelotasplus.eyeofbeholder.data.model.GameState
 import pl.pelotasplus.eyeofbeholder.data.model.levelNumber
 import pl.pelotasplus.eyeofbeholder.data.model.LevelScriptRunner
@@ -50,9 +49,6 @@ class ViewConeDebugViewModel(
     private var font: Font? = null
     private var scriptRunner: LevelScriptRunner? = null
     private var speaker: DialogueScene.Picture? = null
-
-    // outlives the levels: a level's flags are still set when the party returns
-    private var flags = GameFlags()
 
     private val _state = MutableStateFlow(State())
     val state = _state.asStateFlow()
@@ -141,11 +137,19 @@ class ViewConeDebugViewModel(
                 .onSuccess { inf ->
                     scriptRunner = LevelScriptRunner(inf.script, levelNumber(inf.name))
                     _state.update {
+                        val was = it.game.party
                         it.copy(
                             inf = inf,
-                            playerY = playerY ?: it.playerY,
-                            playerX = playerX ?: it.playerX,
-                            direction = direction ?: it.direction
+                            game = it.game.copy(
+                                party = was.copy(
+                                    position = Location(
+                                        x = playerX ?: was.position.x,
+                                        y = playerY ?: was.position.y,
+                                    ),
+                                    facing = direction ?: was.facing,
+                                ),
+                                monsters = inf.monsterInstances,
+                            ),
                         )
                     }
                     renderViewPort()
@@ -160,31 +164,18 @@ class ViewConeDebugViewModel(
         check(x != null || y != null) {
             "Either x or y must be non-null"
         }
-        val normalizedX = if (x == null) {
-            _state.value.playerX
-        } else if (x < 0) {
-            0
-        } else {
-            x
-        }
-        val normalizedY = if (y == null) {
-            _state.value.playerY
-        } else if (y < 0) {
-            0
-        } else {
-            y
-        }
-        _state.update {
-            it.copy(
-                playerX = normalizedX,
-                playerY = normalizedY
-            )
-        }
+        val steppedTo = Location(
+            x = (x ?: party.position.x).coerceAtLeast(0),
+            y = (y ?: party.position.y).coerceAtLeast(0),
+        )
+        _state.update { it.copy(game = it.game.partyMovedTo(steppedTo)) }
 
-        if (!runTriggers(Location(normalizedX, normalizedY))) {
+        if (!runTriggers(steppedTo)) {
             renderViewPort()
         }
     }
+
+    private val party get() = _state.value.game.party
 
     /** @return true when the square's script took over, e.g. by changing level. */
     private fun runTriggers(at: Location): Boolean {
@@ -195,16 +186,10 @@ class ViewConeDebugViewModel(
             runner.onEvent(
                 triggers = inf.triggers,
                 event = ScriptEvent.PARTY_ENTERED,
-                state = gameStateAt(at),
+                state = _state.value.game,
             )
         )
     }
-
-    private fun gameStateAt(at: Location) = GameState(
-        party = PartyState(position = at, facing = _state.value.direction),
-        monsters = _state.value.inf?.monsterInstances.orEmpty(),
-        flags = flags,
-    )
 
     /**
      * @param answeredWith the answer the script is still running under, when
@@ -215,15 +200,7 @@ class ViewConeDebugViewModel(
         run: ScriptRun,
         answeredWith: DialogAnswer? = null,
     ): Boolean {
-        val party = run.state.party
-        flags = run.state.flags
-        _state.update {
-            it.copy(
-                playerX = party.position.x,
-                playerY = party.position.y,
-                direction = party.facing,
-            )
-        }
+        _state.update { it.copy(game = run.state) }
 
         return when (val stop = run.stoppedTo) {
             is ScriptStop.ChangeLevel -> {
@@ -268,7 +245,6 @@ class ViewConeDebugViewModel(
             val unread = speech.pages.drop(1)
 
             // the party's own line goes in the box above what it answers
-            val party = gameStateAt(at).party
             val spoken = (ask.said.mapNotNull { inf.message(it) } + speech.first)
                 .filter { it.isNotBlank() }
                 .joinToString("\n") { party.fillIn(it) }
@@ -380,7 +356,7 @@ class ViewConeDebugViewModel(
         val answered = dialog.answeredWith ?: answer
         val result = runner.answer(
             resumeAt = dialog.resumeAt,
-            state = gameStateAt(dialog.askedAt),
+            state = _state.value.game,
             answer = answered,
         )
         if (!applyRun(result, answeredWith = answered)) {
@@ -390,7 +366,7 @@ class ViewConeDebugViewModel(
     }
 
     private fun onDirectionChanged(direction: Direction) {
-        _state.update { it.copy(direction = direction) }
+        _state.update { it.copy(game = it.game.partyTurnedTo(direction)) }
         renderViewPort()
     }
 
@@ -403,15 +379,15 @@ class ViewConeDebugViewModel(
             val sublevel = inf.subLevels[PLAYED_SUBLEVEL]
             viewConeRepository.renderPosition(
                 items = inf.items,
-                monsters = inf.monsterInstances,
+                monsters = _state.value.game.monsters,
                 sublevel = sublevel,
-                playerX = _state.value.playerX,
-                playerY = _state.value.playerY,
-                direction = _state.value.direction
+                playerX = party.position.x,
+                playerY = party.position.y,
+                direction = party.facing
             ).onSuccess { viewPort ->
                 val image = if (background != null && decorations != null) {
                     PlayField(background, decorations, sublevel.palette, font)
-                        .render(viewPort, _state.value.direction, _state.value.dialog?.scene)
+                        .render(viewPort, party.facing, _state.value.dialog?.scene)
                         .toImageBitmap()
                 } else {
                     // the frame art failed to load; still show the raw view
@@ -425,70 +401,70 @@ class ViewConeDebugViewModel(
     }
 
     private fun onStrafe(left: Boolean) {
-        val direction = _state.value.direction
+        val direction = party.facing
         val sideways = if (left) {
             Direction.entries[(direction.ordinal + 3) % Direction.entries.size]
         } else {
             Direction.entries[(direction.ordinal + 1) % Direction.entries.size]
         }
         when (sideways) {
-            Direction.NORTH -> onPlayerPositionChanged(y = _state.value.playerY - 1)
-            Direction.EAST -> onPlayerPositionChanged(x = _state.value.playerX + 1)
-            Direction.SOUTH -> onPlayerPositionChanged(y = _state.value.playerY + 1)
-            Direction.WEST -> onPlayerPositionChanged(x = _state.value.playerX - 1)
+            Direction.NORTH -> onPlayerPositionChanged(y = party.position.y - 1)
+            Direction.EAST -> onPlayerPositionChanged(x = party.position.x + 1)
+            Direction.SOUTH -> onPlayerPositionChanged(y = party.position.y + 1)
+            Direction.WEST -> onPlayerPositionChanged(x = party.position.x - 1)
         }
     }
 
     private fun onMoveForward() {
-        when (_state.value.direction) {
+        when (party.facing) {
             Direction.NORTH -> {
-                val newY = _state.value.playerY - 1
+                val newY = party.position.y - 1
                 onPlayerPositionChanged(y = newY)
             }
 
             Direction.EAST -> {
-                val newX = _state.value.playerX + 1
+                val newX = party.position.x + 1
                 onPlayerPositionChanged(x = newX)
             }
 
             Direction.SOUTH -> {
-                val newY = _state.value.playerY + 1
+                val newY = party.position.y + 1
                 onPlayerPositionChanged(y = newY)
             }
 
             Direction.WEST -> {
-                val newX = _state.value.playerX - 1
+                val newX = party.position.x - 1
                 onPlayerPositionChanged(x = newX)
             }
         }
     }
 
     private fun onMoveBackwards() {
-        when (_state.value.direction) {
+        when (party.facing) {
             Direction.NORTH -> {
-                val newY = _state.value.playerY + 1
+                val newY = party.position.y + 1
                 onPlayerPositionChanged(y = newY)
             }
 
             Direction.EAST -> {
-                val newX = _state.value.playerX - 1
+                val newX = party.position.x - 1
                 onPlayerPositionChanged(x = newX)
             }
 
             Direction.SOUTH -> {
-                val newY = _state.value.playerY - 1
+                val newY = party.position.y - 1
                 onPlayerPositionChanged(y = newY)
             }
 
             Direction.WEST -> {
-                val newX = _state.value.playerX + 1
+                val newX = party.position.x + 1
                 onPlayerPositionChanged(x = newX)
             }
         }
     }
 
     private fun onRotateRight() {
-        val currentDirection = _state.value.direction
+        val currentDirection = party.facing
         val directions = Direction.entries
         val currentIndex = directions.indexOf(currentDirection)
         val newIndex = (currentIndex + 1) % directions.size
@@ -496,7 +472,7 @@ class ViewConeDebugViewModel(
     }
 
     private fun onRotateLeft() {
-        val currentDirection = _state.value.direction
+        val currentDirection = party.facing
         val directions = Direction.entries
         val currentIndex = directions.indexOf(currentDirection)
         val newIndex = (currentIndex - 1 + directions.size) % directions.size
@@ -548,9 +524,16 @@ class ViewConeDebugViewModel(
 
         val viewPort: ImageBitmap? = null,
 
-        val playerX: Int = DEFAULT_PLAYER_X,
-        val playerY: Int = DEFAULT_PLAYER_Y,
-        val direction: Direction = DEFAULT_DIRECTION
+        /**
+         * The world, as the scripts see it. There is one, and it is this: a
+         * script is handed it and hands back what it changed.
+         */
+        val game: GameState = GameState(
+            party = PartyState(
+                position = Location(DEFAULT_PLAYER_X, DEFAULT_PLAYER_Y),
+                facing = DEFAULT_DIRECTION,
+            )
+        ),
     )
 
     companion object {

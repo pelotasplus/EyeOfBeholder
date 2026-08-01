@@ -132,7 +132,9 @@ private fun ViewConeDebugContent(
 
         state.inf?.let { inf ->
             Text(
-                text = "${inf.name.removeSuffix(".INF")}  ${state.playerX}x${state.playerY}  ${state.direction}",
+                text = with(state.game.party) {
+                    "${inf.name.removeSuffix(".INF")}  ${position.x}x${position.y}  $facing"
+                },
                 color = Color.White,
                 style = MaterialTheme.typography.labelMedium,
                 modifier = Modifier
