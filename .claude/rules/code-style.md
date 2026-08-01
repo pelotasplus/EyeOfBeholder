@@ -1,5 +1,23 @@
 # Code Style
 
+## Edit files with the editing tools, never with a script
+
+Source files are changed with the Edit and Write tools. Never with `python3`,
+a shell heredoc, `sed`, or `awk` — not even for a bulk rename, where many Edit
+calls are still the right answer.
+
+A script puts an extra escaping layer between the intent and the file, and
+Kotlin is unusually good at hiding the damage. A heredoc wrote this:
+
+```kotlin
+cpsRepository.loadCps("${'$'}{instruction.pictureName.uppercase()}.CPS")
+```
+
+`${'$'}` is valid Kotlin for a literal dollar, so it compiled, passed review at
+a glance, and asked the server for a file called
+`${instruction.pictureName.uppercase()}.CPS` — a 404 that only showed up in
+the browser at runtime.
+
 **Do not write comments that restate the code.** A comment that says what the
 next line already says out loud is noise — delete it. Examples of comments that
 must NOT be written:
@@ -13,9 +31,8 @@ Button(onClick = { ... })
 ```
 
 Write a comment only when it carries information the code cannot: why a
-non-obvious constant or workaround exists, a reference to an original-game
-table or ScummVM symbol, or a subtle invariant a reader would otherwise get
-wrong. Examples worth keeping:
+non-obvious constant or workaround exists, or a subtle invariant a reader would
+otherwise get wrong. Examples worth keeping:
 
 ```kotlin
 // the web build's default font has no glyph for "▾"
@@ -25,8 +42,26 @@ Text("Debug")
 val scaleFactor = minOf(...).toInt().coerceAtLeast(1)
 ```
 
-KDoc on public types and rendering tables (citing `kEoB2Dsc*` names and the
-like) stays — that is reference material, not narration.
+## Don't name ScummVM symbols in comments
+
+A reader without the ScummVM checkout open can do nothing with
+`drawSequenceBitmap`, `_dlgButtonPosX_Def` or `OldDOSFont::load`, and a reader
+with it open did not need the pointer. Say what the number *means* instead, and
+say it in as few words as the constant needs:
+
+```kotlin
+// no
+/** Where the frame and the speaker go, from `drawSequenceBitmap`'s `frame*` tables. */
+
+// yes
+/** Where the frame and the speaker go. */
+```
+
+What is worth recording is that a table came from the original game at all —
+so nobody re-derives it or nudges it by eye — and that belongs once, in the
+type's KDoc, not on every constant. When a whole binary layout is transcribed,
+write out the layout (offsets and meanings); that is the reference material,
+not the name of the C++ function that reads it.
 
 ## Types, not bare Ints
 

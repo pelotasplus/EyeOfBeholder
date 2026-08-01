@@ -89,8 +89,8 @@ The parent directory (`../`) holds an EoB research library. Most important:
   EoB2/Darkmoon: `darkmoon.cpp`, `sprites_eob.cpp`, `scene_eob.cpp`,
   `screen_eob.cpp`, `eobcommon.cpp`). The original game's lookup tables live
   verbatim in `devtools/create_kyradat/resources/eob2_dos.h` (`kEoB2Dsc*`).
-  Rendering tables transcribed into this codebase cite these names in KDoc —
-  verify against the checkout rather than re-deriving.
+  Look tables up here rather than re-deriving them — but do not name ScummVM
+  symbols in comments, see `.claude/rules/code-style.md`.
 - `../eye-of-the-beholder-file-formats` — file format documentation.
 - `../EOB1`, `../EOB2` — original game data.
 

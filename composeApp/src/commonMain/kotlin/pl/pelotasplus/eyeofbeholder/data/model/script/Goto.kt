@@ -4,16 +4,12 @@ import pl.pelotasplus.eyeofbeholder.data.ByteReader
 
 /** Unconditional jump to a script offset. Opcode 0xF2. */
 data class Goto(
-    val offset: Int,
+    val offset: ScriptOffset,
 ) : ScriptToken {
 
     companion object {
-        fun read(reader: ByteReader): Goto {
-            val offset = reader.readU16LE()
-
-            return Goto(
-                offset = offset,
-            )
-        }
+        fun read(reader: ByteReader) = Goto(
+            offset = ScriptOffset(reader.readU16LE()),
+        )
     }
 }

@@ -140,6 +140,10 @@ data class Cps(
     }
 
     companion object {
+        /** A speaker's portrait: four to a file, one per corner. */
+        const val PORTRAIT_WIDTH = 160
+        const val PORTRAIT_HEIGHT = 96
+
         private const val NUM_LARGE_ITEM_SHAPES = 11
         private const val DIV = 8
         private const val MUL = 24

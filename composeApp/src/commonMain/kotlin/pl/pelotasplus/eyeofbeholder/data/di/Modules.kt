@@ -4,6 +4,10 @@ import org.jetbrains.compose.resources.ExperimentalResourceApi
 import org.koin.dsl.module
 import pl.pelotasplus.eyeofbeholder.data.repository.CpsRepository
 import pl.pelotasplus.eyeofbeholder.data.repository.CpsRepositoryImpl
+import pl.pelotasplus.eyeofbeholder.data.repository.DialogueTextRepository
+import pl.pelotasplus.eyeofbeholder.data.repository.DialogueTextRepositoryImpl
+import pl.pelotasplus.eyeofbeholder.data.repository.FontRepository
+import pl.pelotasplus.eyeofbeholder.data.repository.FontRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.DecRepository
 import pl.pelotasplus.eyeofbeholder.data.repository.DecRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.InfRepository
@@ -31,6 +35,13 @@ val sharedDataModule = module {
     factory<PalRepository> {
         PalRepositoryImpl(get())
     }
+    factory<DialogueTextRepository> {
+        DialogueTextRepositoryImpl(get())
+    }
+    factory<FontRepository> {
+        FontRepositoryImpl(get())
+    }
+
     factory<CpsRepository> {
         CpsRepositoryImpl(get())
     }

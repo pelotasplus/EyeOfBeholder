@@ -8,7 +8,7 @@ import pl.pelotasplus.eyeofbeholder.data.ByteReader
  */
 data class Eval(
     val tokens: List<Conditional>,
-    val goto: Int
+    val goto: ScriptOffset
 ) : ScriptToken {
 
     companion object {
@@ -27,11 +27,9 @@ data class Eval(
                 tokens.add(token)
             }
 
-            val goto = reader.readU16LE()
-
             return Eval(
                 tokens = tokens,
-                goto = goto
+                goto = ScriptOffset(reader.readU16LE())
             )
         }
     }

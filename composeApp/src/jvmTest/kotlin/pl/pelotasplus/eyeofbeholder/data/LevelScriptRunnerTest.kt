@@ -15,6 +15,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.script.Goto
 import pl.pelotasplus.eyeofbeholder.data.model.script.Message
 import pl.pelotasplus.eyeofbeholder.data.model.script.NewLevelOrMonster
 import pl.pelotasplus.eyeofbeholder.data.model.script.Script
+import pl.pelotasplus.eyeofbeholder.data.model.script.ScriptOffset
 import pl.pelotasplus.eyeofbeholder.data.model.script.ScriptToken
 import pl.pelotasplus.eyeofbeholder.data.model.script.Teleport
 import kotlin.test.Test
@@ -58,8 +59,8 @@ class LevelScriptRunnerTest {
 
     @Test
     fun `a trigger on another square is ignored`() {
-        val runner = LevelScriptRunner(listOf(Script(0, changeLevelToken(5))))
-        val trigger = Trigger(Location(9, 9), TriggerFlags(0x08), Script(0, changeLevelToken(5)))
+        val runner = LevelScriptRunner(listOf(Script(ScriptOffset(0), changeLevelToken(5))))
+        val trigger = Trigger(Location(9, 9), TriggerFlags(0x08), Script(ScriptOffset(0), changeLevelToken(5)))
 
         assertEquals(
             ScriptOutcome.Nothing,
@@ -73,7 +74,7 @@ class LevelScriptRunnerTest {
     fun `a true condition falls through to the next instruction`() {
         // oeob_eval: true continues, false jumps
         val outcome = run(
-            0 to Eval(listOf(Conditional.ImmediateShort(1)), goto = 20),
+            0 to Eval(listOf(Conditional.ImmediateShort(1)), goto = ScriptOffset(20)),
             10 to changeLevelToken(5),
             20 to changeLevelToken(9),
         )
@@ -83,7 +84,7 @@ class LevelScriptRunnerTest {
     @Test
     fun `a false condition jumps to the else offset`() {
         val outcome = run(
-            0 to Eval(listOf(Conditional.ImmediateShort(0)), goto = 20),
+            0 to Eval(listOf(Conditional.ImmediateShort(0)), goto = ScriptOffset(20)),
             10 to changeLevelToken(5),
             20 to changeLevelToken(9),
         )
@@ -93,7 +94,7 @@ class LevelScriptRunnerTest {
     @Test
     fun `conditions this project cannot answer yet are taken as true`() {
         val outcome = run(
-            0 to Eval(listOf(Conditional.GetTriggerFlag), goto = 20),
+            0 to Eval(listOf(Conditional.GetTriggerFlag), goto = ScriptOffset(20)),
             10 to changeLevelToken(5),
             20 to changeLevelToken(9),
         )
@@ -107,7 +108,7 @@ class LevelScriptRunnerTest {
         val script = arrayOf(
             0 to Eval(
                 listOf(Conditional.GetPartyDirection, Conditional.ImmediateShort(0), Conditional.Equals),
-                goto = 20,
+                goto = ScriptOffset(20),
             ),
             10 to changeLevelToken(6),
             20 to Teleport.MoveParty(Location(0, 0), Location(9, 9)),
@@ -123,7 +124,7 @@ class LevelScriptRunnerTest {
     @Test
     fun `goto jumps to the target offset`() {
         val outcome = run(
-            0 to Goto(30),
+            0 to Goto(ScriptOffset(30)),
             10 to changeLevelToken(5),
             30 to changeLevelToken(9),
         )
@@ -177,19 +178,19 @@ class LevelScriptRunnerTest {
     fun `a move survives a jump to a missing offset`() {
         val outcome = run(
             0 to Teleport.MoveParty(Location(0, 0), Location(4, 4)),
-            10 to Goto(999),
+            10 to Goto(ScriptOffset(999)),
         )
         assertEquals(ScriptOutcome.MoveParty(Location(4, 4)), outcome)
     }
 
     @Test
     fun `a script that loops for ever gives up instead of hanging`() {
-        assertEquals(ScriptOutcome.Nothing, run(0 to Goto(0)))
+        assertEquals(ScriptOutcome.Nothing, run(0 to Goto(ScriptOffset(0))))
     }
 
     @Test
     fun `a jump to a missing offset stops the script`() {
-        assertEquals(ScriptOutcome.Nothing, run(0 to Goto(999)))
+        assertEquals(ScriptOutcome.Nothing, run(0 to Goto(ScriptOffset(999))))
     }
 
     @Test
@@ -225,14 +226,14 @@ class LevelScriptRunnerTest {
         vararg script: Pair<Int, ScriptToken>,
         facing: Direction = Direction.NORTH,
     ): ScriptOutcome {
-        val instructions = script.map { (offset, token) -> Script(offset, token) }
+        val instructions = script.map { (offset, token) -> Script(ScriptOffset(offset), token) }
         val runner = LevelScriptRunner(instructions)
         val trigger = Trigger(here, TriggerFlags(0x08), instructions.first())
         return runner.onEvent(listOf(trigger), ScriptEvent.PARTY_ENTERED, party(facing))
     }
 
     private fun fire(flags: Int, event: ScriptEvent): ScriptOutcome {
-        val instruction = Script(0, changeLevelToken(5))
+        val instruction = Script(ScriptOffset(0), changeLevelToken(5))
         val runner = LevelScriptRunner(listOf(instruction))
         return runner.onEvent(listOf(Trigger(here, TriggerFlags(flags), instruction)), event, party())
     }

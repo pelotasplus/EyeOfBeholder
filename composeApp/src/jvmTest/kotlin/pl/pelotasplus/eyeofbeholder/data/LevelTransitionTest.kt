@@ -1,6 +1,7 @@
 package pl.pelotasplus.eyeofbeholder.data
 
 import kotlinx.coroutines.runBlocking
+import pl.pelotasplus.eyeofbeholder.data.model.DialogAnswer
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.Inf
 import pl.pelotasplus.eyeofbeholder.data.model.LevelScriptRunner
@@ -41,7 +42,7 @@ class LevelTransitionTest {
     }
 
     @Test
-    fun `stepping on the level 4 stairs changes level`() {
+    fun `the level 4 stairs ask before taking the party down`() {
         val level = load("LEVEL4.INF")
         val runner = LevelScriptRunner(level.script)
 
@@ -52,10 +53,30 @@ class LevelTransitionTest {
         )
 
         assertTrue(
-            outcome is ScriptOutcome.ChangeLevel,
-            "expected entering (15,10) to change level, got $outcome"
+            outcome is ScriptOutcome.AskThePlayer,
+            "expected entering (15,10) to ask the player, got $outcome"
         )
-        assertEquals(5, outcome.level)
+        assertEquals(
+            listOf("yes", "no"),
+            listOf(outcome.dialog.button1, outcome.dialog.button2).map { level.messages[it] },
+        )
+    }
+
+    @Test
+    fun `saying yes to the level 4 stairs goes down and saying no does not`() {
+        val level = load("LEVEL4.INF")
+        val party = PartyState(Location(15, 10), Direction.NORTH)
+        val ask = LevelScriptRunner(level.script).onEvent(
+            level.triggers, ScriptEvent.PARTY_ENTERED, party,
+        ) as ScriptOutcome.AskThePlayer
+
+        val yes = LevelScriptRunner(level.script).answer(ask.resumeAt, party, DialogAnswer(1))
+        assertTrue(yes is ScriptOutcome.ChangeLevel, "yes should go down, got $yes")
+        assertEquals(5, yes.level)
+        assertEquals(Location(14, 9), yes.location)
+
+        val no = LevelScriptRunner(level.script).answer(ask.resumeAt, party, DialogAnswer(2))
+        assertTrue(no is ScriptOutcome.MoveParty, "no should stay on this level, got $no")
     }
 
     @Test

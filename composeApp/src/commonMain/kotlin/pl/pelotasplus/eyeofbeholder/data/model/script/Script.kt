@@ -12,7 +12,7 @@ package pl.pelotasplus.eyeofbeholder.data.model.script
  * @property token The parsed instruction
  */
 data class Script(
-    val offset: Int,
+    val offset: ScriptOffset,
     val token: ScriptToken
 )
 

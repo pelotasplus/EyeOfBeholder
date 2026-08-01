@@ -18,6 +18,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.MonsterTypeId
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterProperty
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptTimer
 import pl.pelotasplus.eyeofbeholder.data.model.SubLevel
+import pl.pelotasplus.eyeofbeholder.data.model.script.ScriptOffset
 import pl.pelotasplus.eyeofbeholder.data.model.script.ClearFlag
 import pl.pelotasplus.eyeofbeholder.data.model.script.CloseDoor
 import pl.pelotasplus.eyeofbeholder.data.model.script.ConsumeItem
@@ -329,7 +330,7 @@ class InfRepositoryImpl(
         val triggers = List(numberOfSpecialBlocks) {
             val location = Location.read(reader)
             val flag = reader.readU16LE()
-            val scriptOffset = reader.readU16LE()
+            val scriptOffset = ScriptOffset(reader.readU16LE())
 
             val matchingScript = script.first { it.offset == scriptOffset }
 
@@ -418,7 +419,7 @@ class InfRepositoryImpl(
 
             tokens.add(
                 Script(
-                    offset = tokenOffset,
+                    offset = ScriptOffset(tokenOffset),
                     token = scriptToken
                 )
             )

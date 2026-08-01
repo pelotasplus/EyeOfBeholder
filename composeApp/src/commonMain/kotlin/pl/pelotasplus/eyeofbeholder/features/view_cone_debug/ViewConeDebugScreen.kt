@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.koin.compose.viewmodel.koinViewModel
+import pl.pelotasplus.eyeofbeholder.data.model.DialogAnswer
 import pl.pelotasplus.eyeofbeholder.features.main_debug.DebugMenuPanel
 import pl.pelotasplus.eyeofbeholder.navigation.Route
 
@@ -72,6 +73,9 @@ fun ViewConeDebugScreen(
         campMenuOpen = campMenuOpen,
         onDebugDestinationClick = onDebugDestinationClick,
         onCampMenuDismiss = { campMenuOpen = false },
+        onDialogAnswer = { answer ->
+            viewModel.onEvent(ViewConeDebugViewModel.Event.DialogAnswered(answer))
+        },
     )
 }
 
@@ -83,6 +87,7 @@ private fun ViewConeDebugContent(
     campMenuOpen: Boolean = false,
     onDebugDestinationClick: (Route) -> Unit = {},
     onCampMenuDismiss: () -> Unit = {},
+    onDialogAnswer: (DialogAnswer) -> Unit = {},
 ) {
     BoxWithConstraints(
         modifier = modifier.fillMaxSize().background(Color.Black),
@@ -104,12 +109,20 @@ private fun ViewConeDebugContent(
                     width = with(density) { (image.width * scaleFactor).toDp() },
                     height = with(density) { (image.height * scaleFactor).toDp() },
                 )
-                .pointerInput(scaleFactor) {
+                .pointerInput(scaleFactor, state.dialog) {
                     detectTapGestures { offset ->
-                        PlayFieldControl.at(
-                            screenX = (offset.x / scaleFactor).toInt(),
-                            screenY = (offset.y / scaleFactor).toInt(),
-                        )?.let(onControlClick)
+                        val x = (offset.x / scaleFactor).toInt()
+                        val y = (offset.y / scaleFactor).toInt()
+
+                        // a question owns the screen until it is answered
+                        val buttons = state.dialog?.scene?.buttons
+                        if (buttons != null) {
+                            buttons.indexOfFirst { it.contains(x, y) }
+                                .takeIf { it >= 0 }
+                                ?.let { onDialogAnswer(DialogAnswer.forButton(it)) }
+                        } else {
+                            PlayFieldControl.at(screenX = x, screenY = y)?.let(onControlClick)
+                        }
                     }
                 }
         ) {
