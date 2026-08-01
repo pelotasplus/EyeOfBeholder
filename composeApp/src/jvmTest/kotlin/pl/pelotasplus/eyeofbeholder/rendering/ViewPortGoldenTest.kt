@@ -59,6 +59,11 @@ class ViewPortGoldenTest {
     fun `level1 four guards two rows ahead`() =
         checkGolden("level1-guards", "LEVEL1.INF", x = 10, y = 18, direction = Direction.SOUTH)
 
+    /** The pair that speak on level 5, seen from the square they speak from. */
+    @Test
+    fun `level5 encounter one square ahead`() =
+        checkGolden("level5-encounter", "LEVEL5.INF", x = 13, y = 9, direction = Direction.NORTH)
+
     @Test
     fun `level7 sword at the party's feet`() =
         checkGolden("level7-sword-at-feet", "LEVEL7.INF", x = 29, y = 16, direction = Direction.SOUTH)

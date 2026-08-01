@@ -355,7 +355,7 @@ class ViewConeRepositoryImpl(
             val mazY = playerY + dy
 
             val monstersHere = monsters
-                .filter { it.subLevelIndex == sublevel.index && it.x == mazX && it.y == mazY }
+                .filter { it.x == mazX && it.y == mazY }
                 .sortedBy { viewRelativePos(playerDir, it.pos) }
 
             for (monster in monstersHere) {

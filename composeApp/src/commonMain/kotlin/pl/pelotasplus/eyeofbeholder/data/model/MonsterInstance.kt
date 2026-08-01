@@ -5,7 +5,9 @@ package pl.pelotasplus.eyeofbeholder.data.model
  * (up to 30 records of 14 bytes each; records starting with 0xFF are empty).
  *
  * @property index Monster slot index from the file (first byte of the record)
- * @property subLevelIndex Which sublevel ("unit") the monster is on
+ * @property unit Which group the monster is updated with. NOT a sublevel — a
+ *   monster's sublevel is not stored in the file at all, it is whichever one
+ *   was being loaded when the monster was placed.
  * @property block Packed maze square: x = block and 0x1F, y = block shr 5
  * @property pos Position within the square (0-3 = quadrants, 4 = center)
  * @property direction Facing direction (0=north, 1=east, 2=south, 3=west)
@@ -18,7 +20,7 @@ package pl.pelotasplus.eyeofbeholder.data.model
  */
 data class MonsterInstance(
     val index: Int,
-    val subLevelIndex: Int,
+    val unit: Int,
     val block: Int,
     val pos: Int,
     val direction: Int,

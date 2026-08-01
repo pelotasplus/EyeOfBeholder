@@ -497,7 +497,7 @@ class InfRepositoryImpl(
                 monsters.add(
                     MonsterInstance(
                         index = monsterIndex,
-                        subLevelIndex = unit,
+                        unit = unit,
                         block = block,
                         pos = pos,
                         direction = dir,

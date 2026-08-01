@@ -59,7 +59,7 @@ class ScriptTraceProbe {
 
         println("=== all ${inf.monsterInstances.size} monster instances")
         inf.monsterInstances.forEach {
-            println("  unit=${it.subLevelIndex} ${it.x}x${it.y} type=${it.type} mode=${it.mode}")
+            println("  unit=${it.unit} ${it.x}x${it.y} type=${it.type} mode=${it.mode}")
         }
 
         println("=== stepping onto 13x9")
