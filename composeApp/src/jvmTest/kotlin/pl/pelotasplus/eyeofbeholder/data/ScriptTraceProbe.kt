@@ -1,13 +1,16 @@
 package pl.pelotasplus.eyeofbeholder.data
 
 import kotlinx.coroutines.runBlocking
+import pl.pelotasplus.eyeofbeholder.data.model.DialogAnswer
+import pl.pelotasplus.eyeofbeholder.data.model.DialogueTextId
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.GameState
-import pl.pelotasplus.eyeofbeholder.data.model.entryPoints
 import pl.pelotasplus.eyeofbeholder.data.model.LevelScriptRunner
 import pl.pelotasplus.eyeofbeholder.data.model.Location
 import pl.pelotasplus.eyeofbeholder.data.model.PartyState
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptEvent
+import pl.pelotasplus.eyeofbeholder.data.model.ScriptOutcome
+import pl.pelotasplus.eyeofbeholder.data.model.entryPoints
 import pl.pelotasplus.eyeofbeholder.data.repository.CpsRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.DecRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.InfRepositoryImpl
@@ -72,5 +75,41 @@ class ScriptTraceProbe {
             ),
         )
         println("=== outcome $outcome")
+
+        println("=== dialogue texts the encounter refers to")
+        val dialogueText = pl.pelotasplus.eyeofbeholder.data.repository
+            .DialogueTextRepositoryImpl(resources)
+        (20..25).forEach { id ->
+            println("  $id -> '${dialogueText.text(DialogueTextId(id)).getOrNull()}'")
+        }
+
+        println("=== stepping onto the door square 15x9")
+        println("=== -> " + LevelScriptRunner(inf.script).onEvent(
+            triggers = inf.triggers,
+            event = ScriptEvent.PARTY_ENTERED,
+            state = GameState(
+                party = PartyState(Location(15, 9), Direction.EAST),
+                monsters = inf.monsterInstances,
+            ),
+        ))
+
+        if (outcome is ScriptOutcome.AskThePlayer) {
+            listOf(outcome.dialog.button1, outcome.dialog.button2, outcome.dialog.button3)
+                .forEachIndexed { index, id ->
+                    println("=== button ${index + 1} = message $id '${inf.message(id)}'")
+                }
+            listOf(1, 2, 3).forEach { answer ->
+                println("=== answering $answer")
+                val after = LevelScriptRunner(inf.script).answer(
+                    resumeAt = outcome.resumeAt,
+                    state = GameState(
+                        party = PartyState(Location(13, 9), Direction.NORTH),
+                        monsters = inf.monsterInstances,
+                    ),
+                    answer = DialogAnswer(answer),
+                )
+                println("=== answer $answer -> $after")
+            }
+        }
     }
 }

@@ -1,6 +1,7 @@
 package pl.pelotasplus.eyeofbeholder.data.repository
 
 import co.touchlab.kermit.Logger
+import pl.pelotasplus.eyeofbeholder.data.model.DialogueTextId
 
 /**
  * The dialogue strings in TEXT.DAT — what the characters the party meets
@@ -15,7 +16,7 @@ import co.touchlab.kermit.Logger
  * offset stored at `(n - 1) * 2`.
  */
 interface DialogueTextRepository {
-    suspend fun text(id: Int): Result<String>
+    suspend fun text(id: DialogueTextId): Result<String>
 }
 
 class DialogueTextRepositoryImpl(
@@ -24,12 +25,12 @@ class DialogueTextRepositoryImpl(
 
     private var file: UByteArray? = null
 
-    override suspend fun text(id: Int): Result<String> = runCatching {
+    override suspend fun text(id: DialogueTextId): Result<String> = runCatching {
         val bytes = file ?: resourceRepository.readResource("files/$FILE").also { file = it }
 
-        require(id >= 1) { "Dialogue text ids are 1 based, got $id" }
+        require(id.number >= 1) { "Dialogue text ids are 1 based, got $id" }
 
-        val offsetAt = (id - 1) * 2
+        val offsetAt = (id.number - 1) * 2
         require(offsetAt + 1 < bytes.size) { "No dialogue text $id in $FILE" }
 
         val start = bytes[offsetAt].toInt() or (bytes[offsetAt + 1].toInt() shl 8)

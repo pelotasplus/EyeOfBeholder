@@ -59,7 +59,7 @@ class LevelTransitionTest {
         )
         assertEquals(
             listOf("yes", "no"),
-            listOf(outcome.dialog.button1, outcome.dialog.button2).map { level.messages[it] },
+            listOf(outcome.dialog.button1, outcome.dialog.button2).map { level.message(it) },
         )
     }
 

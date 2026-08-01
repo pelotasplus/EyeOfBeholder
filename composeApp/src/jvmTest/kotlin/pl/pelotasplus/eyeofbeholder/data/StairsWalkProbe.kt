@@ -62,7 +62,7 @@ class StairsWalkProbe {
         )
         println("ASK level4 (15,10) -> $ask")
         if (ask is pl.pelotasplus.eyeofbeholder.data.model.ScriptOutcome.AskThePlayer) {
-            println("ASK   buttons: ${four.messages.getOrNull(ask.dialog.button1)} / ${four.messages.getOrNull(ask.dialog.button2)}")
+            println("ASK   buttons: ${four.message(ask.dialog.button1)} / ${four.message(ask.dialog.button2)}")
             listOf(DialogAnswer(1), DialogAnswer(2)).forEach { answer ->
                 println("ASK   answer=$answer -> " + LevelScriptRunner(four.script).answer(
                     ask.resumeAt, GameState(PartyState(Location(15, 10), Direction.NORTH)), answer,

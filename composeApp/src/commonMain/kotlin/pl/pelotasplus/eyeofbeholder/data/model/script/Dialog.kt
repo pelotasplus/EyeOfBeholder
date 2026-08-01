@@ -1,6 +1,8 @@
 package pl.pelotasplus.eyeofbeholder.data.model.script
 
 import pl.pelotasplus.eyeofbeholder.data.ByteReader
+import pl.pelotasplus.eyeofbeholder.data.model.DialogueTextId
+import pl.pelotasplus.eyeofbeholder.data.model.MessageId
 
 /**
  * Controls the dialog/cutscene UI system. Opcode 0xE3.
@@ -27,15 +29,21 @@ sealed class Dialog : ScriptToken {
     data object DrawDialogBox : Dialog()
 
     data class RunDialog(
-        val textId: Int,
-        val button1: Int,
-        val button2: Int,
-        val button3: Int
+        val textId: DialogueTextId,
+        val button1: MessageId,
+        val button2: MessageId,
+        val button3: MessageId
     ) : Dialog()
 
+    /**
+     * Prints a speech into the dialogue box that is already on screen, then
+     * waits on a button labelled with [pageBreakLabel] — usually "ok". The
+     * speech is allowed to be empty: the branches that roar at the party print
+     * that as a message first and use this only to be acknowledged.
+     */
     data class DialogText(
-        val x: Int,
-        val y: Int
+        val textId: DialogueTextId,
+        val pageBreakLabel: MessageId
     ) : Dialog()
 
     data class Unknown(val type: Int) : Dialog()
@@ -55,15 +63,15 @@ sealed class Dialog : ScriptToken {
                 0xD5 -> DisplayBackground
                 0xD6 -> DrawDialogBox
                 0xD8 -> RunDialog(
-                    textId = reader.readI16LE(),
-                    button1 = reader.readI16LE(),
-                    button2 = reader.readI16LE(),
-                    button3 = reader.readI16LE()
+                    textId = DialogueTextId(reader.readI16LE()),
+                    button1 = MessageId(reader.readI16LE()),
+                    button2 = MessageId(reader.readI16LE()),
+                    button3 = MessageId(reader.readI16LE())
                 )
 
                 0xF8 -> DialogText(
-                    x = reader.readU16LE(),
-                    y = reader.readU16LE()
+                    textId = DialogueTextId(reader.readU16LE()),
+                    pageBreakLabel = MessageId(reader.readU16LE())
                 )
 
                 else -> error("Unknown dialog type: ${type.toHexString()}")

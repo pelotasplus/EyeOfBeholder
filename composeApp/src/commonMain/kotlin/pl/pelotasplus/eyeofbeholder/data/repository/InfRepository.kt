@@ -347,10 +347,13 @@ class InfRepositoryImpl(
             "Expected empty reader after all INF parsing"
         }
 
-        // verify that script steps point to an existing message
-        script.forEach { scriptToken ->
-            if (scriptToken.token is Message) {
-                val message = messages[scriptToken.token.messageId]
+        script.forEach { step ->
+            val token = step.token
+            if (token is Message) {
+                check(token.messageId.index in messages.indices) {
+                    "$name at ${step.offset} prints message ${token.messageId}, " +
+                        "but the level has only ${messages.size}"
+                }
             }
         }
 

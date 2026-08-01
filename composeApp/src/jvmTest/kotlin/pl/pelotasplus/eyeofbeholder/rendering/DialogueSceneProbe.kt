@@ -3,6 +3,7 @@ package pl.pelotasplus.eyeofbeholder.rendering
 import kotlinx.coroutines.runBlocking
 import pl.pelotasplus.eyeofbeholder.data.model.Cps
 import pl.pelotasplus.eyeofbeholder.data.model.DialogueScene
+import pl.pelotasplus.eyeofbeholder.data.model.DialogueTextId
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.PlayField
 import pl.pelotasplus.eyeofbeholder.data.repository.CpsRepositoryImpl
@@ -52,7 +53,7 @@ class DialogueSceneProbe {
 
         val priest = cps.loadCps("SOUT2.CPS").getOrThrow()
         val font = FontRepositoryImpl(resources).loadFont("FONT6.FNT").getOrThrow()
-        val text = DialogueTextRepositoryImpl(resources).text(28).getOrThrow()
+        val text = DialogueTextRepositoryImpl(resources).text(DialogueTextId(28)).getOrThrow()
 
         // DisplayPicture(sout2, x = 20, y = 0): x counts eight-pixel columns
         val field = PlayField(

@@ -2,6 +2,7 @@ package pl.pelotasplus.eyeofbeholder.data
 
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.GameState
+import pl.pelotasplus.eyeofbeholder.data.model.MessageId
 import pl.pelotasplus.eyeofbeholder.data.model.LevelScriptRunner
 import pl.pelotasplus.eyeofbeholder.data.model.Location
 import pl.pelotasplus.eyeofbeholder.data.model.PartyState
@@ -140,7 +141,7 @@ class LevelScriptRunnerTest {
     @Test
     fun `instructions that are not modelled are skipped`() {
         val outcome = run(
-            0 to Message(messageId = 1, color = 0),
+            0 to Message(messageId = MessageId(1), color = 0),
             10 to changeLevelToken(5),
         )
         assertEquals(changeToLevel(5), outcome)
@@ -196,7 +197,7 @@ class LevelScriptRunnerTest {
 
     @Test
     fun `running off the end of the script stops`() {
-        assertEquals(ScriptOutcome.Nothing, run(0 to Message(messageId = 1, color = 0)))
+        assertEquals(ScriptOutcome.Nothing, run(0 to Message(messageId = MessageId(1), color = 0)))
     }
 
     @Test

@@ -238,8 +238,6 @@ class ViewConeDebugViewModel(
      */
     private fun showDialog(ask: ScriptOutcome.AskThePlayer, at: Location) {
         val inf = _state.value.inf ?: return
-        val messages = inf.messages
-        fun button(id: Int) = messages.getOrNull(id)?.takeIf { it.isNotBlank() }
 
         viewModelScope.launch {
             val text = dialogueTextRepository.text(ask.dialog.textId)
@@ -248,9 +246,9 @@ class ViewConeDebugViewModel(
                 .orEmpty()
 
             val labels = listOfNotNull(
-                button(ask.dialog.button1),
-                button(ask.dialog.button2),
-                button(ask.dialog.button3),
+                inf.message(ask.dialog.button1),
+                inf.message(ask.dialog.button2),
+                inf.message(ask.dialog.button3),
             )
 
             _state.update {

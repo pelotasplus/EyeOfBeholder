@@ -42,4 +42,8 @@ data class Inf(
     val items: List<Item>,
     val monsterInstances: List<MonsterInstance> = emptyList(),
     val triggers: List<Trigger> = emptyList(),
-)
+) {
+    /** null where the script named no message, or named one this level lacks. */
+    fun message(id: MessageId): String? =
+        messages.getOrNull(id.index)?.takeIf { it.isNotBlank() }
+}
