@@ -2,10 +2,15 @@ package pl.pelotasplus.eyeofbeholder.features.cps_debug
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
@@ -13,6 +18,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -20,8 +26,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.koin.compose.viewmodel.koinViewModel
+
+private val FILE_LIST_WIDTH = 160.dp
 
 @Composable
 fun CpsDebugScreen(
@@ -48,28 +57,52 @@ private fun CpsDebugContent(
     if (state.isLoading) {
         CircularProgressIndicator()
     } else {
-        Column(modifier = modifier) {
-            LazyColumn(Modifier.weight(1f).fillMaxWidth()) {
+        Row(modifier = modifier.fillMaxSize()) {
+            LazyColumn(
+                modifier = Modifier
+                    .width(FILE_LIST_WIDTH)
+                    .fillMaxHeight()
+                    .padding(4.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
                 items(state.cpsNames) { palName ->
                     Button(
-                        onClick = { onCpsSelected(palName) }
+                        onClick = { onCpsSelected(palName) },
+                        modifier = Modifier.fillMaxWidth(),
                     ) {
                         Text(text = palName)
                     }
                 }
             }
 
-            if (state.loadedCps != null && state.loadedPalette != null) {
-                BoxWithConstraints(Modifier.background(Color.Cyan)) {
+            BoxWithConstraints(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .background(Color.Cyan),
+                contentAlignment = Alignment.Center,
+            ) {
+                if (state.loadedCps != null && state.loadedPalette != null) {
+                    val cps = state.loadedCps
                     val density = LocalDensity.current
-                    val containerWidthInPixels = with(density) { maxWidth.toPx() }.toInt()
-                    val scaleFactor = (containerWidthInPixels / 320f).toInt().coerceAtLeast(1)
+                    val availableWidth = with(density) { maxWidth.toPx() }
+                    val availableHeight = with(density) { maxHeight.toPx() }
+                    // integer scale only, so the pixels stay square
+                    val scaleFactor = minOf(
+                        availableWidth / cps.width,
+                        availableHeight / cps.height
+                    ).toInt().coerceAtLeast(1)
                     val cellSize = 1f
-                    Canvas(modifier = Modifier.size(maxWidth)) {
+                    Canvas(
+                        modifier = Modifier.size(
+                            width = with(density) { (cps.width * scaleFactor).toDp() },
+                            height = with(density) { (cps.height * scaleFactor).toDp() },
+                        )
+                    ) {
                         scale(scaleFactor.toFloat(), pivot = Offset.Zero) {
-                            state.loadedCps.pixels.forEachIndexed { index, colorIndex ->
-                                val x = (index % 320) * cellSize
-                                val y = (index / 320) * cellSize
+                            cps.pixels.forEachIndexed { index, colorIndex ->
+                                val x = (index % cps.width) * cellSize
+                                val y = (index / cps.width) * cellSize
                                 val color = state.loadedPalette.colors[colorIndex]
                                 if (color.transparent) return@forEachIndexed
                                 drawRect(

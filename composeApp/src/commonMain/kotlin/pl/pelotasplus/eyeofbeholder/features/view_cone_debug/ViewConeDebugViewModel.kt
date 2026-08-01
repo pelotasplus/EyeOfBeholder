@@ -4,9 +4,6 @@ import androidx.compose.runtime.Stable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import co.touchlab.kermit.Logger
-import kotlinx.collections.immutable.ImmutableList
-import kotlinx.collections.immutable.persistentListOf
-import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -15,94 +12,51 @@ import androidx.compose.ui.graphics.ImageBitmap
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.Inf
 import pl.pelotasplus.eyeofbeholder.data.model.toImageBitmap
-import pl.pelotasplus.eyeofbeholder.data.repository.ResourceRepository
 import pl.pelotasplus.eyeofbeholder.data.repository.ViewConeRepository
 
 @Stable
 class ViewConeDebugViewModel(
-    private val resourceRepository: ResourceRepository,
     private val viewConeRepository: ViewConeRepository
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(State())
     val state = _state.asStateFlow()
 
-    init {
-        onEvent(Event.Initialize)
-    }
-
     fun onEvent(event: Event) {
         when (event) {
-            Event.Initialize -> onInitialize()
+            is Event.Initialize -> onInitialize(event.level)
             is Event.OnLevelSelected -> onVmpSelected(event.name)
             Event.MoveForward -> onMoveForward()
             Event.MoveBackwards -> onMoveBackwards()
             Event.RotateRight -> onRotateRight()
             Event.RotateLeft -> onRotateLeft()
-            Event.GoBack -> onGoBack()
         }
     }
 
-    private fun onGoBack() {
-        _state.update {
-            it.copy(viewPort = null)
+    /**
+     * [level] is the INF picked from the Levels screen, or null to open the
+     * default level at its hardcoded start position.
+     */
+    private fun onInitialize(level: String?) {
+        if (level != null) {
+            onVmpSelected(level)
+            return
         }
-    }
 
-    private fun onInitialize() {
-        viewModelScope.launch {
-            resourceRepository.listResources(".INF")
-                .onSuccess { levelNames ->
-                    _state.update {
-                        it.copy(
-                            levels = levelNames.toImmutableList()
-                        )
-                    }
+        // entrance to the temple, stairs down -- default start
+        onVmpSelected(
+            DEFAULT_LEVEL,
+            playerX = DEFAULT_PLAYER_X,
+            playerY = DEFAULT_PLAYER_Y,
+            direction = DEFAULT_DIRECTION
+        )
 
-                    // silver tower 1 -- start
-//                    onVmpSelected(
-//                        "LEVEL7.INF",
-//                        playerX = 15,
-//                        playerY = 6,
-//                        direction = Direction.EAST
-//                    )
-
-                    onVmpSelected(
-                        "LEVEL7.INF",
-                        playerX = 13,
-                        playerY = 3,
-                        direction = Direction.SOUTH
-                    )
-
-                    // four guards at (10,20)
-//                    onVmpSelected(
-//                        "LEVEL1.INF",
-//                        playerX = 10,
-//                        playerY = 18,
-//                        direction = Direction.SOUTH
-//                    )
-
-                    // temple level 2
-                    // https://gamerwalkthroughs.com/eye-of-the-beholder-2/temple-level-2/
-//                    onVmpSelected(
-//                        "LEVEL6.INF",
-//                        playerX = 27, // 20, //10,
-//                        playerY = 29, //3,
-//                        direction = Direction.NORTH, // Direction.NORTH
-//                    )
-
-                    // entrance to the temple, stairs down
-//                    onVmpSelected(
-//                        "LEVEL1.INF",
-//                        playerX = 10,
-//                        playerY = 12,
-//                        direction = Direction.SOUTH
-//                    )
-                }
-                .onFailure {
-                    Logger.e(it) { "Error while loading level names" }
-                }
-        }
+        // other scenes worth rendering while debugging:
+        // silver tower 1 -- start:      LEVEL7.INF (15, 6) EAST
+        //                               LEVEL7.INF (13, 3) SOUTH
+        // four guards at (10,20):       LEVEL1.INF (10, 18) SOUTH
+        // temple level 2:               LEVEL6.INF (27, 29) NORTH
+        // https://gamerwalkthroughs.com/eye-of-the-beholder-2/temple-level-2/
     }
 
     private fun onVmpSelected(
@@ -243,24 +197,28 @@ class ViewConeDebugViewModel(
     }
 
     sealed class Event {
-        data object Initialize : Event()
+        data class Initialize(val level: String?) : Event()
         data class OnLevelSelected(val name: String) : Event()
         data object MoveForward : Event()
         data object MoveBackwards : Event()
         data object RotateRight : Event()
         data object RotateLeft : Event()
-        data object GoBack : Event()
     }
 
     data class State(
         val inf: Inf? = null,
 
-        val levels: ImmutableList<String> = persistentListOf(),
-
         val viewPort: ImageBitmap? = null,
 
-        val playerX: Int = 14,
-        val playerY: Int = 9,
-        val direction: Direction = Direction.WEST
+        val playerX: Int = DEFAULT_PLAYER_X,
+        val playerY: Int = DEFAULT_PLAYER_Y,
+        val direction: Direction = DEFAULT_DIRECTION
     )
+
+    companion object {
+        private const val DEFAULT_LEVEL = "LEVEL1.INF"
+        private const val DEFAULT_PLAYER_X = 10
+        private const val DEFAULT_PLAYER_Y = 12
+        private val DEFAULT_DIRECTION = Direction.SOUTH
+    }
 }

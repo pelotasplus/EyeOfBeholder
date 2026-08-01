@@ -11,11 +11,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -29,17 +28,19 @@ import org.koin.compose.viewmodel.koinViewModel
 
 @Composable
 fun ViewConeDebugScreen(
+    level: String? = null,
     viewModel: ViewConeDebugViewModel = koinViewModel(),
     modifier: Modifier = Modifier
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
 
+    LaunchedEffect(level) {
+        viewModel.onEvent(ViewConeDebugViewModel.Event.Initialize(level))
+    }
+
     ViewConeDebugContent(
         modifier = modifier,
         state = state,
-        onLevelSelected = {
-            viewModel.onEvent(ViewConeDebugViewModel.Event.OnLevelSelected(it))
-        },
         onMoveNorth = {
             viewModel.onEvent(ViewConeDebugViewModel.Event.MoveForward)
         },
@@ -51,9 +52,6 @@ fun ViewConeDebugScreen(
         },
         onRotateWest = {
             viewModel.onEvent(ViewConeDebugViewModel.Event.RotateLeft)
-        },
-        onGoBack = {
-            viewModel.onEvent(ViewConeDebugViewModel.Event.GoBack)
         }
     )
 }
@@ -62,28 +60,14 @@ fun ViewConeDebugScreen(
 private fun ViewConeDebugContent(
     state: ViewConeDebugViewModel.State,
     modifier: Modifier = Modifier,
-    onLevelSelected: (String) -> Unit = {},
     onMoveNorth: () -> Unit = {},
     onMoveSouth: () -> Unit = {},
     onRotateEast: () -> Unit = {},
-    onGoBack: () -> Unit = {},
     onRotateWest: () -> Unit = {},
 ) {
     BoxWithConstraints(modifier = modifier, contentAlignment = Alignment.Center) {
         val screenWidth = this.maxWidth
         val screenHeight = this.maxHeight
-
-        if (state.viewPort == null) {
-            LazyColumn {
-                items(state.levels) { vmpName ->
-                    Button(
-                        onClick = { onLevelSelected(vmpName) }
-                    ) {
-                        Text(text = vmpName)
-                    }
-                }
-            }
-        }
 
         if (state.viewPort != null) {
             Box(
@@ -148,9 +132,6 @@ private fun ViewConeDebugContent(
                     }
                 }
 
-                Button(onClick = onGoBack, modifier = Modifier.align(Alignment.BottomEnd)) {
-                    Text("<")
-                }
             }
         }
     }

@@ -4,19 +4,22 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -31,6 +34,8 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.koin.compose.viewmodel.koinViewModel
 import pl.pelotasplus.eyeofbeholder.data.model.Maz
+
+private val FILE_LIST_WIDTH = 160.dp
 
 @Composable
 fun MazDebugScreen(
@@ -57,26 +62,32 @@ private fun MazDebugContent(
     if (state.isLoading) {
         CircularProgressIndicator()
     } else {
-        Column(modifier = modifier) {
-            LazyColumn(Modifier.weight(1f).fillMaxWidth()) {
+        Row(modifier = modifier.fillMaxSize()) {
+            LazyColumn(
+                modifier = Modifier
+                    .width(FILE_LIST_WIDTH)
+                    .fillMaxHeight()
+                    .padding(4.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
                 items(state.allMazs) { mazName ->
                     Button(
-                        onClick = { onMazSelected(mazName) }
+                        onClick = { onMazSelected(mazName) },
+                        modifier = Modifier.fillMaxWidth(),
                     ) {
                         Text(text = mazName)
                     }
                 }
             }
 
-            if (state.loadedMaz != null) {
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth()
-                        .padding(8.dp)
-                        .verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .padding(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                if (state.loadedMaz != null) {
                     Text(
                         text = "File: ${state.loadedMaz.name}",
                         style = MaterialTheme.typography.titleMedium
@@ -88,13 +99,29 @@ private fun MazDebugContent(
                     val wallColor = Color(55, 55, 55)
                     val textMeasurer = rememberTextMeasurer()
 
-                    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+                    BoxWithConstraints(
+                        modifier = Modifier.fillMaxWidth().weight(1f),
+                        contentAlignment = Alignment.Center,
+                    ) {
                         val density = LocalDensity.current
-                        val containerWidthInPixels = with(density) { maxWidth.toPx() }.toInt()
+                        val availableWidth = with(density) { maxWidth.toPx() }
+                        val availableHeight = with(density) { maxHeight.toPx() }
                         val cellSize = 8f
-                        val scaleFactor =
-                            (containerWidthInPixels / (32 * cellSize)).toInt().coerceAtLeast(1)
-                        Canvas(modifier = Modifier.size(maxWidth)) {
+                        // integer scale that fits the whole map in both directions
+                        val scaleFactor = minOf(
+                            availableWidth / (state.loadedMaz.width * cellSize),
+                            availableHeight / (state.loadedMaz.height * cellSize)
+                        ).toInt().coerceAtLeast(1)
+                        Canvas(
+                            modifier = Modifier.size(
+                                width = with(density) {
+                                    (state.loadedMaz.width * cellSize * scaleFactor).toDp()
+                                },
+                                height = with(density) {
+                                    (state.loadedMaz.height * cellSize * scaleFactor).toDp()
+                                },
+                            )
+                        ) {
                             scale(scaleFactor.toFloat(), pivot = Offset.Zero) {
                                 state.loadedMaz.squares.forEachIndexed { index, square ->
                                     val x = (index % mazWidth) * cellSize
