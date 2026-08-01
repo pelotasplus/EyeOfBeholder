@@ -81,6 +81,11 @@ class ViewPortGoldenTest {
     fun `level4 dagger behind the middle tree from further back`() =
         checkGolden("level4-dagger-behind-tree-far", "LEVEL4.INF", x = 16, y = 11, direction = Direction.SOUTH)
 
+    /** The scene the sprite-versus-wall work is being fixed against. */
+    @Test
+    fun `level4 item against the wall facing west`() =
+        checkGolden("level4-item-west", "LEVEL4.INF", x = 18, y = 14, direction = Direction.WEST)
+
     @Test
     fun `toImageBitmap matches the raw pixel buffer`() {
         val viewPort = renderFrame("LEVEL7.INF", x = 29, y = 15, direction = Direction.SOUTH)
