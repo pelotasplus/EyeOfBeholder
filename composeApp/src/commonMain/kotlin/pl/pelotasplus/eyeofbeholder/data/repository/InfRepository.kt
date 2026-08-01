@@ -102,7 +102,7 @@ class InfRepositoryImpl(
 
     override suspend fun loadInf(name: String, items: List<Item>): Result<Inf> {
         return runCatching {
-            val decompressed = resourceRepository.decompressResource("files/$name")
+            val decompressed = resourceRepository.decompressResource("files/$name").bytes
             decodeInf(name, decompressed, items)
         }
     }

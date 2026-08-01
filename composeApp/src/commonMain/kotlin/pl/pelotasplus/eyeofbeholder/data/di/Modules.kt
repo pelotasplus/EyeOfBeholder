@@ -47,7 +47,7 @@ val sharedDataModule = module {
         MazRepositoryImpl(get())
     }
     factory<VcnRepository> {
-        VcnRepositoryImpl(get(), get())
+        VcnRepositoryImpl(get())
     }
     factory<VmpRepository> {
         VmpRepositoryImpl(get())

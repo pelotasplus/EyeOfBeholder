@@ -57,21 +57,27 @@ class CpsDebugViewModel(
         viewModelScope.launch {
             cpsRepository.loadCps(name)
                 .onSuccess { cps ->
-                    palRepository.loadPal("MEZZ.PAL")
-                        .onSuccess { pal ->
-                            _state.update {
-                                it.copy(
-                                    loadedPalette = pal
-                                )
+                    val embedded = cps.palette
+                    if (embedded != null) {
+                        _state.update { it.copy(loadedPalette = embedded) }
+                    } else {
+                        palRepository.loadPal(FALLBACK_PALETTE)
+                            .onSuccess { pal ->
+                                _state.update {
+                                    it.copy(
+                                        loadedPalette = pal
+                                    )
+                                }
+                            }.onFailure {
+                                Logger.e(it) { "Error while loading pal" }
                             }
-                        }.onFailure {
-                            Logger.e(it) { "Error while loading pal" }
-                        }
+                    }
 
                     _state.update {
                         it.copy(
                             isLoading = false,
-                            loadedCps = cps
+                            loadedCps = cps,
+                            error = null,
                         )
                     }
                 }
@@ -80,6 +86,8 @@ class CpsDebugViewModel(
                     _state.update {
                         it.copy(
                             isLoading = false,
+                            loadedCps = null,
+                            error = exception.message ?: "$name could not be decoded",
                         )
                     }
                 }
@@ -95,6 +103,11 @@ class CpsDebugViewModel(
         val isLoading: Boolean = true,
         val loadedCps: Cps? = null,
         val loadedPalette: Palette? = null,
+        val error: String? = null,
         val cpsNames: ImmutableList<String> = persistentListOf()
     )
+
+    companion object {
+        private const val FALLBACK_PALETTE = "MEZZ.PAL"
+    }
 }

@@ -26,14 +26,15 @@ class CpsRepositoryImpl(
 
     override suspend fun loadCps(name: String): Result<Cps> {
         return runCatching {
-            val bytes = resourceRepository.decompressResource("files/$name")
-            val reader = ByteReader(bytes)
+            val resource = resourceRepository.decompressResource("files/$name")
+            val reader = ByteReader(resource.bytes)
 
             Cps(
                 name = name,
                 width = IMAGE_WIDTH,
                 height = IMAGE_HEIGHT,
-                pixels = reader.readRemaining().map { it.toInt() }.toList()
+                pixels = reader.readRemaining().map { it.toInt() }.toList(),
+                palette = resource.palette
             )
         }
     }

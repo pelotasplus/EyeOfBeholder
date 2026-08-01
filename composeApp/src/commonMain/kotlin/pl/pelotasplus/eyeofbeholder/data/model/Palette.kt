@@ -1,6 +1,7 @@
 package pl.pelotasplus.eyeofbeholder.data.model
 
 import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.toImmutableList
 
 /**
  * A 256-color VGA palette parsed from a .PAL file.
@@ -90,6 +91,32 @@ data class Palette(
 
     companion object {
         private val TRANSPARENT = RGB(0, 0, 0, transparent = true)
+
+        /** 256 colors x 3 channels, the size of a .PAL file and of a CPS's embedded palette. */
+        const val BYTE_SIZE = 256 * 3
+
+        /**
+         * Parses the raw VGA palette layout shared by .PAL files and the
+         * optional palette embedded in a .CPS header: 256 entries of R, G, B
+         * as 6-bit values (0-63), widened to 8-bit. Index 0 is transparent.
+         */
+        fun fromVgaBytes(name: String, bytes: UByteArray): Palette {
+            require(bytes.size == BYTE_SIZE) {
+                "Palette $name is ${bytes.size} bytes, expected $BYTE_SIZE"
+            }
+            val colors = List(256) { index ->
+                val offset = index * 3
+                RGB(
+                    red = to8bit(bytes[offset].toInt()),
+                    green = to8bit(bytes[offset + 1].toInt()),
+                    blue = to8bit(bytes[offset + 2].toInt()),
+                    transparent = index == 0,
+                )
+            }
+            return Palette(name = name, colors = colors.toImmutableList())
+        }
+
+        private fun to8bit(value: Int): Int = (value * 255) / 63
 
         /** Palette entry every color fades toward (a dark grey in EoB2 palettes). */
         private const val FADE_ROOT_COLOR = 12

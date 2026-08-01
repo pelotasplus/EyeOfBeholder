@@ -24,12 +24,15 @@ package pl.pelotasplus.eyeofbeholder.data.model
  * @property width Image width (always 320)
  * @property height Image height (always 200)
  * @property pixels Flat array of palette indices, row-major (width × height entries)
+ * @property palette The file's own palette when it embeds one; such an image
+ *   must be drawn with it rather than with a sublevel .PAL
  */
 data class Cps(
     val name: String,
     val width: Int,
     val height: Int,
     val pixels: List<Int>, // each pixel index to an entry from the color palette (PAL file)
+    val palette: Palette? = null,
 ) {
     fun getItemIcon(icon: Int): ItemIcon? {
         return when (val shape = locate(icon)) {

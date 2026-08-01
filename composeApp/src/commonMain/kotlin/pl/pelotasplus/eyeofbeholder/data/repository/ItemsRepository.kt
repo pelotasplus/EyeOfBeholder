@@ -46,7 +46,7 @@ class ItemsRepositoryImpl(
 
     override suspend fun loadItems(): Result<List<Item>> {
         return runCatching {
-            val itemSmall = resourceRepository.decompressResource("files/ITEMS1.CPS")
+            val itemSmall = resourceRepository.decompressResource("files/ITEMS1.CPS").bytes
             Logger.d(TAG) { "XXX Item small size ${itemSmall.size}" }
 
             val bytes = resourceRepository.readResource("files/ITEM.DAT")

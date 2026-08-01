@@ -26,12 +26,11 @@ interface VcnRepository {
 }
 
 class VcnRepositoryImpl(
-    private val resourceRepository: ResourceRepository,
-    private val palRepository: PalRepository
+    private val resourceRepository: ResourceRepository
 ) : VcnRepository {
     override suspend fun loadVcn(name: String): Result<Vcn> {
         return runCatching {
-            val bytes = resourceRepository.decompressResource("files/$name")
+            val bytes = resourceRepository.decompressResource("files/$name").bytes
             val reader = ByteReader(bytes)
             decodeVcn(name, reader)
         }

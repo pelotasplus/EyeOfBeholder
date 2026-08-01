@@ -132,7 +132,7 @@ class ViewPortGoldenTest {
                     resourceRepository = resources,
                     mazRepository = MazRepositoryImpl(resources),
                     vmpRepository = VmpRepositoryImpl(resources),
-                    vcnRepository = VcnRepositoryImpl(resources, palRepository),
+                    vcnRepository = VcnRepositoryImpl(resources),
                     palRepository = palRepository,
                     cpsRepository = cpsRepository,
                     decRepository = DecRepositoryImpl(resources),

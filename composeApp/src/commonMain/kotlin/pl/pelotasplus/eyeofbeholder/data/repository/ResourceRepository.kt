@@ -4,6 +4,7 @@ import co.touchlab.kermit.Logger
 import eyeofbeholder.composeapp.generated.resources.Res
 import pl.pelotasplus.eyeofbeholder.data.ByteReader
 import pl.pelotasplus.eyeofbeholder.data.LCWHelper
+import pl.pelotasplus.eyeofbeholder.data.model.Palette
 
 /**
  * Foundation layer for reading raw game asset files.
@@ -19,16 +20,27 @@ import pl.pelotasplus.eyeofbeholder.data.LCWHelper
  * - sizeFromHeader (u16) — reported file size
  * - compressionType (u16) — compression method identifier
  * - uncompressedSize (u32) — size of decompressed output buffer
- * - paletteSize (u16) — embedded palette size (always 0 in EoB1)
+ * - paletteSize (u16) — embedded palette size: 0, or 768 when the file carries
+ *   its own 256-color VGA palette between the header and the payload
  * - Remaining bytes: LCW-compressed payload
  */
 interface ResourceRepository {
     suspend fun readResource(path: String): UByteArray
 
-    suspend fun decompressResource(path: String): UByteArray
+    suspend fun decompressResource(path: String): DecompressedResource
 
     suspend fun listResources(extension: String): Result<List<String>>
 }
+
+/**
+ * @property bytes the LCW-decompressed payload
+ * @property palette the file's own palette, or null when it relies on an
+ *   external .PAL
+ */
+data class DecompressedResource(
+    val bytes: UByteArray,
+    val palette: Palette?,
+)
 
 class ResourceRepositoryImpl() : ResourceRepository {
     private val TAG = "ResourceRepository"
@@ -274,8 +286,13 @@ class ResourceRepositoryImpl() : ResourceRepository {
         return Res.readBytes(path).asUByteArray()
     }
 
-    override suspend fun decompressResource(path: String): UByteArray {
+    override suspend fun decompressResource(path: String): DecompressedResource {
         val bytes = readResource(path)
+
+        // COIN.CPS and KHELBAN2.CPS ship as 0-byte files in EoB2
+        check(bytes.size >= HEADER_SIZE) {
+            "$path is ${bytes.size} bytes, too short to hold a $HEADER_SIZE byte header"
+        }
 
         val reader = ByteReader(bytes)
 
@@ -286,22 +303,36 @@ class ResourceRepositoryImpl() : ResourceRepository {
 
         val compressionType = reader.readU16LE()
         Logger.d(TAG) { "Compression Type $compressionType" }
+        // 0 = uncompressed, 1 = LZW, 3 = RLE, 4 = LCW. Only LCW is implemented;
+        // SKELWAR.CPS is the one type 3 file in the game data.
+        check(compressionType == COMPRESSION_LCW) {
+            "$path uses compression type $compressionType, only LCW ($COMPRESSION_LCW) is supported"
+        }
 
         val uncompressedSize = reader.readU32LE()
         Logger.d(TAG) { "Uncompressed size $uncompressedSize" }
 
+        // A CPS may carry its own VGA palette between the header and the LCW
+        // data, in which case it — not the sublevel .PAL — is the right palette
+        // to draw the image with. HEROES.CPS is one such file.
         val paletteSize = reader.readU16LE()
-        check(paletteSize == 0) {
-            "Unexpected palette size: $paletteSize, expected 0"
+        check(paletteSize == 0 || paletteSize == Palette.BYTE_SIZE) {
+            "Unexpected palette size: $paletteSize, expected 0 or ${Palette.BYTE_SIZE}"
         }
         Logger.d(TAG) { "Palette Size $paletteSize" }
+
+        val palette = if (paletteSize == 0) {
+            null
+        } else {
+            Palette.fromVgaBytes(name = path, bytes = reader.readBytes(paletteSize))
+        }
 
         val compressed = reader.readRemaining()
         val decompressed = UByteArray(uncompressedSize)
 
         LCWHelper.decompress(compressed, decompressed)
 
-        return decompressed
+        return DecompressedResource(bytes = decompressed, palette = palette)
     }
 
     override suspend fun listResources(extension: String): Result<List<String>> {
@@ -309,5 +340,10 @@ class ResourceRepositoryImpl() : ResourceRepository {
             manifest.filter { it.endsWith(extension, ignoreCase = true) }
                 .also { Logger.d(TAG) { "listResources: $extension got $it" } }
         }
+    }
+
+    companion object {
+        private const val HEADER_SIZE = 10
+        private const val COMPRESSION_LCW = 4
     }
 }

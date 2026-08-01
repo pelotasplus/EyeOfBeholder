@@ -82,6 +82,14 @@ private fun CpsDebugContent(
                     .background(Color.Cyan),
                 contentAlignment = Alignment.Center,
             ) {
+                if (state.error != null) {
+                    Text(
+                        text = state.error,
+                        color = Color.Red,
+                        modifier = Modifier.padding(16.dp),
+                    )
+                }
+
                 if (state.loadedCps != null && state.loadedPalette != null) {
                     val cps = state.loadedCps
                     val density = LocalDensity.current
