@@ -1,5 +1,7 @@
 package pl.pelotasplus.eyeofbeholder.data.model
 
+import kotlin.jvm.JvmInline
+
 /**
  * An index into a 256-entry [Palette], as stored in every pixel of a .CPS
  * image, a .VCN tile or a rendered [ViewPort] source buffer.

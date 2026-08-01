@@ -1,5 +1,7 @@
 package pl.pelotasplus.eyeofbeholder.data.model
 
+import kotlin.jvm.JvmInline
+
 /**
  * The small integer id spaces the game data is built from.
  *

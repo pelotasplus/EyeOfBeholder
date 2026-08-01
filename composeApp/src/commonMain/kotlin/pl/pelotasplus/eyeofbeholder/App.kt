@@ -6,6 +6,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.safeContentPadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
@@ -27,6 +31,7 @@ import pl.pelotasplus.eyeofbeholder.navigation.Route
 fun App() {
     MaterialTheme {
         val navController = rememberNavController()
+        var debugMenuExpanded by remember { mutableStateOf(false) }
         Box(
             modifier = Modifier
                 .background(MaterialTheme.colorScheme.primaryContainer)
@@ -38,7 +43,15 @@ fun App() {
                 startDestination = Route.ViewConeDebug(),
             ) {
                 composable<Route.ViewConeDebug> { entry ->
-                    ViewConeDebugScreen(level = entry.toRoute<Route.ViewConeDebug>().level)
+                    ViewConeDebugScreen(
+                        level = entry.toRoute<Route.ViewConeDebug>().level,
+                        onDebugDestinationClick = { route ->
+                            navController.navigate(route) {
+                                popUpTo<Route.ViewConeDebug>()
+                                launchSingleTop = true
+                            }
+                        },
+                    )
                 }
                 composable<Route.LevelsDebug> {
                     LevelsDebugScreen(
@@ -70,7 +83,8 @@ fun App() {
             }
 
             DebugMenu(
-                modifier = Modifier.align(Alignment.TopEnd),
+                expanded = debugMenuExpanded,
+                onExpandedChange = { debugMenuExpanded = it },
                 onDestinationClick = { route ->
                     navController.navigate(route) {
                         popUpTo<Route.ViewConeDebug>()
@@ -78,6 +92,7 @@ fun App() {
                     }
                 },
             )
+
         }
     }
 }

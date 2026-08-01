@@ -11,13 +11,20 @@ import kotlinx.coroutines.launch
 import androidx.compose.ui.graphics.ImageBitmap
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.Inf
+import pl.pelotasplus.eyeofbeholder.data.model.Cps
+import pl.pelotasplus.eyeofbeholder.data.model.PlayField
 import pl.pelotasplus.eyeofbeholder.data.model.toImageBitmap
+import pl.pelotasplus.eyeofbeholder.data.repository.CpsRepository
 import pl.pelotasplus.eyeofbeholder.data.repository.ViewConeRepository
 
 @Stable
 class ViewConeDebugViewModel(
-    private val viewConeRepository: ViewConeRepository
+    private val viewConeRepository: ViewConeRepository,
+    private val cpsRepository: CpsRepository,
 ) : ViewModel() {
+
+    private var playFieldBackground: Cps? = null
+    private var decorations: Cps? = null
 
     private val _state = MutableStateFlow(State())
     val state = _state.asStateFlow()
@@ -28,6 +35,8 @@ class ViewConeDebugViewModel(
             is Event.OnLevelSelected -> onVmpSelected(event.name)
             Event.MoveForward -> onMoveForward()
             Event.MoveBackwards -> onMoveBackwards()
+            Event.StrafeLeft -> onStrafe(left = true)
+            Event.StrafeRight -> onStrafe(left = false)
             Event.RotateRight -> onRotateRight()
             Event.RotateLeft -> onRotateLeft()
         }
@@ -38,6 +47,16 @@ class ViewConeDebugViewModel(
      * default level at its hardcoded start position.
      */
     private fun onInitialize(level: String?) {
+        viewModelScope.launch {
+            cpsRepository.loadCps(PLAY_FIELD_CPS)
+                .onSuccess { playFieldBackground = it }
+                .onFailure { Logger.e(it) { "Error while loading $PLAY_FIELD_CPS" } }
+            cpsRepository.loadCps(DECORATIONS_CPS)
+                .onSuccess { decorations = it }
+                .onFailure { Logger.e(it) { "Error while loading $DECORATIONS_CPS" } }
+            renderViewPort()
+        }
+
         if (level != null) {
             onVmpSelected(level)
             return
@@ -118,17 +137,47 @@ class ViewConeDebugViewModel(
     }
 
     private fun renderViewPort() {
+        val inf = _state.value.inf ?: return
+        val background = playFieldBackground
+        val decorations = decorations
+
         viewModelScope.launch {
+            val sublevel = inf.subLevels[0]
             viewConeRepository.renderPosition(
-                items = _state.value.inf!!.items,
-                monsters = _state.value.inf!!.monsterInstances,
-                sublevel = _state.value.inf!!.subLevels[0],
+                items = inf.items,
+                monsters = inf.monsterInstances,
+                sublevel = sublevel,
                 playerX = _state.value.playerX,
                 playerY = _state.value.playerY,
                 direction = _state.value.direction
             ).onSuccess { viewPort ->
-                _state.update { it.copy(viewPort = viewPort.toImageBitmap()) }
+                val image = if (background != null && decorations != null) {
+                    PlayField(background, decorations, sublevel.palette)
+                        .render(viewPort, _state.value.direction)
+                        .toImageBitmap()
+                } else {
+                    // the frame art failed to load; still show the raw view
+                    viewPort.toImageBitmap()
+                }
+                _state.update { it.copy(viewPort = image) }
+            }.onFailure {
+                Logger.e(it) { "Error while rendering position" }
             }
+        }
+    }
+
+    private fun onStrafe(left: Boolean) {
+        val direction = _state.value.direction
+        val sideways = if (left) {
+            Direction.entries[(direction.ordinal + 3) % Direction.entries.size]
+        } else {
+            Direction.entries[(direction.ordinal + 1) % Direction.entries.size]
+        }
+        when (sideways) {
+            Direction.NORTH -> onPlayerPositionChanged(y = _state.value.playerY - 1)
+            Direction.EAST -> onPlayerPositionChanged(x = _state.value.playerX + 1)
+            Direction.SOUTH -> onPlayerPositionChanged(y = _state.value.playerY + 1)
+            Direction.WEST -> onPlayerPositionChanged(x = _state.value.playerX - 1)
         }
     }
 
@@ -201,6 +250,8 @@ class ViewConeDebugViewModel(
         data class OnLevelSelected(val name: String) : Event()
         data object MoveForward : Event()
         data object MoveBackwards : Event()
+        data object StrafeLeft : Event()
+        data object StrafeRight : Event()
         data object RotateRight : Event()
         data object RotateLeft : Event()
     }
@@ -216,6 +267,8 @@ class ViewConeDebugViewModel(
     )
 
     companion object {
+        private const val PLAY_FIELD_CPS = "PLAYFLD.CPS"
+        private const val DECORATIONS_CPS = "DECORATE.CPS"
         private const val DEFAULT_LEVEL = "LEVEL1.INF"
         private const val DEFAULT_PLAYER_X = 10
         private const val DEFAULT_PLAYER_Y = 12
