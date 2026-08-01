@@ -81,9 +81,18 @@ class LevelScriptRunner(
         event: ScriptEvent,
         party: PartyState,
     ): ScriptOutcome {
-        val trigger = triggers
-            .firstOrNull { it.location == party.position && it.flags.reactsTo(event) }
-            ?: return ScriptOutcome.Nothing
+        val here = triggers.filter { it.location == party.position }
+        val trigger = here.firstOrNull { it.flags.reactsTo(event) }
+
+        if (trigger == null) {
+            if (here.isNotEmpty()) {
+                Logger.d(TAG) {
+                    "Trigger at ${party.position} ignores $event, " +
+                        "flags ${here.map { it.flags.raw.toHexString() }}"
+                }
+            }
+            return ScriptOutcome.Nothing
+        }
 
         Logger.d(TAG) {
             "Running trigger at ${party.position} for $event from offset ${trigger.script.offset}"
@@ -104,6 +113,14 @@ class LevelScriptRunner(
         fromOffset: ScriptOffset,
         party: PartyState,
         dialogAnswer: DialogAnswer? = null,
+    ): ScriptOutcome = runScript(fromOffset, party, dialogAnswer).also { outcome ->
+        Logger.d(TAG) { "Script from $fromOffset ended with $outcome" }
+    }
+
+    private fun runScript(
+        fromOffset: ScriptOffset,
+        party: PartyState,
+        dialogAnswer: DialogAnswer?,
     ): ScriptOutcome {
         var index = script.indexOfFirst { it.offset == fromOffset }
         if (index < 0) {
@@ -126,6 +143,8 @@ class LevelScriptRunner(
                 return moved.asOutcome()
             }
 
+            Logger.d(TAG) { "  ${script[index].offset} ${script[index].token}" }
+
             when (val token = script[index].token) {
                 End, Return -> return moved.asOutcome()
 
@@ -137,7 +156,15 @@ class LevelScriptRunner(
 
                 is Eval -> {
                     // a true condition falls through, a false one jumps
-                    if (!evaluate(token.tokens, party, dialogAnswer).isTrue) {
+                    val condition = evaluate(token.tokens, party, dialogAnswer)
+                    Logger.d(TAG) {
+                        if (condition.isTrue) {
+                            "    condition true, carrying on"
+                        } else {
+                            "    condition false, jumping to ${token.goto}"
+                        }
+                    }
+                    if (!condition.isTrue) {
                         index = script.indexOfFirst { it.offset == token.goto }
                         if (index < 0) return moved.asOutcome()
                         continue
@@ -204,7 +231,7 @@ class LevelScriptRunner(
                 is Conditional.And -> push(pop().isTrue && pop().isTrue)
                 is Conditional.Or -> push(pop().isTrue || pop().isTrue)
                 else -> {
-                    Logger.d(TAG) { "Condition $token not modelled yet, assuming true" }
+                    Logger.d(TAG) { "    condition $token not modelled yet, assuming true" }
                     push(ConditionValue.TRUE)
                 }
             }

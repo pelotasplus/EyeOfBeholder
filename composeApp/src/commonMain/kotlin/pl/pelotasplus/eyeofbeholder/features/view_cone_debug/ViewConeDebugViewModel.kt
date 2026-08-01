@@ -474,9 +474,9 @@ class ViewConeDebugViewModel(
         private const val DECORATIONS_CPS = "DECORATE.CPS"
         private const val DIALOGUE_FRAME_CPS = "BORDER.CPS"
         private const val DIALOGUE_FONT = "FONT6.FNT"
-        private const val DEFAULT_LEVEL = "LEVEL4.INF"
-        private const val DEFAULT_PLAYER_X = 11
-        private const val DEFAULT_PLAYER_Y = 5
+        private const val DEFAULT_LEVEL = "LEVEL5.INF"
+        private const val DEFAULT_PLAYER_X = 14
+        private const val DEFAULT_PLAYER_Y = 9
         private val DEFAULT_DIRECTION = Direction.SOUTH
     }
 }
