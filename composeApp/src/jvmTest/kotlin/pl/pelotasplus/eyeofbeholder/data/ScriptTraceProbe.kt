@@ -94,10 +94,9 @@ class ScriptTraceProbe {
         ))
 
         if (outcome is ScriptOutcome.AskThePlayer) {
-            listOf(outcome.dialog.button1, outcome.dialog.button2, outcome.dialog.button3)
-                .forEachIndexed { index, id ->
-                    println("=== button ${index + 1} = message $id '${inf.message(id)}'")
-                }
+            outcome.buttons.forEachIndexed { index, id ->
+                println("=== button ${index + 1} = message $id '${inf.message(id)}'")
+            }
             listOf(1, 2, 3).forEach { answer ->
                 println("=== answering $answer")
                 val after = LevelScriptRunner(inf.script).answer(

@@ -14,6 +14,8 @@ import pl.pelotasplus.eyeofbeholder.data.model.Inf
 import pl.pelotasplus.eyeofbeholder.data.model.Cps
 import pl.pelotasplus.eyeofbeholder.data.model.DialogAnswer
 import pl.pelotasplus.eyeofbeholder.data.model.DialogueScene
+import pl.pelotasplus.eyeofbeholder.data.model.DialogueScene.Companion.MORE
+import pl.pelotasplus.eyeofbeholder.data.model.DialogueText
 import pl.pelotasplus.eyeofbeholder.data.model.Font
 import pl.pelotasplus.eyeofbeholder.data.model.GameState
 import pl.pelotasplus.eyeofbeholder.data.model.LevelScriptRunner
@@ -44,6 +46,7 @@ class ViewConeDebugViewModel(
     private var dialogueFrame: Cps? = null
     private var font: Font? = null
     private var scriptRunner: LevelScriptRunner? = null
+    private var speaker: DialogueScene.Picture? = null
 
     private val _state = MutableStateFlow(State())
     val state = _state.asStateFlow()
@@ -196,8 +199,16 @@ class ViewConeDebugViewModel(
         monsters = _state.value.inf?.monsterInstances.orEmpty(),
     )
 
-    /** @return true when the outcome took over the screen. */
-    private fun applyOutcome(outcome: ScriptOutcome, at: Location): Boolean {
+    /**
+     * @param answeredWith the answer the script is still running under, when
+     *   this outcome came out of [onDialogAnswered] rather than a fresh square.
+     * @return true when the outcome took over the screen.
+     */
+    private fun applyOutcome(
+        outcome: ScriptOutcome,
+        at: Location,
+        answeredWith: DialogAnswer? = null,
+    ): Boolean {
         return when (outcome) {
             is ScriptOutcome.ChangeLevel -> {
                 Logger.i(TAG) { "Changing to level ${outcome.level} at ${outcome.location}" }
@@ -223,8 +234,8 @@ class ViewConeDebugViewModel(
             }
 
             is ScriptOutcome.AskThePlayer -> {
-                Logger.i(TAG) { "Script is asking the player: ${outcome.dialog}" }
-                showDialog(outcome, at)
+                Logger.i(TAG) { "Script is showing text ${outcome.textId} with ${outcome.buttons}" }
+                showDialog(outcome, at, answeredWith = answeredWith)
                 true
             }
 
@@ -236,27 +247,43 @@ class ViewConeDebugViewModel(
      * A script stopped to ask something. The speech comes from TEXT.DAT and
      * the button words from the level's own messages.
      */
-    private fun showDialog(ask: ScriptOutcome.AskThePlayer, at: Location) {
+    private fun showDialog(
+        ask: ScriptOutcome.AskThePlayer,
+        at: Location,
+        answeredWith: DialogAnswer?,
+    ) {
         val inf = _state.value.inf ?: return
 
         viewModelScope.launch {
-            val text = dialogueTextRepository.text(ask.dialog.textId)
-                .onFailure { Logger.e(it) { "No dialogue text ${ask.dialog.textId}" } }
+            val speech = dialogueTextRepository.text(ask.textId)
+                .onFailure { Logger.e(it) { "No dialogue text ${ask.textId}" } }
                 .getOrNull()
-                .orEmpty()
+                ?: DialogueText.EMPTY
 
-            val labels = listOfNotNull(
-                inf.message(ask.dialog.button1),
-                inf.message(ask.dialog.button2),
-                inf.message(ask.dialog.button3),
-            )
+            val labels = ask.buttons.mapNotNull { inf.message(it) }
+            val unread = speech.pages.drop(1)
+
+            // the party's own line goes in the box above what it answers
+            val party = gameStateAt(at).party
+            val spoken = (ask.said.mapNotNull { inf.message(it) } + speech.first)
+                .filter { it.isNotBlank() }
+                .joinToString("\n") { party.fillIn(it) }
 
             _state.update {
                 it.copy(
                     dialog = DialogPrompt(
-                        scene = sceneFor(ask.scene, text, labels),
+                        scene = sceneFor(
+                            scene = ask.scene,
+                            text = spoken,
+                            buttonLabels = if (unread.isEmpty()) labels else listOf(MORE),
+                            waitsToBeRead = unread.isNotEmpty() || ask.waitsToBeRead,
+                        ),
                         resumeAt = ask.resumeAt,
                         askedAt = at,
+                        answeredWith = answeredWith,
+                        unread = unread,
+                        buttons = labels,
+                        waitsToBeRead = ask.waitsToBeRead,
                     )
                 )
             }
@@ -277,19 +304,23 @@ class ViewConeDebugViewModel(
         scene: List<Dialog>,
         text: String,
         buttonLabels: List<String>,
+        waitsToBeRead: Boolean,
     ): DialogueScene {
         val font = font ?: return DialogueScene(null, null, emptyList(), emptyList())
 
         val instruction = scene.filterIsInstance<Dialog.DisplayPicture>().lastOrNull()
-        val portrait = instruction?.let {
-            cpsRepository.loadCps("${it.pictureName.uppercase()}.CPS")
-                .onFailure { error -> Logger.e(error) { "No picture ${it.pictureName}" } }
+        val portrait = if (instruction == null) {
+            // a reply draws no one: whoever is speaking stays up while they talk
+            speaker
+        } else {
+            cpsRepository.loadCps("${instruction.pictureName.uppercase()}.CPS")
+                .onFailure { error -> Logger.e(error) { "No picture ${instruction.pictureName}" } }
                 .getOrNull()
                 ?.let { cps ->
                     DialogueScene.Picture(
                         cps = cps,
-                        sourceLeft = it.x * ViewPort.TILE_SIZE,
-                        sourceTop = it.y,
+                        sourceLeft = instruction.x * ViewPort.TILE_SIZE,
+                        sourceTop = instruction.y,
                         width = Cps.PORTRAIT_WIDTH,
                         height = Cps.PORTRAIT_HEIGHT,
                         left = DialogueScene.PORTRAIT_LEFT,
@@ -297,6 +328,7 @@ class ViewConeDebugViewModel(
                     )
                 }
         }
+        speaker = portrait
 
         return DialogueScene.layout(
             frame = dialogueFrame,
@@ -304,21 +336,51 @@ class ViewConeDebugViewModel(
             text = text,
             buttonLabels = buttonLabels,
             font = font,
+            waitsToBeRead = waitsToBeRead,
         )
+    }
+
+    /** Puts the next part of a speech up, without letting the script move on. */
+    private fun turnThePage(dialog: DialogPrompt) {
+        val unread = dialog.unread.drop(1)
+
+        viewModelScope.launch {
+            _state.update {
+                it.copy(
+                    dialog = dialog.copy(
+                        scene = sceneFor(
+                            scene = emptyList(),
+                            text = dialog.unread.first(),
+                            buttonLabels = if (unread.isEmpty()) dialog.buttons else listOf(MORE),
+                            waitsToBeRead = unread.isNotEmpty() || dialog.waitsToBeRead,
+                        ),
+                        unread = unread,
+                    )
+                )
+            }
+            renderViewPort()
+        }
     }
 
     private fun onDialogAnswered(answer: DialogAnswer) {
         val dialog = _state.value.dialog ?: return
         val runner = scriptRunner ?: return
 
+        if (dialog.unread.isNotEmpty()) {
+            turnThePage(dialog)
+            return
+        }
+
         _state.update { it.copy(dialog = null) }
 
+        val answered = dialog.answeredWith ?: answer
         val outcome = runner.answer(
             resumeAt = dialog.resumeAt,
             state = gameStateAt(dialog.askedAt),
-            answer = answer,
+            answer = answered,
         )
-        if (!applyOutcome(outcome, dialog.askedAt)) {
+        if (!applyOutcome(outcome, dialog.askedAt, answeredWith = answered)) {
+            speaker = null
             renderViewPort()
         }
     }
@@ -459,6 +521,21 @@ class ViewConeDebugViewModel(
         val scene: DialogueScene,
         val resumeAt: ScriptOffset,
         val askedAt: Location,
+        /**
+         * Set while the script is reading a reply back to the player. The
+         * script is still inside the branch [answeredWith] chose, so clicking
+         * "ok" has to hand it that same answer rather than the first button's.
+         */
+        val answeredWith: DialogAnswer? = null,
+        /**
+         * What the speaker has not said yet. While there is more, the button
+         * turns the page instead of letting the script carry on.
+         */
+        val unread: List<String> = emptyList(),
+        /** The real buttons, kept aside until the last page is on screen. */
+        val buttons: List<String> = emptyList(),
+        /** True while the speech is being read rather than answered. */
+        val waitsToBeRead: Boolean = false,
     )
 
     data class State(

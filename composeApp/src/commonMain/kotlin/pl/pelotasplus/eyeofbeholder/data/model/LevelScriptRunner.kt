@@ -6,6 +6,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.script.Dialog
 import pl.pelotasplus.eyeofbeholder.data.model.script.End
 import pl.pelotasplus.eyeofbeholder.data.model.script.Eval
 import pl.pelotasplus.eyeofbeholder.data.model.script.Goto
+import pl.pelotasplus.eyeofbeholder.data.model.script.Message
 import pl.pelotasplus.eyeofbeholder.data.model.script.NewLevelOrMonster
 import pl.pelotasplus.eyeofbeholder.data.model.script.Return
 import pl.pelotasplus.eyeofbeholder.data.model.script.Script
@@ -19,20 +20,38 @@ sealed interface ScriptOutcome {
     data object Nothing : ScriptOutcome
 
     /**
-     * The script is waiting for the player to answer [dialog].
+     * The script has put [textId] on screen and is waiting to be clicked.
+     *
+     * [buttons] is what the player may click: three answers to a question, or
+     * the single word — usually "ok" — that acknowledges a speech. Both stop
+     * the script the same way, and the reply to an answer is itself a speech
+     * waiting to be acknowledged.
      *
      * A script sets its scene one instruction at a time — clear the view, draw
-     * who is speaking, draw the frame — and only then asks. Those instructions
-     * are collected in [scene], in the order the script ran them, so the
-     * screen can put them up before the question.
+     * who is speaking, draw the frame — and only then speaks. Those
+     * instructions are collected in [scene], in the order the script ran them,
+     * so the screen can put them up first.
      *
-     * Feed the answer back with [LevelScriptRunner.answer] and [resumeAt] to
+     * Feed the click back with [LevelScriptRunner.answer] and [resumeAt] to
      * carry on from where it stopped.
      */
     data class AskThePlayer(
-        val dialog: Dialog.RunDialog,
+        val textId: DialogueTextId,
+        val buttons: List<MessageId>,
         val scene: List<Dialog>,
         val resumeAt: ScriptOffset,
+        /**
+         * What the script printed into the box before speaking — the party's
+         * own line, usually. Drawing the box again wipes them, which is how
+         * the clerics' reply arrives on a clean box.
+         */
+        val said: List<MessageId> = emptyList(),
+        /**
+         * True when the script is being read rather than answered, so the one
+         * button belongs in the corner speeches are read on rather than in the
+         * row of answers under the text.
+         */
+        val waitsToBeRead: Boolean = false,
     ) : ScriptOutcome
 
     data class ChangeLevel(
@@ -141,6 +160,9 @@ class LevelScriptRunner(
         // what the script has drawn so far for the question it is building up
         val scene = mutableListOf<Dialog>()
 
+        // and what it has written into the box, which the box outlives
+        val said = mutableListOf<MessageId>()
+
         while (index in script.indices) {
             if (steps++ > MAX_STEPS) {
                 Logger.w(TAG) { "Script from $fromOffset did not terminate after $MAX_STEPS steps" }
@@ -191,12 +213,37 @@ class LevelScriptRunner(
                 // walking past the Darkmoon priest used to throw the party
                 // down a level. Stop and ask.
                 is Dialog.RunDialog -> return ScriptOutcome.AskThePlayer(
-                    dialog = token,
+                    textId = token.textId,
+                    buttons = listOf(token.button1, token.button2, token.button3),
                     scene = scene.toList(),
                     resumeAt = script.getOrNull(index + 1)?.offset ?: return moved.asOutcome(),
+                    said = said.toList(),
                 )
 
-                Dialog.CloseDialog -> scene.clear()
+                // A speech waits to be read before the script goes on, and what
+                // comes next can be the point: the clerics slam the door only
+                // once their roar has been acknowledged.
+                is Dialog.DialogText -> return ScriptOutcome.AskThePlayer(
+                    textId = token.textId,
+                    buttons = listOf(token.pageBreakLabel),
+                    scene = scene.toList(),
+                    resumeAt = script.getOrNull(index + 1)?.offset ?: return moved.asOutcome(),
+                    said = said.toList(),
+                    waitsToBeRead = true,
+                )
+
+                // the box is drawn empty, taking whatever was written in it
+                Dialog.DrawDialogBox -> {
+                    said.clear()
+                    scene += Dialog.DrawDialogBox
+                }
+
+                Dialog.CloseDialog -> {
+                    scene.clear()
+                    said.clear()
+                }
+
+                is Message -> said += token.messageId
 
                 // anything else the script draws while setting up its question
                 is Dialog -> scene += token

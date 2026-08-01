@@ -23,6 +23,35 @@ class DialogueSceneTest {
         font = font,
     )
 
+    /** A speech is read on a corner of its own, wherever the speech ends. */
+    @Test
+    fun `the button a speech is read on keeps its own corner`() {
+        val short = DialogueScene.layout(
+            frame = null, portrait = null, text = "one line",
+            buttonLabels = listOf(DialogueScene.MORE), font = font, waitsToBeRead = true,
+        ).buttons.single()
+
+        val long = DialogueScene.layout(
+            frame = null, portrait = null, text = "a speech that runs on ".repeat(20),
+            buttonLabels = listOf(DialogueScene.MORE), font = font, waitsToBeRead = true,
+        ).buttons.single()
+
+        assertEquals(221, short.left)
+        assertEquals(189, short.top)
+        assertEquals(short, long, "the page break must not move with the text")
+    }
+
+    @Test
+    fun `answers still follow the speech down the box`() {
+        val short = layout("yes", "no").buttons.first()
+        val long = DialogueScene.layout(
+            frame = null, portrait = null, text = "a speech that runs on ".repeat(20),
+            buttonLabels = listOf("yes", "no"), font = font,
+        ).buttons.first()
+
+        assertTrue(long.top > short.top, "answers should sit below the speech")
+    }
+
     @Test
     fun `two answers sit inset`() {
         assertEquals(listOf(59, 166), layout("yes", "no").buttons.map { it.left })

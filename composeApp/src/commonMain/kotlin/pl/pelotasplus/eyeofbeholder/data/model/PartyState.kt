@@ -15,4 +15,17 @@ package pl.pelotasplus.eyeofbeholder.data.model
 data class PartyState(
     val position: Location,
     val facing: Direction,
-)
+    /**
+     * Who speaks when a message names a party member. A stand-in: the original
+     * picks whichever character is able to answer, and there are no characters
+     * here yet.
+     */
+    val characterName: String = "Alex",
+) {
+    /** Puts [characterName] where a message left room for one. */
+    fun fillIn(message: String) = message.replace(SPEAKER, characterName)
+
+    private companion object {
+        const val SPEAKER = "%s"
+    }
+}

@@ -75,7 +75,7 @@ class DialogueSceneProbe {
                     left = DialogueScene.PORTRAIT_LEFT,
                     top = DialogueScene.PORTRAIT_TOP,
                 ),
-                text = text,
+                text = text.first,
                 buttonLabels = listOf("leave", "attack"),
                 font = font,
             ),

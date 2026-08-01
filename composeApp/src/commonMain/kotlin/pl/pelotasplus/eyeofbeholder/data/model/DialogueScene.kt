@@ -51,13 +51,19 @@ data class DialogueScene(
         const val TEXT_TOP = 125
         const val TEXT_WIDTH = 304
 
-        /** Wraps the speech and puts the buttons a line below the last one written. */
+        /**
+         * Wraps the speech and puts the answers a line below the last one
+         * written — except the single button a speech is read on, which has a
+         * corner of its own and does not move with the text. It is the same
+         * button whether it turns the page or ends the speech.
+         */
         fun layout(
             frame: Cps?,
             portrait: Picture?,
             text: String,
             buttonLabels: List<String>,
             font: Font,
+            waitsToBeRead: Boolean = false,
         ): DialogueScene {
             val lines = font.wrap(text, TEXT_WIDTH)
             val buttonTop = (lines.size + 1) * font.height + TEXT_TOP + 4
@@ -71,8 +77,10 @@ data class DialogueScene(
                 buttons = buttonLabels.mapIndexed { index, label ->
                     Button(
                         label = label.uppercase(),
-                        left = buttonLeft.getOrElse(index) { buttonLeft.last() },
-                        top = buttonTop,
+                        left = if (waitsToBeRead) READ_ON_LEFT else {
+                            buttonLeft.getOrElse(index) { buttonLeft.last() }
+                        },
+                        top = if (waitsToBeRead) READ_ON_TOP else buttonTop,
                     )
                 },
             )
@@ -85,5 +93,15 @@ data class DialogueScene(
          */
         private val TWO_ACROSS = listOf(59, 166)
         private val THREE_ACROSS = listOf(4, 112, 220)
+
+        /**
+         * The corner a speech is read on, and the word that turns a page part
+         * way through one. Both are the original's: the button that reads on
+         * sits apart from the answers, in the bottom right, wherever the
+         * speech happens to end.
+         */
+        const val MORE = "more"
+        private const val READ_ON_LEFT = 221
+        private const val READ_ON_TOP = 189
     }
 }

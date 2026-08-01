@@ -2,6 +2,7 @@ package pl.pelotasplus.eyeofbeholder.data
 
 import kotlinx.coroutines.runBlocking
 import pl.pelotasplus.eyeofbeholder.data.model.DialogAnswer
+import pl.pelotasplus.eyeofbeholder.data.model.DialogueTextId
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.GameState
 import pl.pelotasplus.eyeofbeholder.data.model.Inf
@@ -59,7 +60,7 @@ class LevelTransitionTest {
         )
         assertEquals(
             listOf("yes", "no"),
-            listOf(outcome.dialog.button1, outcome.dialog.button2).map { level.message(it) },
+            outcome.buttons.mapNotNull { level.message(it) },
         )
     }
 
@@ -117,6 +118,68 @@ class LevelTransitionTest {
             GameState(party, monsters = emptyList()),
         )
         assertEquals(ScriptOutcome.Nothing, killed)
+    }
+
+    /**
+     * Inquiring gets an answer, and the answer waits to be read before the
+     * script goes on — the clerics deny having seen Amber, then the
+     * conversation ends.
+     */
+    @Test
+    fun `the level 5 clerics reply and wait to be read`() {
+        val level = load("LEVEL5.INF")
+        val state = GameState(
+            PartyState(Location(13, 9), Direction.NORTH),
+            level.monsterInstances,
+        )
+        val runner = LevelScriptRunner(level.script)
+
+        val ask = runner.onEvent(level.triggers, ScriptEvent.PARTY_ENTERED, state)
+                as ScriptOutcome.AskThePlayer
+        assertEquals(
+            listOf("inquire", "attack", "leave"),
+            ask.buttons.mapNotNull { level.message(it) },
+        )
+
+        val reply = runner.answer(ask.resumeAt, state, DialogAnswer(1))
+        assertTrue(reply is ScriptOutcome.AskThePlayer, "inquiring should reply, got $reply")
+        assertEquals(DialogueTextId(23), reply.textId)
+        assertEquals(listOf("ok"), reply.buttons.mapNotNull { level.message(it) })
+
+        assertEquals(
+            ScriptOutcome.Nothing,
+            runner.answer(reply.resumeAt, state, DialogAnswer(1)),
+            "reading the reply should end the conversation",
+        )
+    }
+
+    /**
+     * Leaving is a two line exchange: the party asks to rest, and only once
+     * that has been read does Nadia answer, on a box drawn clean.
+     */
+    @Test
+    fun `taking leave of the level 5 clerics prints the party's line first`() {
+        val level = load("LEVEL5.INF")
+        val party = PartyState(Location(13, 9), Direction.NORTH)
+        val state = GameState(party, level.monsterInstances)
+        val runner = LevelScriptRunner(level.script)
+
+        val ask = runner.onEvent(level.triggers, ScriptEvent.PARTY_ENTERED, state)
+                as ScriptOutcome.AskThePlayer
+
+        val asked = runner.answer(ask.resumeAt, state, DialogAnswer(3)) as ScriptOutcome.AskThePlayer
+        assertEquals(
+            listOf("""Alex: "may we rest a moment in your temple?""""),
+            asked.said.mapNotNull { level.message(it) }.map { party.fillIn(it).trim() },
+        )
+
+        val replied = runner.answer(asked.resumeAt, state, DialogAnswer(3))
+                as ScriptOutcome.AskThePlayer
+        assertEquals(DialogueTextId(24), replied.textId)
+        assertTrue(
+            replied.said.isEmpty(),
+            "drawing the box again should wipe the party's line, kept ${replied.said}",
+        )
     }
 
     @Test
