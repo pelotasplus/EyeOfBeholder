@@ -14,6 +14,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.Inf
 import pl.pelotasplus.eyeofbeholder.data.model.Cps
 import pl.pelotasplus.eyeofbeholder.data.model.LevelScriptRunner
 import pl.pelotasplus.eyeofbeholder.data.model.Location
+import pl.pelotasplus.eyeofbeholder.data.model.PartyState
 import pl.pelotasplus.eyeofbeholder.data.model.PlayField
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptEvent
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptOutcome
@@ -145,7 +146,13 @@ class ViewConeDebugViewModel(
         val inf = _state.value.inf ?: return false
         val runner = scriptRunner ?: return false
 
-        return when (val outcome = runner.onEvent(inf.triggers, at, ScriptEvent.PARTY_ENTERED)) {
+        val outcome = runner.onEvent(
+            triggers = inf.triggers,
+            event = ScriptEvent.PARTY_ENTERED,
+            party = PartyState(position = at, facing = _state.value.direction),
+        )
+
+        return when (outcome) {
             is ScriptOutcome.ChangeLevel -> {
                 Logger.i(TAG) { "Changing to level ${outcome.level} at ${outcome.location}" }
                 onVmpSelected(

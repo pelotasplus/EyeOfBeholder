@@ -3,6 +3,7 @@ package pl.pelotasplus.eyeofbeholder.data
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.LevelScriptRunner
 import pl.pelotasplus.eyeofbeholder.data.model.Location
+import pl.pelotasplus.eyeofbeholder.data.model.PartyState
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptEvent
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptOutcome
 import pl.pelotasplus.eyeofbeholder.data.model.Trigger
@@ -27,6 +28,9 @@ import kotlin.test.assertTrue
 class LevelScriptRunnerTest {
 
     private val here = Location(3, 4)
+
+    private fun party(facing: Direction = Direction.NORTH) =
+        PartyState(position = here, facing = facing)
 
     // --- which triggers fire -------------------------------------------------
 
@@ -59,7 +63,7 @@ class LevelScriptRunnerTest {
 
         assertEquals(
             ScriptOutcome.Nothing,
-            runner.onEvent(listOf(trigger), here, ScriptEvent.PARTY_ENTERED)
+            runner.onEvent(listOf(trigger), ScriptEvent.PARTY_ENTERED, party())
         )
     }
 
@@ -89,11 +93,31 @@ class LevelScriptRunnerTest {
     @Test
     fun `conditions this project cannot answer yet are taken as true`() {
         val outcome = run(
-            0 to Eval(listOf(Conditional.GetPartyDirection), goto = 20),
+            0 to Eval(listOf(Conditional.GetTriggerFlag), goto = 20),
             10 to changeLevelToken(5),
             20 to changeLevelToken(9),
         )
         assertEquals(changeToLevel(5), outcome)
+    }
+
+    @Test
+    fun `the party's facing answers GetPartyDirection`() {
+        // the level 5 stairs only let the party through facing the right way,
+        // and north is 0
+        val script = arrayOf(
+            0 to Eval(
+                listOf(Conditional.GetPartyDirection, Conditional.ImmediateShort(0), Conditional.Equals),
+                goto = 20,
+            ),
+            10 to changeLevelToken(6),
+            20 to Teleport.MoveParty(Location(0, 0), Location(9, 9)),
+        )
+
+        assertEquals(changeToLevel(6), run(*script, facing = Direction.NORTH))
+        assertEquals(
+            ScriptOutcome.MoveParty(Location(9, 9)),
+            run(*script, facing = Direction.SOUTH),
+        )
     }
 
     @Test
@@ -197,16 +221,19 @@ class LevelScriptRunnerTest {
         direction = Direction.WEST,
     )
 
-    private fun run(vararg script: Pair<Int, ScriptToken>): ScriptOutcome {
+    private fun run(
+        vararg script: Pair<Int, ScriptToken>,
+        facing: Direction = Direction.NORTH,
+    ): ScriptOutcome {
         val instructions = script.map { (offset, token) -> Script(offset, token) }
         val runner = LevelScriptRunner(instructions)
         val trigger = Trigger(here, TriggerFlags(0x08), instructions.first())
-        return runner.onEvent(listOf(trigger), here, ScriptEvent.PARTY_ENTERED)
+        return runner.onEvent(listOf(trigger), ScriptEvent.PARTY_ENTERED, party(facing))
     }
 
     private fun fire(flags: Int, event: ScriptEvent): ScriptOutcome {
         val instruction = Script(0, changeLevelToken(5))
         val runner = LevelScriptRunner(listOf(instruction))
-        return runner.onEvent(listOf(Trigger(here, TriggerFlags(flags), instruction)), here, event)
+        return runner.onEvent(listOf(Trigger(here, TriggerFlags(flags), instruction)), event, party())
     }
 }

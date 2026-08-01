@@ -56,15 +56,23 @@ class LevelScriptRunner(
     private val levelFlags: MutableSet<Int> = mutableSetOf(),
 ) {
 
-    fun onEvent(triggers: List<Trigger>, at: Location, event: ScriptEvent): ScriptOutcome {
-        val trigger = triggers.firstOrNull { it.location == at && it.flags.reactsTo(event) }
+    /** Runs the script of the square the party is on, if it reacts to [event]. */
+    fun onEvent(
+        triggers: List<Trigger>,
+        event: ScriptEvent,
+        party: PartyState,
+    ): ScriptOutcome {
+        val trigger = triggers
+            .firstOrNull { it.location == party.position && it.flags.reactsTo(event) }
             ?: return ScriptOutcome.Nothing
 
-        Logger.d(TAG) { "Running trigger at $at for $event from offset ${trigger.script.offset}" }
-        return run(trigger.script.offset)
+        Logger.d(TAG) {
+            "Running trigger at ${party.position} for $event from offset ${trigger.script.offset}"
+        }
+        return run(trigger.script.offset, party)
     }
 
-    private fun run(fromOffset: Int): ScriptOutcome {
+    private fun run(fromOffset: Int, party: PartyState): ScriptOutcome {
         var index = script.indexOfFirst { it.offset == fromOffset }
         if (index < 0) {
             Logger.w(TAG) { "No script at offset $fromOffset" }
@@ -94,7 +102,7 @@ class LevelScriptRunner(
 
                 is Eval -> {
                     // a true condition falls through, a false one jumps
-                    if (!evaluate(token.tokens).isTrue) {
+                    if (!evaluate(token.tokens, party).isTrue) {
                         index = script.indexOfFirst { it.offset == token.goto }
                         if (index < 0) return moved.asOutcome()
                         continue
@@ -123,7 +131,7 @@ class LevelScriptRunner(
         if (this == null) ScriptOutcome.Nothing else ScriptOutcome.MoveParty(this)
 
     /** Postfix stack machine over a condition's tokens. */
-    private fun evaluate(tokens: List<Conditional>): ConditionValue {
+    private fun evaluate(tokens: List<Conditional>, party: PartyState): ConditionValue {
         val stack = ArrayDeque<ConditionValue>()
         fun pop() = stack.removeLastOrNull() ?: ConditionValue.FALSE
         fun push(value: ConditionValue) = stack.addLast(value)
@@ -133,6 +141,7 @@ class LevelScriptRunner(
             when (token) {
                 is Conditional.ImmediateShort -> push(ConditionValue(token.value))
                 is Conditional.GetLevelFlag -> push(levelFlags.isNotEmpty())
+                is Conditional.GetPartyDirection -> push(ConditionValue(party.facing.ordinal))
                 is Conditional.Equals -> push(pop().raw == pop().raw)
                 is Conditional.NotEquals -> push(pop().raw != pop().raw)
                 is Conditional.MoreThan -> push(pop().raw < pop().raw)

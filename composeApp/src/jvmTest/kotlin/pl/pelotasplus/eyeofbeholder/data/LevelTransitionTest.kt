@@ -1,9 +1,11 @@
 package pl.pelotasplus.eyeofbeholder.data
 
 import kotlinx.coroutines.runBlocking
+import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.Inf
 import pl.pelotasplus.eyeofbeholder.data.model.LevelScriptRunner
 import pl.pelotasplus.eyeofbeholder.data.model.Location
+import pl.pelotasplus.eyeofbeholder.data.model.PartyState
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptEvent
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptOutcome
 import pl.pelotasplus.eyeofbeholder.data.model.script.NewLevelOrMonster
@@ -45,8 +47,8 @@ class LevelTransitionTest {
 
         val outcome = runner.onEvent(
             triggers = level.triggers,
-            at = Location(15, 10),
             event = ScriptEvent.PARTY_ENTERED,
+            party = PartyState(Location(15, 10), Direction.NORTH),
         )
 
         assertTrue(
@@ -64,8 +66,8 @@ class LevelTransitionTest {
         // (17,4) has flags 0x0: it reacts to a wall click, not to the party
         val outcome = runner.onEvent(
             triggers = level.triggers,
-            at = Location(17, 4),
             event = ScriptEvent.PARTY_ENTERED,
+            party = PartyState(Location(17, 4), Direction.NORTH),
         )
 
         assertEquals(ScriptOutcome.Nothing, outcome)
