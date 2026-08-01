@@ -156,7 +156,16 @@ class ViewConeRepositoryImpl(
                             .find { it.decorationWallIndex == wallType.decorationWallIndex }
                         Logger.d(TAG) { "Wall wallPosition $wallPosition matching decoration $levelDecoration" }
                         if (levelDecoration == null) {
-                            Logger.e(TAG) { "Decoration not found for index ${wallType.decorationWallIndex}" }
+                            // A level maps only the wall indices it uses, and a
+                            // maze is a fixed 32x32 whose unreachable corners
+                            // keep whatever bytes were left there, so an
+                            // unmapped index is expected — as long as it stays
+                            // out of sight. Painting it red says otherwise.
+                            Logger.w(TAG) {
+                                "Wall index ${wallType.decorationWallIndex} at ($mazX,$mazY) " +
+                                        "is not mapped by this level"
+                            }
+                            viewPort.drawUndrawableWall(wallPosition)
                             return@at
                         }
 

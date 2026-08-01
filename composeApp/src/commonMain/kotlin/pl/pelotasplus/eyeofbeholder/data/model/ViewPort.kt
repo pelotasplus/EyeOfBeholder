@@ -117,6 +117,32 @@ class ViewPort(
         drawWall(wallSet.vmpIndex, wallPosition)
     }
 
+    /**
+     * Fills a wall position with flat red, to make something the renderer could
+     * not draw impossible to miss instead of quietly leaving a hole.
+     *
+     * Whether it is drawn at all is [SHOW_UNDRAWABLE_WALLS].
+     */
+    fun drawUndrawableWall(wallPosition: Int) {
+        if (!SHOW_UNDRAWABLE_WALLS) return
+
+        val renderData = viewSlots[wallPosition].wall
+
+        for (y in 0 until renderData.heightInTiles) {
+            for (x in 0 until renderData.widthInTiles) {
+                val blockIndex = x + y * TILES_PER_ROW + renderData.offsetInViewPort
+                val left = (blockIndex % TILES_PER_ROW) * TILE_SIZE
+                val top = (blockIndex / TILES_PER_ROW) * TILE_SIZE
+
+                for (py in 0 until TILE_SIZE) {
+                    for (px in 0 until TILE_SIZE) {
+                        draw(ScreenX(left + px), ScreenY(top + py), UNDRAWABLE)
+                    }
+                }
+            }
+        }
+    }
+
     fun drawWall(
         wallSetIndex: Int,
         wallPosition: Int,
@@ -518,6 +544,20 @@ class ViewPort(
 
     companion object {
         private const val TAG = "ViewPort"
+
+        /**
+         * Paint walls the renderer could not draw bright red rather than
+         * leaving a hole.
+         *
+         * Every level maps only the wall indices it uses, so the unreachable
+         * corners of a maze refer to indices that have no appearance. Those are
+         * expected and invisible. If red ever shows up on screen it means one
+         * of them is reachable after all, which is a real gap worth chasing.
+         */
+        private const val SHOW_UNDRAWABLE_WALLS = true
+
+        private val UNDRAWABLE = RGB(255, 0, 0, false)
+
         const val ROWS = 120
         const val COLS = 176
         const val TILE_SIZE = 8
