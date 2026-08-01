@@ -12,7 +12,11 @@ import androidx.compose.ui.graphics.ImageBitmap
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.Inf
 import pl.pelotasplus.eyeofbeholder.data.model.Cps
+import pl.pelotasplus.eyeofbeholder.data.model.LevelScriptRunner
+import pl.pelotasplus.eyeofbeholder.data.model.Location
 import pl.pelotasplus.eyeofbeholder.data.model.PlayField
+import pl.pelotasplus.eyeofbeholder.data.model.ScriptEvent
+import pl.pelotasplus.eyeofbeholder.data.model.ScriptOutcome
 import pl.pelotasplus.eyeofbeholder.data.model.toImageBitmap
 import pl.pelotasplus.eyeofbeholder.data.repository.CpsRepository
 import pl.pelotasplus.eyeofbeholder.data.repository.ViewConeRepository
@@ -25,6 +29,7 @@ class ViewConeDebugViewModel(
 
     private var playFieldBackground: Cps? = null
     private var decorations: Cps? = null
+    private var scriptRunner: LevelScriptRunner? = null
 
     private val _state = MutableStateFlow(State())
     val state = _state.asStateFlow()
@@ -88,6 +93,7 @@ class ViewConeDebugViewModel(
             viewConeRepository
                 .loadLevel(name = name)
                 .onSuccess { inf ->
+                    scriptRunner = LevelScriptRunner(inf.script)
                     _state.update {
                         it.copy(
                             inf = inf,
@@ -128,7 +134,43 @@ class ViewConeDebugViewModel(
                 playerY = normalizedY
             )
         }
-        renderViewPort()
+
+        if (!runTriggers(Location(normalizedX, normalizedY))) {
+            renderViewPort()
+        }
+    }
+
+    /** @return true when the square's script took over, e.g. by changing level. */
+    private fun runTriggers(at: Location): Boolean {
+        val inf = _state.value.inf ?: return false
+        val runner = scriptRunner ?: return false
+
+        return when (val outcome = runner.onEvent(inf.triggers, at, ScriptEvent.PARTY_ENTERED)) {
+            is ScriptOutcome.ChangeLevel -> {
+                Logger.i(TAG) { "Changing to level ${outcome.level} at ${outcome.location}" }
+                onVmpSelected(
+                    name = "LEVEL${outcome.level}.INF",
+                    playerX = outcome.location.x,
+                    playerY = outcome.location.y,
+                    direction = outcome.direction
+                )
+                true
+            }
+
+            is ScriptOutcome.MoveParty -> {
+                Logger.i(TAG) { "Script moved the party to ${outcome.destination}" }
+                _state.update {
+                    it.copy(
+                        playerX = outcome.destination.x,
+                        playerY = outcome.destination.y
+                    )
+                }
+                renderViewPort()
+                true
+            }
+
+            ScriptOutcome.Nothing -> false
+        }
     }
 
     private fun onDirectionChanged(direction: Direction) {
@@ -267,11 +309,13 @@ class ViewConeDebugViewModel(
     )
 
     companion object {
+        private const val TAG = "ViewConeDebugViewModel"
         private const val PLAY_FIELD_CPS = "PLAYFLD.CPS"
         private const val DECORATIONS_CPS = "DECORATE.CPS"
-        private const val DEFAULT_LEVEL = "LEVEL1.INF"
-        private const val DEFAULT_PLAYER_X = 10
-        private const val DEFAULT_PLAYER_Y = 12
+        /** Where the real game starts (DarkMoonEngine::startupNew). */
+        private const val DEFAULT_LEVEL = "LEVEL4.INF"
+        private const val DEFAULT_PLAYER_X = 11
+        private const val DEFAULT_PLAYER_Y = 5
         private val DEFAULT_DIRECTION = Direction.SOUTH
     }
 }

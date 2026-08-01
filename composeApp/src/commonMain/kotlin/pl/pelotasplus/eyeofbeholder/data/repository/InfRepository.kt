@@ -10,6 +10,8 @@ import pl.pelotasplus.eyeofbeholder.data.model.Door
 import pl.pelotasplus.eyeofbeholder.data.model.Inf
 import pl.pelotasplus.eyeofbeholder.data.model.Item
 import pl.pelotasplus.eyeofbeholder.data.model.Location
+import pl.pelotasplus.eyeofbeholder.data.model.Trigger
+import pl.pelotasplus.eyeofbeholder.data.model.TriggerFlags
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterGfx
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterInstance
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterTypeId
@@ -324,7 +326,7 @@ class InfRepositoryImpl(
 
         val numberOfSpecialBlocks = reader.readU16LE()
 
-        repeat(numberOfSpecialBlocks) {
+        val triggers = List(numberOfSpecialBlocks) {
             val location = Location.read(reader)
             val flag = reader.readU16LE()
             val scriptOffset = reader.readU16LE()
@@ -332,6 +334,7 @@ class InfRepositoryImpl(
             val matchingScript = script.first { it.offset == scriptOffset }
 
             Logger.d(TAG) { "Got special block for location: $location flag: $flag matchingScript: $matchingScript" }
+            Trigger(location = location, flags = TriggerFlags(flag), script = matchingScript)
         }
 
         Logger.d(TAG) { "After block C offset is ${reader.offset} remaining ${reader.remaining}" }
@@ -357,7 +360,8 @@ class InfRepositoryImpl(
             script = script,
             messages = messages,
             items = items,
-            monsterInstances = monsterInstances
+            monsterInstances = monsterInstances,
+            triggers = triggers
         )
     }
 

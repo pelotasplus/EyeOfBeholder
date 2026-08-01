@@ -41,4 +41,5 @@ data class Inf(
     val messages: List<String>,
     val items: List<Item>,
     val monsterInstances: List<MonsterInstance> = emptyList(),
+    val triggers: List<Trigger> = emptyList(),
 )
