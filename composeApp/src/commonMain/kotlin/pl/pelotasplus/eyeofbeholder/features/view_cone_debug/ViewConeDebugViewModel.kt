@@ -25,7 +25,8 @@ import pl.pelotasplus.eyeofbeholder.data.model.script.ScriptOffset
 import pl.pelotasplus.eyeofbeholder.data.model.PartyState
 import pl.pelotasplus.eyeofbeholder.data.model.PlayField
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptEvent
-import pl.pelotasplus.eyeofbeholder.data.model.ScriptOutcome
+import pl.pelotasplus.eyeofbeholder.data.model.ScriptRun
+import pl.pelotasplus.eyeofbeholder.data.model.ScriptStop
 import pl.pelotasplus.eyeofbeholder.data.model.ViewPort
 import pl.pelotasplus.eyeofbeholder.data.model.toImageBitmap
 import pl.pelotasplus.eyeofbeholder.data.repository.CpsRepository
@@ -185,13 +186,13 @@ class ViewConeDebugViewModel(
         val inf = _state.value.inf ?: return false
         val runner = scriptRunner ?: return false
 
-        val outcome = runner.onEvent(
-            triggers = inf.triggers,
-            event = ScriptEvent.PARTY_ENTERED,
-            state = gameStateAt(at),
+        return applyRun(
+            runner.onEvent(
+                triggers = inf.triggers,
+                event = ScriptEvent.PARTY_ENTERED,
+                state = gameStateAt(at),
+            )
         )
-
-        return applyOutcome(outcome, at)
     }
 
     private fun gameStateAt(at: Location) = GameState(
@@ -201,45 +202,41 @@ class ViewConeDebugViewModel(
 
     /**
      * @param answeredWith the answer the script is still running under, when
-     *   this outcome came out of [onDialogAnswered] rather than a fresh square.
-     * @return true when the outcome took over the screen.
+     *   this came out of [onDialogAnswered] rather than a fresh square.
+     * @return true when the script took over the screen.
      */
-    private fun applyOutcome(
-        outcome: ScriptOutcome,
-        at: Location,
+    private fun applyRun(
+        run: ScriptRun,
         answeredWith: DialogAnswer? = null,
     ): Boolean {
-        return when (outcome) {
-            is ScriptOutcome.ChangeLevel -> {
-                Logger.i(TAG) { "Changing to level ${outcome.level} at ${outcome.location}" }
+        val party = run.state.party
+        _state.update {
+            it.copy(
+                playerX = party.position.x,
+                playerY = party.position.y,
+                direction = party.facing,
+            )
+        }
+
+        return when (val stop = run.stoppedTo) {
+            is ScriptStop.ChangeLevel -> {
+                Logger.i(TAG) { "Changing to level ${stop.level} at ${stop.location}" }
                 onVmpSelected(
-                    name = "LEVEL${outcome.level}.INF",
-                    playerX = outcome.location.x,
-                    playerY = outcome.location.y,
-                    direction = outcome.direction
+                    name = "LEVEL${stop.level}.INF",
+                    playerX = stop.location.x,
+                    playerY = stop.location.y,
+                    direction = stop.direction
                 )
                 true
             }
 
-            is ScriptOutcome.MoveParty -> {
-                Logger.i(TAG) { "Script moved the party to ${outcome.destination}" }
-                _state.update {
-                    it.copy(
-                        playerX = outcome.destination.x,
-                        playerY = outcome.destination.y
-                    )
-                }
-                renderViewPort()
+            is ScriptStop.AskThePlayer -> {
+                Logger.i(TAG) { "Script is showing text ${stop.textId} with ${stop.buttons}" }
+                showDialog(stop, party.position, answeredWith = answeredWith)
                 true
             }
 
-            is ScriptOutcome.AskThePlayer -> {
-                Logger.i(TAG) { "Script is showing text ${outcome.textId} with ${outcome.buttons}" }
-                showDialog(outcome, at, answeredWith = answeredWith)
-                true
-            }
-
-            ScriptOutcome.Nothing -> false
+            null -> false
         }
     }
 
@@ -248,7 +245,7 @@ class ViewConeDebugViewModel(
      * the button words from the level's own messages.
      */
     private fun showDialog(
-        ask: ScriptOutcome.AskThePlayer,
+        ask: ScriptStop.AskThePlayer,
         at: Location,
         answeredWith: DialogAnswer?,
     ) {
@@ -374,12 +371,12 @@ class ViewConeDebugViewModel(
         _state.update { it.copy(dialog = null) }
 
         val answered = dialog.answeredWith ?: answer
-        val outcome = runner.answer(
+        val result = runner.answer(
             resumeAt = dialog.resumeAt,
             state = gameStateAt(dialog.askedAt),
             answer = answered,
         )
-        if (!applyOutcome(outcome, dialog.askedAt, answeredWith = answered)) {
+        if (!applyRun(result, answeredWith = answered)) {
             speaker = null
             renderViewPort()
         }

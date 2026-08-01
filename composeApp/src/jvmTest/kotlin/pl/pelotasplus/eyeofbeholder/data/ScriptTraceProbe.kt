@@ -9,7 +9,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.LevelScriptRunner
 import pl.pelotasplus.eyeofbeholder.data.model.Location
 import pl.pelotasplus.eyeofbeholder.data.model.PartyState
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptEvent
-import pl.pelotasplus.eyeofbeholder.data.model.ScriptOutcome
+import pl.pelotasplus.eyeofbeholder.data.model.ScriptStop
 import pl.pelotasplus.eyeofbeholder.data.model.entryPoints
 import pl.pelotasplus.eyeofbeholder.data.repository.CpsRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.DecRepositoryImpl
@@ -66,7 +66,7 @@ class ScriptTraceProbe {
         }
 
         println("=== stepping onto 13x9")
-        val outcome = LevelScriptRunner(inf.script).onEvent(
+        val stepped = LevelScriptRunner(inf.script).onEvent(
             triggers = inf.triggers,
             event = ScriptEvent.PARTY_ENTERED,
             state = GameState(
@@ -74,7 +74,8 @@ class ScriptTraceProbe {
                 monsters = inf.monsterInstances,
             ),
         )
-        println("=== outcome $outcome")
+        println("=== party ${stepped.state.party}")
+        println("=== stopped to ${stepped.stoppedTo}")
 
         println("=== dialogue texts the encounter refers to")
         val dialogueText = pl.pelotasplus.eyeofbeholder.data.repository
@@ -93,14 +94,15 @@ class ScriptTraceProbe {
             ),
         ))
 
-        if (outcome is ScriptOutcome.AskThePlayer) {
-            outcome.buttons.forEachIndexed { index, id ->
+        val asked = stepped.stoppedTo
+        if (asked is ScriptStop.AskThePlayer) {
+            asked.buttons.forEachIndexed { index, id ->
                 println("=== button ${index + 1} = message $id '${inf.message(id)}'")
             }
             listOf(1, 2, 3).forEach { answer ->
                 println("=== answering $answer")
                 val after = LevelScriptRunner(inf.script).answer(
-                    resumeAt = outcome.resumeAt,
+                    resumeAt = asked.resumeAt,
                     state = GameState(
                         party = PartyState(Location(13, 9), Direction.NORTH),
                         monsters = inf.monsterInstances,

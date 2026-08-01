@@ -9,6 +9,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.LevelScriptRunner
 import pl.pelotasplus.eyeofbeholder.data.model.Location
 import pl.pelotasplus.eyeofbeholder.data.model.PartyState
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptEvent
+import pl.pelotasplus.eyeofbeholder.data.model.ScriptStop
 import pl.pelotasplus.eyeofbeholder.data.repository.CpsRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.DecRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.InfRepositoryImpl
@@ -61,11 +62,12 @@ class StairsWalkProbe {
             GameState(PartyState(Location(15, 10), Direction.NORTH)),
         )
         println("ASK level4 (15,10) -> $ask")
-        if (ask is pl.pelotasplus.eyeofbeholder.data.model.ScriptOutcome.AskThePlayer) {
-            println("ASK   buttons: ${ask.buttons.mapNotNull { four.message(it) }}")
+        val asked = ask.stoppedTo
+        if (asked is ScriptStop.AskThePlayer) {
+            println("ASK   buttons: ${asked.buttons.mapNotNull { four.message(it) }}")
             listOf(DialogAnswer(1), DialogAnswer(2)).forEach { answer ->
                 println("ASK   answer=$answer -> " + LevelScriptRunner(four.script).answer(
-                    ask.resumeAt, GameState(PartyState(Location(15, 10), Direction.NORTH)), answer,
+                    asked.resumeAt, GameState(PartyState(Location(15, 10), Direction.NORTH)), answer,
                 ))
             }
         }

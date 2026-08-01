@@ -10,7 +10,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.LevelScriptRunner
 import pl.pelotasplus.eyeofbeholder.data.model.Location
 import pl.pelotasplus.eyeofbeholder.data.model.PartyState
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptEvent
-import pl.pelotasplus.eyeofbeholder.data.model.ScriptOutcome
+import pl.pelotasplus.eyeofbeholder.data.model.ScriptStop
 import pl.pelotasplus.eyeofbeholder.data.model.script.NewLevelOrMonster
 import pl.pelotasplus.eyeofbeholder.data.repository.CpsRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.DecRepositoryImpl
@@ -48,19 +48,19 @@ class LevelTransitionTest {
         val level = load("LEVEL4.INF")
         val runner = LevelScriptRunner(level.script)
 
-        val outcome = runner.onEvent(
+        val stop = runner.onEvent(
             triggers = level.triggers,
             event = ScriptEvent.PARTY_ENTERED,
             state = GameState(PartyState(Location(15, 10), Direction.NORTH)),
-        )
+        ).stoppedTo
 
         assertTrue(
-            outcome is ScriptOutcome.AskThePlayer,
-            "expected entering (15,10) to ask the player, got $outcome"
+            stop is ScriptStop.AskThePlayer,
+            "expected entering (15,10) to ask the player, got $stop"
         )
         assertEquals(
             listOf("yes", "no"),
-            outcome.buttons.mapNotNull { level.message(it) },
+            stop.buttons.mapNotNull { level.message(it) },
         )
     }
 
@@ -70,15 +70,21 @@ class LevelTransitionTest {
         val party = GameState(PartyState(Location(15, 10), Direction.NORTH))
         val ask = LevelScriptRunner(level.script).onEvent(
             level.triggers, ScriptEvent.PARTY_ENTERED, party,
-        ) as ScriptOutcome.AskThePlayer
+        ).stoppedTo as ScriptStop.AskThePlayer
 
         val yes = LevelScriptRunner(level.script).answer(ask.resumeAt, party, DialogAnswer(1))
-        assertTrue(yes is ScriptOutcome.ChangeLevel, "yes should go down, got $yes")
-        assertEquals(5, yes.level)
-        assertEquals(Location(14, 9), yes.location)
+        val goesDown = yes.stoppedTo
+        assertTrue(goesDown is ScriptStop.ChangeLevel, "yes should go down, got $goesDown")
+        assertEquals(5, goesDown.level)
+        assertEquals(Location(14, 9), goesDown.location)
 
         val no = LevelScriptRunner(level.script).answer(ask.resumeAt, party, DialogAnswer(2))
-        assertTrue(no is ScriptOutcome.MoveParty, "no should stay on this level, got $no")
+        assertEquals(null, no.stoppedTo, "no should stay on this level")
+        assertEquals(
+            Location(16, 10),
+            no.state.party.position,
+            "no should step the party back off the stairs",
+        )
     }
 
     @Test
@@ -87,13 +93,13 @@ class LevelTransitionTest {
         val runner = LevelScriptRunner(level.script)
 
         // (17,4) has flags 0x0: it reacts to a wall click, not to the party
-        val outcome = runner.onEvent(
+        val run = runner.onEvent(
             triggers = level.triggers,
             event = ScriptEvent.PARTY_ENTERED,
             state = GameState(PartyState(Location(17, 4), Direction.NORTH)),
         )
 
-        assertEquals(ScriptOutcome.Nothing, outcome)
+        assertEquals(null, run.stoppedTo)
     }
 
     /**
@@ -109,15 +115,15 @@ class LevelTransitionTest {
             level.triggers,
             ScriptEvent.PARTY_ENTERED,
             GameState(party, level.monsterInstances),
-        )
-        assertTrue(alive is ScriptOutcome.AskThePlayer, "expected a question, got $alive")
+        ).stoppedTo
+        assertTrue(alive is ScriptStop.AskThePlayer, "expected a question, got $alive")
 
         val killed = LevelScriptRunner(level.script).onEvent(
             level.triggers,
             ScriptEvent.PARTY_ENTERED,
             GameState(party, monsters = emptyList()),
         )
-        assertEquals(ScriptOutcome.Nothing, killed)
+        assertEquals(null, killed.stoppedTo)
     }
 
     /**
@@ -135,20 +141,20 @@ class LevelTransitionTest {
         val runner = LevelScriptRunner(level.script)
 
         val ask = runner.onEvent(level.triggers, ScriptEvent.PARTY_ENTERED, state)
-                as ScriptOutcome.AskThePlayer
+            .stoppedTo as ScriptStop.AskThePlayer
         assertEquals(
             listOf("inquire", "attack", "leave"),
             ask.buttons.mapNotNull { level.message(it) },
         )
 
-        val reply = runner.answer(ask.resumeAt, state, DialogAnswer(1))
-        assertTrue(reply is ScriptOutcome.AskThePlayer, "inquiring should reply, got $reply")
+        val reply = runner.answer(ask.resumeAt, state, DialogAnswer(1)).stoppedTo
+        assertTrue(reply is ScriptStop.AskThePlayer, "inquiring should reply, got $reply")
         assertEquals(DialogueTextId(23), reply.textId)
         assertEquals(listOf("ok"), reply.buttons.mapNotNull { level.message(it) })
 
         assertEquals(
-            ScriptOutcome.Nothing,
-            runner.answer(reply.resumeAt, state, DialogAnswer(1)),
+            null,
+            runner.answer(reply.resumeAt, state, DialogAnswer(1)).stoppedTo,
             "reading the reply should end the conversation",
         )
     }
@@ -165,16 +171,17 @@ class LevelTransitionTest {
         val runner = LevelScriptRunner(level.script)
 
         val ask = runner.onEvent(level.triggers, ScriptEvent.PARTY_ENTERED, state)
-                as ScriptOutcome.AskThePlayer
+            .stoppedTo as ScriptStop.AskThePlayer
 
-        val asked = runner.answer(ask.resumeAt, state, DialogAnswer(3)) as ScriptOutcome.AskThePlayer
+        val asked = runner.answer(ask.resumeAt, state, DialogAnswer(3))
+            .stoppedTo as ScriptStop.AskThePlayer
         assertEquals(
             listOf("""Alex: "may we rest a moment in your temple?""""),
             asked.said.mapNotNull { level.message(it) }.map { party.fillIn(it).trim() },
         )
 
         val replied = runner.answer(asked.resumeAt, state, DialogAnswer(3))
-                as ScriptOutcome.AskThePlayer
+            .stoppedTo as ScriptStop.AskThePlayer
         assertEquals(DialogueTextId(24), replied.textId)
         assertTrue(
             replied.said.isEmpty(),

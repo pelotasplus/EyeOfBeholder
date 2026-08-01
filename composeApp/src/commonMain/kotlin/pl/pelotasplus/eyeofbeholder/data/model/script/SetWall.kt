@@ -1,6 +1,7 @@
 package pl.pelotasplus.eyeofbeholder.data.model.script
 
 import pl.pelotasplus.eyeofbeholder.data.ByteReader
+import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.Location
 
 /**
@@ -35,7 +36,7 @@ sealed class SetWall : ScriptToken {
      * type = -19 (0xED)
      */
     data class ChangePartyDirection(
-        val direction: Int
+        val direction: Direction
     ) : SetWall()
 
     data class Unknown(val type: Int) : SetWall()
@@ -55,7 +56,7 @@ sealed class SetWall : ScriptToken {
                 )
 
                 0xED -> ChangePartyDirection(                   // 0xED - change party direction
-                    direction = reader.readU8()
+                    direction = Direction.entries[reader.readU8()]
                 )
 
                 else -> error("Unknown SetWall type: $type")

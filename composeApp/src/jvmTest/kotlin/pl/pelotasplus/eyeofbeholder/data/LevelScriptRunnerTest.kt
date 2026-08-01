@@ -7,7 +7,8 @@ import pl.pelotasplus.eyeofbeholder.data.model.LevelScriptRunner
 import pl.pelotasplus.eyeofbeholder.data.model.Location
 import pl.pelotasplus.eyeofbeholder.data.model.PartyState
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptEvent
-import pl.pelotasplus.eyeofbeholder.data.model.ScriptOutcome
+import pl.pelotasplus.eyeofbeholder.data.model.ScriptRun
+import pl.pelotasplus.eyeofbeholder.data.model.ScriptStop
 import pl.pelotasplus.eyeofbeholder.data.model.Trigger
 import pl.pelotasplus.eyeofbeholder.data.model.TriggerFlags
 import pl.pelotasplus.eyeofbeholder.data.model.script.Conditional
@@ -19,6 +20,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.script.NewLevelOrMonster
 import pl.pelotasplus.eyeofbeholder.data.model.script.Script
 import pl.pelotasplus.eyeofbeholder.data.model.script.ScriptOffset
 import pl.pelotasplus.eyeofbeholder.data.model.script.ScriptToken
+import pl.pelotasplus.eyeofbeholder.data.model.script.SetWall
 import pl.pelotasplus.eyeofbeholder.data.model.script.Teleport
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -44,19 +46,19 @@ class LevelScriptRunnerTest {
 
     @Test
     fun `a trigger for entering does not fire when the party leaves`() {
-        assertEquals(ScriptOutcome.Nothing, fire(flags = 0x08, event = ScriptEvent.PARTY_LEFT))
+        assertEquals(null,fire(flags = 0x08, event = ScriptEvent.PARTY_LEFT))
     }
 
     @Test
     fun `flag bit 4 means the script runs when the party leaves`() {
         assertEquals(changeToLevel(5), fire(flags = 0x10, event = ScriptEvent.PARTY_LEFT))
-        assertEquals(ScriptOutcome.Nothing, fire(flags = 0x10, event = ScriptEvent.PARTY_ENTERED))
+        assertEquals(null,fire(flags = 0x10, event = ScriptEvent.PARTY_ENTERED))
     }
 
     @Test
     fun `flags of zero react to neither`() {
-        assertEquals(ScriptOutcome.Nothing, fire(flags = 0x00, event = ScriptEvent.PARTY_ENTERED))
-        assertEquals(ScriptOutcome.Nothing, fire(flags = 0x00, event = ScriptEvent.PARTY_LEFT))
+        assertEquals(null,fire(flags = 0x00, event = ScriptEvent.PARTY_ENTERED))
+        assertEquals(null,fire(flags = 0x00, event = ScriptEvent.PARTY_LEFT))
     }
 
     @Test
@@ -65,8 +67,8 @@ class LevelScriptRunnerTest {
         val trigger = Trigger(Location(9, 9), TriggerFlags(0x08), Script(ScriptOffset(0), changeLevelToken(5)))
 
         assertEquals(
-            ScriptOutcome.Nothing,
-            runner.onEvent(listOf(trigger), ScriptEvent.PARTY_ENTERED, party())
+            null,
+            runner.onEvent(listOf(trigger), ScriptEvent.PARTY_ENTERED, party()).stoppedTo
         )
     }
 
@@ -118,8 +120,8 @@ class LevelScriptRunnerTest {
 
         assertEquals(changeToLevel(6), run(*script, facing = Direction.NORTH))
         assertEquals(
-            ScriptOutcome.MoveParty(Location(9, 9)),
-            run(*script, facing = Direction.SOUTH),
+            Location(9, 9),
+            runFully(*script, facing = Direction.SOUTH).state.party.position,
         )
     }
 
@@ -135,7 +137,7 @@ class LevelScriptRunnerTest {
 
     @Test
     fun `end stops the script`() {
-        assertEquals(ScriptOutcome.Nothing, run(0 to End, 10 to changeLevelToken(5)))
+        assertEquals(null,run(0 to End, 10 to changeLevelToken(5)))
     }
 
     @Test
@@ -148,16 +150,17 @@ class LevelScriptRunnerTest {
     }
 
     @Test
-    fun `move party reports the destination`() {
-        val outcome = run(0 to Teleport.MoveParty(Location(0, 0), Location(7, 8)))
-        assertEquals(ScriptOutcome.MoveParty(Location(7, 8)), outcome)
+    fun `move party puts the party on the destination`() {
+        val run = runFully(0 to Teleport.MoveParty(Location(0, 0), Location(7, 8)))
+        assertEquals(Location(7, 8), run.state.party.position)
+        assertEquals(null, run.stoppedTo)
     }
 
     @Test
     fun `moving the party does not stop the script`() {
         // the level 5 stairs step the party onto the staircase and only then
-        // change level; oeob_movePartyOrObject restores _abortScript so that
-        // the script survives the move
+        // change level, so the engine goes out of its way to keep running
+        // after a move
         val outcome = run(
             0 to Teleport.MoveParty(Location(0, 0), Location(10, 6)),
             10 to changeLevelToken(6),
@@ -168,42 +171,64 @@ class LevelScriptRunnerTest {
 
     @Test
     fun `the last move wins when no level change follows`() {
-        val outcome = run(
+        val run = runFully(
             0 to Teleport.MoveParty(Location(0, 0), Location(1, 1)),
             10 to Teleport.MoveParty(Location(0, 0), Location(2, 2)),
             20 to End,
         )
-        assertEquals(ScriptOutcome.MoveParty(Location(2, 2)), outcome)
+        assertEquals(Location(2, 2), run.state.party.position)
     }
 
     @Test
     fun `a move survives a jump to a missing offset`() {
-        val outcome = run(
+        val run = runFully(
             0 to Teleport.MoveParty(Location(0, 0), Location(4, 4)),
             10 to Goto(ScriptOffset(999)),
         )
-        assertEquals(ScriptOutcome.MoveParty(Location(4, 4)), outcome)
+        assertEquals(Location(4, 4), run.state.party.position)
+    }
+
+    @Test
+    fun `the script turns the party where it says to`() {
+        val run = runFully(
+            0 to SetWall.ChangePartyDirection(Direction.EAST),
+            10 to End,
+            facing = Direction.NORTH,
+        )
+        assertEquals(Direction.EAST, run.state.party.facing)
+    }
+
+    /** The clerics are addressed face to face, before they are drawn. */
+    @Test
+    fun `a turn survives the script stopping to speak`() {
+        val run = runFully(
+            0 to SetWall.ChangePartyDirection(Direction.SOUTH),
+            10 to changeLevelToken(6),
+            facing = Direction.NORTH,
+        )
+        assertEquals(Direction.SOUTH, run.state.party.facing)
+        assertTrue(run.stoppedTo is ScriptStop.ChangeLevel)
     }
 
     @Test
     fun `a script that loops for ever gives up instead of hanging`() {
-        assertEquals(ScriptOutcome.Nothing, run(0 to Goto(ScriptOffset(0))))
+        assertEquals(null,run(0 to Goto(ScriptOffset(0))))
     }
 
     @Test
     fun `a jump to a missing offset stops the script`() {
-        assertEquals(ScriptOutcome.Nothing, run(0 to Goto(ScriptOffset(999))))
+        assertEquals(null,run(0 to Goto(ScriptOffset(999))))
     }
 
     @Test
     fun `running off the end of the script stops`() {
-        assertEquals(ScriptOutcome.Nothing, run(0 to Message(messageId = MessageId(1), color = 0)))
+        assertEquals(null,run(0 to Message(messageId = MessageId(1), color = 0)))
     }
 
     @Test
     fun `the direction from the script is carried through`() {
         val outcome = run(0 to changeLevelToken(5, Direction.WEST))
-        assertTrue(outcome is ScriptOutcome.ChangeLevel)
+        assertTrue(outcome is ScriptStop.ChangeLevel)
         assertEquals(Direction.WEST, outcome.direction)
     }
 
@@ -217,26 +242,34 @@ class LevelScriptRunnerTest {
             direction = direction,
         )
 
-    private fun changeToLevel(level: Int) = ScriptOutcome.ChangeLevel(
+    private fun changeToLevel(level: Int) = ScriptStop.ChangeLevel(
         level = level,
         subLevel = 0,
         location = Location(14, 9),
         direction = Direction.WEST,
     )
 
+    /** What the script stopped for, which is what most of these tests are about. */
     private fun run(
         vararg script: Pair<Int, ScriptToken>,
         facing: Direction = Direction.NORTH,
-    ): ScriptOutcome {
+    ): ScriptStop? = runFully(*script, facing = facing).stoppedTo
+
+    private fun runFully(
+        vararg script: Pair<Int, ScriptToken>,
+        facing: Direction = Direction.NORTH,
+    ): ScriptRun {
         val instructions = script.map { (offset, token) -> Script(ScriptOffset(offset), token) }
         val runner = LevelScriptRunner(instructions)
         val trigger = Trigger(here, TriggerFlags(0x08), instructions.first())
         return runner.onEvent(listOf(trigger), ScriptEvent.PARTY_ENTERED, party(facing))
     }
 
-    private fun fire(flags: Int, event: ScriptEvent): ScriptOutcome {
+    private fun fire(flags: Int, event: ScriptEvent): ScriptStop? {
         val instruction = Script(ScriptOffset(0), changeLevelToken(5))
         val runner = LevelScriptRunner(listOf(instruction))
-        return runner.onEvent(listOf(Trigger(here, TriggerFlags(flags), instruction)), event, party())
+        return runner
+            .onEvent(listOf(Trigger(here, TriggerFlags(flags), instruction)), event, party())
+            .stoppedTo
     }
 }

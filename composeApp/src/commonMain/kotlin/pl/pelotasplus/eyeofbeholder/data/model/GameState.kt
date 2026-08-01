@@ -26,6 +26,12 @@ data class GameState(
         .count { it.x == location.x && it.y == location.y }
         .coerceAtMost(MAX_MONSTERS_PER_SQUARE)
 
+    fun partyMovedTo(destination: Location) =
+        copy(party = party.copy(position = destination))
+
+    fun partyTurnedTo(direction: Direction) =
+        copy(party = party.copy(facing = direction))
+
     private companion object {
         const val MAX_MONSTERS_PER_SQUARE = 7
     }
