@@ -50,11 +50,48 @@ class ViewPort(
         RGB(0, 0, 0, true)
     }
 
+    /** How far away whatever last painted each pixel was. */
+    private val distances = MutableList(ROWS * COLS) { DistanceFromParty.BEYOND_EVERYTHING }
+
+    private var painting = DistanceFromParty.BEYOND_EVERYTHING
+    private var hiddenByCloserThings = false
+
+    /**
+     * Everything drawn inside [block] is [distance] away from the party.
+     *
+     * Walls paint regardless of what is already there, so their existing order
+     * keeps deciding how they meet each other. Only what stands on a square —
+     * items, monsters — sets [hiddenByCloserThings], and is then cut off
+     * wherever something closer has already painted.
+     */
+    fun <T> at(
+        distance: DistanceFromParty,
+        hiddenByCloserThings: Boolean = false,
+        block: () -> T,
+    ): T {
+        val previousDistance = painting
+        val previouslyHidden = this.hiddenByCloserThings
+        painting = distance
+        this.hiddenByCloserThings = hiddenByCloserThings
+        try {
+            return block()
+        } finally {
+            painting = previousDistance
+            this.hiddenByCloserThings = previouslyHidden
+        }
+    }
+
     private fun draw(x: ScreenX, y: ScreenY, rgb: RGB) {
         if (x.value !in 0..<COLS) return
         if (y.value !in 0..<ROWS) return
         if (rgb.transparent) return
-        pixels[y.value * COLS + x.value] = rgb
+
+        val offset = y.value * COLS + x.value
+        // something closer already claimed this pixel
+        if (hiddenByCloserThings && painting > distances[offset]) return
+
+        pixels[offset] = rgb
+        distances[offset] = painting
     }
 
     private fun drawBlock(x: ScreenX, y: ScreenY, tilePixels: List<RGB>, flipX: Boolean = false) {
@@ -278,13 +315,6 @@ class ViewPort(
         val srcY = rect.y
         val srcWidth = rect.w * 8
         val srcHeight = rect.h
-
-//        Logger.d(TAG) { "drawDecorationPart:" }
-//        Logger.d(TAG) { "  wallPosition=$wallPosition -> decPos(xFlip=${decPos.xFlip}, wall=${decPos.wall}, xDelta=${decPos.xDelta})" }
-//        Logger.d(TAG) { "  pos=$pos, rectIndex=$rectIndex, rect=(${rect.x},${rect.y},${rect.w},${rect.h})" }
-//        Logger.d(TAG) { "  screenX=$screenX, screenY=$screenY, dx=$dx, mirrored=$mirrored" }
-//        Logger.d(TAG) { "  srcX=$srcX, srcY=$srcY, srcWidth=$srcWidth, srcHeight=$srcHeight" }
-//        Logger.d(TAG) { "  cps.width=${cps.width}, cps.height=${cps.height}" }
 
         // Draw pixels
         var targetY = screenY

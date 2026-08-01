@@ -16,6 +16,10 @@
 - 25 wall positions create 3D depth illusion across 4 rendering layers
 - Supports wall flipping, transparency, doors (with stuck variants), stairs,
   decorations, and item icons (placement driven by `ItemRenderSpec` tables)
+- Item icons come in two sizes packed into different files: `Cps.locate()` says
+  which, and the caller must read from the matching sheet — `ITEMS1.CPS` for
+  small shapes, `ITEML1.CPS` for large. Cutting a small shape out of the large
+  sheet yields whatever else sits at those coordinates
 - `ViewPort.toImageBitmap()` (in `ViewPortImage.kt`) rasterizes the frame into
   a Compose `ImageBitmap`; screens display it with one `drawImage` blit using
   `FilterQuality.None`
@@ -33,6 +37,25 @@
 **Direction & WallSide**
 - `Direction` enum with `transformCoordinates()` and `transformWallSide()` for rotating coordinates based on player facing direction
 - `WallSide` enum for cardinal directions in absolute maze coordinates
+
+**DistanceFromParty — what hides what**
+- Draw order cannot express depth on its own. A sprite must be drawn after the
+  wall at the far end of its own square, but before the walls of the squares in
+  front of it — and those walls must come first, because that is the order the
+  walls need among themselves. Reordering the walls to suit sprites breaks
+  wall-to-wall overlaps (it eats into the level 7 tapestry)
+- So `ViewPort` keeps a distance per pixel alongside the colour. Walls always
+  paint and record how far away they were; items and monsters pass
+  `hiddenByCloserThings = true` and skip pixels a closer thing already claimed
+- `DistanceFromParty` counts hundredths of a square: 100 straight ahead, 141
+  diagonally ahead, 200 two rows back. Measuring to the square is the point —
+  a tree straight ahead (100) hides what lies on the square beside it (141),
+  which a row number alone cannot say
+- Within one square its near face, contents and far face sit ±30 apart, well
+  inside the 41 between the square ahead and the one diagonal to it, so a face
+  never overtakes a neighbouring square
+- Scope everything through `ViewPort.at(distance) { }`; nothing outside it
+  needs to know the buffer exists
 
 Changes here are guarded by the golden-image tests — see
 `.claude/rules/golden-image-tests.md`.

@@ -5,7 +5,10 @@ import pl.pelotasplus.eyeofbeholder.data.model.Cps
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.Inf
 import pl.pelotasplus.eyeofbeholder.data.model.Item
+import pl.pelotasplus.eyeofbeholder.data.model.ItemIconId
 import pl.pelotasplus.eyeofbeholder.data.model.Maz
+import pl.pelotasplus.eyeofbeholder.data.model.WallSide
+import pl.pelotasplus.eyeofbeholder.data.model.DistanceFromParty
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterInstance
 import pl.pelotasplus.eyeofbeholder.data.model.SubLevel
 import pl.pelotasplus.eyeofbeholder.data.model.ViewPort
@@ -138,61 +141,68 @@ class ViewConeRepositoryImpl(
             val actualWallSide = direction.transformWallSide(slot.wallSide)
             val wallType = square.getWall(actualWallSide)
 
-            Logger.d(TAG) { "Wall wallPosition $wallPosition type: $wallType for $mazX x $mazY originalSide ${slot.wallSide} actualWallSide $actualWallSide" }
-
-            when (wallType) {
-                is Maz.WallType.Decoration -> {
-                    val levelDecoration =
-                        sublevel.decorations.find { it.decorationWallIndex == wallType.decorationWallIndex }
-                    Logger.d(TAG) { "Wall wallPosition $wallPosition matching decoration $levelDecoration" }
-                    if (levelDecoration == null) {
-                        Logger.e(TAG) { "Decoration not found for index ${wallType.decorationWallIndex}" }
-                        return@forEachIndexed
-                    }
-
-                    // stuck door?
-                    if (levelDecoration.specialType == 5) {
-                        viewPort.drawDoor(
-                            wallPosition = wallPosition,
-                            door = sublevel.doors[0],
-                            showButton = false,
-                            stuckDoor = true
-                        )
-                    } else if ((levelDecoration.wallType - 1) >= 0) {
-                        viewPort.drawWall(levelDecoration.wallType - 1, wallPosition)
-                    }
-
-                    viewPort.drawDecoration(
-                        decoration = levelDecoration,
-                        wallPosition = wallPosition,
-                    )
-                }
-
-                is Maz.WallType.Door -> {
-                    viewPort.drawDoor(
-                        wallPosition = wallPosition,
-                        door = sublevel.doors[wallType.doorIndex.value],
-                        showButton = wallType.hasButton
-                    )
-                }
-
-                is Maz.WallType.FixedWall -> {
-                    viewPort.drawWall(wallType.wallType, wallPosition)
-                }
-
-                Maz.WallType.NoWall -> {
-                    // no-wall to render
-                }
-
-                Maz.WallType.StairDown -> {
-                    viewPort.drawWall(WallSet.STAIRS_DOWN, wallPosition)
-                }
-
-                Maz.WallType.StairUp -> {
-                    viewPort.drawWall(WallSet.STAIRS_UP, wallPosition)
-                }
+            // A slot's SOUTH wall is the far face of its square; the others are
+            // the faces turned towards the party.
+            val distance = if (slot.wallSide == WallSide.SOUTH) {
+                DistanceFromParty.farSideOfSquare(slot.relativeX, slot.relativeY)
+            } else {
+                DistanceFromParty.nearSideOfSquare(slot.relativeX, slot.relativeY)
             }
 
+            viewPort.at(distance) {
+                when (wallType) {
+                    is Maz.WallType.Decoration -> {
+                        val levelDecoration = sublevel.decorations
+                            .find { it.decorationWallIndex == wallType.decorationWallIndex }
+                        Logger.d(TAG) { "Wall wallPosition $wallPosition matching decoration $levelDecoration" }
+                        if (levelDecoration == null) {
+                            Logger.e(TAG) { "Decoration not found for index ${wallType.decorationWallIndex}" }
+                            return@at
+                        }
+
+                        // stuck door?
+                        if (levelDecoration.specialType == 5) {
+                            viewPort.drawDoor(
+                                wallPosition = wallPosition,
+                                door = sublevel.doors[0],
+                                showButton = false,
+                                stuckDoor = true
+                            )
+                        } else if ((levelDecoration.wallType - 1) >= 0) {
+                            viewPort.drawWall(levelDecoration.wallType - 1, wallPosition)
+                        }
+
+                        viewPort.drawDecoration(
+                            decoration = levelDecoration,
+                            wallPosition = wallPosition,
+                        )
+                    }
+
+                    is Maz.WallType.Door -> {
+                        viewPort.drawDoor(
+                            wallPosition = wallPosition,
+                            door = sublevel.doors[wallType.doorIndex.value],
+                            showButton = wallType.hasButton
+                        )
+                    }
+
+                    is Maz.WallType.FixedWall -> {
+                        viewPort.drawWall(wallType.wallType, wallPosition)
+                    }
+
+                    Maz.WallType.NoWall -> {
+                        // no-wall to render
+                    }
+
+                    Maz.WallType.StairDown -> {
+                        viewPort.drawWall(WallSet.STAIRS_DOWN, wallPosition)
+                    }
+
+                    Maz.WallType.StairUp -> {
+                        viewPort.drawWall(WallSet.STAIRS_UP, wallPosition)
+                    }
+                }
+            }
         }
 
         // Items on the party's own square (visible block 16, dim 3): only the
@@ -247,12 +257,17 @@ class ViewConeRepositoryImpl(
 
         for (block in monsterBlockRows.getValue(relativeY)) {
             val (dx, dy) = direction.transformCoordinates(block.relativeX, block.relativeY)
-            drawItemsAtBlock(
-                viewPort, items, smallIcons, largeIcons, sublevel,
-                mazX = playerX + dx, mazY = playerY + dy,
-                blockIndex = block.blockIndex, dim = dim,
-                playerDir = direction.ordinal,
-            )
+            viewPort.at(
+                DistanceFromParty.standingOnSquare(block.relativeX, block.relativeY),
+                hiddenByCloserThings = true,
+            ) {
+                drawItemsAtBlock(
+                    viewPort, items, smallIcons, largeIcons, sublevel,
+                    mazX = playerX + dx, mazY = playerY + dy,
+                    blockIndex = block.blockIndex, dim = dim,
+                    playerDir = direction.ordinal,
+                )
+            }
         }
     }
 
@@ -279,7 +294,9 @@ class ViewConeRepositoryImpl(
                 item.pos == 8 -> {
                     // niche items are hidden when too far (dim 0) or on the own square (dim 3)
                     if (dim == 1 || dim == 2) {
-                        viewPort.drawNicheItem(smallIcons, item.icon, blockIndex, dim)
+                        sheetFor(item.icon, smallIcons, largeIcons)?.let { sheet ->
+                            viewPort.drawNicheItem(sheet, item.icon, blockIndex, dim)
+                        }
                     }
                 }
 
@@ -287,7 +304,9 @@ class ViewConeRepositoryImpl(
                     val quadrant = viewRelativePos(playerDir, item.pos)
                     val scaleSteps = itemScaleSteps[dim * 4 + quadrant]
                     if (scaleSteps.isVisible) {
-                        viewPort.drawFloorItem(largeIcons, item.icon, blockIndex, quadrant, scaleSteps)
+                        sheetFor(item.icon, smallIcons, largeIcons)?.let { sheet ->
+                            viewPort.drawFloorItem(sheet, item.icon, blockIndex, quadrant, scaleSteps)
+                        }
                     }
                 }
 
@@ -295,6 +314,19 @@ class ViewConeRepositoryImpl(
             }
         }
     }
+
+    /**
+     * Which sprite sheet an icon's shape lives in. The shape map decides
+     * whether an icon is a small or a large item, and the two sizes are packed
+     * into different files — cutting a small shape out of the large sheet
+     * yields whatever else happens to sit at those coordinates.
+     */
+    private fun sheetFor(icon: ItemIconId, small: Cps, large: Cps): Cps? =
+        when (small.locate(icon)) {
+            is Cps.ShapeLocation.SmallItem -> small
+            is Cps.ShapeLocation.LargeItem -> large
+            Cps.ShapeLocation.NoShape -> null
+        }
 
     private fun drawMonstersAtRow(
         relativeY: Int,
@@ -322,15 +354,18 @@ class ViewConeRepositoryImpl(
                 val frameSelect = monsterFrameSelect[(playerDir shl 2) or (monster.direction and 3)]
                 val frame = frames.getOrNull(abs(frameSelect) - 1) ?: continue
 
-                Logger.d(TAG) { "drawMonster type=${monster.type} at ($mazX, $mazY) pos=${monster.pos} dir=${monster.direction}" }
-
-                viewPort.drawMonster(
-                    frame = frame,
-                    blockIndex = block.blockIndex,
-                    subPosition = viewRelativePos(playerDir, monster.pos),
-                    mirrored = frameSelect < 0,
-                    scaleSteps = block.scaleSteps,
-                )
+                viewPort.at(
+                    DistanceFromParty.standingOnSquare(block.relativeX, block.relativeY),
+                    hiddenByCloserThings = true,
+                ) {
+                    viewPort.drawMonster(
+                        frame = frame,
+                        blockIndex = block.blockIndex,
+                        subPosition = viewRelativePos(playerDir, monster.pos),
+                        mirrored = frameSelect < 0,
+                        scaleSteps = block.scaleSteps,
+                    )
+                }
             }
         }
     }

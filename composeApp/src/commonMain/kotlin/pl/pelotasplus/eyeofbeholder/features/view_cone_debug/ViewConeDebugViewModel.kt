@@ -312,10 +312,11 @@ class ViewConeDebugViewModel(
         private const val TAG = "ViewConeDebugViewModel"
         private const val PLAY_FIELD_CPS = "PLAYFLD.CPS"
         private const val DECORATIONS_CPS = "DECORATE.CPS"
-        /** Where the real game starts (DarkMoonEngine::startupNew). */
+        // Parked in front of the scene the sprite drawing is being worked on.
+        // The game itself starts at 11x5 facing south.
         private const val DEFAULT_LEVEL = "LEVEL4.INF"
-        private const val DEFAULT_PLAYER_X = 11
-        private const val DEFAULT_PLAYER_Y = 5
-        private val DEFAULT_DIRECTION = Direction.SOUTH
+        private const val DEFAULT_PLAYER_X = 18
+        private const val DEFAULT_PLAYER_Y = 14
+        private val DEFAULT_DIRECTION = Direction.WEST
     }
 }
