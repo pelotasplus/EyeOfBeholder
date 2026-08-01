@@ -6,7 +6,10 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -20,6 +23,7 @@ import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.koin.compose.viewmodel.koinViewModel
 import pl.pelotasplus.eyeofbeholder.features.main_debug.DebugMenuPanel
@@ -117,6 +121,20 @@ private fun ViewConeDebugContent(
                     filterQuality = FilterQuality.None
                 )
             }
+        }
+
+        state.inf?.let { inf ->
+            Text(
+                text = "${inf.name.removeSuffix(".INF")}  ${state.playerX}x${state.playerY}  ${state.direction}",
+                color = Color.White,
+                style = MaterialTheme.typography.labelMedium,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    // clears the Debug button above it
+                    .padding(top = 56.dp, end = 12.dp)
+                    .background(Color.Black.copy(alpha = 0.6f))
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
+            )
         }
 
         if (campMenuOpen) {
