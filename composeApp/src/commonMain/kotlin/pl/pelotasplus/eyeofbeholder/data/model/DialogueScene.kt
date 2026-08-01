@@ -61,6 +61,8 @@ data class DialogueScene(
         ): DialogueScene {
             val lines = font.wrap(text, TEXT_WIDTH)
             val buttonTop = (lines.size + 1) * font.height + TEXT_TOP + 4
+            val buttonLeft =
+                if (buttonLabels.size > TWO_ACROSS.size) THREE_ACROSS else TWO_ACROSS
 
             return DialogueScene(
                 frame = frame,
@@ -69,13 +71,19 @@ data class DialogueScene(
                 buttons = buttonLabels.mapIndexed { index, label ->
                     Button(
                         label = label.uppercase(),
-                        left = BUTTON_LEFT.getOrElse(index) { BUTTON_LEFT.last() },
+                        left = buttonLeft.getOrElse(index) { buttonLeft.last() },
                         top = buttonTop,
                     )
                 },
             )
         }
 
-        private val BUTTON_LEFT = listOf(59, 166)
+        /**
+         * Where the answers go, both rows from the original: a pair sits inset,
+         * three spread across the full width. Asking three questions with the
+         * pair's positions puts the third on top of the second.
+         */
+        private val TWO_ACROSS = listOf(59, 166)
+        private val THREE_ACROSS = listOf(4, 112, 220)
     }
 }
