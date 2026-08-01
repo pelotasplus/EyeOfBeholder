@@ -47,7 +47,7 @@ data class Vmp(
     data class TileIndex(
         val zMask: Boolean,
         val mirrorX: Boolean,
-        val tileIndex: Int,
+        val tileIndex: VcnTileIndex,
     )
 
     val backdrop: List<TileIndex>

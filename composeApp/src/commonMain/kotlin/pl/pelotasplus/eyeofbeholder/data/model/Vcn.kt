@@ -40,18 +40,18 @@ data class Vcn(
     val backdropPalette: List<PaletteIndex>,
     val wallPalette: List<PaletteIndex>,
 ) {
-    /** Raw tile: each pixel is a 4-bit index into [backdropPalette] or [wallPalette]. */
+    /** Raw tile: each pixel still needs resolving through one of the sub-palettes. */
     data class Tile(
-        val pixels: List<Int>
+        val pixels: List<SubPaletteIndex>
     )
 
-    fun getTileAsBackdrop(tileIndex: Int): List<PaletteIndex> =
-        tiles[tileIndex].pixels.map { pixel ->
-            if (pixel == 0) PaletteIndex.TRANSPARENT else backdropPalette[pixel]
+    fun getTileAsBackdrop(tileIndex: VcnTileIndex): List<PaletteIndex> =
+        tiles[tileIndex.value].pixels.map { pixel ->
+            if (pixel.isTransparent) PaletteIndex.TRANSPARENT else backdropPalette[pixel.value]
         }
 
-    fun getTileAsWall(tileIndex: Int): List<PaletteIndex> =
-        tiles[tileIndex].pixels.map { pixel ->
-            if (pixel == 0) PaletteIndex.TRANSPARENT else wallPalette[pixel]
+    fun getTileAsWall(tileIndex: VcnTileIndex): List<PaletteIndex> =
+        tiles[tileIndex.value].pixels.map { pixel ->
+            if (pixel.isTransparent) PaletteIndex.TRANSPARENT else wallPalette[pixel.value]
         }
 }

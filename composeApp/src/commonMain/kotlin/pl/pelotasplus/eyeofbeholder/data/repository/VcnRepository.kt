@@ -3,6 +3,7 @@ package pl.pelotasplus.eyeofbeholder.data.repository
 import co.touchlab.kermit.Logger
 import pl.pelotasplus.eyeofbeholder.data.ByteReader
 import pl.pelotasplus.eyeofbeholder.data.model.PaletteIndex
+import pl.pelotasplus.eyeofbeholder.data.model.SubPaletteIndex
 import pl.pelotasplus.eyeofbeholder.data.model.Vcn
 
 /**
@@ -65,7 +66,7 @@ class VcnRepositoryImpl(
         // The first are the tiles for the backdrop (ceiling/floor), then 6 different wall types (including doorways and stairs) follow.
 
         repeat(tilesCount) {
-            val tilePixels = mutableListOf<Int>()
+            val tilePixels = mutableListOf<SubPaletteIndex>()
 
             // Each tile is 32 bytes.  Each byte represents two pixels.
             // So 4 bytes are needed to represent 8 pixels, ie. one row.
@@ -78,8 +79,8 @@ class VcnRepositoryImpl(
                 check(pixel2 in 0..15) {
                     "Expected pixel2 to ne between 0 and 15"
                 }
-                tilePixels.add(pixel1)
-                tilePixels.add(pixel2)
+                tilePixels.add(SubPaletteIndex(pixel1))
+                tilePixels.add(SubPaletteIndex(pixel2))
             }
 
             check(tilePixels.size == 8 * 8) {

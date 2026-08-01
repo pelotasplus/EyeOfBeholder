@@ -20,3 +20,29 @@ value class PaletteIndex(val value: Int) {
         val TRANSPARENT = PaletteIndex(0)
     }
 }
+
+/**
+ * A 4-bit index (0-15) into a [Vcn]'s 16-entry sub-palette, as stored in every
+ * pixel of a raw [Vcn.Tile].
+ *
+ * This is *not* a [PaletteIndex]: it must first be resolved through
+ * [Vcn.backdropPalette] or [Vcn.wallPalette], and which of the two applies
+ * depends on whether the tile is being drawn as floor/ceiling or as a wall.
+ * The same tile therefore yields different colors in the two passes.
+ */
+@JvmInline
+value class SubPaletteIndex(val value: Int) {
+    val isTransparent: Boolean get() = value == TRANSPARENT.value
+
+    companion object {
+        val TRANSPARENT = SubPaletteIndex(0)
+    }
+}
+
+/**
+ * An index into a [Vcn]'s tile array, carried in the low 14 bits of a
+ * [Vmp.TileIndex] entry. Distinct from the position of a tile in the viewport
+ * grid, which is also an Int.
+ */
+@JvmInline
+value class VcnTileIndex(val value: Int)

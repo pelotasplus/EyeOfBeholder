@@ -2,6 +2,7 @@ package pl.pelotasplus.eyeofbeholder.data.repository
 
 import co.touchlab.kermit.Logger
 import pl.pelotasplus.eyeofbeholder.data.ByteReader
+import pl.pelotasplus.eyeofbeholder.data.model.VcnTileIndex
 import pl.pelotasplus.eyeofbeholder.data.model.Vmp
 
 /**
@@ -80,7 +81,7 @@ class VmpRepositoryImpl(
         return Vmp.TileIndex(
             zMask = zMask,
             mirrorX = mirrorX,
-            tileIndex = tileIndex
+            tileIndex = VcnTileIndex(tileIndex)
         )
     }
 
