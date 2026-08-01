@@ -15,6 +15,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.Cps
 import pl.pelotasplus.eyeofbeholder.data.model.DialogAnswer
 import pl.pelotasplus.eyeofbeholder.data.model.DialogueScene
 import pl.pelotasplus.eyeofbeholder.data.model.Font
+import pl.pelotasplus.eyeofbeholder.data.model.GameState
 import pl.pelotasplus.eyeofbeholder.data.model.LevelScriptRunner
 import pl.pelotasplus.eyeofbeholder.data.model.Location
 import pl.pelotasplus.eyeofbeholder.data.model.script.Dialog
@@ -184,11 +185,16 @@ class ViewConeDebugViewModel(
         val outcome = runner.onEvent(
             triggers = inf.triggers,
             event = ScriptEvent.PARTY_ENTERED,
-            party = PartyState(position = at, facing = _state.value.direction),
+            state = gameStateAt(at),
         )
 
         return applyOutcome(outcome, at)
     }
+
+    private fun gameStateAt(at: Location) = GameState(
+        party = PartyState(position = at, facing = _state.value.direction),
+        monsters = _state.value.inf?.monsterInstances.orEmpty(),
+    )
 
     /** @return true when the outcome took over the screen. */
     private fun applyOutcome(outcome: ScriptOutcome, at: Location): Boolean {
@@ -311,7 +317,7 @@ class ViewConeDebugViewModel(
 
         val outcome = runner.answer(
             resumeAt = dialog.resumeAt,
-            party = PartyState(position = dialog.askedAt, facing = _state.value.direction),
+            state = gameStateAt(dialog.askedAt),
             answer = answer,
         )
         if (!applyOutcome(outcome, dialog.askedAt)) {
@@ -330,7 +336,7 @@ class ViewConeDebugViewModel(
         val decorations = decorations
 
         viewModelScope.launch {
-            val sublevel = inf.subLevels[0]
+            val sublevel = inf.subLevels[PLAYED_SUBLEVEL]
             viewConeRepository.renderPosition(
                 items = inf.items,
                 monsters = inf.monsterInstances,
@@ -474,6 +480,8 @@ class ViewConeDebugViewModel(
         private const val DECORATIONS_CPS = "DECORATE.CPS"
         private const val DIALOGUE_FRAME_CPS = "BORDER.CPS"
         private const val DIALOGUE_FONT = "FONT6.FNT"
+        // side areas are not reachable yet, so only the main floor is played
+        private const val PLAYED_SUBLEVEL = 0
         private const val DEFAULT_LEVEL = "LEVEL5.INF"
         private const val DEFAULT_PLAYER_X = 14
         private const val DEFAULT_PLAYER_Y = 9

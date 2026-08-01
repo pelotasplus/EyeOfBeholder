@@ -3,6 +3,7 @@ package pl.pelotasplus.eyeofbeholder.data
 import kotlinx.coroutines.runBlocking
 import pl.pelotasplus.eyeofbeholder.data.model.DialogAnswer
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
+import pl.pelotasplus.eyeofbeholder.data.model.GameState
 import pl.pelotasplus.eyeofbeholder.data.model.Inf
 import pl.pelotasplus.eyeofbeholder.data.model.LevelScriptRunner
 import pl.pelotasplus.eyeofbeholder.data.model.Location
@@ -49,7 +50,7 @@ class LevelTransitionTest {
         val outcome = runner.onEvent(
             triggers = level.triggers,
             event = ScriptEvent.PARTY_ENTERED,
-            party = PartyState(Location(15, 10), Direction.NORTH),
+            state = GameState(PartyState(Location(15, 10), Direction.NORTH)),
         )
 
         assertTrue(
@@ -65,7 +66,7 @@ class LevelTransitionTest {
     @Test
     fun `saying yes to the level 4 stairs goes down and saying no does not`() {
         val level = load("LEVEL4.INF")
-        val party = PartyState(Location(15, 10), Direction.NORTH)
+        val party = GameState(PartyState(Location(15, 10), Direction.NORTH))
         val ask = LevelScriptRunner(level.script).onEvent(
             level.triggers, ScriptEvent.PARTY_ENTERED, party,
         ) as ScriptOutcome.AskThePlayer
@@ -88,10 +89,34 @@ class LevelTransitionTest {
         val outcome = runner.onEvent(
             triggers = level.triggers,
             event = ScriptEvent.PARTY_ENTERED,
-            party = PartyState(Location(17, 4), Direction.NORTH),
+            state = GameState(PartyState(Location(17, 4), Direction.NORTH)),
         )
 
         assertEquals(ScriptOutcome.Nothing, outcome)
+    }
+
+    /**
+     * The pair on (13,8) speaks when the party steps in front of them, and the
+     * script asks by counting the monsters standing on their square.
+     */
+    @Test
+    fun `the level 5 encounter speaks only while its monsters are alive`() {
+        val level = load("LEVEL5.INF")
+        val party = PartyState(Location(13, 9), Direction.NORTH)
+
+        val alive = LevelScriptRunner(level.script).onEvent(
+            level.triggers,
+            ScriptEvent.PARTY_ENTERED,
+            GameState(party, level.monsterInstances),
+        )
+        assertTrue(alive is ScriptOutcome.AskThePlayer, "expected a question, got $alive")
+
+        val killed = LevelScriptRunner(level.script).onEvent(
+            level.triggers,
+            ScriptEvent.PARTY_ENTERED,
+            GameState(party, monsters = emptyList()),
+        )
+        assertEquals(ScriptOutcome.Nothing, killed)
     }
 
     @Test

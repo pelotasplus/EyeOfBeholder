@@ -2,6 +2,8 @@ package pl.pelotasplus.eyeofbeholder.data
 
 import kotlinx.coroutines.runBlocking
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
+import pl.pelotasplus.eyeofbeholder.data.model.GameState
+import pl.pelotasplus.eyeofbeholder.data.model.entryPoints
 import pl.pelotasplus.eyeofbeholder.data.model.LevelScriptRunner
 import pl.pelotasplus.eyeofbeholder.data.model.Location
 import pl.pelotasplus.eyeofbeholder.data.model.PartyState
@@ -46,12 +48,28 @@ class ScriptTraceProbe {
             .filter { it.location.y in 7..11 && it.location.x in 11..16 }
             .forEach { println("  $it") }
 
-        val runner = LevelScriptRunner(inf.script)
+        println("=== LEVEL5 has ${inf.subLevels.size} sublevels: ${inf.subLevels.map { it.index }}")
+        println("=== how other levels enter LEVEL5")
+        listOf(1, 2, 3, 4, 5, 6, 7).forEach { from ->
+            infRepository.loadScript("LEVEL$from.INF").getOrThrow()
+                .entryPoints(fromLevel = from)
+                .filter { it.level == 5 }
+                .forEach { println("  from LEVEL$from -> sub=${it.subLevel} ${it.location}") }
+        }
+
+        println("=== all ${inf.monsterInstances.size} monster instances")
+        inf.monsterInstances.forEach {
+            println("  unit=${it.subLevelIndex} ${it.x}x${it.y} type=${it.type} mode=${it.mode}")
+        }
+
         println("=== stepping onto 13x9")
-        val outcome = runner.onEvent(
+        val outcome = LevelScriptRunner(inf.script).onEvent(
             triggers = inf.triggers,
             event = ScriptEvent.PARTY_ENTERED,
-            party = PartyState(position = Location(13, 9), facing = Direction.WEST),
+            state = GameState(
+                party = PartyState(position = Location(13, 9), facing = Direction.WEST),
+                monsters = inf.monsterInstances,
+            ),
         )
         println("=== outcome $outcome")
     }

@@ -1,6 +1,7 @@
 package pl.pelotasplus.eyeofbeholder.data
 
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
+import pl.pelotasplus.eyeofbeholder.data.model.GameState
 import pl.pelotasplus.eyeofbeholder.data.model.LevelScriptRunner
 import pl.pelotasplus.eyeofbeholder.data.model.Location
 import pl.pelotasplus.eyeofbeholder.data.model.PartyState
@@ -31,7 +32,7 @@ class LevelScriptRunnerTest {
     private val here = Location(3, 4)
 
     private fun party(facing: Direction = Direction.NORTH) =
-        PartyState(position = here, facing = facing)
+        GameState(PartyState(position = here, facing = facing))
 
     // --- which triggers fire -------------------------------------------------
 

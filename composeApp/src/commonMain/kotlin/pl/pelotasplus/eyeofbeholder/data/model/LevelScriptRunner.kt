@@ -47,14 +47,17 @@ sealed interface ScriptOutcome {
 
 /** A value on [LevelScriptRunner]'s condition stack. Zero is false. */
 @JvmInline
-private value class ConditionValue(val raw: Int) {
+private value class ConditionValue(private val raw: Int) : Comparable<ConditionValue> {
     val isTrue: Boolean get() = raw != 0
+
+    override fun compareTo(other: ConditionValue) = raw.compareTo(other.raw)
 
     companion object {
         val TRUE = ConditionValue(1)
         val FALSE = ConditionValue(0)
 
         fun of(condition: Boolean) = if (condition) TRUE else FALSE
+        fun of(number: Int) = ConditionValue(number)
     }
 }
 
@@ -79,15 +82,16 @@ class LevelScriptRunner(
     fun onEvent(
         triggers: List<Trigger>,
         event: ScriptEvent,
-        party: PartyState,
+        state: GameState,
     ): ScriptOutcome {
-        val here = triggers.filter { it.location == party.position }
+        val position = state.party.position
+        val here = triggers.filter { it.location == position }
         val trigger = here.firstOrNull { it.flags.reactsTo(event) }
 
         if (trigger == null) {
             if (here.isNotEmpty()) {
                 Logger.d(TAG) {
-                    "Trigger at ${party.position} ignores $event, " +
+                    "Trigger at $position ignores $event, " +
                         "flags ${here.map { it.flags.raw.toHexString() }}"
                 }
             }
@@ -95,31 +99,31 @@ class LevelScriptRunner(
         }
 
         Logger.d(TAG) {
-            "Running trigger at ${party.position} for $event from offset ${trigger.script.offset}"
+            "Running trigger at $position for $event from offset ${trigger.script.offset}"
         }
-        return run(trigger.script.offset, party)
+        return run(trigger.script.offset, state)
     }
 
     /**
      * Carries on a script that stopped at a dialogue, with [answer] being the
      * button the player pressed, numbered from one.
      */
-    fun answer(resumeAt: ScriptOffset, party: PartyState, answer: DialogAnswer): ScriptOutcome {
+    fun answer(resumeAt: ScriptOffset, state: GameState, answer: DialogAnswer): ScriptOutcome {
         Logger.d(TAG) { "Resuming at $resumeAt with answer $answer" }
-        return run(resumeAt, party, answer)
+        return run(resumeAt, state, answer)
     }
 
     private fun run(
         fromOffset: ScriptOffset,
-        party: PartyState,
+        state: GameState,
         dialogAnswer: DialogAnswer? = null,
-    ): ScriptOutcome = runScript(fromOffset, party, dialogAnswer).also { outcome ->
+    ): ScriptOutcome = runScript(fromOffset, state, dialogAnswer).also { outcome ->
         Logger.d(TAG) { "Script from $fromOffset ended with $outcome" }
     }
 
     private fun runScript(
         fromOffset: ScriptOffset,
-        party: PartyState,
+        state: GameState,
         dialogAnswer: DialogAnswer?,
     ): ScriptOutcome {
         var index = script.indexOfFirst { it.offset == fromOffset }
@@ -156,7 +160,7 @@ class LevelScriptRunner(
 
                 is Eval -> {
                     // a true condition falls through, a false one jumps
-                    val condition = evaluate(token.tokens, party, dialogAnswer)
+                    val condition = evaluate(token.tokens, state, dialogAnswer)
                     Logger.d(TAG) {
                         if (condition.isTrue) {
                             "    condition true, carrying on"
@@ -210,7 +214,7 @@ class LevelScriptRunner(
     /** Postfix stack machine over a condition's tokens. */
     private fun evaluate(
         tokens: List<Conditional>,
-        party: PartyState,
+        state: GameState,
         dialogAnswer: DialogAnswer?,
     ): ConditionValue {
         val stack = ArrayDeque<ConditionValue>()
@@ -218,16 +222,33 @@ class LevelScriptRunner(
         fun push(value: ConditionValue) = stack.addLast(value)
         fun push(condition: Boolean) = stack.addLast(ConditionValue.of(condition))
 
+        // The operand written last is the left-hand side: `X Y LessThan` asks
+        // whether Y < X, not whether X < Y. Reading it the other way round made
+        // "a monster stands here" come out as "fewer than none stand here".
+        fun compare(holds: (left: ConditionValue, right: ConditionValue) -> Boolean) {
+            val left = pop()
+            val right = pop()
+            push(holds(left, right))
+        }
+
         tokens.forEach { token ->
             when (token) {
-                is Conditional.ImmediateShort -> push(ConditionValue(token.value))
+                is Conditional.ImmediateShort -> push(ConditionValue.of(token.value))
                 is Conditional.GetLevelFlag -> push(levelFlags.isNotEmpty())
-                is Conditional.GetPartyDirection -> push(ConditionValue(party.facing.ordinal))
-                is Conditional.DialogResult -> push(ConditionValue(dialogAnswer?.number ?: 0))
-                is Conditional.Equals -> push(pop().raw == pop().raw)
-                is Conditional.NotEquals -> push(pop().raw != pop().raw)
-                is Conditional.MoreThan -> push(pop().raw < pop().raw)
-                is Conditional.LessThan -> push(pop().raw > pop().raw)
+                is Conditional.GetPartyDirection ->
+                    push(ConditionValue.of(state.party.facing.ordinal))
+
+                is Conditional.DialogResult -> push(ConditionValue.of(dialogAnswer?.number ?: 0))
+
+                is Conditional.IsMonsterAtLocation.BlockFlags ->
+                    push(ConditionValue.of(state.monstersOn(token.location)))
+
+                is Conditional.Equals -> compare { left, right -> left == right }
+                is Conditional.NotEquals -> compare { left, right -> left != right }
+                is Conditional.MoreThan -> compare { left, right -> left > right }
+                is Conditional.MoreEqualsThan -> compare { left, right -> left >= right }
+                is Conditional.LessThan -> compare { left, right -> left < right }
+                is Conditional.LessEqualsThan -> compare { left, right -> left <= right }
                 is Conditional.And -> push(pop().isTrue && pop().isTrue)
                 is Conditional.Or -> push(pop().isTrue || pop().isTrue)
                 else -> {
