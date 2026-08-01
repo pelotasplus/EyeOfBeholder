@@ -141,15 +141,15 @@ val itemScaleSteps: List<ScaleSteps> = listOf(
  * Niche-item screen X (absolute, before centering on icon width) per visible
  * block. (kEoB2DscItemShpXDOS, signed)
  */
-val nicheItemX: List<Int> = listOf(
+val nicheItemX: List<ScreenX> = listOf(
     -56, -8, 40, 88, 136, 184, 232,
     -72, 8, 88, 168, 248,
     -40, 88, 216,
     -88, 88, 264,
-)
+).map { ScreenX(it) }
 
 /** Niche-item baseline Y per depth row (dim 0-3); the icon's bottom edge. */
-val nicheItemY: List<Int> = listOf(37, 49, 56, 0)
+val nicheItemY: List<ScreenY> = listOf(37, 49, 56, 0).map { ScreenY(it) }
 
 /**
  * Rotates an object's absolute sub-position (0=NW, 1=NE, 2=SW, 3=SE in maze

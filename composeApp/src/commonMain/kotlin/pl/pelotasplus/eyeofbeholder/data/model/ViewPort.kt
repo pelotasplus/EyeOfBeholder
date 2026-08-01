@@ -50,14 +50,14 @@ class ViewPort(
         RGB(0, 0, 0, true)
     }
 
-    private fun draw(x: Int, y: Int, rgb: RGB) {
-        if (x !in 0..<COLS) return
-        if (y !in 0..<ROWS) return
+    private fun draw(x: ScreenX, y: ScreenY, rgb: RGB) {
+        if (x.value !in 0..<COLS) return
+        if (y.value !in 0..<ROWS) return
         if (rgb.transparent) return
-        pixels[y * COLS + x] = rgb
+        pixels[y.value * COLS + x.value] = rgb
     }
 
-    private fun drawBlock(x: Int, y: Int, tilePixels: List<RGB>, flipX: Boolean = false) {
+    private fun drawBlock(x: ScreenX, y: ScreenY, tilePixels: List<RGB>, flipX: Boolean = false) {
         for (py in 0 until TILE_SIZE) {
             for (px in 0 until TILE_SIZE) {
                 val pixelX = if (flipX) {
@@ -66,7 +66,7 @@ class ViewPort(
                     x + px
                 }
                 val pixelY = y + py
-                if (pixelX in 0 until COLS && pixelY in 0 until ROWS) {
+                if (pixelX.value in 0 until COLS && pixelY.value in 0 until ROWS) {
                     val rgb = tilePixels[py * TILE_SIZE + px]
                     if (rgb.transparent.not()) {
                         draw(pixelX, pixelY, rgb)
@@ -114,7 +114,7 @@ class ViewPort(
                     palette.colorOrTransparent(it)
                 }
 
-                drawBlock(xpos * TILE_SIZE, ypos * TILE_SIZE, tilePixels, flipX = blockFlip)
+                drawBlock(ScreenX(xpos * TILE_SIZE), ScreenY(ypos * TILE_SIZE), tilePixels, flipX = blockFlip)
 
                 offset++
             }
@@ -133,7 +133,7 @@ class ViewPort(
                 val xpos = x * TILE_SIZE
                 val ypos = y * TILE_SIZE
 
-                drawBlock(xpos, ypos, tilePixels, flipX = tile.mirrorX)
+                drawBlock(ScreenX(xpos), ScreenY(ypos), tilePixels, flipX = tile.mirrorX)
             }
         }
     }
@@ -168,8 +168,8 @@ class ViewPort(
                 val pixel = cps.pixels[srcY * cps.width + srcX]
                 val color = palette.colors[pixel.value]
 
-                val targetX = srcX - rectangle.x + renderData.offsetInViewPortX
-                val targetY = srcY - rectangle.y + renderData.offsetInViewPortY - deltaY
+                val targetX = ScreenX(srcX - rectangle.x + renderData.offsetInViewPortX)
+                val targetY = ScreenY(srcY - rectangle.y + renderData.offsetInViewPortY - deltaY)
                 draw(targetX, targetY, color)
             }
         }
@@ -182,8 +182,8 @@ class ViewPort(
                     val pixel = cps.pixels[srcY * cps.width + srcX]
                     val color = palette.colors[pixel.value]
 
-                    val targetX = srcX - button.x + button.posX
-                    val targetY = srcY - button.y + button.posY
+                    val targetX = ScreenX(srcX - button.x + button.posX)
+                    val targetY = ScreenY(srcY - button.y + button.posY)
                     draw(targetX, targetY, color)
                 }
             }
@@ -305,15 +305,15 @@ class ViewPort(
 
                 // Calculate final screen position
                 val finalX = if (mirrored) {
-                    targetX + dx
+                    ScreenX(targetX + dx)
                 } else if (decPos.xFlip == 1) {
                     // Right side walls - mirror horizontally
-                    22 * 8 - (targetX + dx)
+                    ScreenX(22 * 8 - (targetX + dx))
                 } else {
-                    targetX + dx
+                    ScreenX(targetX + dx)
                 }
 
-                draw(finalX, targetY, color)
+                draw(finalX, ScreenY(targetY), color)
 
                 if (mirrored) targetX-- else targetX++
             }
@@ -354,8 +354,8 @@ class ViewPort(
         repeat(scaleSteps.value) { icon = scaleDown(icon) }
 
         val coordIndex = (blockIndex * 5 + viewQuadrant) * 2
-        val startX = blockScreenCoords[coordIndex] + 88 - icon.w / 2
-        val startY = blockScreenCoords[coordIndex + 1] + 124 - icon.h
+        val startX = ScreenX(blockScreenCoords[coordIndex] + 88 - icon.w / 2)
+        val startY = ScreenY(blockScreenCoords[coordIndex + 1] + 124 - icon.h)
 
         drawIcon(icon, startX, startY, fadeSteps = scaleSteps)
     }
@@ -388,8 +388,8 @@ class ViewPort(
 
     private fun drawIcon(
         icon: Cps.ItemIcon,
-        startX: Int,
-        startY: Int,
+        startX: ScreenX,
+        startY: ScreenY,
         fadeSteps: ScaleSteps = ScaleSteps(0),
     ) {
         for (y in 0 until icon.h) {
@@ -422,8 +422,8 @@ class ViewPort(
         repeat(scaleSteps.value) { icon = scaleDown(icon) }
 
         val coordIndex = (blockIndex * 5 + subPosition) * 2
-        val startX = blockScreenCoords[coordIndex] + 88 - icon.w / 2
-        val startY = blockScreenCoords[coordIndex + 1] + 127 - icon.h
+        val startX = ScreenX(blockScreenCoords[coordIndex] + 88 - icon.w / 2)
+        val startY = ScreenY(blockScreenCoords[coordIndex + 1] + 127 - icon.h)
 
         for (y in 0 until icon.h) {
             for (x in 0 until icon.w) {
