@@ -1,6 +1,7 @@
 package pl.pelotasplus.eyeofbeholder.data.model.script
 
 import pl.pelotasplus.eyeofbeholder.data.ByteReader
+import pl.pelotasplus.eyeofbeholder.data.model.FlagBit
 import pl.pelotasplus.eyeofbeholder.data.model.Location
 
 /**
@@ -162,19 +163,22 @@ sealed interface Conditional {
         }
     }
 
-    data object GetGlobalFlag : Conditional {
-        // 			_stack[_stackIndex++] = (_flagTable[17] & (1 << (*pos++))) ? 1 : 0;
-        override fun read(reader: ByteReader) = GetGlobalFlag.also {
-            reader.readU8()
+    /** Whether [bit] of the flag word that outlives the level is set. */
+    data class GetGlobalFlag(val bit: FlagBit) : Conditional {  // 0xF0
+        override fun read(reader: ByteReader) = this
+
+        companion object : Conditional {
+            override fun read(reader: ByteReader) = GetGlobalFlag(FlagBit(reader.readU8()))
         }
     }
 
-    data object GetLevelFlag : Conditional {                    // 0xEF
-        override fun read(reader: ByteReader) =
-            // 			_stack[_stackIndex++] = (_flagTable[_vm->_currentLevel] & (1 << (*pos++))) ? 1 : 0;
-            GetLevelFlag.also {
-                reader.readU8()
-            }
+    /** Whether [bit] of this level's own flag word is set. */
+    data class GetLevelFlag(val bit: FlagBit) : Conditional {   // 0xEF
+        override fun read(reader: ByteReader) = this
+
+        companion object : Conditional {
+            override fun read(reader: ByteReader) = GetLevelFlag(FlagBit(reader.readU8()))
+        }
     }
 
     data object Else : Conditional {                            // 0xEE
@@ -356,8 +360,8 @@ sealed interface Conditional {
             0xF3 to IsMonsterAtLocation,
 //            0xF2 to IsItemAtLocation,
             0xF1 to IsPartyAtLocation.Companion,
-            0xF0 to GetGlobalFlag,
-            0xEF to GetLevelFlag,
+            0xF0 to GetGlobalFlag.Companion,
+            0xEF to GetLevelFlag.Companion,
             0xEE to Else,
             0xED to GetPartyDirection,
             0xE9 to GetWallSide,

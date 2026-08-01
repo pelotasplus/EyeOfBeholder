@@ -127,6 +127,65 @@ class LevelTransitionTest {
     }
 
     /**
+     * The clerics can be approached from three sides, and each square has a
+     * flag of its own so that way in does not speak twice — the encounter is
+     * not one flag saying "done".
+     */
+    @Test
+    fun `every way in to the level 5 clerics speaks once`() {
+        val level = load("LEVEL5.INF")
+        val runner = LevelScriptRunner(level.script, level = 5)
+
+        var state = GameState(
+            PartyState(Location(13, 9), Direction.NORTH),
+            level.monsterInstances,
+        )
+
+        fun stepOnto(x: Int, y: Int): ScriptStop? {
+            val run = runner.onEvent(
+                level.triggers,
+                ScriptEvent.PARTY_ENTERED,
+                state.copy(party = state.party.copy(position = Location(x, y))),
+            )
+            state = run.state
+            return run.stoppedTo
+        }
+
+        val ways = listOf(13 to 9, 13 to 11, 11 to 9)
+
+        ways.forEach { (x, y) ->
+            assertTrue(
+                stepOnto(x, y) is ScriptStop.AskThePlayer,
+                "approaching from ${x}x$y should speak",
+            )
+        }
+
+        assertEquals(null, stepOnto(13, 9), "the same way in should not speak twice")
+
+        // and none of them waits on another having spoken first
+        ways.forEach { (x, y) ->
+            val fresh = LevelScriptRunner(level.script, level = 5)
+            assertTrue(
+                fresh.onEvent(
+                    level.triggers,
+                    ScriptEvent.PARTY_ENTERED,
+                    GameState(PartyState(Location(x, y), Direction.NORTH), level.monsterInstances),
+                ).stoppedTo is ScriptStop.AskThePlayer,
+                "approaching from ${x}x$y first should speak",
+            )
+        }
+
+        // leaving the level and coming back does not make them greet the party
+        // again: the flags belong to the game, not to the runner
+        val returned = LevelScriptRunner(level.script, level = 5).onEvent(
+            level.triggers,
+            ScriptEvent.PARTY_ENTERED,
+            state.copy(party = state.party.copy(position = Location(13, 9))),
+        )
+        assertEquals(null, returned.stoppedTo, "the clerics should stay quiet on a return visit")
+    }
+
+    /**
      * Inquiring gets an answer, and the answer waits to be read before the
      * script goes on — the clerics deny having seen Amber, then the
      * conversation ends.

@@ -14,6 +14,7 @@ package pl.pelotasplus.eyeofbeholder.data.model
 data class GameState(
     val party: PartyState,
     val monsters: List<MonsterInstance> = emptyList(),
+    val flags: GameFlags = GameFlags(),
 ) {
     /**
      * How many monsters stand on [location], at most seven.
@@ -31,6 +32,16 @@ data class GameState(
 
     fun partyTurnedTo(direction: Direction) =
         copy(party = party.copy(facing = direction))
+
+    fun levelFlagSet(level: Int, bit: FlagBit) =
+        copy(flags = flags.setting(level, bit))
+
+    fun globalFlagSet(bit: FlagBit) =
+        copy(flags = flags.settingGlobal(bit))
+
+    fun isLevelFlagSet(level: Int, bit: FlagBit) = flags.forLevel(level).isSet(bit)
+
+    fun isGlobalFlagSet(bit: FlagBit) = flags.global.isSet(bit)
 
     private companion object {
         const val MAX_MONSTERS_PER_SQUARE = 7

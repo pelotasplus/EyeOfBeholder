@@ -77,6 +77,19 @@ class ScriptTraceProbe {
         println("=== party ${stepped.state.party}")
         println("=== stopped to ${stepped.stoppedTo}")
 
+        println("=== which flags each way in to the clerics sets")
+        listOf(Location(13, 9), Location(13, 11), Location(11, 9)).forEach { at ->
+            val walked = LevelScriptRunner(inf.script, level = 5).onEvent(
+                triggers = inf.triggers,
+                event = ScriptEvent.PARTY_ENTERED,
+                state = GameState(
+                    party = PartyState(at, Direction.NORTH),
+                    monsters = inf.monsterInstances,
+                ),
+            )
+            println("  $at -> ${walked.state.flags.forLevel(5)}")
+        }
+
         println("=== dialogue texts the encounter refers to")
         val dialogueText = pl.pelotasplus.eyeofbeholder.data.repository
             .DialogueTextRepositoryImpl(resources)

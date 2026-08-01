@@ -107,7 +107,8 @@ private value class ConditionValue(private val raw: Int) : Comparable<ConditionV
  */
 class LevelScriptRunner(
     private val script: List<Script>,
-    private val levelFlags: MutableSet<Int> = mutableSetOf(),
+    /** Which level's flags this script reads and writes. */
+    private val level: Int = 0,
 ) {
 
     /** Runs the script of the square the party is on, if it reacts to [event]. */
@@ -210,7 +211,9 @@ class LevelScriptRunner(
                     }
                 }
 
-                is SetFlag.LevelFlag -> levelFlags.add(token.flag)
+                is SetFlag.LevelFlag -> state = state.levelFlagSet(level, token.bit)
+
+                is SetFlag.GlobalFlag -> state = state.globalFlagSet(token.bit)
 
                 is NewLevelOrMonster.ChangeLevel -> return stop(
                     ScriptStop.ChangeLevel(
@@ -304,7 +307,8 @@ class LevelScriptRunner(
         tokens.forEach { token ->
             when (token) {
                 is Conditional.ImmediateShort -> push(ConditionValue.of(token.value))
-                is Conditional.GetLevelFlag -> push(levelFlags.isNotEmpty())
+                is Conditional.GetLevelFlag -> push(state.isLevelFlagSet(level, token.bit))
+                is Conditional.GetGlobalFlag -> push(state.isGlobalFlagSet(token.bit))
                 is Conditional.GetPartyDirection ->
                     push(ConditionValue.of(state.party.facing.ordinal))
 

@@ -17,7 +17,9 @@ import pl.pelotasplus.eyeofbeholder.data.model.DialogueScene
 import pl.pelotasplus.eyeofbeholder.data.model.DialogueScene.Companion.MORE
 import pl.pelotasplus.eyeofbeholder.data.model.DialogueText
 import pl.pelotasplus.eyeofbeholder.data.model.Font
+import pl.pelotasplus.eyeofbeholder.data.model.GameFlags
 import pl.pelotasplus.eyeofbeholder.data.model.GameState
+import pl.pelotasplus.eyeofbeholder.data.model.levelNumber
 import pl.pelotasplus.eyeofbeholder.data.model.LevelScriptRunner
 import pl.pelotasplus.eyeofbeholder.data.model.Location
 import pl.pelotasplus.eyeofbeholder.data.model.script.Dialog
@@ -48,6 +50,9 @@ class ViewConeDebugViewModel(
     private var font: Font? = null
     private var scriptRunner: LevelScriptRunner? = null
     private var speaker: DialogueScene.Picture? = null
+
+    // outlives the levels: a level's flags are still set when the party returns
+    private var flags = GameFlags()
 
     private val _state = MutableStateFlow(State())
     val state = _state.asStateFlow()
@@ -134,7 +139,7 @@ class ViewConeDebugViewModel(
             viewConeRepository
                 .loadLevel(name = name)
                 .onSuccess { inf ->
-                    scriptRunner = LevelScriptRunner(inf.script)
+                    scriptRunner = LevelScriptRunner(inf.script, levelNumber(inf.name))
                     _state.update {
                         it.copy(
                             inf = inf,
@@ -198,6 +203,7 @@ class ViewConeDebugViewModel(
     private fun gameStateAt(at: Location) = GameState(
         party = PartyState(position = at, facing = _state.value.direction),
         monsters = _state.value.inf?.monsterInstances.orEmpty(),
+        flags = flags,
     )
 
     /**
@@ -210,6 +216,7 @@ class ViewConeDebugViewModel(
         answeredWith: DialogAnswer? = null,
     ): Boolean {
         val party = run.state.party
+        flags = run.state.flags
         _state.update {
             it.copy(
                 playerX = party.position.x,
