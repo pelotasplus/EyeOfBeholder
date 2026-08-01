@@ -71,6 +71,16 @@ class ViewPortGoldenTest {
     fun `level4 item behind the wall to the left`() =
         checkGolden("level4-item-behind-wall", "LEVEL4.INF", x = 12, y = 5, direction = Direction.SOUTH)
 
+    /** A dagger on a square whose tree trunk stands between it and the party. */
+    @Test
+    fun `level4 dagger behind the middle tree`() =
+        checkGolden("level4-dagger-behind-tree", "LEVEL4.INF", x = 16, y = 12, direction = Direction.SOUTH)
+
+    /** The same dagger one square further away. */
+    @Test
+    fun `level4 dagger behind the middle tree from further back`() =
+        checkGolden("level4-dagger-behind-tree-far", "LEVEL4.INF", x = 16, y = 11, direction = Direction.SOUTH)
+
     @Test
     fun `toImageBitmap matches the raw pixel buffer`() {
         val viewPort = renderFrame("LEVEL7.INF", x = 29, y = 15, direction = Direction.SOUTH)
