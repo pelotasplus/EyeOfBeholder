@@ -13,9 +13,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -27,18 +24,14 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.koin.compose.viewmodel.koinViewModel
 import pl.pelotasplus.eyeofbeholder.data.model.DialogAnswer
-import pl.pelotasplus.eyeofbeholder.features.main_debug.DebugMenuPanel
-import pl.pelotasplus.eyeofbeholder.navigation.Route
 
 @Composable
 fun ViewConeDebugScreen(
     level: String? = null,
-    onDebugDestinationClick: (Route) -> Unit = {},
     viewModel: ViewConeDebugViewModel = koinViewModel(),
     modifier: Modifier = Modifier
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    var campMenuOpen by remember { mutableStateOf(false) }
 
     LaunchedEffect(level) {
         viewModel.onEvent(ViewConeDebugViewModel.Event.Initialize(level))
@@ -67,12 +60,10 @@ fun ViewConeDebugScreen(
                 PlayFieldControl.STRAFE_RIGHT ->
                     viewModel.onEvent(ViewConeDebugViewModel.Event.StrafeRight)
 
-                PlayFieldControl.CAMP -> campMenuOpen = !campMenuOpen
+                // no camp screen yet
+                PlayFieldControl.CAMP -> Unit
             }
         },
-        campMenuOpen = campMenuOpen,
-        onDebugDestinationClick = onDebugDestinationClick,
-        onCampMenuDismiss = { campMenuOpen = false },
         onDialogAnswer = { answer ->
             viewModel.onEvent(ViewConeDebugViewModel.Event.DialogAnswered(answer))
         },
@@ -84,9 +75,6 @@ private fun ViewConeDebugContent(
     state: ViewConeDebugViewModel.State,
     modifier: Modifier = Modifier,
     onControlClick: (PlayFieldControl) -> Unit = {},
-    campMenuOpen: Boolean = false,
-    onDebugDestinationClick: (Route) -> Unit = {},
-    onCampMenuDismiss: () -> Unit = {},
     onDialogAnswer: (DialogAnswer) -> Unit = {},
 ) {
     BoxWithConstraints(
@@ -147,14 +135,6 @@ private fun ViewConeDebugContent(
                     .padding(top = 56.dp, end = 12.dp)
                     .background(Color.Black.copy(alpha = 0.6f))
                     .padding(horizontal = 8.dp, vertical = 4.dp),
-            )
-        }
-
-        if (campMenuOpen) {
-            DebugMenuPanel(
-                onDestinationClick = onDebugDestinationClick,
-                onDismiss = onCampMenuDismiss,
-                modifier = Modifier.align(Alignment.TopEnd),
             )
         }
     }

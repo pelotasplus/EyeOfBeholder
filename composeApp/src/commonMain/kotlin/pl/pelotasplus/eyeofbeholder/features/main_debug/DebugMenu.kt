@@ -32,8 +32,7 @@ private val debugDestinations = listOf(
 )
 
 /**
- * Always-on-top entry point to the resource debug screens. On the game screen
- * the CAMP button opens it and no anchor is drawn.
+ * Always-on-top entry point to the resource debug screens.
  *
  * Deliberately not a DropdownMenu: in the Wasm build a Popup's items never
  * received clicks, so the panel is drawn inline in the same composition.
@@ -44,10 +43,9 @@ fun DebugMenu(
     onExpandedChange: (Boolean) -> Unit,
     onDestinationClick: (Route) -> Unit,
     modifier: Modifier = Modifier,
-    showAnchor: Boolean = true,
 ) {
     Box(modifier = modifier.fillMaxSize()) {
-        if (showAnchor && !expanded) {
+        if (!expanded) {
             Button(
                 onClick = { onExpandedChange(true) },
                 modifier = Modifier.align(Alignment.TopEnd).padding(8.dp),
@@ -66,14 +64,8 @@ fun DebugMenu(
     }
 }
 
-/**
- * The panel itself. Hosted by [DebugMenu] on the debug screens, and directly by
- * the game screen, which opens it from CAMP — an overlay declared as a sibling
- * of the NavHost is either drawn under the screen or misses its input,
- * depending on the order, so it has to live inside the screen's composition.
- */
 @Composable
-fun DebugMenuPanel(
+private fun DebugMenuPanel(
     onDestinationClick: (Route) -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,

@@ -45,12 +45,6 @@ fun App() {
                 composable<Route.ViewConeDebug> { entry ->
                     ViewConeDebugScreen(
                         level = entry.toRoute<Route.ViewConeDebug>().level,
-                        onDebugDestinationClick = { route ->
-                            navController.navigate(route) {
-                                popUpTo<Route.ViewConeDebug>()
-                                launchSingleTop = true
-                            }
-                        },
                     )
                 }
                 composable<Route.LevelsDebug> {
