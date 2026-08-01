@@ -49,7 +49,12 @@ class ViewConeDebugViewModel(
 
     fun onEvent(event: Event) {
         when (event) {
-            is Event.Initialize -> onInitialize(event.level)
+            is Event.Initialize -> onInitialize(
+                level = event.level,
+                startX = event.startX,
+                startY = event.startY,
+                startDirection = event.startDirection,
+            )
             is Event.DialogAnswered -> onDialogAnswered(event.answer)
             is Event.OnLevelSelected -> onVmpSelected(event.name)
             Event.MoveForward -> onMoveForward()
@@ -63,9 +68,15 @@ class ViewConeDebugViewModel(
 
     /**
      * [level] is the INF picked from the Levels screen, or null to open the
-     * default level at its hardcoded start position.
+     * default level at its hardcoded start position. A start coordinate left
+     * null keeps the one the party already stands on.
      */
-    private fun onInitialize(level: String?) {
+    private fun onInitialize(
+        level: String?,
+        startX: Int? = null,
+        startY: Int? = null,
+        startDirection: Direction? = null,
+    ) {
         viewModelScope.launch {
             cpsRepository.loadCps(PLAY_FIELD_CPS)
                 .onSuccess { playFieldBackground = it }
@@ -83,7 +94,12 @@ class ViewConeDebugViewModel(
         }
 
         if (level != null) {
-            onVmpSelected(level)
+            onVmpSelected(
+                name = level,
+                playerX = startX,
+                playerY = startY,
+                direction = startDirection
+            )
             return
         }
 
@@ -418,7 +434,12 @@ class ViewConeDebugViewModel(
     }
 
     sealed class Event {
-        data class Initialize(val level: String?) : Event()
+        data class Initialize(
+            val level: String?,
+            val startX: Int? = null,
+            val startY: Int? = null,
+            val startDirection: Direction? = null,
+        ) : Event()
         data class DialogAnswered(val answer: DialogAnswer) : Event()
         data class OnLevelSelected(val name: String) : Event()
         data object MoveForward : Event()

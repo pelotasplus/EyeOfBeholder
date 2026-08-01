@@ -89,6 +89,13 @@ import pl.pelotasplus.eyeofbeholder.data.model.script.Wait
 interface InfRepository {
     suspend fun loadInf(name: String, items: List<Item>): Result<Inf>
 
+    /**
+     * Only the level's script. Block B does not refer back to Block A, so this
+     * seeks straight past it and loads none of the mazes, tile sets, palettes
+     * or graphics a full [loadInf] pulls in.
+     */
+    suspend fun loadScript(name: String): Result<List<Script>>
+
     suspend fun getAllInfNames(): Result<List<String>>
 }
 
@@ -108,6 +115,19 @@ class InfRepositoryImpl(
         return runCatching {
             val decompressed = resourceRepository.decompressResource("files/$name").bytes
             decodeInf(name, decompressed, items)
+        }
+    }
+
+    override suspend fun loadScript(name: String): Result<List<Script>> {
+        return runCatching {
+            val decompressed = resourceRepository.decompressResource("files/$name").bytes
+            val reader = ByteReader(decompressed)
+
+            val offsetBlockB = reader.readU16LE()
+            reader.skip(offsetBlockB - reader.offset)
+
+            readBlockBHeader(reader)
+            readScript(reader)
         }
     }
 
@@ -288,24 +308,7 @@ class InfRepositoryImpl(
             "After reading main level and all sublevels expected to be at offset $offsetBlockB but is at offset ${reader.offset}"
         }
 
-        // D6 08 EC 00 23 01 19 FF
-        val offsetBlockC = reader.readU16LE()
-        Logger.d(TAG) { "Starting Block B at ${reader.offset}. Block C starts at $offsetBlockC" }
-
-        val ec = reader.readU8()
-        check(ec == 0xEC || ec == 0xFF) { "Expected 0xEC or 0xFF but got 0x${ec.toHexString()}" }
-
-        val monsterInstances = if (ec == 0xEC) {
-            reader.readU8()
-            reader.readU8()
-            reader.readU8()
-            reader.readU8()
-            reader.readU8()
-
-            readMonsterData(reader)
-        } else {
-            emptyList()
-        }
+        val (offsetBlockC, monsterInstances) = readBlockBHeader(reader)
 
         val script = readScript(reader)
         script.forEach {
@@ -364,6 +367,31 @@ class InfRepositoryImpl(
             monsterInstances = monsterInstances,
             triggers = triggers
         )
+    }
+
+    /** Everything in Block B that comes before the script bytecode. */
+    private data class BlockBHeader(
+        val offsetBlockC: Int,
+        val monsterInstances: List<MonsterInstance>
+    )
+
+    // D6 08 EC 00 23 01 19 FF
+    private fun readBlockBHeader(reader: ByteReader): BlockBHeader {
+        val offsetBlockC = reader.readU16LE()
+        Logger.d(TAG) { "Starting Block B at ${reader.offset}. Block C starts at $offsetBlockC" }
+
+        val ec = reader.readU8()
+        check(ec == 0xEC || ec == 0xFF) { "Expected 0xEC or 0xFF but got 0x${ec.toHexString()}" }
+
+        val monsterInstances = if (ec == 0xEC) {
+            repeat(5) { reader.readU8() }
+
+            readMonsterData(reader)
+        } else {
+            emptyList()
+        }
+
+        return BlockBHeader(offsetBlockC, monsterInstances)
     }
 
     private fun readScript(reader: ByteReader): List<Script> {

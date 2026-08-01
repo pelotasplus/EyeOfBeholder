@@ -43,14 +43,18 @@ fun App() {
                 startDestination = Route.ViewConeDebug(),
             ) {
                 composable<Route.ViewConeDebug> { entry ->
+                    val route = entry.toRoute<Route.ViewConeDebug>()
                     ViewConeDebugScreen(
-                        level = entry.toRoute<Route.ViewConeDebug>().level,
+                        level = route.level,
+                        startX = route.startX,
+                        startY = route.startY,
+                        startDirection = route.startFacing,
                     )
                 }
                 composable<Route.LevelsDebug> {
                     LevelsDebugScreen(
-                        onLevelSelected = { level ->
-                            navController.navigate(Route.ViewConeDebug(level)) {
+                        onLevelSelected = { level, entryPoint ->
+                            navController.navigate(Route.ViewConeDebug(level, entryPoint)) {
                                 popUpTo<Route.ViewConeDebug> { inclusive = true }
                             }
                         }

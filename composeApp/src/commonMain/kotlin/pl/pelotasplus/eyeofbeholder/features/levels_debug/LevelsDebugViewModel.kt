@@ -11,11 +11,17 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import pl.pelotasplus.eyeofbeholder.data.model.LevelEntryPoint
+import pl.pelotasplus.eyeofbeholder.data.model.entryPoints
+import pl.pelotasplus.eyeofbeholder.data.model.levelFileName
+import pl.pelotasplus.eyeofbeholder.data.model.levelNumber
+import pl.pelotasplus.eyeofbeholder.data.repository.InfRepository
 import pl.pelotasplus.eyeofbeholder.data.repository.ResourceRepository
 
 @Stable
 class LevelsDebugViewModel(
-    private val resourceRepository: ResourceRepository
+    private val resourceRepository: ResourceRepository,
+    private val infRepository: InfRepository
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(State())
@@ -33,13 +39,35 @@ class LevelsDebugViewModel(
 
     private fun onInitialize() {
         viewModelScope.launch {
-            resourceRepository.listResources(".INF")
-                .onSuccess { levelNames ->
-                    _state.update { it.copy(levels = levelNames.toImmutableList()) }
+            val names = resourceRepository.listResources(".INF")
+                .onFailure { Logger.e(it) { "Error while loading level names" } }
+                .getOrElse { return@launch }
+
+            // the names alone are worth showing while the scripts are read
+            _state.update { state ->
+                state.copy(levels = names.map { Level(name = it) }.toImmutableList())
+            }
+
+            val byLevel = names
+                .flatMap { name ->
+                    infRepository.loadScript(name)
+                        .onFailure { Logger.e(it) { "Error while loading script of $name" } }
+                        .getOrDefault(emptyList())
+                        .entryPoints(fromLevel = levelNumber(name))
                 }
-                .onFailure {
-                    Logger.e(it) { "Error while loading level names" }
-                }
+                .groupBy { levelFileName(it.level) }
+
+            _state.update { state ->
+                state.copy(
+                    levels = state.levels.map { level ->
+                        level.copy(
+                            entryPoints = byLevel[level.name].orEmpty()
+                                .sortedWith(compareBy({ it.fromLevel }, { it.location.y }, { it.location.x }))
+                                .toImmutableList()
+                        )
+                    }.toImmutableList()
+                )
+            }
         }
     }
 
@@ -47,7 +75,12 @@ class LevelsDebugViewModel(
         data object Initialize : Event()
     }
 
+    data class Level(
+        val name: String,
+        val entryPoints: ImmutableList<LevelEntryPoint> = persistentListOf()
+    )
+
     data class State(
-        val levels: ImmutableList<String> = persistentListOf()
+        val levels: ImmutableList<Level> = persistentListOf()
     )
 }

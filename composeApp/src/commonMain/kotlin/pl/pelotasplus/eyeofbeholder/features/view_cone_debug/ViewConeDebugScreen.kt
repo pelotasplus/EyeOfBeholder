@@ -24,17 +24,23 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.koin.compose.viewmodel.koinViewModel
 import pl.pelotasplus.eyeofbeholder.data.model.DialogAnswer
+import pl.pelotasplus.eyeofbeholder.data.model.Direction
 
 @Composable
 fun ViewConeDebugScreen(
     level: String? = null,
+    startX: Int? = null,
+    startY: Int? = null,
+    startDirection: Direction? = null,
     viewModel: ViewConeDebugViewModel = koinViewModel(),
     modifier: Modifier = Modifier
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
 
-    LaunchedEffect(level) {
-        viewModel.onEvent(ViewConeDebugViewModel.Event.Initialize(level))
+    LaunchedEffect(level, startX, startY, startDirection) {
+        viewModel.onEvent(
+            ViewConeDebugViewModel.Event.Initialize(level, startX, startY, startDirection)
+        )
     }
 
     ViewConeDebugContent(
