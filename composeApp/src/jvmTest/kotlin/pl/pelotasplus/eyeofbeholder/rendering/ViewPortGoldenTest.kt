@@ -63,6 +63,14 @@ class ViewPortGoldenTest {
     fun `level7 sword at the party's feet`() =
         checkGolden("level7-sword-at-feet", "LEVEL7.INF", x = 29, y = 16, direction = Direction.SOUTH)
 
+    /**
+     * An item on the front-left diagonal square draws partly on top of the wall
+     * that should hide it. Frozen while broken so the fix shows up as a diff.
+     */
+    @Test
+    fun `level4 item behind the wall to the left`() =
+        checkGolden("level4-item-behind-wall", "LEVEL4.INF", x = 12, y = 5, direction = Direction.SOUTH)
+
     @Test
     fun `toImageBitmap matches the raw pixel buffer`() {
         val viewPort = renderFrame("LEVEL7.INF", x = 29, y = 15, direction = Direction.SOUTH)
