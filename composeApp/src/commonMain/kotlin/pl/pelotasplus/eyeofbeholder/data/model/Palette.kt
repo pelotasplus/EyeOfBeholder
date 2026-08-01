@@ -77,9 +77,9 @@ data class Palette(
     }
 
     /** [index] remapped [steps] times through [distanceFadeTable]. */
-    fun fadedIndex(index: PaletteIndex, steps: Int): PaletteIndex {
+    fun fadedIndex(index: PaletteIndex, steps: ScaleSteps): PaletteIndex {
         var idx = index.value
-        repeat(steps) { idx = distanceFadeTable[idx] }
+        repeat(steps.value) { idx = distanceFadeTable[idx] }
         return PaletteIndex(idx)
     }
 

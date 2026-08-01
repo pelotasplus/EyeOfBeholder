@@ -34,7 +34,7 @@ data class Cps(
     val pixels: List<PaletteIndex>,
     val palette: Palette? = null,
 ) {
-    fun getItemIcon(icon: Int): ItemIcon? {
+    fun getItemIcon(icon: ItemIconId): ItemIcon? {
         return when (val shape = locate(icon)) {
             is ShapeLocation.SmallItem -> ItemIcon(
                 w = shape.w,
@@ -106,10 +106,12 @@ data class Cps(
         data object NoShape : ShapeLocation()
     }
 
-    fun locate(icon: Int): ShapeLocation {
-        require(icon in shapeMap.indices) { "icon $icon out of range (0..${shapeMap.size - 1})" }
+    fun locate(icon: ItemIconId): ShapeLocation {
+        require(icon.value in shapeMap.indices) {
+            "icon ${icon.value} out of range (0..${shapeMap.size - 1})"
+        }
 
-        val shapeMapVal = shapeMap[icon]
+        val shapeMapVal = shapeMap[icon.value]
 
         return when {
             shapeMapVal < NUM_LARGE_ITEM_SHAPES -> {

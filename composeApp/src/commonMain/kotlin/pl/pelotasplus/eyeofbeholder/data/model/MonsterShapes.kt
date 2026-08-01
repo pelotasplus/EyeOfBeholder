@@ -80,14 +80,14 @@ data class MonsterBlock(
     val relativeX: Int,
     val relativeY: Int,
     val blockIndex: Int,
-    val scaleSteps: Int,
+    val scaleSteps: ScaleSteps,
 )
 
 /** Visible blocks by depth row (party's own row not yet rendered). */
 val monsterBlockRows: Map<Int, List<MonsterBlock>> = mapOf(
-    -3 to (-3..3).mapIndexed { i, vx -> MonsterBlock(vx, -3, i, scaleSteps = 2) },
-    -2 to (-2..2).mapIndexed { i, vx -> MonsterBlock(vx, -2, 7 + i, scaleSteps = 1) },
-    -1 to (-1..1).mapIndexed { i, vx -> MonsterBlock(vx, -1, 12 + i, scaleSteps = 0) },
+    -3 to (-3..3).mapIndexed { i, vx -> MonsterBlock(vx, -3, i, scaleSteps = ScaleSteps(2)) },
+    -2 to (-2..2).mapIndexed { i, vx -> MonsterBlock(vx, -2, 7 + i, scaleSteps = ScaleSteps(1)) },
+    -1 to (-1..1).mapIndexed { i, vx -> MonsterBlock(vx, -1, 12 + i, scaleSteps = ScaleSteps(0)) },
 )
 
 /**
@@ -130,12 +130,12 @@ val blockScreenCoords: List<Int> = listOf(
  * the camera on the own square). Niche items use quadrant 0.
  * (kEoB2DscItemScaleIndexDOS)
  */
-val itemScaleSteps: List<Int> = listOf(
+val itemScaleSteps: List<ScaleSteps> = listOf(
     -1, -1, 3, 3,
     2, 2, 2, 2,
     1, 1, 1, 1,
     0, 0, -1, -1,
-)
+).map { ScaleSteps(it) }
 
 /**
  * Niche-item screen X (absolute, before centering on icon width) per visible

@@ -343,15 +343,15 @@ class ViewPort(
      */
     fun drawFloorItem(
         largeIcons: Cps,
-        iconIdx: Int,
+        iconIdx: ItemIconId,
         blockIndex: Int,
         viewQuadrant: Int,
-        scaleSteps: Int,
+        scaleSteps: ScaleSteps,
     ) {
         Logger.d(TAG) { "drawFloorItem $iconIdx block=$blockIndex quadrant=$viewQuadrant scale=$scaleSteps" }
 
         var icon = largeIcons.getItemIcon(iconIdx) ?: return
-        repeat(scaleSteps) { icon = scaleDown(icon) }
+        repeat(scaleSteps.value) { icon = scaleDown(icon) }
 
         val coordIndex = (blockIndex * 5 + viewQuadrant) * 2
         val startX = blockScreenCoords[coordIndex] + 88 - icon.w / 2
@@ -370,7 +370,7 @@ class ViewPort(
      */
     fun drawNicheItem(
         smallIcons: Cps,
-        iconIdx: Int,
+        iconIdx: ItemIconId,
         blockIndex: Int,
         dim: Int,
     ) {
@@ -378,7 +378,7 @@ class ViewPort(
 
         val scaleSteps = itemScaleSteps[dim * 4]
         var icon = smallIcons.getItemIcon(iconIdx) ?: return
-        repeat(scaleSteps) { icon = scaleDown(icon) }
+        repeat(scaleSteps.value) { icon = scaleDown(icon) }
 
         val startX = nicheItemX[blockIndex] - icon.w / 2
         val startY = nicheItemY[dim] - icon.h
@@ -386,7 +386,12 @@ class ViewPort(
         drawIcon(icon, startX, startY, fadeSteps = scaleSteps)
     }
 
-    private fun drawIcon(icon: Cps.ItemIcon, startX: Int, startY: Int, fadeSteps: Int = 0) {
+    private fun drawIcon(
+        icon: Cps.ItemIcon,
+        startX: Int,
+        startY: Int,
+        fadeSteps: ScaleSteps = ScaleSteps(0),
+    ) {
         for (y in 0 until icon.h) {
             for (x in 0 until icon.w) {
                 val pixel = palette.fadedIndex(icon.pixels[y * icon.w + x], fadeSteps)
@@ -409,12 +414,12 @@ class ViewPort(
         blockIndex: Int,
         subPosition: Int,
         mirrored: Boolean,
-        scaleSteps: Int,
+        scaleSteps: ScaleSteps,
     ) {
         Logger.d(TAG) { "drawMonster block=$blockIndex subPos=$subPosition mirrored=$mirrored scale=$scaleSteps" }
 
         var icon = frame
-        repeat(scaleSteps) { icon = scaleDown(icon) }
+        repeat(scaleSteps.value) { icon = scaleDown(icon) }
 
         val coordIndex = (blockIndex * 5 + subPosition) * 2
         val startX = blockScreenCoords[coordIndex] + 88 - icon.w / 2

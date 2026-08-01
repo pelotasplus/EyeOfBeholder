@@ -3,6 +3,8 @@ package pl.pelotasplus.eyeofbeholder.data.repository
 import co.touchlab.kermit.Logger
 import pl.pelotasplus.eyeofbeholder.data.ByteReader
 import pl.pelotasplus.eyeofbeholder.data.model.Item
+import pl.pelotasplus.eyeofbeholder.data.model.ItemIconId
+import pl.pelotasplus.eyeofbeholder.data.model.ItemTypeId
 import pl.pelotasplus.eyeofbeholder.data.model.Location
 
 /**
@@ -61,8 +63,8 @@ class ItemsRepositoryImpl(
                             nameUnidentifiedId = reader.readU8(),
                             nameIdentifiedId = reader.readU8(),
                             flags = reader.readU8(), // flags (e.g. 128 = identified)
-                            icon = reader.readI8(), // icon index (→ ITEMICN + shape map)
-                            type = reader.readI8(), // item type index (→ itemtype.dat)
+                            icon = ItemIconId(reader.readI8()), // → ITEMICN + shape map
+                            type = ItemTypeId(reader.readI8()), // → itemtype.dat
                             pos = reader.readI8(), // position (0-3 floor, 8 niche)
                             location = Location.read(reader),
                             next = reader.readI16LE(),

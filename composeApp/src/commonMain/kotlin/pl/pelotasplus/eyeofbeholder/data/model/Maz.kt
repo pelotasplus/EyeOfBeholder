@@ -70,7 +70,7 @@ data class Maz(
          * @property state 0-4: closed/opening/open/closing/stuck
          */
         data class Door(
-            val doorIndex: Int,
+            val doorIndex: DoorIndex,
             val hasButton: Boolean,
             val state: Int,
         ) : WallType()
@@ -83,10 +83,10 @@ data class Maz(
             fun fromInt(value: Int): WallType = when (value) {
                 0 -> NoWall
                 1, 2 -> FixedWall(wallType = value - 1)
-                in 3..7 -> Door(doorIndex = 0, hasButton = true, state = value - 3)
-                in 8..12 -> Door(doorIndex = 0, hasButton = false, state = value - 8)
-                in 13..17 -> Door(doorIndex = 1, hasButton = true, state = value - 13)
-                in 18..22 -> Door(doorIndex = 1, hasButton = false, state = value - 18)
+                in 3..7 -> Door(doorIndex = DoorIndex(0), hasButton = true, state = value - 3)
+                in 8..12 -> Door(doorIndex = DoorIndex(0), hasButton = false, state = value - 8)
+                in 13..17 -> Door(doorIndex = DoorIndex(1), hasButton = true, state = value - 13)
+                in 18..22 -> Door(doorIndex = DoorIndex(1), hasButton = false, state = value - 18)
                 23 -> StairUp
                 24 -> StairDown
                 else -> Decoration(value)

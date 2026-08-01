@@ -22,7 +22,7 @@ data class MonsterInstance(
     val block: Int,
     val pos: Int,
     val direction: Int,
-    val type: Int,
+    val type: MonsterTypeId,
     val gfxIndex: Int,
     val mode: Int,
     val pause: Int,

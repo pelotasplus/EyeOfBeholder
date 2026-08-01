@@ -12,6 +12,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.Item
 import pl.pelotasplus.eyeofbeholder.data.model.Location
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterGfx
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterInstance
+import pl.pelotasplus.eyeofbeholder.data.model.MonsterTypeId
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterProperty
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptTimer
 import pl.pelotasplus.eyeofbeholder.data.model.SubLevel
@@ -467,7 +468,7 @@ class InfRepositoryImpl(
                         block = block,
                         pos = pos,
                         direction = dir,
-                        type = type,
+                        type = MonsterTypeId(type),
                         gfxIndex = shpIndex,
                         mode = mode,
                         pause = pause,

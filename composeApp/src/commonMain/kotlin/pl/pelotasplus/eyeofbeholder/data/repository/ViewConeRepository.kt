@@ -171,7 +171,7 @@ class ViewConeRepositoryImpl(
                 is Maz.WallType.Door -> {
                     viewPort.drawDoor(
                         wallPosition = wallPosition,
-                        door = sublevel.doors[wallType.doorIndex],
+                        door = sublevel.doors[wallType.doorIndex.value],
                         showButton = wallType.hasButton
                     )
                 }
@@ -286,7 +286,7 @@ class ViewConeRepositoryImpl(
                 item.pos < 4 -> {
                     val quadrant = viewRelativePos(playerDir, item.pos)
                     val scaleSteps = itemScaleSteps[dim * 4 + quadrant]
-                    if (scaleSteps >= 0) {
+                    if (scaleSteps.isVisible) {
                         viewPort.drawFloorItem(largeIcons, item.icon, blockIndex, quadrant, scaleSteps)
                     }
                 }
