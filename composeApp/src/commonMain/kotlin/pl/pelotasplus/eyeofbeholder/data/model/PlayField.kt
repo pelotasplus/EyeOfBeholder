@@ -19,13 +19,44 @@ class PlayField(
         viewPort: ViewPort,
         direction: Direction,
         dialogue: DialogueScene? = null,
+        messages: List<Message> = emptyList(),
     ): PlayField {
         drawBackground()
         drawViewPort(viewPort)
         drawCompass(direction)
+        drawMessages(messages)
         dialogue?.let(::drawDialogue)
         return this
     }
+
+    /**
+     * The bar along the bottom, beside the camp button, where a script writes
+     * when it has no dialogue box open.
+     *
+     * Nothing takes a line off it. It is a fixed height with a fixed font, so
+     * once full it scrolls: the newest line is at the bottom and the oldest
+     * falls off the top. Each line keeps the colour it was written in, since
+     * what scrolls is the pixels.
+     */
+    private fun drawMessages(messages: List<Message>) {
+        val font = font ?: return
+
+        messages
+            .flatMap { message -> font.wrap(message.text, MESSAGE_WIDTH).map { it to message.colour } }
+            .takeLast(MESSAGE_HEIGHT / font.height)
+            .forEachIndexed { line, (text, colour) ->
+                write(
+                    text = text,
+                    font = font,
+                    left = MESSAGE_LEFT,
+                    top = MESSAGE_TOP + line * font.height,
+                    colour = colour,
+                )
+            }
+    }
+
+    /** A line on the bar along the bottom, in the colour the script asked for. */
+    data class Message(val text: String, val colour: PaletteIndex)
 
     /**
      * A conversation, drawn over the view the way the script asked for it.
@@ -218,6 +249,15 @@ class PlayField(
         private val BUTTON_LABEL_COLOUR = PaletteIndex(15)
         private val BUTTON_LABEL_HIGHLIGHTED = PaletteIndex(9)
         private const val BUTTON_LABEL_OFFSET_Y = 2
+
+        /**
+         * The message line along the bottom, beside the camp button. The band
+         * itself is painted into the play field art; only the words are drawn.
+         */
+        private const val MESSAGE_LEFT = 8
+        private const val MESSAGE_TOP = 180
+        private const val MESSAGE_WIDTH = 272
+        private const val MESSAGE_HEIGHT = 18
 
         /** Where the 3D view is copied into the frame. */
         const val VIEW_X = 0

@@ -17,7 +17,24 @@ data class GameState(
     val party: PartyState,
     val monsters: List<MonsterInstance> = emptyList(),
     val flags: GameFlags = GameFlags(),
+    /**
+     * How each level stood when the party walked out of it, which is not how
+     * its file describes it: monsters a script conjured are there, and in time
+     * the ones that have been killed will be missing.
+     */
+    private val asTheyWereLeft: Map<Int, List<MonsterInstance>> = emptyMap(),
 ) {
+
+    /** Remembers [level] as it stands, for whenever the party comes back. */
+    fun leaving(level: Int) = copy(asTheyWereLeft = asTheyWereLeft + (level to monsters))
+
+    /**
+     * Puts the party on [level], as they left it if they have been before, and
+     * as its file [places] it if they have not.
+     */
+    fun arrivingAt(level: Int, places: List<MonsterInstance>) =
+        copy(monsters = asTheyWereLeft[level] ?: places)
+
     /**
      * How many monsters stand on [location], at most seven.
      *

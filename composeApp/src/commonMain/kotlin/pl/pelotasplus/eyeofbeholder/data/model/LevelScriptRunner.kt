@@ -42,6 +42,32 @@ data class ChangeLevel(
 )
 
 /**
+ * What a script has written into the dialogue box: what it drew getting there,
+ * and the lines themselves. It is the box a question is asked in, without the
+ * question — the speaker stays up and there is nothing to click.
+ *
+ * Both empty means the box is taken down.
+ */
+data class ScriptSpeech(
+    val scene: List<Dialog> = emptyList(),
+    val said: List<MessageId> = emptyList(),
+    /**
+     * What colour the last line was asked for in. A script packs two into the
+     * instruction — the ink and the shade behind it — of which this is the ink.
+     */
+    val colour: PaletteIndex = DEFAULT_INK,
+) {
+    val isEmpty: Boolean get() = scene.isEmpty() && said.isEmpty()
+
+    companion object {
+        val DEFAULT_INK = PaletteIndex(15)
+
+        /** The ink of a `Message`, which is the low byte of its colour word. */
+        fun inkOf(colour: Int) = PaletteIndex(colour and 0xFF)
+    }
+}
+
+/**
  * A question a script has put on screen and is waiting to have clicked.
  *
  * [buttons] is what may be clicked: three answers to a question, or the single
@@ -85,6 +111,16 @@ interface ScriptStage {
     /** Draw the world as the script has left it, then carry on. */
     suspend fun show(world: GameState)
 
+    /**
+     * Put up what the script has written into the dialogue box, with nothing
+     * to click and nothing to wait for.
+     *
+     * A script writes a line and then holds the screen so it can be read, so
+     * a line that is not put up straight away is a pause with nothing in it.
+     * An empty [speech] is the box taken down again.
+     */
+    suspend fun say(speech: ScriptSpeech)
+
     /** Hold what is on screen. Nothing else moves while a script waits. */
     suspend fun hold(ticks: Ticks)
 
@@ -98,6 +134,7 @@ interface ScriptStage {
          */
         fun silent(answer: DialogAnswer = DialogAnswer(1)) = object : ScriptStage {
             override suspend fun show(world: GameState) = Unit
+            override suspend fun say(speech: ScriptSpeech) = Unit
             override suspend fun hold(ticks: Ticks) = Unit
             override suspend fun ask(question: ScriptQuestion) = answer
         }
@@ -335,14 +372,25 @@ class LevelScriptRunner(
                 Dialog.DrawDialogBox -> {
                     said.clear()
                     scene += Dialog.DrawDialogBox
+                    stage.say(ScriptSpeech(scene.toList(), said.toList()))
                 }
 
                 Dialog.CloseDialog -> {
                     scene.clear()
                     said.clear()
+                    stage.say(ScriptSpeech())
                 }
 
-                is Message -> said += token.messageId
+                is Message -> {
+                    said += token.messageId
+                    stage.say(
+                        ScriptSpeech(
+                            scene = scene.toList(),
+                            said = said.toList(),
+                            colour = ScriptSpeech.inkOf(token.color),
+                        )
+                    )
+                }
 
                 // anything else the script draws while setting up its question
                 is Dialog -> scene += token

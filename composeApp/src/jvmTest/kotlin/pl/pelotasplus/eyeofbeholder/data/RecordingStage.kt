@@ -3,6 +3,7 @@ package pl.pelotasplus.eyeofbeholder.data
 import pl.pelotasplus.eyeofbeholder.data.model.DialogAnswer
 import pl.pelotasplus.eyeofbeholder.data.model.GameState
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptQuestion
+import pl.pelotasplus.eyeofbeholder.data.model.ScriptSpeech
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptStage
 import pl.pelotasplus.eyeofbeholder.data.model.Ticks
 
@@ -28,12 +29,17 @@ class RecordingStage(answers: List<Int> = emptyList()) : ScriptStage {
 
     sealed interface Beat {
         data class Shown(val world: GameState) : Beat
+        data class Said(val speech: ScriptSpeech) : Beat
         data class Held(val ticks: Ticks) : Beat
         data class Asked(val question: ScriptQuestion, val answered: DialogAnswer) : Beat
     }
 
     override suspend fun show(world: GameState) {
         beats += Beat.Shown(world)
+    }
+
+    override suspend fun say(speech: ScriptSpeech) {
+        beats += Beat.Said(speech)
     }
 
     override suspend fun hold(ticks: Ticks) {

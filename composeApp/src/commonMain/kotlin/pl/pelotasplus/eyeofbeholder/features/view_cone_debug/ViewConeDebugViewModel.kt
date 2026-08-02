@@ -1,6 +1,7 @@
 package pl.pelotasplus.eyeofbeholder.features.view_cone_debug
 
 import androidx.compose.runtime.Stable
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import co.touchlab.kermit.Logger
@@ -10,29 +11,27 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import androidx.compose.ui.graphics.ImageBitmap
-import pl.pelotasplus.eyeofbeholder.data.model.Direction
-import pl.pelotasplus.eyeofbeholder.data.model.Inf
 import pl.pelotasplus.eyeofbeholder.data.model.Cps
 import pl.pelotasplus.eyeofbeholder.data.model.DialogAnswer
 import pl.pelotasplus.eyeofbeholder.data.model.DialogueScene
 import pl.pelotasplus.eyeofbeholder.data.model.DialogueScene.Companion.MORE
 import pl.pelotasplus.eyeofbeholder.data.model.DialogueText
+import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.Font
 import pl.pelotasplus.eyeofbeholder.data.model.GameState
-import pl.pelotasplus.eyeofbeholder.data.model.levelNumber
+import pl.pelotasplus.eyeofbeholder.data.model.Inf
 import pl.pelotasplus.eyeofbeholder.data.model.LevelScriptRunner
 import pl.pelotasplus.eyeofbeholder.data.model.Location
-import pl.pelotasplus.eyeofbeholder.data.model.script.Dialog
-import pl.pelotasplus.eyeofbeholder.data.model.script.ScriptOffset
 import pl.pelotasplus.eyeofbeholder.data.model.PartyState
 import pl.pelotasplus.eyeofbeholder.data.model.PlayField
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptEvent
-import pl.pelotasplus.eyeofbeholder.data.model.ScriptRun
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptQuestion
+import pl.pelotasplus.eyeofbeholder.data.model.ScriptSpeech
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptStage
 import pl.pelotasplus.eyeofbeholder.data.model.Ticks
 import pl.pelotasplus.eyeofbeholder.data.model.ViewPort
+import pl.pelotasplus.eyeofbeholder.data.model.levelNumber
+import pl.pelotasplus.eyeofbeholder.data.model.script.Dialog
 import pl.pelotasplus.eyeofbeholder.data.model.toImageBitmap
 import pl.pelotasplus.eyeofbeholder.data.repository.CpsRepository
 import pl.pelotasplus.eyeofbeholder.data.repository.DialogueTextRepository
@@ -79,6 +78,7 @@ class ViewConeDebugViewModel(
                 startY = event.startY,
                 startDirection = event.startDirection,
             )
+
             is Event.DialogAnswered -> onDialogAnswered(event.answer)
             is Event.OnLevelSelected -> onVmpSelected(event.name)
             Event.MoveForward -> onMoveForward()
@@ -127,20 +127,13 @@ class ViewConeDebugViewModel(
             return
         }
 
-        // entrance to the temple, stairs down -- default start
+        // default start
         onVmpSelected(
             DEFAULT_LEVEL,
             playerX = DEFAULT_PLAYER_X,
             playerY = DEFAULT_PLAYER_Y,
             direction = DEFAULT_DIRECTION
         )
-
-        // other scenes worth rendering while debugging:
-        // silver tower 1 -- start:      LEVEL7.INF (15, 6) EAST
-        //                               LEVEL7.INF (13, 3) SOUTH
-        // four guards at (10,20):       LEVEL1.INF (10, 18) SOUTH
-        // temple level 2:               LEVEL6.INF (27, 29) NORTH
-        // https://gamerwalkthroughs.com/eye-of-the-beholder-2/temple-level-2/
     }
 
     private fun onVmpSelected(
@@ -153,21 +146,26 @@ class ViewConeDebugViewModel(
             viewConeRepository
                 .loadLevel(name = name)
                 .onSuccess { inf ->
-                    scriptRunner = LevelScriptRunner(inf.script, levelNumber(inf.name))
+                    val arrivingAt = levelNumber(inf.name)
+                    scriptRunner = LevelScriptRunner(inf.script, arrivingAt)
                     _state.update {
                         val was = it.game.party
+                        val leftBehind =
+                            it.inf?.let { open -> it.game.leaving(levelNumber(open.name)) }
+
                         it.copy(
                             inf = inf,
-                            game = it.game.copy(
-                                party = was.copy(
-                                    position = Location(
-                                        x = playerX ?: was.position.x,
-                                        y = playerY ?: was.position.y,
+                            game = (leftBehind ?: it.game)
+                                .arrivingAt(arrivingAt, inf.monsterInstances)
+                                .copy(
+                                    party = was.copy(
+                                        position = Location(
+                                            x = playerX ?: was.position.x,
+                                            y = playerY ?: was.position.y,
+                                        ),
+                                        facing = direction ?: was.facing,
                                     ),
-                                    facing = direction ?: was.facing,
                                 ),
-                                monsters = inf.monsterInstances,
-                            ),
                         )
                     }
                     renderViewPort()
@@ -218,11 +216,16 @@ class ViewConeDebugViewModel(
                 state = _state.value.game,
                 stage = stage,
             )
-            _state.update { it.copy(game = run.state) }
+            // Whatever the script left on screen goes with it. Scripts end
+            // without closing the box they last wrote in — the one that walks
+            // the party downstairs says so and changes level on the next
+            // instruction — and a box with nothing to click cannot be got rid
+            // of by the player.
+            _state.update { it.copy(game = run.state, dialog = null) }
+            speaker = null
 
             val change = run.changeLevel
             if (change == null) {
-                speaker = null
                 drawViewPort()
             } else {
                 Logger.i(TAG) { "Changing to level ${change.level} at ${change.location}" }
@@ -247,6 +250,55 @@ class ViewConeDebugViewModel(
 
         override suspend fun show(world: GameState) {
             _state.update { it.copy(game = world) }
+            drawViewPort()
+        }
+
+        /**
+         * The box a question would be asked in, with no question in it: the
+         * script has written a line and will hold the screen while it is read.
+         */
+        override suspend fun say(speech: ScriptSpeech) {
+            val inf = _state.value.inf ?: return
+
+            if (speech.isEmpty) {
+                _state.update { it.copy(dialog = null) }
+                speaker = null
+                drawViewPort()
+                return
+            }
+
+            val spoken = speech.said.mapNotNull { inf.message(it) }
+                .filter { it.isNotBlank() }
+                .joinToString("\n") { party.fillIn(it) }
+
+            // With no box open the line belongs on the bar along the bottom,
+            // which is where a script talks to the party when nobody is
+            // speaking to them.
+            if (speech.scene.isEmpty()) {
+                _state.update {
+                    it.copy(
+                        dialog = null,
+                        messages = (it.messages + PlayField.Message(spoken, speech.colour))
+                            .takeLast(MESSAGES_KEPT),
+                    )
+                }
+                speaker = null
+                drawViewPort()
+                return
+            }
+
+            _state.update {
+                it.copy(
+                    dialog = DialogPrompt(
+                        scene = sceneFor(
+                            scene = speech.scene,
+                            text = spoken,
+                            buttonLabels = emptyList(),
+                            waitsToBeRead = false,
+                        ),
+                    )
+                )
+            }
             drawViewPort()
         }
 
@@ -403,7 +455,12 @@ class ViewConeDebugViewModel(
             ).onSuccess { viewPort ->
                 val image = if (background != null && decorations != null) {
                     PlayField(background, decorations, sublevel.palette, font)
-                        .render(viewPort, party.facing, _state.value.dialog?.scene)
+                        .render(
+                            viewPort = viewPort,
+                            direction = party.facing,
+                            dialogue = _state.value.dialog?.scene,
+                            messages = _state.value.messages,
+                        )
                         .toImageBitmap()
                 } else {
                     // the frame art failed to load; still show the raw view
@@ -502,6 +559,7 @@ class ViewConeDebugViewModel(
             val startY: Int? = null,
             val startDirection: Direction? = null,
         ) : Event()
+
         data class DialogAnswered(val answer: DialogAnswer) : Event()
         data class OnLevelSelected(val name: String) : Event()
         data object MoveForward : Event()
@@ -530,6 +588,13 @@ class ViewConeDebugViewModel(
         val inf: Inf? = null,
         val dialog: DialogPrompt? = null,
 
+        /**
+         * The bar along the bottom, oldest first. A script writes here when it
+         * has no box open, and nothing takes a line off again — the bar scrolls
+         * as more arrive.
+         */
+        val messages: List<PlayField.Message> = emptyList(),
+
         val viewPort: ImageBitmap? = null,
 
         /**
@@ -546,15 +611,19 @@ class ViewConeDebugViewModel(
 
     companion object {
         private const val TAG = "ViewConeDebugViewModel"
+
+        /** More than the bar can show, so a long line still has its history. */
+        private const val MESSAGES_KEPT = 8
         private const val PLAY_FIELD_CPS = "PLAYFLD.CPS"
         private const val DECORATIONS_CPS = "DECORATE.CPS"
         private const val DIALOGUE_FRAME_CPS = "BORDER.CPS"
         private const val DIALOGUE_FONT = "FONT6.FNT"
+
         // side areas are not reachable yet, so only the main floor is played
         private const val PLAYED_SUBLEVEL = 0
-        private const val DEFAULT_LEVEL = "LEVEL4.INF"
-        private const val DEFAULT_PLAYER_X = 11
-        private const val DEFAULT_PLAYER_Y = 12
-        private val DEFAULT_DIRECTION = Direction.NORTH
+        private const val DEFAULT_LEVEL = "LEVEL6.INF"
+        private const val DEFAULT_PLAYER_X = 10
+        private const val DEFAULT_PLAYER_Y = 3
+        private val DEFAULT_DIRECTION = Direction.WEST
     }
 }

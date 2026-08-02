@@ -8,6 +8,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.GameState
 import pl.pelotasplus.eyeofbeholder.data.model.LevelScriptRunner
 import pl.pelotasplus.eyeofbeholder.data.model.Location
 import pl.pelotasplus.eyeofbeholder.data.model.MessageId
+import pl.pelotasplus.eyeofbeholder.data.model.PaletteIndex
 import pl.pelotasplus.eyeofbeholder.data.model.PartyState
 import pl.pelotasplus.eyeofbeholder.data.RecordingStage
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptEvent
@@ -260,6 +261,78 @@ class ViewPortGoldenTest {
                 message = 5,
             ),
         )
+
+    /**
+     * A line written with no box open goes on the bar beside the camp button,
+     * in the ink the script asked for — "going down..." is written in 5.
+     */
+    @Test
+    fun `a message on the bar along the bottom`() =
+        checkGolden(
+            "message-bar",
+            messagesOver(level = "LEVEL6.INF", x = 10, y = 3, messages = listOf(1 to 5)),
+        )
+
+    /** Three short lines fill the bar, each keeping the ink it was written in. */
+    @Test
+    fun `three messages stack up the bar`() =
+        checkGolden(
+            "message-bar-three",
+            messagesOver(
+                level = "LEVEL4.INF",
+                x = 15,
+                y = 11,
+                messages = listOf(0 to 5, 1 to 15, 2 to 9),
+            ),
+        )
+
+    /**
+     * The bar is 18 pixels of a 6 pixel font, so a long line fills three of
+     * them and whatever will not fit is dropped.
+     */
+    @Test
+    fun `a message long enough to fill the bar`() =
+        checkGolden(
+            "message-bar-full",
+            messagesOver(level = "LEVEL4.INF", x = 15, y = 11, messages = listOf(11 to 9)),
+        )
+
+    /** @param messages the level's own message ids, each with the ink to write it in. */
+    private fun messagesOver(
+        level: String,
+        x: Int,
+        y: Int,
+        messages: List<Pair<Int, Int>>,
+    ): BufferedImage =
+        runBlocking {
+            val resources = ResourceRepositoryImpl()
+            val cps = CpsRepositoryImpl(resources)
+            val repository = repository()
+            val inf = repository.loadLevel(level).getOrThrow()
+            val sublevel = inf.subLevels[0]
+
+            val viewPort = repository.renderPosition(
+                items = inf.items,
+                monsters = inf.monsterInstances,
+                sublevel = sublevel,
+                playerX = x,
+                playerY = y,
+                direction = Direction.NORTH,
+            ).getOrThrow()
+
+            PlayField(
+                background = cps.loadCps("PLAYFLD.CPS").getOrThrow(),
+                decorations = cps.loadCps("DECORATE.CPS").getOrThrow(),
+                palette = sublevel.palette,
+                font = FontRepositoryImpl(resources).loadFont("FONT6.FNT").getOrThrow(),
+            ).render(
+                viewPort = viewPort,
+                direction = Direction.NORTH,
+                messages = messages.mapNotNull { (id, ink) ->
+                    inf.message(MessageId(id))?.let { PlayField.Message(it, PaletteIndex(ink)) }
+                },
+            ).toImage()
+        }
 
     private fun dialogueOver(
         level: String,
