@@ -211,7 +211,7 @@ class LevelScriptRunner(
         Logger.d(TAG) {
             "Running trigger at $position for $event from offset ${trigger.script.offset}"
         }
-        return runScript(trigger.script.offset, state, stage, triggers, depth).also { result ->
+        return runScript(trigger.script.offset, state, stage, triggers, depth, event).also { result ->
             Logger.d(TAG) { "Script from ${trigger.script.offset} left ${result.state.party}" }
         }
     }
@@ -222,6 +222,7 @@ class LevelScriptRunner(
         stage: ScriptStage,
         triggers: List<Trigger>,
         depth: Int,
+        event: ScriptEvent,
     ): ScriptRun {
         var state = initial
 
@@ -287,7 +288,7 @@ class LevelScriptRunner(
 
                 is Eval -> {
                     // a true condition falls through, a false one jumps
-                    val condition = evaluate(token.tokens, state, dialogAnswer)
+                    val condition = evaluate(token.tokens, state, dialogAnswer, event)
                     Logger.d(TAG) {
                         if (condition.isTrue) {
                             "    condition true, carrying on"
@@ -407,6 +408,7 @@ class LevelScriptRunner(
         tokens: List<Conditional>,
         state: GameState,
         dialogAnswer: DialogAnswer?,
+        event: ScriptEvent,
     ): ConditionValue {
         val stack = ArrayDeque<ConditionValue>()
         fun pop() = stack.removeLastOrNull() ?: ConditionValue.FALSE
@@ -425,6 +427,12 @@ class LevelScriptRunner(
         tokens.forEach { token ->
             when (token) {
                 is Conditional.ImmediateShort -> push(ConditionValue.of(token.value))
+
+                // Which of the things a square reacts to has just happened. A
+                // square has one script for all of them, so a script that does
+                // different things for being walked onto and for being clicked
+                // asks this first.
+                is Conditional.GetTriggerFlag -> push(ConditionValue.of(event.mask))
                 is Conditional.GetLevelFlag -> push(state.isLevelFlagSet(level, token.bit))
                 is Conditional.GetGlobalFlag -> push(state.isGlobalFlagSet(token.bit))
                 is Conditional.GetPartyDirection ->

@@ -109,6 +109,49 @@ class LevelScriptRunnerTest {
     }
 
     @Test
+    fun `a script is told which of the things it reacts to has happened`() {
+        // one script serves every way a square can be set off, and asks which
+        // it was: 1 for the party walking on, 2 for them walking off
+        val script = arrayOf(
+            0 to Eval(
+                listOf(
+                    Conditional.GetTriggerFlag,
+                    Conditional.ImmediateShort(1),
+                    Conditional.Equals,
+                ),
+                goto = ScriptOffset(20),
+            ),
+            10 to changeLevelToken(5),
+            20 to changeLevelToken(9),
+        )
+
+        assertEquals(
+            changeToLevel(5),
+            fire(script, ScriptEvent.PARTY_ENTERED),
+            "walking on should take the branch for walking on",
+        )
+        assertEquals(
+            changeToLevel(9),
+            fire(script, ScriptEvent.PARTY_LEFT),
+            "walking off should not",
+        )
+    }
+
+    private fun fire(
+        script: Array<Pair<Int, ScriptToken>>,
+        event: ScriptEvent,
+    ): ChangeLevel? = runBlocking {
+        val instructions = script.map { (offset, token) -> Script(ScriptOffset(offset), token) }
+        LevelScriptRunner(instructions)
+            .onEvent(
+                listOf(Trigger(here, TriggerFlags(0x18), instructions.first())),
+                event,
+                party(),
+            )
+            .changeLevel
+    }
+
+    @Test
     fun `conditions this project cannot answer yet are taken as true`() {
         val outcome = run(
             0 to Eval(listOf(Conditional.GetTriggerFlag), goto = ScriptOffset(20)),
