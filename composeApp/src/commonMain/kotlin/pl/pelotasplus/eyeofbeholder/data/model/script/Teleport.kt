@@ -62,6 +62,12 @@ sealed class Teleport : ScriptToken {
     /**
      * Move party.
      * type = 0xE8 (-24)
+     *
+     * Two blocks are stored and only [destination] is used — the opcode shares
+     * its layout with the moves that take something from one square to
+     * another, and the party is simply put on the second. Scripts leave
+     * [source] at (0,0), so reading the wrong one of the two would look right
+     * nearly everywhere.
      */
     data class MoveParty(
         val source: Location,

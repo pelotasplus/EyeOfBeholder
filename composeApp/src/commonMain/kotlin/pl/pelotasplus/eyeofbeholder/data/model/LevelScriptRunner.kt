@@ -15,6 +15,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.script.Script
 import pl.pelotasplus.eyeofbeholder.data.model.script.ScriptOffset
 import pl.pelotasplus.eyeofbeholder.data.model.script.SetFlag
 import pl.pelotasplus.eyeofbeholder.data.model.script.SetWall
+import pl.pelotasplus.eyeofbeholder.data.model.script.SpecialEvent
 import pl.pelotasplus.eyeofbeholder.data.model.script.Teleport
 import pl.pelotasplus.eyeofbeholder.data.model.script.UpdateScreen
 import pl.pelotasplus.eyeofbeholder.data.model.script.Wait
@@ -413,6 +414,15 @@ class LevelScriptRunner(
 
                 // anything else the script draws while setting up its question
                 is Dialog -> scene += token
+
+                // These hand the script back an answer, and skipping one is
+                // not the same as it answering nothing: the script goes on to
+                // test an answer that was never given, and takes a branch
+                // silently. Say so rather than let it read as a script that
+                // did its work.
+                is SpecialEvent -> Logger.w(TAG) {
+                    "$token is not implemented; the script will read its result as unanswered"
+                }
 
                 else -> Unit
             }
