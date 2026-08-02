@@ -147,7 +147,7 @@ class ViewPort(
         wallSetIndex: Int,
         wallPosition: Int,
     ) {
-        Logger.d(TAG) { "drawWall wallPosition: $wallPosition wallSetIndex: $wallSetIndex" }
+//        Logger.d(TAG) { "drawWall wallPosition: $wallPosition wallSetIndex: $wallSetIndex" }
 
         val renderData = viewSlots[wallPosition].wall
 

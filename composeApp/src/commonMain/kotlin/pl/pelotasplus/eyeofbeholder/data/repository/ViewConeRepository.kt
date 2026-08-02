@@ -154,7 +154,7 @@ class ViewConeRepositoryImpl(
                     is Maz.WallType.Decoration -> {
                         val levelDecoration = sublevel.decorations
                             .find { it.decorationWallIndex == wallType.decorationWallIndex }
-                        Logger.d(TAG) { "Wall wallPosition $wallPosition matching decoration $levelDecoration" }
+//                        Logger.d(TAG) { "Wall wallPosition $wallPosition matching decoration $levelDecoration" }
                         if (levelDecoration == null) {
                             // A level maps only the wall indices it uses, and a
                             // maze is a fixed 32x32 whose unreachable corners
