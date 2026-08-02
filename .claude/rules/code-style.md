@@ -63,6 +63,31 @@ type's KDoc, not on every constant. When a whole binary layout is transcribed,
 write out the layout (offsets and meanings); that is the reference material,
 not the name of the C++ function that reads it.
 
+## Don't explain a general mechanism with one level's story
+
+A KDoc on a shared type, or a comment on a branch that handles one of 29
+opcodes, is read by someone who has never seen the level it was written from.
+The mechanism outlives the anecdote:
+
+```kotlin
+// no
+// A speech waits to be read before the script goes on, and what comes next
+// can be the point: the clerics slam the door only once their roar has been
+// acknowledged.
+
+// yes
+// A speech is read rather than answered, and the script waits for that: what
+// follows a speech can be the point of it.
+```
+
+The same goes for war stories about code that no longer exists — "guessing an
+answer would run a branch nobody chose, which is how walking past the priest
+used to throw the party down a level" describes a design that was replaced.
+State the rule the code follows now.
+
+The exception is a file whose subject really is the level data: `GameFlags.kt`
+records what each level's bits mean, and naming levels there is the point.
+
 ## Types, not bare Ints
 
 A domain quantity gets its own type. `Int` says nothing about what a value

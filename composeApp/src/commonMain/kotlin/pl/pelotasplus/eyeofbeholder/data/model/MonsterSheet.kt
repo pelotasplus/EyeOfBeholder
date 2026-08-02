@@ -44,8 +44,8 @@ data class MonsterDecoration(
  *
  * A sublevel defines at most two sprite sheets, so several monsters of one
  * species share one drawing. The game tells them apart by handing the schemes
- * out per monster slot, cycling — two clerics in adjacent slots stand in the
- * same room in differently colored robes.
+ * out per monster slot, cycling, so a pair in adjacent slots stands in the same
+ * room in differently colored robes.
  */
 enum class MonsterColors {
     AS_DRAWN,

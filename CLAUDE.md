@@ -16,6 +16,7 @@ The detail lives in `.claude/rules/`, loaded automatically every session:
 | --- | --- |
 | `code-style.md` | When to write a comment and when not to |
 | `golden-image-tests.md` | The rendering test gate; run before every commit that touches rendering |
+| `probes-and-tests.md` | Starting with a probe, and what may decide an assertion's value |
 | `architecture-features.md` | MVVM pattern, package layout, feature modules, navigation, Koin DI, adding a feature |
 | `architecture-data.md` | Repositories, domain models, binary parsing, LCW, common Kotlin patterns |
 | `rendering.md` | Vcn/Vmp/ViewPort/ViewSlot, Direction and WallSide |
