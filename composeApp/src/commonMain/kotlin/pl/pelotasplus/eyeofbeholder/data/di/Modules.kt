@@ -8,6 +8,8 @@ import pl.pelotasplus.eyeofbeholder.data.repository.DialogueTextRepository
 import pl.pelotasplus.eyeofbeholder.data.repository.DialogueTextRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.FontRepository
 import pl.pelotasplus.eyeofbeholder.data.repository.FontRepositoryImpl
+import pl.pelotasplus.eyeofbeholder.data.repository.SavedGameRepository
+import pl.pelotasplus.eyeofbeholder.data.repository.SavedGameRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.DecRepository
 import pl.pelotasplus.eyeofbeholder.data.repository.DcrRepository
 import pl.pelotasplus.eyeofbeholder.data.repository.DcrRepositoryImpl
@@ -42,6 +44,9 @@ val sharedDataModule = module {
     }
     factory<FontRepository> {
         FontRepositoryImpl(get())
+    }
+    factory<SavedGameRepository> {
+        SavedGameRepositoryImpl(get())
     }
 
     factory<CpsRepository> {

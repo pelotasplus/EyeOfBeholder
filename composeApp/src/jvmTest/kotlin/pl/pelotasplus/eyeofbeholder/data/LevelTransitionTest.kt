@@ -5,12 +5,15 @@ import pl.pelotasplus.eyeofbeholder.data.model.DialogAnswer
 import pl.pelotasplus.eyeofbeholder.data.model.DialogueTextId
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.GameState
+import pl.pelotasplus.eyeofbeholder.data.model.Champion
 import pl.pelotasplus.eyeofbeholder.data.model.Inf
 import pl.pelotasplus.eyeofbeholder.data.model.LevelScriptRunner
 import pl.pelotasplus.eyeofbeholder.data.model.Location
 import pl.pelotasplus.eyeofbeholder.data.model.PartyState
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptEvent
 import pl.pelotasplus.eyeofbeholder.data.model.Ticks
+import pl.pelotasplus.eyeofbeholder.data.model.speakerFrom
+import pl.pelotasplus.eyeofbeholder.data.model.spokenBy
 import pl.pelotasplus.eyeofbeholder.data.model.script.NewLevelOrMonster
 import pl.pelotasplus.eyeofbeholder.data.repository.CpsRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.DecRepositoryImpl
@@ -19,6 +22,7 @@ import pl.pelotasplus.eyeofbeholder.data.repository.ItemsRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.MazRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.PalRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.ResourceRepositoryImpl
+import pl.pelotasplus.eyeofbeholder.data.repository.SavedGameRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.VcnRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.VmpRepositoryImpl
 import kotlin.test.Test
@@ -318,9 +322,11 @@ class LevelTransitionTest {
             .onEvent(level.triggers, ScriptEvent.PARTY_ENTERED, state, stage)
 
         val (_, asked, replied) = stage.questions
+        // the line names whoever the roll landed on, so the roll is fixed here
+        val speaker = quickStartParty().speakerFrom(0)
         assertEquals(
-            listOf("""Alex: "may we rest a moment in your temple?""""),
-            asked.said.mapNotNull { level.message(it) }.map { party.fillIn(it).trim() },
+            listOf("""PERICLES: "may we rest a moment in your temple?""""),
+            asked.said.mapNotNull { level.message(it) }.map { it.spokenBy(speaker).trim() },
         )
 
         assertEquals(DialogueTextId(24), replied.textId)
@@ -342,6 +348,13 @@ class LevelTransitionTest {
     }
 
     private val resources = ResourceRepositoryImpl()
+
+    private fun quickStartParty(): List<Champion> = runBlocking {
+        SavedGameRepositoryImpl(resources)
+            .loadSavedGame(SavedGameRepositoryImpl.QUICK_START)
+            .getOrThrow()
+            .party
+    }
 
     private fun load(name: String): Inf = runBlocking {
         val pal = PalRepositoryImpl(resources)

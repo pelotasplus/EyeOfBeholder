@@ -8,24 +8,12 @@ package pl.pelotasplus.eyeofbeholder.data.model
  * such question needs an answer from somewhere, and passing them one at a time
  * does not scale past the first, so they arrive together.
  *
- * Only what is modelled lives here. The characters themselves are the next to
- * arrive — scripts ask which classes are present and what is in hand — along
- * with anything else the still unanswered conditions need.
+ * This is where the party are, not who they are: the champions themselves are
+ * the roster, and who speaks a message is [speakerFrom]'s business. What is
+ * still missing here is what scripts ask about the characters — which classes
+ * are present, what is in hand.
  */
 data class PartyState(
     val position: Location,
     val facing: Direction,
-    /**
-     * Who speaks when a message names a party member. A stand-in: the original
-     * picks whichever character is able to answer, and there are no characters
-     * here yet.
-     */
-    val characterName: String = "Alex",
-) {
-    /** Puts [characterName] where a message left room for one. */
-    fun fillIn(message: String) = message.replace(SPEAKER, characterName)
-
-    private companion object {
-        const val SPEAKER = "%s"
-    }
-}
+)

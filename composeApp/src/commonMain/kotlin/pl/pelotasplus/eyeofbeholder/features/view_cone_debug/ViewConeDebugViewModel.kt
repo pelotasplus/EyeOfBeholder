@@ -11,6 +11,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlin.random.Random
+import pl.pelotasplus.eyeofbeholder.data.model.Champion
 import pl.pelotasplus.eyeofbeholder.data.model.Cps
 import pl.pelotasplus.eyeofbeholder.data.model.DialogAnswer
 import pl.pelotasplus.eyeofbeholder.data.model.DialogueScene
@@ -37,12 +39,16 @@ import pl.pelotasplus.eyeofbeholder.data.model.TeleporterPulse
 import pl.pelotasplus.eyeofbeholder.data.model.Ticks
 import pl.pelotasplus.eyeofbeholder.data.model.ViewPort
 import pl.pelotasplus.eyeofbeholder.data.model.levelNumber
+import pl.pelotasplus.eyeofbeholder.data.model.speakerFrom
+import pl.pelotasplus.eyeofbeholder.data.model.spokenBy
 import pl.pelotasplus.eyeofbeholder.data.model.teleportersInView
 import pl.pelotasplus.eyeofbeholder.data.model.script.Dialog
 import pl.pelotasplus.eyeofbeholder.data.model.toImageBitmap
 import pl.pelotasplus.eyeofbeholder.data.repository.CpsRepository
 import pl.pelotasplus.eyeofbeholder.data.repository.DialogueTextRepository
 import pl.pelotasplus.eyeofbeholder.data.repository.FontRepository
+import pl.pelotasplus.eyeofbeholder.data.repository.SavedGameRepository
+import pl.pelotasplus.eyeofbeholder.data.repository.SavedGameRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.ViewConeRepository
 
 @Stable
@@ -51,11 +57,16 @@ class ViewConeDebugViewModel(
     private val cpsRepository: CpsRepository,
     private val dialogueTextRepository: DialogueTextRepository,
     private val fontRepository: FontRepository,
+    private val savedGameRepository: SavedGameRepository,
 ) : ViewModel() {
 
     private var playFieldBackground: Cps? = null
     private var decorations: Cps? = null
     private var dialogueFrame: Cps? = null
+    private var portraits: Cps? = null
+
+    /** Who the party are, as against [party], which is where they stand. */
+    private var roster: List<Champion> = emptyList()
     private var font: Font? = null
     private var scriptRunner: LevelScriptRunner? = null
     private var speaker: DialogueScene.Picture? = null
@@ -129,6 +140,14 @@ class ViewConeDebugViewModel(
             fontRepository.loadFont(DIALOGUE_FONT)
                 .onSuccess { font = it }
                 .onFailure { Logger.e(it) { "Error while loading $DIALOGUE_FONT" } }
+            cpsRepository.loadCps(PORTRAITS_CPS)
+                .onSuccess { portraits = it }
+                .onFailure { Logger.e(it) { "Error while loading $PORTRAITS_CPS" } }
+            // until there is a screen to roll a party up on, the one the game
+            // ships with is the party
+            savedGameRepository.loadSavedGame(SavedGameRepositoryImpl.QUICK_START)
+                .onSuccess { roster = it.party }
+                .onFailure { Logger.e(it) { "Error while loading the quick start party" } }
             renderViewPort()
         }
 
@@ -214,6 +233,13 @@ class ViewConeDebugViewModel(
     }
 
     private val party get() = _state.value.game.party
+
+    /**
+     * Whichever champion answers this time. Rolled per line, the way the
+     * original does, so two remarks in a row need not come from one mouth.
+     */
+    private fun whoeverSpeaks(): Champion? =
+        roster.speakerFrom(Random.nextInt(Champion.PARTY_SLOTS))
 
     /**
      * A click in the view means the wall of the square ahead that faces the
@@ -327,7 +353,7 @@ class ViewConeDebugViewModel(
 
             val spoken = speech.said.mapNotNull { inf.message(it) }
                 .filter { it.isNotBlank() }
-                .joinToString("\n") { party.fillIn(it) }
+                .joinToString("\n") { it.spokenBy(whoeverSpeaks()) }
 
             // With no box open the line belongs on the bar along the bottom,
             // which is where a script talks to the party when nobody is
@@ -387,7 +413,7 @@ class ViewConeDebugViewModel(
         // the party's own line goes in the box above what it answers
         val spoken = (question.said.mapNotNull { inf.message(it) } + speech.first)
             .filter { it.isNotBlank() }
-            .joinToString("\n") { party.fillIn(it) }
+            .joinToString("\n") { it.spokenBy(whoeverSpeaks()) }
 
         _state.update {
             it.copy(
@@ -573,6 +599,8 @@ class ViewConeDebugViewModel(
                     direction = party.facing,
                     dialogue = _state.value.dialog?.scene,
                     messages = _state.value.messages,
+                    party = roster,
+                    portraits = portraits,
                 )
                 .toImageBitmap()
         } else {
@@ -733,6 +761,7 @@ class ViewConeDebugViewModel(
         private const val DECORATIONS_CPS = "DECORATE.CPS"
         private const val DIALOGUE_FRAME_CPS = "BORDER.CPS"
         private const val DIALOGUE_FONT = "FONT6.FNT"
+        private const val PORTRAITS_CPS = "CHARGENA.CPS"
 
         // side areas are not reachable yet, so only the main floor is played
         private const val PLAYED_SUBLEVEL = 0

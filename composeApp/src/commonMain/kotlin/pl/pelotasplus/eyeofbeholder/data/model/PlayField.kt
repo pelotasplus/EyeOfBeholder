@@ -20,13 +20,98 @@ class PlayField(
         direction: Direction,
         dialogue: DialogueScene? = null,
         messages: List<Message> = emptyList(),
+        party: List<Champion> = emptyList(),
+        portraits: Cps? = null,
     ): PlayField {
         drawBackground()
+        drawParty(party, portraits)
         drawViewPort(viewPort)
         drawCompass(direction)
         drawMessages(messages)
         dialogue?.let(::drawDialogue)
         return this
+    }
+
+    /**
+     * A box down the right for each champion, and nothing at all for a slot
+     * nobody fills.
+     *
+     * An empty slot is not an empty box: the original draws a slot only if
+     * somebody is in it, so a party of four leaves the bottom of the panel as
+     * bare wall.
+     */
+    private fun drawParty(party: List<Champion>, portraits: Cps?) {
+        championBoxes.forEachIndexed { slot, box ->
+            val champion = party.getOrNull(slot)?.takeIf { it.inTheParty } ?: return@forEachIndexed
+
+            copy(
+                from = background,
+                sourceLeft = boxInTheArt.left,
+                sourceTop = boxInTheArt.top,
+                width = ChampionBox.WIDTH,
+                height = ChampionBox.HEIGHT,
+                left = box.left,
+                top = box.top,
+            )
+            drawChampion(champion, box, portraits)
+        }
+    }
+
+    private fun drawChampion(champion: Champion, box: ChampionBox, portraits: Cps?) {
+        portraits?.let { sheet ->
+            val face = sheet.portrait(champion.portrait)
+            val colours = sheet.palette ?: palette
+            for (y in 0 until face.h) {
+                for (x in 0 until face.w) {
+                    val index = face.pixels[y * face.w + x]
+                    draw(box.portraitLeft + x, box.portraitTop + y, colours.colors[index.value])
+                }
+            }
+        }
+
+        font?.let { font ->
+            write(
+                text = champion.name,
+                font = font,
+                left = box.nameLeft,
+                top = box.nameTop,
+                colour = if (champion.inTrouble) NAME_IN_TROUBLE else NAME_COLOUR,
+            )
+        }
+
+        drawHitPointBar(champion, box)
+    }
+
+    /** The hit point bar, sunk into the strip it sits on, with HP written beside it. */
+    private fun drawHitPointBar(champion: Champion, box: ChampionBox) {
+        val bar = hitPointBar(champion.hitPoints)
+
+        drawBox(
+            left = box.barLeft - 1,
+            top = box.barTop - 1,
+            width = ChampionBox.BAR_WIDTH + 2,
+            height = ChampionBox.BAR_HEIGHT + 2,
+            topRight = EDGE_SHADED,
+            bottomLeft = EDGE_LIT,
+            fill = null,
+        )
+
+        for (y in 0 until ChampionBox.BAR_HEIGHT) {
+            for (x in 0 until ChampionBox.BAR_WIDTH) {
+                val ink = if (x < bar.filled) bar.colour else BAR_EMPTY
+                draw(box.barLeft + x, box.barTop + y, palette.colors[ink.value])
+            }
+        }
+
+        font?.let { font ->
+            write(
+                text = ChampionBox.BAR_LABEL,
+                font = font,
+                left = box.barLabelLeft,
+                top = box.barLabelTop,
+                colour = NAME_COLOUR,
+            )
+        }
     }
 
     /**
@@ -118,24 +203,38 @@ class PlayField(
     }
 
     /**
-     * Both the strip a conversation sits on and the buttons on it are this same
-     * box: a flat fill lit along the top and right and shaded along the left and
-     * bottom, so it stands slightly proud of what is behind it.
+     * The one box the interface is made of: two edges in one colour, two in
+     * the other, and an optional flat fill.
+     *
+     * Lit along the top and right it stands proud of what is behind it, which
+     * is how a conversation strip and its buttons are drawn. Handed the two
+     * colours the other way round it becomes a channel cut into the panel,
+     * which is how the hit point bars sit in their strip.
      */
-    private fun drawBox(left: Int, top: Int, width: Int, height: Int) {
+    private fun drawBox(
+        left: Int,
+        top: Int,
+        width: Int,
+        height: Int,
+        topRight: PaletteIndex = EDGE_LIT,
+        bottomLeft: PaletteIndex = EDGE_SHADED,
+        fill: PaletteIndex? = FILL,
+    ) {
         val right = left + width - 1
         val bottom = top + height - 1
 
-        for (y in top + 1 until bottom) {
-            for (x in left + 1 until right) {
-                draw(x, y, palette.colors[FILL.value])
+        if (fill != null) {
+            for (y in top + 1 until bottom) {
+                for (x in left + 1 until right) {
+                    draw(x, y, palette.colors[fill.value])
+                }
             }
         }
 
-        for (x in left + 1..right) draw(x, top, palette.colors[EDGE_LIT.value])
-        for (y in top until bottom) draw(right, y, palette.colors[EDGE_LIT.value])
-        for (y in top..bottom) draw(left, y, palette.colors[EDGE_SHADED.value])
-        for (x in left..right) draw(x, bottom, palette.colors[EDGE_SHADED.value])
+        for (x in left + 1..right) draw(x, top, palette.colors[topRight.value])
+        for (y in top until bottom) draw(right, y, palette.colors[topRight.value])
+        for (y in top..bottom) draw(left, y, palette.colors[bottomLeft.value])
+        for (x in left..right) draw(x, bottom, palette.colors[bottomLeft.value])
     }
 
     private fun drawButton(button: DialogueScene.Button, font: Font, highlighted: Boolean) {
@@ -249,6 +348,11 @@ class PlayField(
         private val BUTTON_LABEL_COLOUR = PaletteIndex(15)
         private val BUTTON_LABEL_HIGHLIGHTED = PaletteIndex(9)
         private const val BUTTON_LABEL_OFFSET_Y = 2
+
+        /** Party panel colours. */
+        private val NAME_COLOUR = PaletteIndex(12)
+        private val NAME_IN_TROUBLE = PaletteIndex(8)
+        private val BAR_EMPTY = PaletteIndex(184)
 
         /**
          * The message line along the bottom, beside the camp button. The band

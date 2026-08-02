@@ -28,6 +28,7 @@ import pl.pelotasplus.eyeofbeholder.data.repository.ItemsRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.MazRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.PalRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.ResourceRepositoryImpl
+import pl.pelotasplus.eyeofbeholder.data.repository.SavedGameRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.VcnRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.ViewConeRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.VmpRepositoryImpl
@@ -297,6 +298,77 @@ class ViewPortGoldenTest {
             "message-bar-full",
             messagesOver(level = "LEVEL4.INF", x = 15, y = 11, messages = listOf(11 to 9)),
         )
+
+    /**
+     * The party the game ships with, down the right of the screen: four
+     * champions and two slots nobody has rolled up.
+     */
+    @Test
+    fun `the quick start party on the panel`() =
+        checkGolden("party-panel", partyOver(level = "LEVEL4.INF", x = 15, y = 11))
+
+    /**
+     * The same panel with the party hurt, so the bars show all three of their
+     * colours at once: well, down to a third, and out cold.
+     */
+    @Test
+    fun `hit point bars as a party takes damage`() =
+        checkGolden(
+            "party-panel-hurt",
+            partyOver(
+                level = "LEVEL4.INF",
+                x = 15,
+                y = 11,
+                hurtTo = listOf(78, 20, 1, -6),
+            ),
+        )
+
+    /** @param hurtTo current hit points per champion, or empty to leave them well. */
+    private fun partyOver(
+        level: String,
+        x: Int,
+        y: Int,
+        hurtTo: List<Int> = emptyList(),
+    ): BufferedImage = runBlocking {
+        val resources = ResourceRepositoryImpl()
+        val cps = CpsRepositoryImpl(resources)
+        val repository = repository()
+        val inf = repository.loadLevel(level).getOrThrow()
+        val sublevel = inf.subLevels[0]
+
+        val saved = SavedGameRepositoryImpl(resources)
+            .loadSavedGame(SavedGameRepositoryImpl.QUICK_START)
+            .getOrThrow()
+
+        var hurt = 0
+        val party = saved.party.map { champion ->
+            if (!champion.inTheParty || hurtTo.isEmpty()) champion
+            else champion.copy(
+                hitPoints = champion.hitPoints.copy(current = hurtTo[hurt++]),
+            )
+        }
+
+        val viewPort = repository.renderPosition(
+            items = inf.items,
+            monsters = inf.monsterInstances,
+            sublevel = sublevel,
+            playerX = x,
+            playerY = y,
+            direction = Direction.NORTH,
+        ).getOrThrow()
+
+        PlayField(
+            background = cps.loadCps("PLAYFLD.CPS").getOrThrow(),
+            decorations = cps.loadCps("DECORATE.CPS").getOrThrow(),
+            palette = sublevel.palette,
+            font = FontRepositoryImpl(resources).loadFont("FONT6.FNT").getOrThrow(),
+        ).render(
+            viewPort = viewPort,
+            direction = Direction.NORTH,
+            party = party,
+            portraits = cps.loadCps("CHARGENA.CPS").getOrThrow(),
+        ).toImage()
+    }
 
     /** @param messages the level's own message ids, each with the ink to write it in. */
     private fun messagesOver(
