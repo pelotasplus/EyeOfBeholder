@@ -30,6 +30,25 @@ LazyColumn(modifier = Modifier.width(FILE_LIST_WIDTH)) { ... }
 Button(onClick = { ... })
 ```
 
+**This applies to KDoc too.** A doc comment is not documentation-by-default —
+it is subject to the same test, and a well-named declaration usually fails it.
+Ask whether you would write the comment if the name were something else:
+
+```kotlin
+// no — the name already says it
+/** The bigger font the menus are set in. */
+private val menuFont: Font? = null,
+
+/** What clicking a line of a menu means. */
+sealed class MenuChoice
+```
+
+You would not write `/** The font monsters are drawn with */` over
+`monsterFont`, and `menuFont` is no different. Where a KDoc does earn its
+place, it is for the same reasons a comment does — a unit that the type does
+not give (`savedAt` being milliseconds), a contract that is not visible (an
+absent slot meaning an empty one), or why a number is that number.
+
 Write a comment only when it carries information the code cannot: why a
 non-obvious constant or workaround exists, or a subtle invariant a reader would
 otherwise get wrong. Examples worth keeping:

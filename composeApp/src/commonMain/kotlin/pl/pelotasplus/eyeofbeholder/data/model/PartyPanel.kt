@@ -40,7 +40,6 @@ data class ChampionBox(val left: Int, val top: Int) {
         const val BAR_WIDTH = 39
         const val BAR_HEIGHT = 3
 
-        /** What is written to the left of the bar to say what it counts. */
         const val BAR_LABEL = "HP"
     }
 }
@@ -67,7 +66,6 @@ fun Cps.portrait(id: PortraitId): Cps.ItemIcon = cut(
 private const val PORTRAITS_PER_ROW = 10
 private const val PORTRAIT_SIZE = 32
 
-/** How much of a champion's hit point bar is filled, and in what colour. */
 data class HitPointBar(val filled: Int, val colour: PaletteIndex)
 
 /**

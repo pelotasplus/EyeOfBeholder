@@ -12,7 +12,12 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlin.random.Random
+import pl.pelotasplus.eyeofbeholder.data.model.CampMenu
 import pl.pelotasplus.eyeofbeholder.data.model.Champion
+import pl.pelotasplus.eyeofbeholder.data.model.MenuChoice
+import pl.pelotasplus.eyeofbeholder.data.model.Naming
+import pl.pelotasplus.eyeofbeholder.data.model.Typing
+import pl.pelotasplus.eyeofbeholder.data.model.canTypeIntoTheGame
 import pl.pelotasplus.eyeofbeholder.data.model.Cps
 import pl.pelotasplus.eyeofbeholder.data.model.DialogAnswer
 import pl.pelotasplus.eyeofbeholder.data.model.DialogueScene
@@ -73,6 +78,7 @@ class ViewConeDebugViewModel(
     /** Who the party are, as against [party], which is where they stand. */
     private var roster: List<Champion> = emptyList()
     private var font: Font? = null
+    private var menuFont: Font? = null
     private var scriptRunner: LevelScriptRunner? = null
     private var speaker: DialogueScene.Picture? = null
 
@@ -104,6 +110,22 @@ class ViewConeDebugViewModel(
             return
         }
 
+        // an open menu owns the screen: the party do not walk about behind it
+        val menu = _state.value.menu
+        if (menu != null && event !is Event.Initialize) {
+            when {
+                event is Event.Typed -> viewModelScope.launch { onTyping(event.typing) }
+
+                event is Event.ClickedTheView -> menu.clicked(event.x, event.y)?.let { choice ->
+                    viewModelScope.launch { onMenuChoice(choice) }
+                }
+
+                // naming has the keyboard, so Camp cannot pull the menu away
+                event is Event.Camp && menu.naming == null -> showMenu(null)
+            }
+            return
+        }
+
         when (event) {
             is Event.Initialize -> onInitialize(
                 level = event.level,
@@ -115,12 +137,16 @@ class ViewConeDebugViewModel(
             is Event.DialogAnswered -> onDialogAnswered(event.answer)
             is Event.OnLevelSelected -> onVmpSelected(event.name)
             is Event.ClickedTheView -> onClickedTheView(event.x, event.y)
+            Event.Camp -> onCamped()
             Event.MoveForward -> onMoveForward()
             Event.MoveBackwards -> onMoveBackwards()
             Event.StrafeLeft -> onStrafe(left = true)
             Event.StrafeRight -> onStrafe(left = false)
             Event.RotateRight -> onRotateRight()
             Event.RotateLeft -> onRotateLeft()
+
+            // there is nothing to type into with no menu open
+            is Event.Typed -> Unit
         }
     }
 
@@ -148,6 +174,9 @@ class ViewConeDebugViewModel(
             fontRepository.loadFont(DIALOGUE_FONT)
                 .onSuccess { font = it }
                 .onFailure { Logger.e(it) { "Error while loading $DIALOGUE_FONT" } }
+            fontRepository.loadFont(MENU_FONT)
+                .onSuccess { menuFont = it }
+                .onFailure { Logger.e(it) { "Error while loading $MENU_FONT" } }
             cpsRepository.loadCps(PORTRAITS_CPS)
                 .onSuccess { portraits = it }
                 .onFailure { Logger.e(it) { "Error while loading $PORTRAITS_CPS" } }
@@ -283,6 +312,108 @@ class ViewConeDebugViewModel(
      */
     private fun whoeverSpeaks(): Champion? =
         roster.speakerFrom(Random.nextInt(Champion.PARTY_SLOTS))
+
+    /** Opens the camp menu, or shuts it if it is already open. */
+    private fun onCamped() {
+        viewModelScope.launch {
+            showMenu(if (_state.value.menu == null) CampMenu.camp() else null)
+        }
+    }
+
+    private suspend fun onMenuChoice(choice: MenuChoice) {
+        when (choice) {
+            MenuChoice.Close -> showMenu(null)
+            MenuChoice.OpenCamp -> showMenu(CampMenu.camp())
+            MenuChoice.OpenGameOptions -> showMenu(CampMenu.gameOptions())
+            is MenuChoice.OpenSlots -> showSlots(choice.saving)
+            is MenuChoice.UseSlot ->
+                if (!choice.saving) loadFrom(choice.slot)
+                else if (canTypeIntoTheGame) startNaming(choice.slot) else saveTo(choice.slot, suggestedName())
+            is MenuChoice.NotYet -> Logger.i(TAG) { "${choice.what} is not implemented" }
+        }
+    }
+
+    private suspend fun showSlots(saving: Boolean) {
+        val saved = savedGames.saved()
+        showMenu(
+            CampMenu.slots(saving) { slot ->
+                saved[SaveSlot.numbered[slot]]?.description
+            }
+        )
+    }
+
+    private fun showMenu(menu: CampMenu?) {
+        _state.update { it.copy(menu = menu) }
+        drawWords()
+    }
+
+    /**
+     * Puts the caret on a slot's row, starting from what is already there or,
+     * for an empty one, from where the party stand. Pressing return alone is
+     * then a sensible name rather than a refusal.
+     */
+    private suspend fun startNaming(slot: Int) {
+        val existing = savedGames.saved()[SaveSlot.numbered[slot]]?.description
+
+        _state.update {
+            it.copy(
+                menu = it.menu?.copy(
+                    naming = Naming(slot, existing ?: suggestedName()),
+                )
+            )
+        }
+        drawWords()
+    }
+
+    private suspend fun onTyping(typing: Typing) {
+        val naming = _state.value.menu?.naming ?: return
+
+        when (typing) {
+            Typing.Abandon -> showSlots(saving = true)
+            Typing.Accept -> if (naming.nameable) saveTo(naming.slot, naming.typed) else Unit
+            else -> {
+                _state.update { it.copy(menu = it.menu?.copy(naming = naming.after(typing))) }
+                drawWords()
+            }
+        }
+    }
+
+    /** Where the party are, which is what tells two saves of one level apart. */
+    private fun suggestedName(): String {
+        val inf = _state.value.inf ?: return "SAVE"
+        return "${inf.name.removeSuffix(".INF")} ${party.position.x}x${party.position.y}"
+    }
+
+    private suspend fun saveTo(slot: Int, description: String) {
+        val inf = _state.value.inf ?: return
+
+        savedGames.save(
+            slot = SaveSlot.numbered[slot],
+            description = description,
+            savedAt = rightNow(),
+            level = levelNumber(inf.name),
+            champions = roster,
+            world = _state.value.game,
+            messages = _state.value.messages,
+        ).onFailure { Logger.e(it) { "Could not save" } }
+
+        showMenu(null)
+    }
+
+    private suspend fun loadFrom(slot: Int) {
+        val saved = savedGames.load(SaveSlot.numbered[slot])
+            .onFailure { Logger.e(it) { "Could not load slot $slot" } }
+            .getOrNull() ?: return
+
+        resume(saved)
+        showMenu(null)
+        onVmpSelected(
+            name = "LEVEL${saved.level}.INF",
+            playerX = saved.world.party.position.x,
+            playerY = saved.world.party.position.y,
+            direction = saved.world.party.facing,
+        )
+    }
 
     /**
      * A click in the view means the wall of the square ahead that faces the
@@ -638,7 +769,7 @@ class ViewConeDebugViewModel(
         val decorations = decorations
 
         val image = if (background != null && decorations != null) {
-            PlayField(background, decorations, palette, font)
+            PlayField(background, decorations, palette, font, menuFont)
                 .render(
                     viewPort = viewPort,
                     direction = party.facing,
@@ -646,6 +777,7 @@ class ViewConeDebugViewModel(
                     messages = _state.value.messages,
                     party = roster,
                     portraits = portraits,
+                    menu = _state.value.menu,
                 )
                 .toImageBitmap()
         } else {
@@ -753,6 +885,10 @@ class ViewConeDebugViewModel(
         data object StrafeRight : Event()
         data object RotateRight : Event()
         data object RotateLeft : Event()
+        data object Camp : Event()
+
+        /** A key press, while a save is being named. */
+        data class Typed(val typing: Typing) : Event()
     }
 
     /** A question a script is waiting on, drawn as [scene] over the play field. */
@@ -772,6 +908,9 @@ class ViewConeDebugViewModel(
     data class State(
         val inf: Inf? = null,
         val dialog: DialogPrompt? = null,
+
+        /** The camp menu, if it is open, which owns the screen while it is. */
+        val menu: CampMenu? = null,
 
         /**
          * The bar along the bottom, oldest first. A script writes here when it
@@ -806,6 +945,9 @@ class ViewConeDebugViewModel(
         private const val DECORATIONS_CPS = "DECORATE.CPS"
         private const val DIALOGUE_FRAME_CPS = "BORDER.CPS"
         private const val DIALOGUE_FONT = "FONT6.FNT"
+
+        /** The bigger one the interface is set in. */
+        private const val MENU_FONT = "FONT8.FNT"
         private const val PORTRAITS_CPS = "CHARGENA.CPS"
 
         /** How long the party must stand still before where they are is written. */

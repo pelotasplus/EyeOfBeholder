@@ -14,6 +14,7 @@ class PlayField(
     private val decorations: Cps,
     private val palette: Palette,
     private val font: Font? = null,
+    private val menuFont: Font? = null,
 ) {
     private val pixels = MutableList(WIDTH * HEIGHT) { RGB(0, 0, 0, true) }
 
@@ -24,6 +25,7 @@ class PlayField(
         messages: List<Message> = emptyList(),
         party: List<Champion> = emptyList(),
         portraits: Cps? = null,
+        menu: CampMenu? = null,
     ): PlayField {
         drawBackground()
         drawParty(party, portraits)
@@ -31,7 +33,62 @@ class PlayField(
         drawCompass(direction)
         drawMessages(messages)
         dialogue?.let(::drawDialogue)
+        menu?.let(::drawMenu)
         return this
+    }
+
+    /**
+     * A camp menu, over the view rather than beside it.
+     *
+     * Each line is the interface's raised box drawn twice, one inside the
+     * other — which is what gives the menus their heavier edge than the
+     * dialogue strips have.
+     */
+    private fun drawMenu(menu: CampMenu) {
+        val font = menuFont ?: font ?: return
+
+        drawMenuBox(CampMenu.LEFT, CampMenu.TOP, CampMenu.WIDTH, CampMenu.HEIGHT)
+        write(
+            text = menu.title,
+            font = font,
+            left = CampMenu.LEFT + menu.titleLeft,
+            top = CampMenu.TOP + CampMenu.TITLE_TOP,
+            colour = MENU_TITLE,
+        )
+
+        menu.entries.forEachIndexed { row, entry ->
+            drawMenuBox(
+                left = CampMenu.LEFT + entry.left,
+                top = CampMenu.TOP + entry.top,
+                width = entry.width,
+                height = entry.height,
+            )
+
+            val naming = menu.naming?.takeIf { it.slot == row }
+            write(
+                text = naming?.typed ?: entry.label,
+                font = font,
+                left = CampMenu.LEFT + entry.labelLeft,
+                top = CampMenu.TOP + entry.labelTop,
+                colour = if (naming == null) MENU_LABEL else BEING_TYPED,
+            )
+
+            // the caret sits where the next letter will land
+            if (naming != null) {
+                val caret = CampMenu.LEFT + entry.labelLeft + font.widthOf(naming.typed)
+                for (y in 0 until font.height) {
+                    for (x in 0 until font.width) {
+                        draw(caret + x, CampMenu.TOP + entry.labelTop + y, palette.colors[CARET.value])
+                    }
+                }
+            }
+        }
+    }
+
+    /** The interface's box with a second one just inside it. */
+    private fun drawMenuBox(left: Int, top: Int, width: Int, height: Int) {
+        drawBox(left, top, width, height, fill = null)
+        drawBox(left + 1, top + 1, width - 2, height - 2)
     }
 
     /**
@@ -356,6 +413,12 @@ class PlayField(
         private val NAME_COLOUR = PaletteIndex(12)
         private val NAME_IN_TROUBLE = PaletteIndex(8)
         private val BAR_EMPTY = PaletteIndex(184)
+
+        /** Camp menu colours. */
+        private val MENU_TITLE = PaletteIndex(9)
+        private val MENU_LABEL = PaletteIndex(15)
+        private val BEING_TYPED = PaletteIndex(2)
+        private val CARET = PaletteIndex(8)
 
         /**
          * The message line along the bottom, beside the camp button. The band

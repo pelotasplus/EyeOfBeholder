@@ -14,7 +14,6 @@ import kotlin.jvm.JvmInline
  * [SavedGame]'s business and where it lives is this one's.
  */
 interface SaveStore {
-    /** Which slots have something in them. */
     suspend fun written(): Set<SaveSlot>
 
     suspend fun read(slot: SaveSlot): String?

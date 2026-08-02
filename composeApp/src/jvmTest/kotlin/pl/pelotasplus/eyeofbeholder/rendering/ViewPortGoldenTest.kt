@@ -3,11 +3,13 @@ package pl.pelotasplus.eyeofbeholder.rendering
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.toPixelMap
 import kotlinx.coroutines.runBlocking
+import pl.pelotasplus.eyeofbeholder.data.model.CampMenu
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.GameState
 import pl.pelotasplus.eyeofbeholder.data.model.LevelScriptRunner
 import pl.pelotasplus.eyeofbeholder.data.model.Location
 import pl.pelotasplus.eyeofbeholder.data.model.MessageId
+import pl.pelotasplus.eyeofbeholder.data.model.Naming
 import pl.pelotasplus.eyeofbeholder.data.model.PaletteIndex
 import pl.pelotasplus.eyeofbeholder.data.model.PartyState
 import pl.pelotasplus.eyeofbeholder.data.RecordingStage
@@ -322,6 +324,67 @@ class ViewPortGoldenTest {
                 hurtTo = listOf(78, 20, 1, -6),
             ),
         )
+
+    /** Camp → the menu the original opens, over the view. */
+    @Test
+    fun `the camp menu`() = checkGolden("camp-menu", menuOver(CampMenu.camp()))
+
+    @Test
+    fun `the game options menu`() =
+        checkGolden("camp-game-options", menuOver(CampMenu.gameOptions()))
+
+    /** Three slots used and three not, the way the original's list reads. */
+    @Test
+    fun `the load game slots`() =
+        checkGolden(
+            "camp-load-game",
+            menuOver(
+                CampMenu.slots(saving = false) { slot ->
+                    listOf("01", "02", "LEVEL5", null, null, null)[slot]
+                }
+            ),
+        )
+
+    /** A slot being named, with the caret where the next letter lands. */
+    @Test
+    fun `naming a save slot`() =
+        checkGolden(
+            "camp-naming-a-slot",
+            menuOver(
+                CampMenu.slots(saving = true) { slot ->
+                    listOf("01", "02", null, null, null, null)[slot]
+                }.copy(naming = Naming(slot = 2, typed = "LEVEL4 15x11")),
+            ),
+        )
+
+    private fun menuOver(menu: CampMenu): BufferedImage = runBlocking {
+        val resources = ResourceRepositoryImpl()
+        val cps = CpsRepositoryImpl(resources)
+        val repository = repository()
+        val inf = repository.loadLevel("LEVEL4.INF").getOrThrow()
+        val sublevel = inf.subLevels[0]
+
+        val viewPort = repository.renderPosition(
+            items = inf.items,
+            monsters = inf.monsterInstances,
+            sublevel = sublevel,
+            playerX = 15,
+            playerY = 11,
+            direction = Direction.NORTH,
+        ).getOrThrow()
+
+        PlayField(
+            background = cps.loadCps("PLAYFLD.CPS").getOrThrow(),
+            decorations = cps.loadCps("DECORATE.CPS").getOrThrow(),
+            palette = sublevel.palette,
+            font = FontRepositoryImpl(resources).loadFont("FONT6.FNT").getOrThrow(),
+            menuFont = FontRepositoryImpl(resources).loadFont("FONT8.FNT").getOrThrow(),
+        ).render(
+            viewPort = viewPort,
+            direction = Direction.NORTH,
+            menu = menu,
+        ).toImage()
+    }
 
     /** @param hurtTo current hit points per champion, or empty to leave them well. */
     private fun partyOver(

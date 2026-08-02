@@ -24,7 +24,6 @@ data class SavedGame(
     val description: String,
     /** Milliseconds since the epoch, for showing which save is the newest. */
     val savedAt: Long,
-    /** Which level file the party are standing in. */
     val level: Int,
     val champions: List<Champion>,
     val world: SavedWorld,

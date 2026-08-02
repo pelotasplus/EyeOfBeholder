@@ -26,6 +26,7 @@ import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.key.utf16CodePoint
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntSize
@@ -34,6 +35,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.koin.compose.viewmodel.koinViewModel
 import pl.pelotasplus.eyeofbeholder.LocalPlayFieldFocus
 import pl.pelotasplus.eyeofbeholder.data.model.DialogAnswer
+import pl.pelotasplus.eyeofbeholder.data.model.Typing
 import pl.pelotasplus.eyeofbeholder.data.model.ViewPort
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
 
@@ -77,8 +79,8 @@ fun ViewConeDebugScreen(
                 PlayFieldControl.STRAFE_RIGHT ->
                     viewModel.onEvent(ViewConeDebugViewModel.Event.StrafeRight)
 
-                // no camp screen yet
-                PlayFieldControl.CAMP -> Unit
+                PlayFieldControl.CAMP ->
+                    viewModel.onEvent(ViewConeDebugViewModel.Event.Camp)
             }
         },
         onDialogAnswer = { answer ->
@@ -87,6 +89,7 @@ fun ViewConeDebugScreen(
         onViewClick = { x, y ->
             viewModel.onEvent(ViewConeDebugViewModel.Event.ClickedTheView(x, y))
         },
+        onTyping = { viewModel.onEvent(ViewConeDebugViewModel.Event.Typed(it)) },
     )
 }
 
@@ -97,6 +100,7 @@ private fun ViewConeDebugContent(
     onControlClick: (PlayFieldControl) -> Unit = {},
     onDialogAnswer: (DialogAnswer) -> Unit = {},
     onViewClick: (x: Int, y: Int) -> Unit = { _, _ -> },
+    onTyping: (Typing) -> Unit = {},
 ) {
     val keyboard = remember { FocusRequester() }
     val playFieldFocus = LocalPlayFieldFocus.current
@@ -117,6 +121,12 @@ private fun ViewConeDebugContent(
                 // a held key repeats as more KeyDowns, which is how walking
                 // holds up; KeyUp would walk a second square on release
                 if (event.type != KeyEventType.KeyDown) return@onKeyEvent false
+
+                // while a save is being named the keys spell rather than steer
+                if (state.menu?.naming != null) {
+                    typingFor(event.key, event.utf16CodePoint.toChar())?.let(onTyping)
+                    return@onKeyEvent true
+                }
 
                 val control = playFieldControlFor(event.key) ?: return@onKeyEvent false
                 onControlClick(control)
@@ -142,7 +152,7 @@ private fun ViewConeDebugContent(
                     width = with(density) { (image.width * scaleFactor).toDp() },
                     height = with(density) { (image.height * scaleFactor).toDp() },
                 )
-                .pointerInput(scaleFactor, state.dialog) {
+                .pointerInput(scaleFactor, state.dialog, state.menu) {
                     detectTapGestures { offset ->
                         // the Debug menu takes focus and does not give it back,
                         // so touching the play field claims the keys again
@@ -153,10 +163,21 @@ private fun ViewConeDebugContent(
 
                         // a question owns the screen until it is answered
                         val buttons = state.dialog?.scene?.buttons
+                        val menu = state.menu
+
                         if (buttons != null) {
                             buttons.indexOfFirst { it.contains(x, y) }
                                 .takeIf { it >= 0 }
                                 ?.let { onDialogAnswer(DialogAnswer.forButton(it)) }
+                        } else if (menu != null) {
+                            // the menu box reaches below the view window, so a
+                            // click anywhere on it is the menu's, not the
+                            // world's. Camp still answers, to shut the menu.
+                            if (PlayFieldControl.at(x, y) == PlayFieldControl.CAMP) {
+                                onControlClick(PlayFieldControl.CAMP)
+                            } else {
+                                onViewClick(x, y)
+                            }
                         } else {
                             val control = PlayFieldControl.at(screenX = x, screenY = y)
                             when {
