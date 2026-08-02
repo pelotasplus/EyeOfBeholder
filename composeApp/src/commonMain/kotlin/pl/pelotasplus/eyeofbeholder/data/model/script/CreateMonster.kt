@@ -1,55 +1,59 @@
 package pl.pelotasplus.eyeofbeholder.data.model.script
 
 import pl.pelotasplus.eyeofbeholder.data.ByteReader
+import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.Location
+import pl.pelotasplus.eyeofbeholder.data.model.MonsterTypeId
 
 /**
- * Spawns a monster at a specified maze location. Opcode 0xFB.
+ * Puts a monster into the world. Opcode 0xFB.
  *
- * The monster's combat stats come from [MonsterProperty] definitions in the sublevel.
- * [type] selects which MonsterProperty to use, and [unit] determines the monster's
- * graphic slot (for animation and rendering).
+ * The record is the one a level file uses for the monsters it starts out
+ * with, save for the slot number: a level file names the slot, while a script
+ * leaves the engine to find one.
  *
- * @property unit Monster graphic unit index (selects which MonsterGfx sprite sheet)
- * @property timer Respawn timer value
- * @property location Maze position to spawn at
- * @property pos Sub-position within the square (0-3 for quadrants)
- * @property dir Facing direction (-1 = random, 0-3 = N/E/S/W)
- * @property type Monster type index (references sublevel's MonsterProperty list)
- * @property frame Starting animation frame
- * @property phase AI behavior phase (idle, patrol, aggressive, etc.)
- * @property pause Initial pause before the monster acts
- * @property pocket Item ID in the monster's pocket (dropped on death)
- * @property weapon Item ID of the monster's wielded weapon
+ * @property unit Which group the monster is updated with
+ * @property location Maze square to stand on
+ * @property pos Sub-position within the square (0-3 = quadrants, 4 = middle)
+ * @property direction Which way it faces
+ * @property type Its species, an index into the sublevel's monster properties
+ * @property gfxIndex Which of the sublevel's sprite sheets it is drawn from
+ * @property mode Behaviour mode at spawn
+ * @property pause Movement pause counter
+ * @property weapon Item type id of the held weapon (0 = none)
+ * @property pocketItem Item type id carried as loot (0 = none)
  */
 data class CreateMonster(
     val unit: Int,
-    val timer: Int,
     val location: Location,
     val pos: Int,
-    val dir: Int,
-    val type: Int,
-    val frame: Int,
-    val phase: Int,
+    val direction: Direction,
+    val type: MonsterTypeId,
+    val gfxIndex: Int,
+    val mode: Int,
     val pause: Int,
-    val pocket: Int,
-    val weapon: Int
+    val weapon: Int,
+    val pocketItem: Int,
 ) : ScriptToken {
 
     companion object {
         fun read(reader: ByteReader): CreateMonster {
+            // every one of the game's spawns opens with the same byte, which
+            // the engine reads past without looking at
+            reader.skip(1)
+
             return CreateMonster(
                 unit = reader.readU8(),
-                timer = reader.readU8(),
                 location = Location.read(reader),
                 pos = reader.readU8(),
-                dir = reader.readI8(),
-                type = reader.readU8(),
-                frame = reader.readU8(),
-                phase = reader.readU8(),
+                // -1 asks the engine to roll for a facing, which no level does
+                direction = Direction.entries.getOrElse(reader.readI8()) { Direction.NORTH },
+                type = MonsterTypeId(reader.readU8()),
+                gfxIndex = reader.readU8(),
+                mode = reader.readU8(),
                 pause = reader.readU8(),
-                pocket = reader.readU16LE(),
-                weapon = reader.readU16LE()
+                weapon = reader.readU16LE(),
+                pocketItem = reader.readU16LE(),
             )
         }
     }

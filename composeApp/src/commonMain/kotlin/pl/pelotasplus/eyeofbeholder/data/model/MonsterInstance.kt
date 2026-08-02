@@ -1,5 +1,7 @@
 package pl.pelotasplus.eyeofbeholder.data.model
 
+import pl.pelotasplus.eyeofbeholder.data.model.script.CreateMonster
+
 /**
  * One live monster placed on a level, parsed from the INF file's Block B
  * (up to 30 records of 14 bytes each; records starting with 0xFF are empty).
@@ -36,4 +38,21 @@ data class MonsterInstance(
 
     /** Which of its sheet's color schemes this monster is painted in. */
     val colors: MonsterColors get() = MonsterColors.forSlot(index)
+
+    companion object {
+        /** The monster a script's [CreateMonster] asks for, in a free [slot]. */
+        fun spawnedBy(spawn: CreateMonster, slot: Int) = MonsterInstance(
+            index = slot,
+            unit = spawn.unit,
+            block = (spawn.location.y shl 5) or spawn.location.x,
+            pos = spawn.pos,
+            direction = spawn.direction,
+            type = spawn.type,
+            gfxIndex = spawn.gfxIndex,
+            mode = spawn.mode,
+            pause = spawn.pause,
+            weapon = spawn.weapon,
+            pocketItem = spawn.pocketItem,
+        )
+    }
 }

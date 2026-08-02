@@ -4,6 +4,11 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.toPixelMap
 import kotlinx.coroutines.runBlocking
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
+import pl.pelotasplus.eyeofbeholder.data.model.GameState
+import pl.pelotasplus.eyeofbeholder.data.model.LevelScriptRunner
+import pl.pelotasplus.eyeofbeholder.data.model.Location
+import pl.pelotasplus.eyeofbeholder.data.model.PartyState
+import pl.pelotasplus.eyeofbeholder.data.model.ScriptEvent
 import pl.pelotasplus.eyeofbeholder.data.model.ViewPort
 import pl.pelotasplus.eyeofbeholder.data.model.toImageBitmap
 import pl.pelotasplus.eyeofbeholder.data.repository.CpsRepositoryImpl
@@ -85,6 +90,17 @@ class ViewPortGoldenTest {
     fun `level5 encounter three rows ahead`() =
         checkGolden("level5-encounter-far", "LEVEL5.INF", x = 13, y = 11, direction = Direction.NORTH)
 
+    /**
+     * The priest level 6 conjures behind the party as they walk east, seen
+     * after its script spins them round to face it.
+     */
+    @Test
+    fun `level6 priest blocks the way back`() =
+        checkGolden(
+            "level6-priest",
+            renderAfterStepping("LEVEL6.INF", number = 6, x = 10, y = 2, direction = Direction.EAST),
+        )
+
     @Test
     fun `level7 sword at the party's feet`() =
         checkGolden("level7-sword-at-feet", "LEVEL7.INF", x = 29, y = 16, direction = Direction.SOUTH)
@@ -133,8 +149,11 @@ class ViewPortGoldenTest {
         }
     }
 
-    private fun checkGolden(name: String, level: String, x: Int, y: Int, direction: Direction) {
-        val actual = renderFrame(level, x, y, direction).toImage()
+    private fun checkGolden(name: String, level: String, x: Int, y: Int, direction: Direction) =
+        checkGolden(name, renderFrame(level, x, y, direction))
+
+    private fun checkGolden(name: String, viewPort: ViewPort) {
+        val actual = viewPort.toImage()
         val goldenFile = goldensDir.resolve("$name.png")
 
         if (updateGoldens) {
@@ -171,26 +190,63 @@ class ViewPortGoldenTest {
         }
     }
 
+    private fun repository(): ViewConeRepositoryImpl {
+        val resources = ResourceRepositoryImpl()
+        val palRepository = PalRepositoryImpl(resources)
+        val cpsRepository = CpsRepositoryImpl(resources)
+        return ViewConeRepositoryImpl(
+            infRepository = InfRepositoryImpl(
+                resourceRepository = resources,
+                mazRepository = MazRepositoryImpl(resources),
+                vmpRepository = VmpRepositoryImpl(resources),
+                vcnRepository = VcnRepositoryImpl(resources),
+                palRepository = palRepository,
+                cpsRepository = cpsRepository,
+                decRepository = DecRepositoryImpl(resources),
+            ),
+            itemsRepository = ItemsRepositoryImpl(resources),
+            cpsRepository = cpsRepository,
+            dcrRepository = DcrRepositoryImpl(resources),
+        )
+    }
+
+    /**
+     * Renders the world a square's trigger script leaves behind rather than
+     * the level as loaded, so a scene the party is walked into — a monster
+     * conjured, the party spun round — is drawn the way the player meets it.
+     */
+    private fun renderAfterStepping(
+        level: String,
+        number: Int,
+        x: Int,
+        y: Int,
+        direction: Direction,
+    ): ViewPort = runBlocking {
+        val repository = repository()
+        val inf = repository.loadLevel(level).getOrThrow()
+
+        val stepped = LevelScriptRunner(inf.script, level = number).onEvent(
+            triggers = inf.triggers,
+            event = ScriptEvent.PARTY_ENTERED,
+            state = GameState(
+                party = PartyState(Location(x, y), direction),
+                monsters = inf.monsterInstances,
+            ),
+        )
+
+        repository.renderPosition(
+            items = inf.items,
+            monsters = stepped.state.monsters,
+            sublevel = inf.subLevels[0],
+            playerX = stepped.state.party.position.x,
+            playerY = stepped.state.party.position.y,
+            direction = stepped.state.party.facing,
+        ).getOrThrow()
+    }
+
     private fun renderFrame(level: String, x: Int, y: Int, direction: Direction): ViewPort =
         runBlocking {
-            val resources = ResourceRepositoryImpl()
-            val palRepository = PalRepositoryImpl(resources)
-            val cpsRepository = CpsRepositoryImpl(resources)
-            val repository = ViewConeRepositoryImpl(
-                infRepository = InfRepositoryImpl(
-                    resourceRepository = resources,
-                    mazRepository = MazRepositoryImpl(resources),
-                    vmpRepository = VmpRepositoryImpl(resources),
-                    vcnRepository = VcnRepositoryImpl(resources),
-                    palRepository = palRepository,
-                    cpsRepository = cpsRepository,
-                    decRepository = DecRepositoryImpl(resources),
-                ),
-                itemsRepository = ItemsRepositoryImpl(resources),
-                cpsRepository = cpsRepository,
-                dcrRepository = DcrRepositoryImpl(resources),
-            )
-
+            val repository = repository()
             val inf = repository.loadLevel(level).getOrThrow()
             repository.renderPosition(
                 items = inf.items,

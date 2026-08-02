@@ -3,6 +3,8 @@ package pl.pelotasplus.eyeofbeholder.data
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.GameState
 import pl.pelotasplus.eyeofbeholder.data.model.MessageId
+import pl.pelotasplus.eyeofbeholder.data.model.MonsterInstance
+import pl.pelotasplus.eyeofbeholder.data.model.MonsterTypeId
 import pl.pelotasplus.eyeofbeholder.data.model.LevelScriptRunner
 import pl.pelotasplus.eyeofbeholder.data.model.Location
 import pl.pelotasplus.eyeofbeholder.data.model.PartyState
@@ -12,6 +14,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.ScriptStop
 import pl.pelotasplus.eyeofbeholder.data.model.Trigger
 import pl.pelotasplus.eyeofbeholder.data.model.TriggerFlags
 import pl.pelotasplus.eyeofbeholder.data.model.script.Conditional
+import pl.pelotasplus.eyeofbeholder.data.model.script.CreateMonster
 import pl.pelotasplus.eyeofbeholder.data.model.script.End
 import pl.pelotasplus.eyeofbeholder.data.model.script.Eval
 import pl.pelotasplus.eyeofbeholder.data.model.script.Goto
@@ -250,6 +253,34 @@ class LevelScriptRunnerTest {
     )
 
     /** What the script stopped for, which is what most of these tests are about. */
+    // --- what a script leaves behind ----------------------------------------
+
+    @Test
+    fun `a spawn puts the monster it asks for into the world`() {
+        val spawned = runFully(0 to spawnAt(Location(5, 6))).state.monsters.single()
+
+        assertEquals(5, spawned.x)
+        assertEquals(6, spawned.y)
+        assertEquals(Direction.EAST, spawned.direction)
+    }
+
+    @Test
+    fun `a spawn takes the lowest free slot, which is what decides its colors`() {
+        val alreadyThere = MonsterInstance.spawnedBy(spawnAt(Location(1, 1)), slot = 0)
+
+        val world = runFully(
+            0 to spawnAt(Location(5, 6)),
+            world = party().copy(monsters = listOf(alreadyThere)),
+        ).state
+
+        assertEquals(listOf(0, 1), world.monsters.map { it.index })
+    }
+
+    @Test
+    fun `nothing is conjured onto the square the party stands on`() {
+        assertTrue(runFully(0 to spawnAt(here)).state.monsters.isEmpty())
+    }
+
     private fun run(
         vararg script: Pair<Int, ScriptToken>,
         facing: Direction = Direction.NORTH,
@@ -258,12 +289,26 @@ class LevelScriptRunnerTest {
     private fun runFully(
         vararg script: Pair<Int, ScriptToken>,
         facing: Direction = Direction.NORTH,
+        world: GameState = party(facing),
     ): ScriptRun {
         val instructions = script.map { (offset, token) -> Script(ScriptOffset(offset), token) }
         val runner = LevelScriptRunner(instructions)
         val trigger = Trigger(here, TriggerFlags(0x08), instructions.first())
-        return runner.onEvent(listOf(trigger), ScriptEvent.PARTY_ENTERED, party(facing))
+        return runner.onEvent(listOf(trigger), ScriptEvent.PARTY_ENTERED, world)
     }
+
+    private fun spawnAt(location: Location) = CreateMonster(
+        unit = 0,
+        location = location,
+        pos = 4,
+        direction = Direction.EAST,
+        type = MonsterTypeId(0),
+        gfxIndex = 0,
+        mode = 0,
+        pause = 0,
+        weapon = 0,
+        pocketItem = 0,
+    )
 
     private fun fire(flags: Int, event: ScriptEvent): ScriptStop? {
         val instruction = Script(ScriptOffset(0), changeLevelToken(5))

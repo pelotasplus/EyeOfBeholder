@@ -2,6 +2,7 @@ package pl.pelotasplus.eyeofbeholder.data.model
 
 import co.touchlab.kermit.Logger
 import pl.pelotasplus.eyeofbeholder.data.model.script.Conditional
+import pl.pelotasplus.eyeofbeholder.data.model.script.CreateMonster
 import pl.pelotasplus.eyeofbeholder.data.model.script.Dialog
 import pl.pelotasplus.eyeofbeholder.data.model.script.End
 import pl.pelotasplus.eyeofbeholder.data.model.script.Eval
@@ -211,6 +212,8 @@ class LevelScriptRunner(
                     }
                 }
 
+                is CreateMonster -> state = state.monsterCreated(token)
+
                 is SetFlag.LevelFlag -> state = state.levelFlagSet(level, token.bit)
 
                 is SetFlag.GlobalFlag -> state = state.globalFlagSet(token.bit)
@@ -229,8 +232,6 @@ class LevelScriptRunner(
                 // engine goes out of its way to keep running after one.
                 is Teleport.MoveParty -> state = state.partyMovedTo(token.destination)
 
-                // Spoken to face to face: the clerics are addressed head on,
-                // and the script turns the party before it draws them.
                 is SetWall.ChangePartyDirection -> state = state.partyTurnedTo(token.direction)
 
                 // Everything after this depends on the player's answer, so

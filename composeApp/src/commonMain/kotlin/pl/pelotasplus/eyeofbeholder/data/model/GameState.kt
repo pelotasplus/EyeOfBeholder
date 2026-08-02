@@ -1,5 +1,7 @@
 package pl.pelotasplus.eyeofbeholder.data.model
 
+import pl.pelotasplus.eyeofbeholder.data.model.script.CreateMonster
+
 /**
  * What a trigger script is allowed to ask about the world it runs in.
  *
@@ -27,6 +29,31 @@ data class GameState(
         .count { it.x == location.x && it.y == location.y }
         .coerceAtMost(MAX_MONSTERS_PER_SQUARE)
 
+    /**
+     * The world with the monster a script asked for standing in it.
+     *
+     * The engine refuses the same three ways: never under the party, never
+     * onto a square already holding as many as it can, and never without a
+     * free slot. The slot is not bookkeeping — it decides which of its
+     * sheet's color schemes the monster is painted in.
+     *
+     * The engine has a fourth way out we cannot take yet: with every slot in
+     * use it evicts whichever monster stands farthest from the party, killing
+     * it if it still lives. Nothing dies here, so a full world drops the
+     * spawn instead.
+     */
+    fun monsterCreated(spawn: CreateMonster): GameState {
+        val taken = monsters.map { it.index }.toSet()
+        val slot = (0 until MONSTER_SLOTS).firstOrNull { it !in taken }
+
+        return when {
+            spawn.location == party.position -> this
+            monstersOn(spawn.location) >= MAX_MONSTERS_PER_SQUARE -> this
+            slot == null -> this
+            else -> copy(monsters = monsters + MonsterInstance.spawnedBy(spawn, slot))
+        }
+    }
+
     fun partyMovedTo(destination: Location) =
         copy(party = party.copy(position = destination))
 
@@ -45,5 +72,8 @@ data class GameState(
 
     private companion object {
         const val MAX_MONSTERS_PER_SQUARE = 7
+
+        /** How many monsters a level can have at once, placed and spawned together. */
+        const val MONSTER_SLOTS = 30
     }
 }
