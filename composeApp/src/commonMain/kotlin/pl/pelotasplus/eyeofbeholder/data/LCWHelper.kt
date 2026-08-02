@@ -28,8 +28,6 @@ import co.touchlab.kermit.Logger
  * (DRANX.CPS, DOORWAY1.CPS, KHELBAN1.CPS) have streams that run past the end of
  * the image or reference before its start; the original engine clamps rather
  * than failing, producing a partial image, so this does too.
- *
- * Mirrors `Screen::decodeFrame4` in ScummVM's kyra engine.
  */
 object LCWHelper {
     fun decompress(source: UByteArray, dest: UByteArray) {

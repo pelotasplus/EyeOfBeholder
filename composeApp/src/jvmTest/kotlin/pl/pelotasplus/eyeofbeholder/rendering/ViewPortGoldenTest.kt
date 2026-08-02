@@ -64,6 +64,26 @@ class ViewPortGoldenTest {
     fun `level5 encounter one square ahead`() =
         checkGolden("level5-encounter", "LEVEL5.INF", x = 13, y = 9, direction = Direction.NORTH)
 
+    /** The same pair on the diagonal square, walking away to the left. */
+    @Test
+    fun `level5 encounter on the left diagonal`() =
+        checkGolden("level5-encounter-diagonal", "LEVEL5.INF", x = 12, y = 9, direction = Direction.EAST)
+
+    /** The pair straight ahead but side-on, one cleric overlapping the other. */
+    @Test
+    fun `level5 encounter side on`() =
+        checkGolden("level5-encounter-side", "LEVEL5.INF", x = 12, y = 8, direction = Direction.EAST)
+
+    /** The same side pose mirrored, with the near wall cutting the pair in half. */
+    @Test
+    fun `level5 encounter side on mirrored`() =
+        checkGolden("level5-encounter-mirrored", "LEVEL5.INF", x = 14, y = 9, direction = Direction.WEST)
+
+    /** The pair three rows back, shrunk twice. */
+    @Test
+    fun `level5 encounter three rows ahead`() =
+        checkGolden("level5-encounter-far", "LEVEL5.INF", x = 13, y = 11, direction = Direction.NORTH)
+
     @Test
     fun `level7 sword at the party's feet`() =
         checkGolden("level7-sword-at-feet", "LEVEL7.INF", x = 29, y = 16, direction = Direction.SOUTH)

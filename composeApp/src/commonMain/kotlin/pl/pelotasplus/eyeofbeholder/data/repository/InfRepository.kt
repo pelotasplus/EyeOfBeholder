@@ -6,6 +6,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.Cps
 import pl.pelotasplus.eyeofbeholder.data.model.DamageDice
 import pl.pelotasplus.eyeofbeholder.data.model.Dec
 import pl.pelotasplus.eyeofbeholder.data.model.Decoration
+import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.Door
 import pl.pelotasplus.eyeofbeholder.data.model.Inf
 import pl.pelotasplus.eyeofbeholder.data.model.Item
@@ -503,7 +504,7 @@ class InfRepositoryImpl(
                         unit = unit,
                         block = block,
                         pos = pos,
-                        direction = dir,
+                        direction = Direction.entries[dir and 3],
                         type = MonsterTypeId(type),
                         gfxIndex = shpIndex,
                         mode = mode,

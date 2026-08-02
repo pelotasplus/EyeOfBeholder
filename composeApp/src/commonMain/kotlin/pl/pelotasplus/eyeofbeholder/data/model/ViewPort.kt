@@ -388,8 +388,8 @@ class ViewPort(
      * so an item keeps its side of the square as the party approaches and
      * steps onto it. On the party's own square (block 16) only the two
      * quadrants ahead are visible — [scaleSteps] is -1 for the rear ones and
-     * the caller skips them. (ScummVM drawBlockItems; per-item screen jitter
-     * is not yet implemented.)
+     * the caller skips them. The per-item screen jitter the original adds is
+     * not implemented yet.
      *
      * @param largeIcons The floor-item icon sheet (ITEML1.CPS)
      * @param iconIdx Item icon index

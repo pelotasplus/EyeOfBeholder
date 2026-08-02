@@ -3,9 +3,8 @@ package pl.pelotasplus.eyeofbeholder.features.view_cone_debug
 /**
  * Clickable regions of PLAYFLD.CPS, in the original 320×200 screen space.
  *
- * Taken verbatim from `EoBCoreEngine::initButtonData` in ScummVM's kyra
- * engine: the six movement arrows are button indices 49-54 and CAMP is index
- * 4, each `{ x, y, w, h }`.
+ * Taken verbatim from the original game's button table, where each entry is
+ * `{ x, y, w, h }`.
  */
 enum class PlayFieldControl(
     val x: Int,

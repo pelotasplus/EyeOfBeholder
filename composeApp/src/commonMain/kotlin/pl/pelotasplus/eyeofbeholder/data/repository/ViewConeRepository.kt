@@ -10,18 +10,17 @@ import pl.pelotasplus.eyeofbeholder.data.model.Maz
 import pl.pelotasplus.eyeofbeholder.data.model.WallSide
 import pl.pelotasplus.eyeofbeholder.data.model.DistanceFromParty
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterInstance
+import pl.pelotasplus.eyeofbeholder.data.model.MonsterSheet
 import pl.pelotasplus.eyeofbeholder.data.model.SubLevel
 import pl.pelotasplus.eyeofbeholder.data.model.ViewPort
 import pl.pelotasplus.eyeofbeholder.data.model.WallSet
-import pl.pelotasplus.eyeofbeholder.data.model.cutFrame
 import pl.pelotasplus.eyeofbeholder.data.model.getWall
 import pl.pelotasplus.eyeofbeholder.data.model.itemScaleSteps
-import pl.pelotasplus.eyeofbeholder.data.model.monsterBlockRows
-import pl.pelotasplus.eyeofbeholder.data.model.monsterFrameRects
-import pl.pelotasplus.eyeofbeholder.data.model.monsterFrameSelect
-import pl.pelotasplus.eyeofbeholder.data.model.monsterPosIndex
+import pl.pelotasplus.eyeofbeholder.data.model.viewBlockRows
+import pl.pelotasplus.eyeofbeholder.data.model.monsterFacing
+import pl.pelotasplus.eyeofbeholder.data.model.monsterSheet
+import pl.pelotasplus.eyeofbeholder.data.model.viewRelativeSubPosition
 import pl.pelotasplus.eyeofbeholder.data.model.viewSlots
-import kotlin.math.abs
 
 /**
  * Orchestrates level loading and 3D viewport rendering.
@@ -72,7 +71,7 @@ class ViewConeRepositoryImpl(
 
     private var smallItemIcons: Cps? = null
     private var largeItemIcons: Cps? = null
-    private val monsterFrameCache = mutableMapOf<String, List<Cps.ItemIcon>>()
+    private val monsterSheetCache = mutableMapOf<String, MonsterSheet>()
 
     private suspend fun getSmallItemIcons(): Cps {
         return smallItemIcons ?: cpsRepository.loadCps("ITEMS1.CPS").getOrThrow().also {
@@ -105,7 +104,7 @@ class ViewConeRepositoryImpl(
 
         val smallIcons = getSmallItemIcons()
         val largeIcons = getLargeItemIcons()
-        val monsterFrames = loadMonsterFrames(sublevel)
+        val monsterSheets = loadMonsterSheets(sublevel)
 
         // Data-driven wall rendering using the viewSlots table
         viewSlots.forEachIndexed { wallPosition, slot ->
@@ -116,7 +115,7 @@ class ViewConeRepositoryImpl(
                 11, 18, 23 -> {
                     val relY = if (wallPosition == 11) -3 else if (wallPosition == 18) -2 else -1
                     drawItemsAtRow(relY, viewPort, items, smallIcons, largeIcons, sublevel, playerX, playerY, direction)
-                    drawMonstersAtRow(relY, viewPort, monsters, monsterFrames, sublevel, playerX, playerY, direction)
+                    drawMonstersAtRow(relY, viewPort, monsters, monsterSheets, sublevel, playerX, playerY, direction)
                 }
             }
             // Transform coordinates based on player direction
@@ -221,7 +220,7 @@ class ViewConeRepositoryImpl(
             viewPort, items, smallIcons, largeIcons, sublevel,
             mazX = playerX, mazY = playerY,
             blockIndex = ViewPort.OWN_BLOCK_INDEX, dim = 3,
-            playerDir = direction.ordinal,
+            partyFacing = direction,
         )
 
         return Result.success(viewPort)
@@ -234,15 +233,15 @@ class ViewConeRepositoryImpl(
         return infRepository.loadInf(name.replace(".MAZ", ".INF"), items)
     }
 
-    /** Loads and caches the 6 near-size poses for each of the sublevel's sprite sheets. */
-    private suspend fun loadMonsterFrames(sublevel: SubLevel): List<List<Cps.ItemIcon>> {
+    /** Loads and caches the near-size poses for each of the sublevel's sprite sheets. */
+    private suspend fun loadMonsterSheets(sublevel: SubLevel): List<MonsterSheet> {
         return sublevel.monsterGfx.map { gfx ->
             val cpsName = gfx.name.filter { it.code in 33..126 }.uppercase() + ".CPS"
-            monsterFrameCache.getOrPut(cpsName) {
+            monsterSheetCache.getOrPut(cpsName) {
                 cpsRepository.loadCps(cpsName)
-                    .map { cps -> monsterFrameRects[gfx.sizeClass].map { cps.cutFrame(it) } }
+                    .map { cps -> cps.monsterSheet(gfx) }
                     .onFailure { Logger.e(TAG) { "Failed to load monster sheet $cpsName: $it" } }
-                    .getOrDefault(emptyList())
+                    .getOrDefault(MonsterSheet.EMPTY)
             }
         }
     }
@@ -264,7 +263,7 @@ class ViewConeRepositoryImpl(
             else -> 2
         }
 
-        for (block in monsterBlockRows.getValue(relativeY)) {
+        for (block in viewBlockRows.getValue(relativeY)) {
             val (dx, dy) = direction.transformCoordinates(block.relativeX, block.relativeY)
             viewPort.at(
                 DistanceFromParty.standingOnSquare(block.relativeX, block.relativeY),
@@ -274,7 +273,7 @@ class ViewConeRepositoryImpl(
                     viewPort, items, smallIcons, largeIcons, sublevel,
                     mazX = playerX + dx, mazY = playerY + dy,
                     blockIndex = block.blockIndex, dim = dim,
-                    playerDir = direction.ordinal,
+                    partyFacing = direction,
                 )
             }
         }
@@ -290,7 +289,7 @@ class ViewConeRepositoryImpl(
         mazY: Int,
         blockIndex: Int,
         dim: Int,
-        playerDir: Int,
+        partyFacing: Direction,
     ) {
         val itemsHere = items.filter {
             it.level == sublevel.level && it.location.x == mazX && it.location.y == mazY
@@ -310,7 +309,7 @@ class ViewConeRepositoryImpl(
                 }
 
                 item.pos < 4 -> {
-                    val quadrant = viewRelativePos(playerDir, item.pos)
+                    val quadrant = viewRelativeSubPosition(partyFacing, item.pos)
                     val scaleSteps = itemScaleSteps[dim * 4 + quadrant]
                     if (scaleSteps.isVisible) {
                         sheetFor(item.icon, smallIcons, largeIcons)?.let { sheet ->
@@ -341,27 +340,25 @@ class ViewConeRepositoryImpl(
         relativeY: Int,
         viewPort: ViewPort,
         monsters: List<MonsterInstance>,
-        monsterFrames: List<List<Cps.ItemIcon>>,
+        monsterSheets: List<MonsterSheet>,
         sublevel: SubLevel,
         playerX: Int,
         playerY: Int,
         direction: Direction,
     ) {
-        val playerDir = direction.ordinal
-
-        for (block in monsterBlockRows.getValue(relativeY)) {
+        for (block in viewBlockRows.getValue(relativeY)) {
             val (dx, dy) = direction.transformCoordinates(block.relativeX, block.relativeY)
             val mazX = playerX + dx
             val mazY = playerY + dy
 
             val monstersHere = monsters
                 .filter { it.x == mazX && it.y == mazY }
-                .sortedBy { viewRelativePos(playerDir, it.pos) }
+                .sortedBy { viewRelativeSubPosition(direction, it.pos) }
 
             for (monster in monstersHere) {
-                val frames = monsterFrames.getOrNull(monster.gfxIndex) ?: continue
-                val frameSelect = monsterFrameSelect[(playerDir shl 2) or (monster.direction and 3)]
-                val frame = frames.getOrNull(abs(frameSelect) - 1) ?: continue
+                val sheet = monsterSheets.getOrNull(monster.gfxIndex) ?: continue
+                val facing = monsterFacing(direction, monster.direction)
+                val frame = sheet.pose(facing.pose, monster.colors) ?: continue
 
                 viewPort.at(
                     DistanceFromParty.standingOnSquare(block.relativeX, block.relativeY),
@@ -370,18 +367,14 @@ class ViewConeRepositoryImpl(
                     viewPort.drawMonster(
                         frame = frame,
                         blockIndex = block.blockIndex,
-                        subPosition = viewRelativePos(playerDir, monster.pos),
-                        mirrored = frameSelect < 0,
+                        subPosition = viewRelativeSubPosition(direction, monster.pos),
+                        mirrored = facing.mirrored,
                         scaleSteps = block.scaleSteps,
                     )
                 }
             }
         }
     }
-
-    /** Rotates an absolute sub-position into a view-relative one; 4 = center stays put. */
-    private fun viewRelativePos(playerDir: Int, pos: Int): Int =
-        if (pos == 4) 4 else monsterPosIndex[playerDir * 4 + pos]
 
     companion object {
         private const val TAG = "ViewConeRepository"

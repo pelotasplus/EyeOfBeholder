@@ -37,7 +37,6 @@ data class Palette(
      *
      * The arithmetic runs on the original 6-bit VGA channel values (recovered
      * from the stored 8-bit colors) so it matches the DOS engine exactly.
-     * (ScummVM Screen_EoB::createColorFadeTable with rootColor 12, weight 85.)
      */
     val distanceFadeTable: List<Int> by lazy {
         val r = IntArray(256)

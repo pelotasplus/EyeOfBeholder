@@ -4,10 +4,8 @@ package pl.pelotasplus.eyeofbeholder.data.model
  * The 320×200 game screen: PLAYFLD.CPS with the rendered 3D view blitted into
  * its top-left window and the compass needle overlaid from DECORATE.CPS.
  *
- * All coordinates are the original game's, taken from ScummVM's kyra engine:
- * the view is copied to (0,0) at 176×120 (`EoBCoreEngine::drawScene`), and the
- * compass is three shapes drawn at [COMPASS_TARGETS]
- * (`EoBCoreEngine::gui_drawCompass`, EoB2 variant).
+ * All coordinates are the original game's: the view is copied to (0,0) at
+ * 176×120, and the compass is three shapes drawn at [COMPASS_TARGETS].
  */
 class PlayField(
     private val background: Cps,
@@ -226,9 +224,9 @@ class PlayField(
         const val VIEW_Y = 0
 
         /**
-         * Shape sources in DECORATE.CPS. `Screen_EoB::encodeShape` takes x and
-         * width in 8-pixel units, so the compass columns are 3 units = 24px
-         * wide and start at `direction * 24`.
+         * Shape sources in DECORATE.CPS. The original cuts shapes out in
+         * 8-pixel units, so the compass columns are 3 units = 24px wide and
+         * start at `direction * 24`.
          */
         private const val COMPASS_WIDTH = 24
         private val COMPASS_SOURCE_Y = listOf(120, 137, 147)

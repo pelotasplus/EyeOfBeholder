@@ -10,7 +10,7 @@ package pl.pelotasplus.eyeofbeholder.data.model
  *   was being loaded when the monster was placed.
  * @property block Packed maze square: x = block and 0x1F, y = block shr 5
  * @property pos Position within the square (0-3 = quadrants, 4 = center)
- * @property direction Facing direction (0=north, 1=east, 2=south, 3=west)
+ * @property direction Which way the monster faces
  * @property type Index into [SubLevel.monsters] (the species' stats)
  * @property gfxIndex Index into [SubLevel.monsterGfx] (which sprite sheet)
  * @property mode Behavior mode at spawn
@@ -23,7 +23,7 @@ data class MonsterInstance(
     val unit: Int,
     val block: Int,
     val pos: Int,
-    val direction: Int,
+    val direction: Direction,
     val type: MonsterTypeId,
     val gfxIndex: Int,
     val mode: Int,
@@ -33,4 +33,7 @@ data class MonsterInstance(
 ) {
     val x: Int get() = block and 0x1F
     val y: Int get() = block shr 5
+
+    /** Which of its sheet's color schemes this monster is painted in. */
+    val colors: MonsterColors get() = MonsterColors.forSlot(index)
 }

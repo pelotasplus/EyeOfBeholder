@@ -547,6 +547,6 @@ class ViewConeDebugViewModel(
         private const val DEFAULT_LEVEL = "LEVEL5.INF"
         private const val DEFAULT_PLAYER_X = 14
         private const val DEFAULT_PLAYER_Y = 9
-        private val DEFAULT_DIRECTION = Direction.SOUTH
+        private val DEFAULT_DIRECTION = Direction.WEST
     }
 }
