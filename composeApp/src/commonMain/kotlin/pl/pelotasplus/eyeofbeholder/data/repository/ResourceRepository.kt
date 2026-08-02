@@ -299,10 +299,10 @@ class ResourceRepositoryImpl() : ResourceRepository {
         Logger.d(TAG) { "Decompressing $path; On-disk file size ${bytes.size}" }
 
         val sizeFromHeader = reader.readU16LE()
-        Logger.d(TAG) { "Header file size $sizeFromHeader" }
+//        Logger.d(TAG) { "Header file size $sizeFromHeader" }
 
         val compressionType = reader.readU16LE()
-        Logger.d(TAG) { "Compression Type $compressionType" }
+//        Logger.d(TAG) { "Compression Type $compressionType" }
         // 0 = uncompressed, 1 = LZW, 3 = RLE, 4 = LCW. Only LCW is implemented;
         // SKELWAR.CPS is the one type 3 file in the game data.
         check(compressionType == COMPRESSION_LCW) {
@@ -310,7 +310,7 @@ class ResourceRepositoryImpl() : ResourceRepository {
         }
 
         val uncompressedSize = reader.readU32LE()
-        Logger.d(TAG) { "Uncompressed size $uncompressedSize" }
+//        Logger.d(TAG) { "Uncompressed size $uncompressedSize" }
 
         // A CPS may carry its own VGA palette between the header and the LCW
         // data, in which case it — not the sublevel .PAL — is the right palette
@@ -319,7 +319,7 @@ class ResourceRepositoryImpl() : ResourceRepository {
         check(paletteSize == 0 || paletteSize == Palette.BYTE_SIZE) {
             "Unexpected palette size: $paletteSize, expected 0 or ${Palette.BYTE_SIZE}"
         }
-        Logger.d(TAG) { "Palette Size $paletteSize" }
+//        Logger.d(TAG) { "Palette Size $paletteSize" }
 
         val palette = if (paletteSize == 0) {
             null
