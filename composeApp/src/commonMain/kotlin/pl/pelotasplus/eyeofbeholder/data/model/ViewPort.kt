@@ -267,7 +267,7 @@ class ViewPort(
         val cps = decoration.cps
         val isAtWall = decoration.wallType != 0
 
-        Logger.d(TAG) { "drawDecoration wallPosition: $wallPosition isAtWall: $isAtWall decoration ${decoration.decorationID}"}
+//        Logger.d(TAG) { "drawDecoration wallPosition: $wallPosition isAtWall: $isAtWall decoration ${decoration.decorationID}"}
 
         // Start with the decoration at decorationID
         var currentIndex = decoration.decorationID

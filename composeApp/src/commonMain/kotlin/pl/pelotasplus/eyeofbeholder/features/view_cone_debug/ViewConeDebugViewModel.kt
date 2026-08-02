@@ -22,6 +22,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.GameState
 import pl.pelotasplus.eyeofbeholder.data.model.Inf
 import pl.pelotasplus.eyeofbeholder.data.model.LevelScriptRunner
 import pl.pelotasplus.eyeofbeholder.data.model.Location
+import pl.pelotasplus.eyeofbeholder.data.model.Palette
 import pl.pelotasplus.eyeofbeholder.data.model.PartyState
 import pl.pelotasplus.eyeofbeholder.data.model.PlayField
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptEvent
@@ -55,6 +56,9 @@ class ViewConeDebugViewModel(
 
     /** The script holding the world, if one is running. */
     private var playing: Job? = null
+
+    /** The view as last drawn, which a script's words are written over. */
+    private var drawn: ViewPort? = null
 
     /** What a script asked, waiting on the click that answers it. */
     private val awaiting = PendingQuestion()
@@ -263,7 +267,7 @@ class ViewConeDebugViewModel(
             if (speech.isEmpty) {
                 _state.update { it.copy(dialog = null) }
                 speaker = null
-                drawViewPort()
+                drawWords()
                 return
             }
 
@@ -283,7 +287,7 @@ class ViewConeDebugViewModel(
                     )
                 }
                 speaker = null
-                drawViewPort()
+                drawWords()
                 return
             }
 
@@ -299,7 +303,7 @@ class ViewConeDebugViewModel(
                     )
                 )
             }
-            drawViewPort()
+            drawWords()
         }
 
         override suspend fun hold(ticks: Ticks) = delay(ticks.inMilliseconds)
@@ -346,7 +350,7 @@ class ViewConeDebugViewModel(
                 )
             )
         }
-        drawViewPort()
+        drawWords()
     }
 
     /**
@@ -440,37 +444,56 @@ class ViewConeDebugViewModel(
     /** Draws the view and waits for it, so a script can hold what it put up. */
     private suspend fun drawViewPort() {
         val inf = _state.value.inf ?: return
+        val sublevel = inf.subLevels[PLAYED_SUBLEVEL]
+
+        viewConeRepository.renderPosition(
+            items = inf.items,
+            monsters = _state.value.game.monsters,
+            sublevel = sublevel,
+            playerX = party.position.x,
+            playerY = party.position.y,
+            direction = party.facing
+        ).onSuccess { viewPort ->
+            drawn = viewPort
+            paint(viewPort, sublevel.palette)
+        }.onFailure {
+            Logger.e(it) { "Error while rendering position" }
+        }
+    }
+
+    /**
+     * Puts a script's words up over the view already on screen.
+     *
+     * Writing does not redraw the world, and must not: a script writes as the
+     * party arrive somewhere they are about to be taken out of, and the view
+     * from a staircase they are walking into is not a view anyone is meant to
+     * see. The original defers its redraw for the same reason.
+     */
+    private fun drawWords() {
+        val inf = _state.value.inf ?: return
+        val viewPort = drawn ?: return
+
+        paint(viewPort, inf.subLevels[PLAYED_SUBLEVEL].palette)
+    }
+
+    private fun paint(viewPort: ViewPort, palette: Palette) {
         val background = playFieldBackground
         val decorations = decorations
 
-        run {
-            val sublevel = inf.subLevels[PLAYED_SUBLEVEL]
-            viewConeRepository.renderPosition(
-                items = inf.items,
-                monsters = _state.value.game.monsters,
-                sublevel = sublevel,
-                playerX = party.position.x,
-                playerY = party.position.y,
-                direction = party.facing
-            ).onSuccess { viewPort ->
-                val image = if (background != null && decorations != null) {
-                    PlayField(background, decorations, sublevel.palette, font)
-                        .render(
-                            viewPort = viewPort,
-                            direction = party.facing,
-                            dialogue = _state.value.dialog?.scene,
-                            messages = _state.value.messages,
-                        )
-                        .toImageBitmap()
-                } else {
-                    // the frame art failed to load; still show the raw view
-                    viewPort.toImageBitmap()
-                }
-                _state.update { it.copy(viewPort = image) }
-            }.onFailure {
-                Logger.e(it) { "Error while rendering position" }
-            }
+        val image = if (background != null && decorations != null) {
+            PlayField(background, decorations, palette, font)
+                .render(
+                    viewPort = viewPort,
+                    direction = party.facing,
+                    dialogue = _state.value.dialog?.scene,
+                    messages = _state.value.messages,
+                )
+                .toImageBitmap()
+        } else {
+            // the frame art failed to load; still show the raw view
+            viewPort.toImageBitmap()
         }
+        _state.update { it.copy(viewPort = image) }
     }
 
     private fun onStrafe(left: Boolean) {
