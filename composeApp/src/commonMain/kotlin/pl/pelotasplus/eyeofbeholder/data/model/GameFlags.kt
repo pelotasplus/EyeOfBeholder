@@ -16,6 +16,14 @@ package pl.pelotasplus.eyeofbeholder.data.model
  * one is to read those scripts. What has been read so far:
  *
  * ```
+ * level 4   bit 0   the woman by the temple door has been spoken to
+ *           bit 1   the remark about the strange bushes has been made
+ *           bit 2   ... about the graves having found peace
+ *           bit 3   ... about standing in a graveyard
+ *           bit 5   the party came to the door from (15,11), not (16,10)
+ *           bit 6   the woman walked them there herself
+ *           bit 7   the answer to "do you wish to dig up this grave?"
+ *
  * level 5   bit 0   the clerics on (13,8) have been spoken to from (13,9)
  *           bit 1   ... from (13,11), further down the same corridor
  *           bit 2   ... from (11,9), from the west
@@ -23,6 +31,17 @@ package pl.pelotasplus.eyeofbeholder.data.model
  * level 6   bit 2   the priest by the stairs has had his say, or has lost
  *                   his chance
  * ```
+ *
+ * Not every bit is a memory. Level 4's bit 7 is how a subroutine answers the
+ * square that called it: five graves share one routine that asks whether to
+ * dig, and it clears the bit, sets it if the answer was yes, and clears it
+ * again if a paladin in the party refuses to desecrate a grave. Each grave
+ * reads the bit afterwards to decide whether to open itself and scatter what
+ * it held. Bits 5 and 6 are short-lived in the same way: which of the two
+ * squares outside the temple the party stepped from, so that declining to go
+ * in puts them back on it, and whether they were walked to the door rather
+ * than arriving on their own, which decides whether the door's scene has to
+ * draw the view behind it afresh. All three are read and cleared at once.
  *
  * Each of level 5's three squares tests its own bit and sets it, so a way in
  * speaks once and the other two still work — one bit for the whole encounter
