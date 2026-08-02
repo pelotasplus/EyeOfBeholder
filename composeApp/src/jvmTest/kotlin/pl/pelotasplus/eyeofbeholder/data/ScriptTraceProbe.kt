@@ -11,6 +11,11 @@ import pl.pelotasplus.eyeofbeholder.data.model.PartyState
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptEvent
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptStop
 import pl.pelotasplus.eyeofbeholder.data.model.entryPoints
+import pl.pelotasplus.eyeofbeholder.data.model.script.ClearFlag
+import pl.pelotasplus.eyeofbeholder.data.model.script.Conditional
+import pl.pelotasplus.eyeofbeholder.data.model.script.Eval
+import pl.pelotasplus.eyeofbeholder.data.model.script.Message
+import pl.pelotasplus.eyeofbeholder.data.model.script.SetFlag
 import pl.pelotasplus.eyeofbeholder.data.repository.CpsRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.DecRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.InfRepositoryImpl
@@ -76,6 +81,33 @@ class ScriptTraceProbe {
         )
         println("=== party ${stepped.state.party}")
         println("=== stopped to ${stepped.stoppedTo}")
+
+        println("=== who touches the global flags, across every level")
+        (1..16).forEach { number ->
+            infRepository.loadScript("LEVEL$number.INF").getOrThrow().forEach { step ->
+                val token = step.token
+                val what = when {
+                    token is SetFlag.GlobalFlag -> "sets ${token.bit.index}"
+                    token is ClearFlag.GlobalFlag -> "clears ${token.flag}"
+                    token is Eval -> token.tokens
+                        .filterIsInstance<Conditional.GetGlobalFlag>()
+                        .joinToString { "reads ${it.bit.index}" }
+                        .ifEmpty { null }
+
+                    else -> null
+                }
+                if (what != null) println("  LEVEL$number ${step.offset} $what")
+            }
+        }
+
+        println("=== what level 1 is doing where it sets global flag 30")
+        val one = infRepository.loadInf("LEVEL1.INF", items).getOrThrow()
+        one.triggers.filter { it.script.offset.value in 0..70 }
+            .forEach { println("  trigger at ${it.location} -> ${it.script.offset}") }
+        one.script.filter { it.offset.value in 30..100 }.forEach { step ->
+            val text = (step.token as? Message)?.let { one.message(it.messageId) }
+            println("  ${step.offset} ${step.token}${text?.let { " '$it'" } ?: ""}")
+        }
 
         println("=== which flags each way in to the clerics sets")
         listOf(Location(13, 9), Location(13, 11), Location(11, 9)).forEach { at ->

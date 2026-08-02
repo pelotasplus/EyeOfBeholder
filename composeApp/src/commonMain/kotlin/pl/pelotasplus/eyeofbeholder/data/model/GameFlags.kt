@@ -25,10 +25,20 @@ package pl.pelotasplus.eyeofbeholder.data.model
  * once and the other two still work — one bit for the whole encounter would
  * have silenced them.
  *
+ * The global word is mostly one level leaving word for another:
+ *
  * ```
- * global    bit 28  read leaving level 5 for level 4: chooses between arriving
- *                   on (15,11) facing south and (16,10) facing east
- *           bit 30  read on level 5, meaning not yet established
+ * global    bit 1-4   level 2 talking to itself
+ *           bit 6     read on level 15; no script anywhere sets it
+ *           bit 19    level 15, set once and cleared in nine places
+ *           bit 20    level 12, set and cleared
+ *           bit 28    set and cleared on level 4; read leaving level 5 for
+ *                     level 4, choosing between arriving on (15,11) facing
+ *                     south and (16,10) facing east
+ *           bit 29    set on level 7, read on level 8
+ *           bit 30    set by standing on level 1's (10,12), the stairs down to
+ *                     level 5; read twice on level 5
+ *           bit 31    set on level 9, read on level 6
  * ```
  *
  * Add to this only what a script has actually been watched doing.
