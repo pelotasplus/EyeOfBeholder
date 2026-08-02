@@ -2,6 +2,7 @@ package pl.pelotasplus.eyeofbeholder.features.view_cone_debug
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -11,18 +12,27 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.koin.compose.viewmodel.koinViewModel
+import pl.pelotasplus.eyeofbeholder.LocalPlayFieldFocus
 import pl.pelotasplus.eyeofbeholder.data.model.DialogAnswer
 import pl.pelotasplus.eyeofbeholder.data.model.ViewPort
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
@@ -88,10 +98,34 @@ private fun ViewConeDebugContent(
     onDialogAnswer: (DialogAnswer) -> Unit = {},
     onViewClick: (x: Int, y: Int) -> Unit = { _, _ -> },
 ) {
+    val keyboard = remember { FocusRequester() }
+    val playFieldFocus = LocalPlayFieldFocus.current
+
+    DisposableEffect(playFieldFocus, keyboard) {
+        playFieldFocus.goesTo(keyboard)
+        onDispose { playFieldFocus.noLongerGoesTo(keyboard) }
+    }
+
     BoxWithConstraints(
-        modifier = modifier.fillMaxSize().background(Color.Black),
+        modifier = modifier
+            .fillMaxSize()
+            .background(Color.Black)
+            .focusRequester(keyboard)
+            // key events only reach a node that can hold focus
+            .focusable()
+            .onKeyEvent { event ->
+                // a held key repeats as more KeyDowns, which is how walking
+                // holds up; KeyUp would walk a second square on release
+                if (event.type != KeyEventType.KeyDown) return@onKeyEvent false
+
+                val control = playFieldControlFor(event.key) ?: return@onKeyEvent false
+                onControlClick(control)
+                true
+            },
         contentAlignment = Alignment.Center,
     ) {
+        LaunchedEffect(Unit) { keyboard.requestFocus() }
+
         val image = state.viewPort ?: return@BoxWithConstraints
 
         val density = LocalDensity.current
@@ -110,6 +144,10 @@ private fun ViewConeDebugContent(
                 )
                 .pointerInput(scaleFactor, state.dialog) {
                     detectTapGestures { offset ->
+                        // the Debug menu takes focus and does not give it back,
+                        // so touching the play field claims the keys again
+                        keyboard.requestFocus()
+
                         val x = (offset.x / scaleFactor).toInt()
                         val y = (offset.y / scaleFactor).toInt()
 

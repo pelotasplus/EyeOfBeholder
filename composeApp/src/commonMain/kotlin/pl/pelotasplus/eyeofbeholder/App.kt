@@ -6,6 +6,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.safeContentPadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -28,10 +30,18 @@ import pl.pelotasplus.eyeofbeholder.features.view_cone_debug.ViewConeDebugScreen
 import pl.pelotasplus.eyeofbeholder.navigation.Route
 
 @Composable
-fun App() {
+fun App() = CompositionLocalProvider(LocalPlayFieldFocus provides remember { PlayFieldFocus() }) {
     MaterialTheme {
         val navController = rememberNavController()
         var debugMenuExpanded by remember { mutableStateOf(false) }
+        val playFieldFocus = LocalPlayFieldFocus.current
+
+        // the menu's buttons take the focus and closing them does not give it
+        // back, so the screen underneath would stay deaf to the keyboard
+        LaunchedEffect(debugMenuExpanded) {
+            if (!debugMenuExpanded) playFieldFocus.takeBack()
+        }
+
         Box(
             modifier = Modifier
                 .background(MaterialTheme.colorScheme.primaryContainer)
