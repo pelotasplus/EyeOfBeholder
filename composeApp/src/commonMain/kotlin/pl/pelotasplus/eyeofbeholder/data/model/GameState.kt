@@ -126,10 +126,41 @@ data class GameState(
     /** One face of one square of one level. */
     data class WallAt(val level: Int, val at: Location, val side: WallSide)
 
-    private companion object {
-        const val MAX_MONSTERS_PER_SQUARE = 7
+    /**
+     * Everything here the game files cannot say, ready to be written out.
+     *
+     * [mazes] is left behind deliberately: it is the level files, which are
+     * loaded rather than saved, and putting a copy in every save would be a
+     * second answer to what a wall is.
+     */
+    fun saved() = SavedWorld(
+        party = party,
+        monsters = monsters,
+        flags = flags,
+        leftBehind = asTheyWereLeft,
+        changedWalls = changedWalls.map { (where, to) ->
+            ChangedWall(where.level, where.at, where.side, to)
+        },
+    )
+
+    companion object {
+        /**
+         * The world a save describes. The mazes arrive afterwards, with
+         * [arrivingAt], because they come from the level files.
+         */
+        fun restoredFrom(saved: SavedWorld) = GameState(
+            party = saved.party,
+            monsters = saved.monsters,
+            flags = saved.flags,
+            asTheyWereLeft = saved.leftBehind,
+            changedWalls = saved.changedWalls.associate {
+                WallAt(it.level, it.at, it.side) to it.to
+            },
+        )
+
+        private const val MAX_MONSTERS_PER_SQUARE = 7
 
         /** How many monsters a level can have at once, placed and spawned together. */
-        const val MONSTER_SLOTS = 30
+        private const val MONSTER_SLOTS = 30
     }
 }

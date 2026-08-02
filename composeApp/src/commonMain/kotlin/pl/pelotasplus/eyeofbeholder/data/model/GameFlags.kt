@@ -1,5 +1,6 @@
 package pl.pelotasplus.eyeofbeholder.data.model
 
+import kotlinx.serialization.Serializable
 /**
  * What the scripts remember: a word of flags for each level, and one word that
  * belongs to the game rather than to any level.
@@ -73,6 +74,7 @@ package pl.pelotasplus.eyeofbeholder.data.model
  *
  * Add to this only what a script has actually been watched doing.
  */
+@Serializable
 data class GameFlags(
     private val levels: Map<Int, FlagWord> = emptyMap(),
     val global: FlagWord = FlagWord(),

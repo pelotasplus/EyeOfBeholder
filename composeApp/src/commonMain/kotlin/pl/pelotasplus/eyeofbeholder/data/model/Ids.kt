@@ -1,5 +1,6 @@
 package pl.pelotasplus.eyeofbeholder.data.model
 
+import kotlinx.serialization.Serializable
 import kotlin.jvm.JvmInline
 
 /**
@@ -34,6 +35,7 @@ value class DecorationId(val value: Int)
 
 /** A monster type — an index into the sublevel's monster property table. */
 @JvmInline
+@Serializable
 value class MonsterTypeId(val value: Int)
 
 /**

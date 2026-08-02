@@ -1,5 +1,6 @@
 package pl.pelotasplus.eyeofbeholder.data.model
 
+import kotlinx.serialization.Serializable
 import kotlin.jvm.JvmInline
 
 /**
@@ -116,6 +117,7 @@ data class Maz(
  * the only thing that says which.
  */
 @JvmInline
+@Serializable
 value class WallByte(val value: Int)
 
 /**

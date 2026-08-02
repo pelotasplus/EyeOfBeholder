@@ -16,6 +16,17 @@ kotlin {
         languageSettings.optIn("kotlin.ExperimentalUnsignedTypes")
     }
 
+    // Android and the desktop both have java.io, and both keep saves as files;
+    // without this they are unrelated source sets and would need two copies.
+    applyDefaultHierarchyTemplate {
+        common {
+            group("jvmShared") {
+                withJvm()
+                withAndroidTarget()
+            }
+        }
+    }
+
     androidTarget {
         compilerOptions {
             jvmTarget.set(JvmTarget.JVM_11)
@@ -69,6 +80,7 @@ kotlin {
             implementation(libs.kermit)
             implementation(libs.kotlinx.collections.immutable)
             implementation(libs.kotlinx.coroutinesCore)
+            implementation(libs.kotlinx.serializationJson)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)

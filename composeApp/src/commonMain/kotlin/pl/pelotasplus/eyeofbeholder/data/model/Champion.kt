@@ -1,5 +1,6 @@
 package pl.pelotasplus.eyeofbeholder.data.model
 
+import kotlinx.serialization.Serializable
 import kotlin.jvm.JvmInline
 
 /**
@@ -14,6 +15,7 @@ import kotlin.jvm.JvmInline
  * there is no spellcasting to give them meaning yet, and a field nobody reads
  * is a field nobody notices going wrong.
  */
+@Serializable
 data class Champion(
     val name: String,
     val portrait: PortraitId,
@@ -83,6 +85,7 @@ data class Champion(
  * apart: it reddens for any of them.
  */
 @JvmInline
+@Serializable
 value class ChampionFlags(val value: Int) {
     val inTheParty: Boolean get() = value and IN_THE_PARTY != 0
     val inTrouble: Boolean get() = value and TROUBLE != 0
@@ -99,24 +102,30 @@ value class ChampionFlags(val value: Int) {
 
 /** Which of the 44 faces in CHARGENA.CPS a champion wears. */
 @JvmInline
+@Serializable
 value class PortraitId(val value: Int)
 
 /** How badly hurt a champion is; [current] can go negative, and -10 is dead for good. */
+@Serializable
 data class HitPoints(val current: Int, val max: Int)
 
 /** Lower is better, which is why it is not an Int. */
 @JvmInline
+@Serializable
 value class ArmorClass(val value: Int)
 
 /** How full a champion is, 0 to 100. */
 @JvmInline
+@Serializable
 value class Food(val value: Int)
 
 /** A level in one class, for a champion who may have levels in three. */
+@Serializable
 data class ClassLevel(val level: Int, val experience: Long)
 
 /** A slot in the world's item list, or [NOTHING] for an empty hand or pack slot. */
 @JvmInline
+@Serializable
 value class ItemIndex(val value: Int) {
     val isSomething: Boolean get() = value != NOTHING
 
@@ -130,6 +139,7 @@ value class ItemIndex(val value: Int) {
  * drained and restored. Strength alone has an extra percentile for the
  * eighteens, which is why it is two numbers rather than one.
  */
+@Serializable
 data class Abilities(
     val strength: Ability = Ability(0, 0),
     val strengthPercentile: Ability = Ability(0, 0),
@@ -140,4 +150,5 @@ data class Abilities(
     val charisma: Ability = Ability(0, 0),
 )
 
+@Serializable
 data class Ability(val current: Int, val max: Int)

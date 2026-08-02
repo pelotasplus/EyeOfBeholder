@@ -47,8 +47,8 @@ import pl.pelotasplus.eyeofbeholder.data.model.toImageBitmap
 import pl.pelotasplus.eyeofbeholder.data.repository.CpsRepository
 import pl.pelotasplus.eyeofbeholder.data.repository.DialogueTextRepository
 import pl.pelotasplus.eyeofbeholder.data.repository.FontRepository
-import pl.pelotasplus.eyeofbeholder.data.repository.SavedGameRepository
-import pl.pelotasplus.eyeofbeholder.data.repository.SavedGameRepositoryImpl
+import pl.pelotasplus.eyeofbeholder.data.repository.OriginalSaveRepository
+import pl.pelotasplus.eyeofbeholder.data.repository.OriginalSaveRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.ViewConeRepository
 
 @Stable
@@ -57,7 +57,7 @@ class ViewConeDebugViewModel(
     private val cpsRepository: CpsRepository,
     private val dialogueTextRepository: DialogueTextRepository,
     private val fontRepository: FontRepository,
-    private val savedGameRepository: SavedGameRepository,
+    private val savedGameRepository: OriginalSaveRepository,
 ) : ViewModel() {
 
     private var playFieldBackground: Cps? = null
@@ -145,7 +145,7 @@ class ViewConeDebugViewModel(
                 .onFailure { Logger.e(it) { "Error while loading $PORTRAITS_CPS" } }
             // until there is a screen to roll a party up on, the one the game
             // ships with is the party
-            savedGameRepository.loadSavedGame(SavedGameRepositoryImpl.QUICK_START)
+            savedGameRepository.loadOriginalSave(OriginalSaveRepositoryImpl.QUICK_START)
                 .onSuccess { roster = it.party }
                 .onFailure { Logger.e(it) { "Error while loading the quick start party" } }
             renderViewPort()

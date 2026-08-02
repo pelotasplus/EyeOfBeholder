@@ -28,7 +28,7 @@ import pl.pelotasplus.eyeofbeholder.data.repository.ItemsRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.MazRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.PalRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.ResourceRepositoryImpl
-import pl.pelotasplus.eyeofbeholder.data.repository.SavedGameRepositoryImpl
+import pl.pelotasplus.eyeofbeholder.data.repository.OriginalSaveRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.VcnRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.ViewConeRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.VmpRepositoryImpl
@@ -336,8 +336,8 @@ class ViewPortGoldenTest {
         val inf = repository.loadLevel(level).getOrThrow()
         val sublevel = inf.subLevels[0]
 
-        val saved = SavedGameRepositoryImpl(resources)
-            .loadSavedGame(SavedGameRepositoryImpl.QUICK_START)
+        val saved = OriginalSaveRepositoryImpl(resources)
+            .loadOriginalSave(OriginalSaveRepositoryImpl.QUICK_START)
             .getOrThrow()
 
         var hurt = 0

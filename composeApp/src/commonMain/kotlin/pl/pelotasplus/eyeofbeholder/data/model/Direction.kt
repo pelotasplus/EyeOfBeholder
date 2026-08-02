@@ -1,8 +1,10 @@
 package pl.pelotasplus.eyeofbeholder.data.model
 
+import kotlinx.serialization.Serializable
 /**
  * Cardinal directions in maze coordinates (absolute, not player-relative)
  */
+@Serializable
 enum class WallSide {
     NORTH, EAST, SOUTH, WEST
 }
@@ -10,6 +12,7 @@ enum class WallSide {
 /**
  * Player facing direction in maze coordinates
  */
+@Serializable
 enum class Direction {
     NORTH,  // Negative Y
     EAST,   // Positive X

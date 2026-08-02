@@ -1,5 +1,6 @@
 package pl.pelotasplus.eyeofbeholder.data.model
 
+import kotlinx.serialization.Serializable
 import pl.pelotasplus.eyeofbeholder.data.model.script.CreateMonster
 
 /**
@@ -20,6 +21,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.script.CreateMonster
  * @property weapon Item type id of the held weapon (0 = none)
  * @property pocketItem Item type id carried as loot (0 = none)
  */
+@Serializable
 data class MonsterInstance(
     val index: Int,
     val unit: Int,

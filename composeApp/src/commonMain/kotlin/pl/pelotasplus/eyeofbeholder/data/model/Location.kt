@@ -1,5 +1,6 @@
 package pl.pelotasplus.eyeofbeholder.data.model
 
+import kotlinx.serialization.Serializable
 import pl.pelotasplus.eyeofbeholder.data.ByteReader
 
 /**
@@ -15,6 +16,7 @@ import pl.pelotasplus.eyeofbeholder.data.ByteReader
  *
  * A Location of (-1, -1) or similar invalid values means "not placed" / "no location".
  */
+@Serializable
 data class Location(
     val x: Int,
     val y: Int

@@ -22,7 +22,7 @@ import pl.pelotasplus.eyeofbeholder.data.repository.ItemsRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.MazRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.PalRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.ResourceRepositoryImpl
-import pl.pelotasplus.eyeofbeholder.data.repository.SavedGameRepositoryImpl
+import pl.pelotasplus.eyeofbeholder.data.repository.OriginalSaveRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.VcnRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.VmpRepositoryImpl
 import kotlin.test.Test
@@ -350,8 +350,8 @@ class LevelTransitionTest {
     private val resources = ResourceRepositoryImpl()
 
     private fun quickStartParty(): List<Champion> = runBlocking {
-        SavedGameRepositoryImpl(resources)
-            .loadSavedGame(SavedGameRepositoryImpl.QUICK_START)
+        OriginalSaveRepositoryImpl(resources)
+            .loadOriginalSave(OriginalSaveRepositoryImpl.QUICK_START)
             .getOrThrow()
             .party
     }

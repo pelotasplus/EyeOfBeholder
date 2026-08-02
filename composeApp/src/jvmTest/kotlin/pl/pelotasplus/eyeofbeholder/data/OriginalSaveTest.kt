@@ -8,7 +8,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.Location
 import pl.pelotasplus.eyeofbeholder.data.model.speakerFrom
 import pl.pelotasplus.eyeofbeholder.data.model.spokenBy
 import pl.pelotasplus.eyeofbeholder.data.repository.ResourceRepositoryImpl
-import pl.pelotasplus.eyeofbeholder.data.repository.SavedGameRepositoryImpl
+import pl.pelotasplus.eyeofbeholder.data.repository.OriginalSaveRepositoryImpl
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -24,11 +24,11 @@ import kotlin.test.assertTrue
  * 345 bytes of fixed layout, and getting one field's width wrong slides
  * everything after it, so the later fields are what actually prove the parse.
  */
-class SavedGameTest {
+class OriginalSaveTest {
 
     private val quickStart = runBlocking {
-        SavedGameRepositoryImpl(ResourceRepositoryImpl())
-            .loadSavedGame(SavedGameRepositoryImpl.QUICK_START)
+        OriginalSaveRepositoryImpl(ResourceRepositoryImpl())
+            .loadOriginalSave(OriginalSaveRepositoryImpl.QUICK_START)
             .getOrThrow()
     }
 

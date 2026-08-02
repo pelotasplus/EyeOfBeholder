@@ -1,5 +1,6 @@
 package pl.pelotasplus.eyeofbeholder.data.model
 
+import kotlinx.serialization.Serializable
 /**
  * What a trigger script is allowed to ask about the party.
  *
@@ -13,6 +14,7 @@ package pl.pelotasplus.eyeofbeholder.data.model
  * still missing here is what scripts ask about the characters — which classes
  * are present, what is in hand.
  */
+@Serializable
 data class PartyState(
     val position: Location,
     val facing: Direction,

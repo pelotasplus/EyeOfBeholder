@@ -1,5 +1,6 @@
 package pl.pelotasplus.eyeofbeholder.data.model
 
+import kotlinx.serialization.Serializable
 import kotlin.jvm.JvmInline
 
 /**
@@ -11,6 +12,7 @@ import kotlin.jvm.JvmInline
  * scripts that read and write a bit say what it is for.
  */
 @JvmInline
+@Serializable
 value class FlagBit(val index: Int)
 
 /**
@@ -22,6 +24,7 @@ value class FlagBit(val index: Int)
  * silence the other two.
  */
 @JvmInline
+@Serializable
 value class FlagWord(private val raw: Int = 0) {
     fun isSet(bit: FlagBit) = (raw and mask(bit)) != 0
 
