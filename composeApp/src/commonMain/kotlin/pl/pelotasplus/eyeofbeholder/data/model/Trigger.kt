@@ -14,10 +14,13 @@ data class Trigger(
     val script: Script,
 )
 
-/** What reached a square. */
+/** What has happened to a square, which its one script asks about. */
 enum class ScriptEvent(val mask: Int) {
     PARTY_ENTERED(1),
     PARTY_LEFT(2),
+
+    /** The wall facing the party was clicked, wherever the party stand. */
+    WALL_CLICKED(0x40),
 }
 
 /**

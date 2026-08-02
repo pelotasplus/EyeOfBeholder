@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.koin.compose.viewmodel.koinViewModel
 import pl.pelotasplus.eyeofbeholder.data.model.DialogAnswer
+import pl.pelotasplus.eyeofbeholder.data.model.ViewPort
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
 
 @Composable
@@ -73,6 +74,9 @@ fun ViewConeDebugScreen(
         onDialogAnswer = { answer ->
             viewModel.onEvent(ViewConeDebugViewModel.Event.DialogAnswered(answer))
         },
+        onViewClick = { x, y ->
+            viewModel.onEvent(ViewConeDebugViewModel.Event.ClickedTheView(x, y))
+        },
     )
 }
 
@@ -82,6 +86,7 @@ private fun ViewConeDebugContent(
     modifier: Modifier = Modifier,
     onControlClick: (PlayFieldControl) -> Unit = {},
     onDialogAnswer: (DialogAnswer) -> Unit = {},
+    onViewClick: (x: Int, y: Int) -> Unit = { _, _ -> },
 ) {
     BoxWithConstraints(
         modifier = modifier.fillMaxSize().background(Color.Black),
@@ -115,7 +120,14 @@ private fun ViewConeDebugContent(
                                 .takeIf { it >= 0 }
                                 ?.let { onDialogAnswer(DialogAnswer.forButton(it)) }
                         } else {
-                            PlayFieldControl.at(screenX = x, screenY = y)?.let(onControlClick)
+                            val control = PlayFieldControl.at(screenX = x, screenY = y)
+                            when {
+                                control != null -> onControlClick(control)
+
+                                // the view itself: a click means the wall ahead
+                                x < ViewPort.COLS && y < ViewPort.ROWS ->
+                                    onViewClick(x, y)
+                            }
                         }
                     }
                 }

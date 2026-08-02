@@ -152,6 +152,30 @@ class LevelScriptRunnerTest {
     }
 
     @Test
+    fun `a clicked wall runs the script of the square it belongs to`() = runBlocking {
+        // clicking is the one thing that happens to a square the party are not
+        // standing on: the wall ahead of them belongs to the square beyond it
+        val ahead = Location(3, 3)
+        val instructions = listOf(
+            Script(ScriptOffset(0), changeLevelToken(5)),
+            Script(ScriptOffset(10), changeLevelToken(9)),
+        )
+        val triggers = listOf(
+            Trigger(here, TriggerFlags(0x08), instructions[1]),
+            Trigger(ahead, TriggerFlags(0x18), instructions[0]),
+        )
+
+        val clicked = LevelScriptRunner(instructions).onEvent(
+            triggers = triggers,
+            event = ScriptEvent.WALL_CLICKED,
+            state = party(),
+            at = ahead,
+        )
+
+        assertEquals(changeToLevel(5), clicked.changeLevel)
+    }
+
+    @Test
     fun `conditions this project cannot answer yet are taken as true`() {
         val outcome = run(
             0 to Eval(listOf(Conditional.GetTriggerFlag), goto = ScriptOffset(20)),

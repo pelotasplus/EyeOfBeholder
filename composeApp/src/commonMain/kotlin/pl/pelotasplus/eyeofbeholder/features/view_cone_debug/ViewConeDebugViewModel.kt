@@ -20,7 +20,11 @@ import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.Font
 import pl.pelotasplus.eyeofbeholder.data.model.GameState
 import pl.pelotasplus.eyeofbeholder.data.model.Inf
+import pl.pelotasplus.eyeofbeholder.data.model.ClickedWall
 import pl.pelotasplus.eyeofbeholder.data.model.LevelScriptRunner
+import pl.pelotasplus.eyeofbeholder.data.model.Maz
+import pl.pelotasplus.eyeofbeholder.data.model.WallSide
+import pl.pelotasplus.eyeofbeholder.data.model.getWall
 import pl.pelotasplus.eyeofbeholder.data.model.Location
 import pl.pelotasplus.eyeofbeholder.data.model.Palette
 import pl.pelotasplus.eyeofbeholder.data.model.PartyState
@@ -85,6 +89,7 @@ class ViewConeDebugViewModel(
 
             is Event.DialogAnswered -> onDialogAnswered(event.answer)
             is Event.OnLevelSelected -> onVmpSelected(event.name)
+            is Event.ClickedTheView -> onClickedTheView(event.x, event.y)
             Event.MoveForward -> onMoveForward()
             Event.MoveBackwards -> onMoveBackwards()
             Event.StrafeLeft -> onStrafe(left = true)
@@ -201,6 +206,40 @@ class ViewConeDebugViewModel(
     private val party get() = _state.value.game.party
 
     /**
+     * A click in the view means the wall of the square ahead that faces the
+     * party, whatever part of the view it landed on. Where it landed decides
+     * only whether it hit what hangs there.
+     */
+    private fun onClickedTheView(x: Int, y: Int) {
+        val inf = _state.value.inf ?: return
+        val sublevel = inf.subLevels[PLAYED_SUBLEVEL]
+
+        val (dx, dy) = party.facing.transformCoordinates(0, -1)
+        val ahead = Location(party.position.x + dx, party.position.y + dy)
+        val facingUs = party.facing.transformWallSide(WallSide.SOUTH)
+
+        val wall = sublevel.maz[ahead.x, ahead.y].getWall(facingUs)
+        if (wall !is Maz.WallType.Decoration) return
+
+        val decoration = sublevel.decorations
+            .firstOrNull { it.decorationWallIndex == wall.decorationWallIndex }
+            ?: return
+
+        val hanging = decoration.dec.decorations
+            .firstOrNull { it.index == decoration.decorationID }
+
+        // Some walls have nothing to aim at and answer a click anywhere on
+        // them; the rest want the thing hanging there hit.
+        val hit = decoration.specialType in ANSWERS_ANY_CLICK ||
+            (hanging != null && ClickedWall.hits(hanging, decoration.dec.rectangles, x, y))
+
+        Logger.d(TAG) { "Clicked $ahead $facingUs special=${decoration.specialType} hit=$hit" }
+        if (!hit) return
+
+        runTriggersAt(ahead, ScriptEvent.WALL_CLICKED)
+    }
+
+    /**
      * Plays the script of the square the party has stepped onto, which holds
      * the world for as long as it runs — it may walk the party about and wait
      * between steps, and nothing else may move meanwhile.
@@ -208,7 +247,9 @@ class ViewConeDebugViewModel(
      * @return false when there is no level to ask, so the caller still has the
      *   view to draw.
      */
-    private fun runTriggers(): Boolean {
+    private fun runTriggers(): Boolean = runTriggersAt(party.position, ScriptEvent.PARTY_ENTERED)
+
+    private fun runTriggersAt(at: Location, event: ScriptEvent): Boolean {
         val inf = _state.value.inf ?: return false
         val runner = scriptRunner ?: return false
 
@@ -216,9 +257,10 @@ class ViewConeDebugViewModel(
         playing = viewModelScope.launch {
             val run = runner.onEvent(
                 triggers = inf.triggers,
-                event = ScriptEvent.PARTY_ENTERED,
+                event = event,
                 state = _state.value.game,
                 stage = stage,
+                at = at,
             )
             // Whatever the script left on screen goes with it. Scripts end
             // without closing the box they last wrote in — the one that walks
@@ -585,6 +627,9 @@ class ViewConeDebugViewModel(
 
         data class DialogAnswered(val answer: DialogAnswer) : Event()
         data class OnLevelSelected(val name: String) : Event()
+
+        /** A click in the view, in its own 176 by 120 coordinates. */
+        data class ClickedTheView(val x: Int, val y: Int) : Event()
         data object MoveForward : Event()
         data object MoveBackwards : Event()
         data object StrafeLeft : Event()
@@ -637,6 +682,9 @@ class ViewConeDebugViewModel(
 
         /** More than the bar can show, so a long line still has its history. */
         private const val MESSAGES_KEPT = 8
+
+        /** Wall kinds that run their script without anything to aim at. */
+        private val ANSWERS_ANY_CLICK = setOf(7, 9)
         private const val PLAY_FIELD_CPS = "PLAYFLD.CPS"
         private const val DECORATIONS_CPS = "DECORATE.CPS"
         private const val DIALOGUE_FRAME_CPS = "BORDER.CPS"

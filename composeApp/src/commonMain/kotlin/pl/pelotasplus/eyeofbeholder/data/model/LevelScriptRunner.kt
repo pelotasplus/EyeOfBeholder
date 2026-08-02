@@ -179,22 +179,28 @@ class LevelScriptRunner(
     private val level: Int = 0,
 ) {
 
-    /** Runs the script of the square the party is on, if it reacts to [event]. */
+    /**
+     * Runs the script of a square, if it reacts to [event].
+     *
+     * [at] is where the party stand, save for a wall being clicked: that is
+     * the square in front of them, which they are not on.
+     */
     suspend fun onEvent(
         triggers: List<Trigger>,
         event: ScriptEvent,
         state: GameState,
         stage: ScriptStage = ScriptStage.silent(),
-    ): ScriptRun = onEvent(triggers, event, state, stage, depth = 0)
+        at: Location = state.party.position,
+    ): ScriptRun = onEvent(triggers, event, state, stage, at, depth = 0)
 
     private suspend fun onEvent(
         triggers: List<Trigger>,
         event: ScriptEvent,
         state: GameState,
         stage: ScriptStage,
+        position: Location,
         depth: Int,
     ): ScriptRun {
-        val position = state.party.position
         val here = triggers.filter { it.location == position }
         val trigger = here.firstOrNull { it.flags.reactsTo(event) }
 
@@ -329,8 +335,14 @@ class LevelScriptRunner(
                     state = state.partyMovedTo(token.destination)
 
                     if (depth < MAX_NESTED_TRIGGERS) {
-                        val arrival =
-                            onEvent(triggers, ScriptEvent.PARTY_ENTERED, state, stage, depth + 1)
+                        val arrival = onEvent(
+                            triggers,
+                            ScriptEvent.PARTY_ENTERED,
+                            state,
+                            stage,
+                            state.party.position,
+                            depth + 1,
+                        )
                         state = arrival.state
                         arrival.changeLevel?.let { return stop(it) }
                     } else {
