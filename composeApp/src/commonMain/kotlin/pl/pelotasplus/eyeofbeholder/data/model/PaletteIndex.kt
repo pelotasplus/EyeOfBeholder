@@ -1,5 +1,6 @@
 package pl.pelotasplus.eyeofbeholder.data.model
 
+import kotlinx.serialization.Serializable
 import kotlin.jvm.JvmInline
 
 /**
@@ -15,6 +16,7 @@ import kotlin.jvm.JvmInline
  * an opaque color and read [Palette.colors] directly.
  */
 @JvmInline
+@Serializable
 value class PaletteIndex(val value: Int) {
     val isTransparent: Boolean get() = value == TRANSPARENT.value
 

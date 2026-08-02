@@ -1,5 +1,7 @@
 package pl.pelotasplus.eyeofbeholder.data.model
 
+import kotlinx.serialization.Serializable
+
 /**
  * The 320×200 game screen: PLAYFLD.CPS with the rendered 3D view blitted into
  * its top-left window and the compass needle overlaid from DECORATE.CPS.
@@ -141,6 +143,7 @@ class PlayField(
     }
 
     /** A line on the bar along the bottom, in the colour the script asked for. */
+    @Serializable
     data class Message(val text: String, val colour: PaletteIndex)
 
     /**

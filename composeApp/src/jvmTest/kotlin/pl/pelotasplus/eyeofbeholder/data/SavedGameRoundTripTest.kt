@@ -8,7 +8,9 @@ import pl.pelotasplus.eyeofbeholder.data.model.Location
 import pl.pelotasplus.eyeofbeholder.data.model.Maz
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterInstance
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterTypeId
+import pl.pelotasplus.eyeofbeholder.data.model.PaletteIndex
 import pl.pelotasplus.eyeofbeholder.data.model.PartyState
+import pl.pelotasplus.eyeofbeholder.data.model.PlayField
 import pl.pelotasplus.eyeofbeholder.data.model.SavedGame
 import pl.pelotasplus.eyeofbeholder.data.model.WallByte
 import pl.pelotasplus.eyeofbeholder.data.model.WallSide
@@ -73,6 +75,40 @@ class SavedGameRoundTripTest {
         assertEquals(5, loaded.level)
         assertEquals(champions, loaded.champions)
         assertEquals(world.saved(), loaded.world)
+    }
+
+    /**
+     * The bar along the bottom comes back too. The original saved no such
+     * thing, but coming back to a tab is not the same as choosing to load a
+     * game: the lines on screen are the last thing that happened.
+     */
+    @Test
+    fun `what was written on the bar comes back with the game`() = runBlocking {
+        val said = listOf(
+            PlayField.Message("you feel a cold draft from the north.", PaletteIndex(9)),
+            PlayField.Message("the wall vanishes.", PaletteIndex(15)),
+        )
+
+        repository.save(
+            slot = SaveSlot.AUTOSAVE,
+            description = "auto",
+            savedAt = 0,
+            level = 5,
+            champions = champions,
+            world = world,
+            messages = said,
+        ).getOrThrow()
+
+        assertEquals(said, repository.load(SaveSlot.AUTOSAVE).getOrThrow().messages)
+    }
+
+    /** A save written before the bar was kept still opens, with an empty one. */
+    @Test
+    fun `a save from before messages were kept reads as having none`() = runBlocking {
+        val slot = SaveSlot.numbered[3]
+        repository.save(slot, "older", 0, 5, champions, world).getOrThrow()
+
+        assertEquals(emptyList(), repository.load(slot).getOrThrow().messages)
     }
 
     /**

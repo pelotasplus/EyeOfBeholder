@@ -28,6 +28,15 @@ data class SavedGame(
     val level: Int,
     val champions: List<Champion>,
     val world: SavedWorld,
+    /**
+     * What is on the bar along the bottom.
+     *
+     * The original saved no such thing, and it did not need to: loading a game
+     * was something a player chose, and the screen being redrawn clean was the
+     * point. Coming back to a tab is not that — the lines that were on screen
+     * are the last thing that happened, and losing them loses the thread.
+     */
+    val messages: List<PlayField.Message> = emptyList(),
 ) {
     companion object {
         /**

@@ -170,7 +170,10 @@ class ViewConeDebugViewModel(
         Logger.i(TAG) { "Resuming ${saved.description} on level ${saved.level}" }
         roster = saved.champions
         _state.update {
-            it.copy(game = GameState.restoredFrom(saved.world, on = saved.level))
+            it.copy(
+                game = GameState.restoredFrom(saved.world, on = saved.level),
+                messages = saved.messages,
+            )
         }
     }
 
@@ -203,6 +206,7 @@ class ViewConeDebugViewModel(
                 level = levelNumber(inf.name),
                 champions = roster,
                 world = _state.value.game,
+                messages = _state.value.messages,
             ).onFailure { Logger.e(it) { "Could not autosave" } }
         }
     }
