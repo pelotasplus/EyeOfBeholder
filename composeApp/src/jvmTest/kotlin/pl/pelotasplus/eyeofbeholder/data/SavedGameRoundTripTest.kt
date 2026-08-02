@@ -149,7 +149,20 @@ class SavedGameRoundTripTest {
             world = world,
         ).getOrThrow()
 
-        return GameState.restoredFrom(repository.load(SaveSlot.AUTOSAVE).getOrThrow().world)
+        val saved = repository.load(SaveSlot.AUTOSAVE).getOrThrow()
+        return GameState.restoredFrom(saved.world, on = saved.level)
+    }
+
+    /**
+     * Loading must not repopulate the level the party were standing on from
+     * its file, or a monster a script conjured — or one already killed —
+     * would be undone by loading.
+     */
+    @Test
+    fun `the level the party were saved on keeps the monsters it had`() = runBlocking {
+        val restored = restore().arrivingAt(5, places = emptyList())
+
+        assertEquals(monsters(onLevel = 5), restored.monsters)
     }
 
     private fun monsters(onLevel: Int) = listOf(0, 1).map { slot ->

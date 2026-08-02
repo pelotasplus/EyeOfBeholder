@@ -72,11 +72,15 @@ class SavedGameRepositoryImpl(
          * Unknown keys are ignored so that a save written by a later build
          * still opens in an earlier one, minus whatever it did not know about.
          * Defaults are written out so a save can be read without them.
+         *
+         * Not pretty printed: a heavily played world is a quarter of a
+         * megabyte with the whitespace in, and the web writes this into a
+         * budget of about five. Exporting one to a file can afford to be
+         * readable; storing it cannot.
          */
         val json = Json {
             ignoreUnknownKeys = true
             encodeDefaults = true
-            prettyPrint = true
         }
     }
 }

@@ -30,6 +30,8 @@ import pl.pelotasplus.eyeofbeholder.data.model.Location
 import pl.pelotasplus.eyeofbeholder.data.model.Palette
 import pl.pelotasplus.eyeofbeholder.data.model.PartyState
 import pl.pelotasplus.eyeofbeholder.data.model.PlayField
+import pl.pelotasplus.eyeofbeholder.data.model.SavedGame
+import pl.pelotasplus.eyeofbeholder.data.model.rightNow
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptEvent
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptQuestion
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptSpeech
@@ -47,6 +49,8 @@ import pl.pelotasplus.eyeofbeholder.data.model.toImageBitmap
 import pl.pelotasplus.eyeofbeholder.data.repository.CpsRepository
 import pl.pelotasplus.eyeofbeholder.data.repository.DialogueTextRepository
 import pl.pelotasplus.eyeofbeholder.data.repository.FontRepository
+import pl.pelotasplus.eyeofbeholder.data.repository.SaveSlot
+import pl.pelotasplus.eyeofbeholder.data.repository.SavedGameRepository
 import pl.pelotasplus.eyeofbeholder.data.repository.OriginalSaveRepository
 import pl.pelotasplus.eyeofbeholder.data.repository.OriginalSaveRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.ViewConeRepository
@@ -57,7 +61,8 @@ class ViewConeDebugViewModel(
     private val cpsRepository: CpsRepository,
     private val dialogueTextRepository: DialogueTextRepository,
     private val fontRepository: FontRepository,
-    private val savedGameRepository: OriginalSaveRepository,
+    private val originalSaveRepository: OriginalSaveRepository,
+    private val savedGames: SavedGameRepository,
 ) : ViewModel() {
 
     private var playFieldBackground: Cps? = null
@@ -73,6 +78,9 @@ class ViewConeDebugViewModel(
 
     /** The script holding the world, if one is running. */
     private var playing: Job? = null
+
+    /** Waiting for the party to stand still before writing where they are. */
+    private var autosaving: Job? = null
 
     /** Redrawing the view for a teleporter's flicker, while one is in sight. */
     private var flickering: Job? = null
@@ -143,31 +151,60 @@ class ViewConeDebugViewModel(
             cpsRepository.loadCps(PORTRAITS_CPS)
                 .onSuccess { portraits = it }
                 .onFailure { Logger.e(it) { "Error while loading $PORTRAITS_CPS" } }
-            // until there is a screen to roll a party up on, the one the game
-            // ships with is the party
-            savedGameRepository.loadOriginalSave(OriginalSaveRepositoryImpl.QUICK_START)
-                .onSuccess { roster = it.party }
-                .onFailure { Logger.e(it) { "Error while loading the quick start party" } }
-            renderViewPort()
-        }
+            // a level picked from the Levels screen is an instruction, so it
+            // wins over wherever the party were last left
+            val resumed = if (level != null) null else savedGames.load(SaveSlot.AUTOSAVE).getOrNull()
+            if (resumed == null) resumeNothing() else resume(resumed)
 
-        if (level != null) {
             onVmpSelected(
-                name = level,
-                playerX = startX,
-                playerY = startY,
-                direction = startDirection
+                name = resumed?.let { "LEVEL${it.level}.INF" } ?: level ?: DEFAULT_LEVEL,
+                playerX = resumed?.world?.party?.position?.x ?: startX ?: DEFAULT_PLAYER_X,
+                playerY = resumed?.world?.party?.position?.y ?: startY ?: DEFAULT_PLAYER_Y,
+                direction = resumed?.world?.party?.facing ?: startDirection ?: DEFAULT_DIRECTION,
             )
-            return
         }
+    }
 
-        // default start
-        onVmpSelected(
-            DEFAULT_LEVEL,
-            playerX = DEFAULT_PLAYER_X,
-            playerY = DEFAULT_PLAYER_Y,
-            direction = DEFAULT_DIRECTION
-        )
+    /** Picks the game up where the autosave left it. */
+    private fun resume(saved: SavedGame) {
+        Logger.i(TAG) { "Resuming ${saved.description} on level ${saved.level}" }
+        roster = saved.champions
+        _state.update {
+            it.copy(game = GameState.restoredFrom(saved.world, on = saved.level))
+        }
+    }
+
+    /** No autosave to pick up, so the party are the ones the game ships with. */
+    private suspend fun resumeNothing() {
+        originalSaveRepository.loadOriginalSave(OriginalSaveRepositoryImpl.QUICK_START)
+            .onSuccess { roster = it.party }
+            .onFailure { Logger.e(it) { "Error while loading the quick start party" } }
+    }
+
+    /**
+     * Writes where the party have got to, so closing the tab and coming back
+     * finds them there.
+     *
+     * Held down, an arrow key is one move as far as this is concerned: each
+     * call cancels the last, so a run down a corridor writes once at the end
+     * rather than once a square. A heavily played world is eighty kilobytes of
+     * JSON, which is cheap once and not cheap thirty times a second.
+     */
+    private fun autosave() {
+        val inf = _state.value.inf ?: return
+
+        autosaving?.cancel()
+        autosaving = viewModelScope.launch {
+            delay(AUTOSAVE_SETTLES.inMilliseconds)
+            savedGames.save(
+                slot = SaveSlot.AUTOSAVE,
+                description = inf.name.removeSuffix(".INF"),
+                savedAt = rightNow(),
+                level = levelNumber(inf.name),
+                champions = roster,
+                world = _state.value.game,
+            ).onFailure { Logger.e(it) { "Could not autosave" } }
+        }
     }
 
     private fun onVmpSelected(
@@ -207,6 +244,7 @@ class ViewConeDebugViewModel(
                         )
                     }
                     renderViewPort()
+                    autosave()
                 }
                 .onFailure {
                     Logger.e(it) { "Error while loading vmp: $name" }
@@ -229,6 +267,7 @@ class ViewConeDebugViewModel(
         // shows the party standing where the script is about to explain.
         if (!runTriggers()) {
             renderViewPort()
+            autosave()
         }
     }
 
@@ -311,6 +350,7 @@ class ViewConeDebugViewModel(
             val change = run.changeLevel
             if (change == null) {
                 drawViewPort()
+                autosave()
             } else {
                 Logger.i(TAG) { "Changing to level ${change.level} at ${change.location}" }
                 onVmpSelected(
@@ -515,6 +555,7 @@ class ViewConeDebugViewModel(
     private fun onDirectionChanged(direction: Direction) {
         _state.update { it.copy(game = it.game.partyTurnedTo(direction)) }
         renderViewPort()
+        autosave()
     }
 
     private fun renderViewPort() {
@@ -762,6 +803,9 @@ class ViewConeDebugViewModel(
         private const val DIALOGUE_FRAME_CPS = "BORDER.CPS"
         private const val DIALOGUE_FONT = "FONT6.FNT"
         private const val PORTRAITS_CPS = "CHARGENA.CPS"
+
+        /** How long the party must stand still before where they are is written. */
+        private val AUTOSAVE_SETTLES = Ticks(9)
 
         // side areas are not reachable yet, so only the main floor is played
         private const val PLAYED_SUBLEVEL = 0

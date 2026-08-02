@@ -147,12 +147,17 @@ data class GameState(
         /**
          * The world a save describes. The mazes arrive afterwards, with
          * [arrivingAt], because they come from the level files.
+         *
+         * [on] is the level the party were standing on, and it is remembered
+         * as though they had just walked out of it — otherwise arriving back
+         * would people it from its file again, and the monsters a script
+         * conjured, or the ones already killed, would be undone by loading.
          */
-        fun restoredFrom(saved: SavedWorld) = GameState(
+        fun restoredFrom(saved: SavedWorld, on: Int) = GameState(
             party = saved.party,
             monsters = saved.monsters,
             flags = saved.flags,
-            asTheyWereLeft = saved.leftBehind,
+            asTheyWereLeft = saved.leftBehind + (on to saved.monsters),
             changedWalls = saved.changedWalls.associate {
                 WallAt(it.level, it.at, it.side) to it.to
             },
