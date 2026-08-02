@@ -11,6 +11,8 @@ import pl.pelotasplus.eyeofbeholder.data.model.WallSide
 import pl.pelotasplus.eyeofbeholder.data.model.DistanceFromParty
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterInstance
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterSheet
+import pl.pelotasplus.eyeofbeholder.data.model.Door
+import pl.pelotasplus.eyeofbeholder.data.model.DoorIndex
 import pl.pelotasplus.eyeofbeholder.data.model.SubLevel
 import pl.pelotasplus.eyeofbeholder.data.model.ViewPort
 import pl.pelotasplus.eyeofbeholder.data.model.WallSet
@@ -171,12 +173,14 @@ class ViewConeRepositoryImpl(
 
                         // stuck door?
                         if (levelDecoration.specialType == 5) {
-                            viewPort.drawDoor(
-                                wallPosition = wallPosition,
-                                door = sublevel.doors[0],
-                                showButton = false,
-                                stuckDoor = true
-                            )
+                            sublevel.door(DoorIndex(0), mazX, mazY)?.let { door ->
+                                viewPort.drawDoor(
+                                    wallPosition = wallPosition,
+                                    door = door,
+                                    showButton = false,
+                                    stuckDoor = true
+                                )
+                            } ?: viewPort.drawUndrawableWall(wallPosition)
                         } else if ((levelDecoration.wallType - 1) >= 0) {
                             viewPort.drawWall(levelDecoration.wallType - 1, wallPosition)
                         }
@@ -188,11 +192,13 @@ class ViewConeRepositoryImpl(
                     }
 
                     is Maz.WallType.Door -> {
-                        viewPort.drawDoor(
-                            wallPosition = wallPosition,
-                            door = sublevel.doors[wallType.doorIndex.value],
-                            showButton = wallType.hasButton
-                        )
+                        sublevel.door(wallType.doorIndex, mazX, mazY)?.let { door ->
+                            viewPort.drawDoor(
+                                wallPosition = wallPosition,
+                                door = door,
+                                showButton = wallType.hasButton
+                            )
+                        } ?: viewPort.drawUndrawableWall(wallPosition)
                     }
 
                     is Maz.WallType.FixedWall -> {
@@ -391,6 +397,24 @@ class ViewConeRepositoryImpl(
             }
         }
     }
+
+    /**
+     * The door definition a square's wall asks for, or null where the sublevel
+     * has none.
+     *
+     * A sublevel defines up to two doors, and a maze is a fixed 32x32 whose
+     * unreachable parts keep whatever bytes were left in them — so a wall
+     * asking for a door nobody defined is expected, as long as it stays out of
+     * sight. Level 6 defines one door and its maze asks for two.
+     */
+    private fun SubLevel.door(index: DoorIndex, mazX: Int, mazY: Int): Door? =
+        doors.getOrNull(index.value).also {
+            if (it == null) {
+                Logger.w(TAG) {
+                    "Door ${index.value} at ($mazX,$mazY) is not defined by this level"
+                }
+            }
+        }
 
     companion object {
         private const val TAG = "ViewConeRepository"
