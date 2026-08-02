@@ -6,6 +6,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.script.CreateMonster
 import pl.pelotasplus.eyeofbeholder.data.model.script.Dialog
 import pl.pelotasplus.eyeofbeholder.data.model.script.End
 import pl.pelotasplus.eyeofbeholder.data.model.script.Eval
+import pl.pelotasplus.eyeofbeholder.data.model.script.GoSub
 import pl.pelotasplus.eyeofbeholder.data.model.script.Goto
 import pl.pelotasplus.eyeofbeholder.data.model.script.Message
 import pl.pelotasplus.eyeofbeholder.data.model.script.NewLevelOrMonster
@@ -31,6 +32,22 @@ data class ScriptRun(
     val stoppedTo: ScriptStop? = null,
 )
 
+/**
+ * Where a script that stopped picks up again.
+ *
+ * A script can be several subroutine calls deep when it stops to ask
+ * something, and the answer arrives long after — so the calls it was inside
+ * travel with the place to carry on from. Without them a [Return] taken after
+ * an answer would find nothing to return to and end the script where the
+ * caller still had work left: a subroutine that asks and returns is how most
+ * of the game's conversations are written.
+ */
+data class ScriptResumePoint(
+    val at: ScriptOffset,
+    /** Innermost call last, each the instruction its [GoSub] is to come back to. */
+    val returnTo: List<ScriptOffset> = emptyList(),
+)
+
 /** Why a trigger script stopped before its end, and what it wants doing. */
 sealed interface ScriptStop {
 
@@ -54,7 +71,7 @@ sealed interface ScriptStop {
         val textId: DialogueTextId,
         val buttons: List<MessageId>,
         val scene: List<Dialog>,
-        val resumeAt: ScriptOffset,
+        val resumeAt: ScriptResumePoint,
         /**
          * What the script printed into the box before speaking — the party's
          * own line, usually. Drawing the box again wipes them, which is how
@@ -135,36 +152,36 @@ class LevelScriptRunner(
         Logger.d(TAG) {
             "Running trigger at $position for $event from offset ${trigger.script.offset}"
         }
-        return run(trigger.script.offset, state)
+        return run(ScriptResumePoint(trigger.script.offset), state)
     }
 
     /**
      * Carries on a script that stopped at a dialogue, with [answer] being the
      * button the player pressed, numbered from one.
      */
-    fun answer(resumeAt: ScriptOffset, state: GameState, answer: DialogAnswer): ScriptRun {
+    fun answer(resumeAt: ScriptResumePoint, state: GameState, answer: DialogAnswer): ScriptRun {
         Logger.d(TAG) { "Resuming at $resumeAt with answer $answer" }
         return run(resumeAt, state, answer)
     }
 
     private fun run(
-        fromOffset: ScriptOffset,
+        from: ScriptResumePoint,
         state: GameState,
         dialogAnswer: DialogAnswer? = null,
-    ): ScriptRun = runScript(fromOffset, state, dialogAnswer).also { result ->
-        Logger.d(TAG) { "Script from $fromOffset stopped to ${result.stoppedTo ?: "nothing"}" }
+    ): ScriptRun = runScript(from, state, dialogAnswer).also { result ->
+        Logger.d(TAG) { "Script from ${from.at} stopped to ${result.stoppedTo ?: "nothing"}" }
     }
 
     private fun runScript(
-        fromOffset: ScriptOffset,
+        from: ScriptResumePoint,
         initial: GameState,
         dialogAnswer: DialogAnswer?,
     ): ScriptRun {
         var state = initial
 
-        var index = script.indexOfFirst { it.offset == fromOffset }
+        var index = script.indexOfFirst { it.offset == from.at }
         if (index < 0) {
-            Logger.w(TAG) { "No script at offset $fromOffset" }
+            Logger.w(TAG) { "No script at offset ${from.at}" }
             return ScriptRun(state)
         }
 
@@ -176,23 +193,51 @@ class LevelScriptRunner(
         // and what it has written into the box, which the box outlives
         val said = mutableListOf<MessageId>()
 
+        // starts with the calls the script was already inside when it stopped
+        val returnTo = ArrayDeque(from.returnTo)
+
         fun stop(stoppedTo: ScriptStop? = null) = ScriptRun(state, stoppedTo)
+
+        fun resumeAfter(index: Int): ScriptResumePoint? =
+            script.getOrNull(index)?.let { ScriptResumePoint(it.offset, returnTo.toList()) }
 
         while (index in script.indices) {
             if (steps++ > MAX_STEPS) {
-                Logger.w(TAG) { "Script from $fromOffset did not terminate after $MAX_STEPS steps" }
+                Logger.w(TAG) { "Script from ${from.at} did not terminate after $MAX_STEPS steps" }
                 return stop()
             }
 
             Logger.d(TAG) { "  ${script[index].offset} ${script[index].token}" }
 
             when (val token = script[index].token) {
-                End, Return -> return stop()
+                End -> return stop()
+
+                // Nothing to return to ends the script, the way the engine
+                // does when its stack is empty.
+                Return -> {
+                    val caller = returnTo.removeLastOrNull() ?: return stop()
+                    index = script.indexOfFirst { it.offset == caller }
+                    if (index < 0) return stop()
+                    continue
+                }
 
                 is Goto -> {
                     index = script.indexOfFirst { it.offset == token.offset }
                     if (index < 0) return stop()
                     continue
+                }
+
+                is GoSub -> {
+                    // a call the engine's ten-deep stack cannot hold is dropped
+                    // and the script carries on past it
+                    if (returnTo.size < MAX_SUBROUTINE_DEPTH) {
+                        val target = script.indexOfFirst { it.offset == token.offset }
+                        val caller = script.getOrNull(index + 1) ?: return stop()
+                        if (target < 0) return stop()
+                        returnTo.addLast(caller.offset)
+                        index = target
+                        continue
+                    }
                 }
 
                 is Eval -> {
@@ -243,7 +288,7 @@ class LevelScriptRunner(
                         textId = token.textId,
                         buttons = listOf(token.button1, token.button2, token.button3),
                         scene = scene.toList(),
-                        resumeAt = script.getOrNull(index + 1)?.offset ?: return stop(),
+                        resumeAt = resumeAfter(index + 1) ?: return stop(),
                         said = said.toList(),
                     )
                 )
@@ -256,7 +301,7 @@ class LevelScriptRunner(
                         textId = token.textId,
                         buttons = listOf(token.pageBreakLabel),
                         scene = scene.toList(),
-                        resumeAt = script.getOrNull(index + 1)?.offset ?: return stop(),
+                        resumeAt = resumeAfter(index + 1) ?: return stop(),
                         said = said.toList(),
                         waitsToBeRead = true,
                     )
@@ -338,5 +383,6 @@ class LevelScriptRunner(
     private companion object {
         const val TAG = "LevelScriptRunner"
         const val MAX_STEPS = 200
+        const val MAX_SUBROUTINE_DEPTH = 10
     }
 }

@@ -27,6 +27,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.PartyState
 import pl.pelotasplus.eyeofbeholder.data.model.PlayField
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptEvent
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptRun
+import pl.pelotasplus.eyeofbeholder.data.model.ScriptResumePoint
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptStop
 import pl.pelotasplus.eyeofbeholder.data.model.ViewPort
 import pl.pelotasplus.eyeofbeholder.data.model.toImageBitmap
@@ -499,7 +500,7 @@ class ViewConeDebugViewModel(
     /** A question a script is waiting on, drawn as [scene] over the play field. */
     data class DialogPrompt(
         val scene: DialogueScene,
-        val resumeAt: ScriptOffset,
+        val resumeAt: ScriptResumePoint,
         val askedAt: Location,
         /**
          * Set while the script is reading a reply back to the player. The
@@ -544,9 +545,9 @@ class ViewConeDebugViewModel(
         private const val DIALOGUE_FONT = "FONT6.FNT"
         // side areas are not reachable yet, so only the main floor is played
         private const val PLAYED_SUBLEVEL = 0
-        private const val DEFAULT_LEVEL = "LEVEL5.INF"
-        private const val DEFAULT_PLAYER_X = 14
-        private const val DEFAULT_PLAYER_Y = 9
-        private val DEFAULT_DIRECTION = Direction.WEST
+        private const val DEFAULT_LEVEL = "LEVEL4.INF"
+        private const val DEFAULT_PLAYER_X = 11
+        private const val DEFAULT_PLAYER_Y = 12
+        private val DEFAULT_DIRECTION = Direction.NORTH
     }
 }

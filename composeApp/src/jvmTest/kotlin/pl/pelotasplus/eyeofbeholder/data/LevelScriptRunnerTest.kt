@@ -1,5 +1,7 @@
 package pl.pelotasplus.eyeofbeholder.data
 
+import pl.pelotasplus.eyeofbeholder.data.model.DialogAnswer
+import pl.pelotasplus.eyeofbeholder.data.model.DialogueTextId
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.GameState
 import pl.pelotasplus.eyeofbeholder.data.model.MessageId
@@ -15,6 +17,9 @@ import pl.pelotasplus.eyeofbeholder.data.model.Trigger
 import pl.pelotasplus.eyeofbeholder.data.model.TriggerFlags
 import pl.pelotasplus.eyeofbeholder.data.model.script.Conditional
 import pl.pelotasplus.eyeofbeholder.data.model.script.CreateMonster
+import pl.pelotasplus.eyeofbeholder.data.model.script.Dialog
+import pl.pelotasplus.eyeofbeholder.data.model.script.GoSub
+import pl.pelotasplus.eyeofbeholder.data.model.script.Return
 import pl.pelotasplus.eyeofbeholder.data.model.script.End
 import pl.pelotasplus.eyeofbeholder.data.model.script.Eval
 import pl.pelotasplus.eyeofbeholder.data.model.script.Goto
@@ -253,6 +258,68 @@ class LevelScriptRunnerTest {
     )
 
     /** What the script stopped for, which is what most of these tests are about. */
+    // --- calling subroutines -------------------------------------------------
+
+    @Test
+    fun `a GoSub runs the subroutine and comes back to the call`() {
+        val outcome = run(
+            0 to GoSub(ScriptOffset(100)),
+            10 to changeLevelToken(5),
+            100 to Return,
+            110 to changeLevelToken(9),
+        )
+        assertEquals(changeToLevel(5), outcome)
+    }
+
+    @Test
+    fun `a Return with nothing to return to ends the script`() {
+        val outcome = run(
+            0 to Return,
+            10 to changeLevelToken(5),
+        )
+        assertEquals(null, outcome)
+    }
+
+    @Test
+    fun `a call the ten deep stack cannot hold is skipped rather than taken`() {
+        // ten calls chained one into the next fill the stack, so the eleventh
+        // is dropped and the script carries on past it
+        val chain = (0 until 10).map { it * 10 to GoSub(ScriptOffset((it + 1) * 10)) }
+
+        val outcome = run(
+            *chain.toTypedArray(),
+            100 to GoSub(ScriptOffset(200)),
+            110 to changeLevelToken(5),
+            200 to changeLevelToken(9),
+        )
+        assertEquals(changeToLevel(5), outcome)
+    }
+
+    @Test
+    fun `a subroutine that asks still returns once the player has answered`() {
+        val script = arrayOf(
+            0 to GoSub(ScriptOffset(100)),
+            10 to changeLevelToken(5),
+            100 to Dialog.RunDialog(
+                DialogueTextId(1),
+                MessageId(0),
+                MessageId(1),
+                MessageId(2),
+            ),
+            110 to Return,
+        )
+        val asked = runFully(*script).stoppedTo as ScriptStop.AskThePlayer
+
+        val runner = LevelScriptRunner(
+            script.map { (offset, token) -> Script(ScriptOffset(offset), token) }
+        )
+
+        assertEquals(
+            changeToLevel(5),
+            runner.answer(asked.resumeAt, party(), DialogAnswer(1)).stoppedTo,
+        )
+    }
+
     // --- what a script leaves behind ----------------------------------------
 
     @Test
