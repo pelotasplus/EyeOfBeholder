@@ -187,8 +187,13 @@ class ViewConeDebugViewModel(
             y = (y ?: party.position.y).coerceAtLeast(0),
         )
         _state.update { it.copy(game = it.game.partyMovedTo(steppedTo)) }
-        renderViewPort()
-        runTriggers()
+
+        // A square with something to say draws for itself, and may draw
+        // something other than the view — putting the new position up first
+        // shows the party standing where the script is about to explain.
+        if (!runTriggers()) {
+            renderViewPort()
+        }
     }
 
     private val party get() = _state.value.game.party
@@ -197,10 +202,13 @@ class ViewConeDebugViewModel(
      * Plays the script of the square the party has stepped onto, which holds
      * the world for as long as it runs — it may walk the party about and wait
      * between steps, and nothing else may move meanwhile.
+     *
+     * @return false when there is no level to ask, so the caller still has the
+     *   view to draw.
      */
-    private fun runTriggers() {
-        val inf = _state.value.inf ?: return
-        val runner = scriptRunner ?: return
+    private fun runTriggers(): Boolean {
+        val inf = _state.value.inf ?: return false
+        val runner = scriptRunner ?: return false
 
         playing?.cancel()
         playing = viewModelScope.launch {
@@ -226,6 +234,7 @@ class ViewConeDebugViewModel(
                 )
             }
         }
+        return true
     }
 
     /**
