@@ -53,10 +53,10 @@ class PlayField(
                 from = portrait.cps,
                 sourceLeft = portrait.sourceLeft,
                 sourceTop = portrait.sourceTop,
-                width = portrait.width,
-                height = portrait.height,
-                left = portrait.left,
-                top = portrait.top,
+                width = portrait.goes.width,
+                height = portrait.goes.height,
+                left = portrait.goes.left,
+                top = portrait.goes.top,
             )
         }
 

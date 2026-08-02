@@ -19,11 +19,33 @@ data class DialogueScene(
         val cps: Cps,
         val sourceLeft: Int,
         val sourceTop: Int,
-        val width: Int,
-        val height: Int,
+        val goes: PictureFrame,
+    )
+
+    /**
+     * The two places a script can put a picture, and how much of the file each
+     * one takes. Both are the original's.
+     *
+     * A script names one of these per picture: whoever is speaking goes in the
+     * box inset in the dialogue frame, while a plate — the temple seen from the
+     * gate, a map — spans the screen above the speech instead of the frame.
+     */
+    enum class PictureFrame(
         val left: Int,
         val top: Int,
-    )
+        val width: Int,
+        val height: Int,
+    ) {
+        SPEAKER(left = 8, top = 8, width = 160, height = 96),
+        ACROSS_THE_TOP(left = 0, top = 0, width = 320, height = 121);
+
+        /** Nothing is drawn under a picture that covers where the frame goes. */
+        val insteadOfTheFrame: Boolean get() = width > FRAME_WIDTH
+
+        companion object {
+            fun of(rect: Int) = entries.getOrElse(rect) { SPEAKER }
+        }
+    }
 
     data class Button(
         val label: String,

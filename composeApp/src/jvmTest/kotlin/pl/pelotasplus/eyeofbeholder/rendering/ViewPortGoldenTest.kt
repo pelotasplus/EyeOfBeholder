@@ -12,7 +12,12 @@ import pl.pelotasplus.eyeofbeholder.data.RecordingStage
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptEvent
 import pl.pelotasplus.eyeofbeholder.data.model.ViewPort
 import pl.pelotasplus.eyeofbeholder.data.model.toImageBitmap
+import pl.pelotasplus.eyeofbeholder.data.model.DialogueScene
+import pl.pelotasplus.eyeofbeholder.data.model.DialogueTextId
+import pl.pelotasplus.eyeofbeholder.data.model.PlayField
 import pl.pelotasplus.eyeofbeholder.data.repository.CpsRepositoryImpl
+import pl.pelotasplus.eyeofbeholder.data.repository.DialogueTextRepositoryImpl
+import pl.pelotasplus.eyeofbeholder.data.repository.FontRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.DcrRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.DecRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.InfRepositoryImpl
@@ -173,8 +178,10 @@ class ViewPortGoldenTest {
     private fun checkGolden(name: String, level: String, x: Int, y: Int, direction: Direction) =
         checkGolden(name, renderFrame(level, x, y, direction))
 
-    private fun checkGolden(name: String, viewPort: ViewPort) {
-        val actual = viewPort.toImage()
+    private fun checkGolden(name: String, viewPort: ViewPort) =
+        checkGolden(name, viewPort.toImage())
+
+    private fun checkGolden(name: String, actual: BufferedImage) {
         val goldenFile = goldensDir.resolve("$name.png")
 
         if (updateGoldens) {
@@ -203,12 +210,106 @@ class ViewPortGoldenTest {
             ImageIO.write(actual, "png", actualFile)
             ImageIO.write(diffImage(golden, actual), "png", diffFile)
             fail(
-                "$name: $differing of ${ViewPort.COLS * ViewPort.ROWS} pixels differ from golden.\n" +
+                "$name: $differing of ${actual.width * actual.height} pixels differ from golden.\n" +
                         "  actual: ${actualFile.absolutePath}\n" +
                         "  diff:   ${diffFile.absolutePath}\n" +
                         "  If the change is intentional: UPDATE_GOLDENS=1 ./gradlew :composeApp:jvmTest"
             )
         }
+    }
+
+    /**
+     * The two places a script can put a picture: a speaker framed at the top
+     * left with the speech beside and below, and a plate across the whole
+     * width, which is drawn instead of the frame rather than inside it.
+     */
+    @Test
+    fun `dialogue with a speaker in the frame`() =
+        checkGolden(
+            "dialogue-speaker",
+            dialogueOver(
+                level = "LEVEL6.INF", x = 10, y = 2,
+                picture = "SOUT2.CPS", sourceLeft = 160, sourceTop = 0,
+                goes = DialogueScene.PictureFrame.SPEAKER,
+                textId = 28, buttons = listOf("leave", "attack"),
+            ),
+        )
+
+    @Test
+    fun `dialogue with a picture across the top`() =
+        checkGolden(
+            "dialogue-across-the-top",
+            dialogueOver(
+                level = "LEVEL4.INF", x = 15, y = 10,
+                picture = "DARKMOON.CPS", sourceLeft = 0, sourceTop = 0,
+                goes = DialogueScene.PictureFrame.ACROSS_THE_TOP,
+                textId = 18, buttons = listOf("yes", "no"),
+            ),
+        )
+
+    private fun dialogueOver(
+        level: String,
+        x: Int,
+        y: Int,
+        picture: String,
+        sourceLeft: Int,
+        sourceTop: Int,
+        goes: DialogueScene.PictureFrame,
+        textId: Int,
+        buttons: List<String>,
+    ): BufferedImage = runBlocking {
+        val resources = ResourceRepositoryImpl()
+        val cps = CpsRepositoryImpl(resources)
+        val repository = repository()
+        val inf = repository.loadLevel(level).getOrThrow()
+        val sublevel = inf.subLevels[0]
+
+        val viewPort = repository.renderPosition(
+            items = inf.items,
+            monsters = inf.monsterInstances,
+            sublevel = sublevel,
+            playerX = x,
+            playerY = y,
+            direction = Direction.NORTH,
+        ).getOrThrow()
+
+        val font = FontRepositoryImpl(resources).loadFont("FONT6.FNT").getOrThrow()
+        val speech = DialogueTextRepositoryImpl(resources).text(DialogueTextId(textId)).getOrThrow()
+
+        PlayField(
+            background = cps.loadCps("PLAYFLD.CPS").getOrThrow(),
+            decorations = cps.loadCps("DECORATE.CPS").getOrThrow(),
+            palette = sublevel.palette,
+            font = font,
+        ).render(
+            viewPort = viewPort,
+            direction = Direction.NORTH,
+            dialogue = DialogueScene.layout(
+                frame = cps.loadCps("BORDER.CPS").getOrThrow()
+                    .takeUnless { goes.insteadOfTheFrame },
+                portrait = DialogueScene.Picture(
+                    cps = cps.loadCps(picture).getOrThrow(),
+                    sourceLeft = sourceLeft,
+                    sourceTop = sourceTop,
+                    goes = goes,
+                ),
+                text = speech.first,
+                buttonLabels = buttons,
+                font = font,
+            ),
+        ).toImage()
+    }
+
+    private fun PlayField.toImage(): BufferedImage {
+        val image = BufferedImage(PlayField.WIDTH, PlayField.HEIGHT, BufferedImage.TYPE_INT_ARGB)
+        getRows().forEachIndexed { y, row ->
+            row.forEachIndexed { x, rgb ->
+                val argb = if (rgb.transparent) 0
+                else (0xFF shl 24) or (rgb.red shl 16) or (rgb.green shl 8) or rgb.blue
+                image.setRGB(x, y, argb)
+            }
+        }
+        return image
     }
 
     private fun repository(): ViewConeRepositoryImpl {

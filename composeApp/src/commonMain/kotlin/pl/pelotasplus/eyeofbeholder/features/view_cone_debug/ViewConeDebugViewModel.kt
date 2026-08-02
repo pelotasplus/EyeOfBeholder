@@ -303,8 +303,7 @@ class ViewConeDebugViewModel(
      *
      * Speakers are packed four to a file, and the instruction's x and y name the
      * corner to cut out — x in units of eight pixels, as the original counts
-     * them. Where it lands is not the script's business: the portrait always
-     * goes in the same place inside the frame.
+     * them — and its rect says which of the two places it goes.
      */
     private suspend fun sceneFor(
         scene: List<Dialog>,
@@ -327,17 +326,14 @@ class ViewConeDebugViewModel(
                         cps = cps,
                         sourceLeft = instruction.x * ViewPort.TILE_SIZE,
                         sourceTop = instruction.y,
-                        width = Cps.PORTRAIT_WIDTH,
-                        height = Cps.PORTRAIT_HEIGHT,
-                        left = DialogueScene.PORTRAIT_LEFT,
-                        top = DialogueScene.PORTRAIT_TOP,
+                        goes = DialogueScene.PictureFrame.of(instruction.rect),
                     )
                 }
         }
         speaker = portrait
 
         return DialogueScene.layout(
-            frame = dialogueFrame,
+            frame = dialogueFrame.takeUnless { portrait?.goes?.insteadOfTheFrame == true },
             portrait = portrait,
             text = text,
             buttonLabels = buttonLabels,
