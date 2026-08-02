@@ -7,6 +7,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.GameState
 import pl.pelotasplus.eyeofbeholder.data.model.LevelScriptRunner
 import pl.pelotasplus.eyeofbeholder.data.model.Location
+import pl.pelotasplus.eyeofbeholder.data.model.MessageId
 import pl.pelotasplus.eyeofbeholder.data.model.PartyState
 import pl.pelotasplus.eyeofbeholder.data.RecordingStage
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptEvent
@@ -247,6 +248,19 @@ class ViewPortGoldenTest {
             ),
         )
 
+    /** A script writing a line and holding the screen, with nothing to click. */
+    @Test
+    fun `dialogue with a line and nothing to click`() =
+        checkGolden(
+            "dialogue-said",
+            dialogueOver(
+                level = "LEVEL6.INF", x = 10, y = 2,
+                picture = "SOUT2.CPS", sourceLeft = 160, sourceTop = 0,
+                goes = DialogueScene.PictureFrame.SPEAKER,
+                message = 5,
+            ),
+        )
+
     private fun dialogueOver(
         level: String,
         x: Int,
@@ -255,8 +269,9 @@ class ViewPortGoldenTest {
         sourceLeft: Int,
         sourceTop: Int,
         goes: DialogueScene.PictureFrame,
-        textId: Int,
-        buttons: List<String>,
+        textId: Int? = null,
+        message: Int? = null,
+        buttons: List<String> = emptyList(),
     ): BufferedImage = runBlocking {
         val resources = ResourceRepositoryImpl()
         val cps = CpsRepositoryImpl(resources)
@@ -274,7 +289,13 @@ class ViewPortGoldenTest {
         ).getOrThrow()
 
         val font = FontRepositoryImpl(resources).loadFont("FONT6.FNT").getOrThrow()
-        val speech = DialogueTextRepositoryImpl(resources).text(DialogueTextId(textId)).getOrThrow()
+
+        // a question's words come from the shared text file; a line a script
+        // writes into the box is one of the level's own messages
+        val text = textId
+            ?.let { DialogueTextRepositoryImpl(resources).text(DialogueTextId(it)).getOrThrow().first }
+            ?: message?.let { inf.message(MessageId(it)) }
+            ?: ""
 
         PlayField(
             background = cps.loadCps("PLAYFLD.CPS").getOrThrow(),
@@ -293,7 +314,7 @@ class ViewPortGoldenTest {
                     sourceTop = sourceTop,
                     goes = goes,
                 ),
-                text = speech.first,
+                text = text,
                 buttonLabels = buttons,
                 font = font,
             ),
