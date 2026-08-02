@@ -37,6 +37,14 @@ value class DecorationId(val value: Int)
 value class MonsterTypeId(val value: Int)
 
 /**
+ * Which set of overlays a monster type wears, counting from 1 — a .DCR file
+ * holds several. Zero means the type wears none, which the parser reads as no
+ * id at all rather than as a set.
+ */
+@JvmInline
+value class MonsterDecorationSetId(val value: Int)
+
+/**
  * How many 2/3 shrink steps a sprite is drawn at, from [itemScaleSteps]. Also
  * the number of times its colors are remapped through
  * [Palette.distanceFadeTable], so distant sprites darken as they shrink — the

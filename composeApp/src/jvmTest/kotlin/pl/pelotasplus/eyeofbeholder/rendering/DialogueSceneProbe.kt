@@ -7,6 +7,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.DialogueTextId
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.PlayField
 import pl.pelotasplus.eyeofbeholder.data.repository.CpsRepositoryImpl
+import pl.pelotasplus.eyeofbeholder.data.repository.DcrRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.DecRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.DialogueTextRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.FontRepositoryImpl
@@ -38,6 +39,7 @@ class DialogueSceneProbe {
             ),
             itemsRepository = ItemsRepositoryImpl(resources),
             cpsRepository = cps,
+            dcrRepository = DcrRepositoryImpl(resources),
         )
 
         val inf = repository.loadLevel("LEVEL6.INF").getOrThrow()

@@ -2,17 +2,42 @@ package pl.pelotasplus.eyeofbeholder.data.model
 
 /**
  * One monster sprite sheet, cut into its six poses in each of the color
- * schemes the sheet carries.
+ * schemes the sheet carries, plus the overlay sets from its .DCR file.
  */
-class MonsterSheet(private val posesByColors: Map<MonsterColors, Map<MonsterPose, Cps.ItemIcon>>) {
+class MonsterSheet(
+    private val posesByColors: Map<MonsterColors, Map<MonsterPose, Cps.ItemIcon>>,
+    private val decorationSets: List<Map<MonsterPose, MonsterDecoration>> = emptyList(),
+) {
 
     fun pose(pose: MonsterPose, colors: MonsterColors): Cps.ItemIcon? =
         posesByColors[colors]?.get(pose)
+
+    /** Null where the set does not decorate this pose, or the sheet has no such set. */
+    fun decoration(set: MonsterDecorationSetId, pose: MonsterPose): MonsterDecoration? =
+        decorationSets.getOrNull(set.value - 1)?.get(pose)
 
     companion object {
         val EMPTY = MonsterSheet(emptyMap())
     }
 }
+
+/**
+ * An overlay drawn on top of a monster's pose, cut from the monster's own
+ * sheet.
+ *
+ * Unlike the pose underneath it, an overlay is never recolored — it arrives
+ * in the colors it was painted in, which is why a cleric whose body was
+ * repainted brown still wears blond hair.
+ *
+ * @property offsetX From the left edge of the drawn sprite; a mirrored sprite
+ *   measures it from the right edge instead
+ * @property offsetY From the top edge of the drawn sprite
+ */
+data class MonsterDecoration(
+    val frame: Cps.ItemIcon,
+    val offsetX: Int,
+    val offsetY: Int,
+)
 
 /**
  * Which of a sheet's three color schemes a monster wears.
@@ -32,13 +57,25 @@ enum class MonsterColors {
     }
 }
 
-/** Cuts the sheet's six poses out and recolors each of them into every scheme. */
-fun Cps.monsterSheet(gfx: MonsterGfx): MonsterSheet {
+/**
+ * Cuts the sheet's six poses out and recolors each of them into every scheme,
+ * then cuts the overlays [dcr] places on the same sheet.
+ */
+fun Cps.monsterSheet(gfx: MonsterGfx, dcr: Dcr? = null): MonsterSheet {
     val poses = monsterFrameRects[gfx.sizeClass].mapValues { (_, rect) -> cutFrame(rect) }
     return MonsterSheet(
-        MonsterColors.entries.associateWith { colors ->
+        posesByColors = MonsterColors.entries.associateWith { colors ->
             poses.mapValues { (pose, frame) -> frame.recolored(recolorTable(pose, colors)) }
-        }
+        },
+        decorationSets = dcr?.sets.orEmpty().map { set ->
+            set.mapValues { (_, placement) ->
+                MonsterDecoration(
+                    frame = cutFrame(placement.rect),
+                    offsetX = placement.offsetX,
+                    offsetY = placement.offsetY,
+                )
+            }
+        },
     )
 }
 

@@ -67,6 +67,7 @@ class ViewConeRepositoryImpl(
     private val infRepository: InfRepository,
     private val itemsRepository: ItemsRepository,
     private val cpsRepository: CpsRepository,
+    private val dcrRepository: DcrRepository,
 ) : ViewConeRepository {
 
     private var smallItemIcons: Cps? = null
@@ -236,11 +237,19 @@ class ViewConeRepositoryImpl(
     /** Loads and caches the near-size poses for each of the sublevel's sprite sheets. */
     private suspend fun loadMonsterSheets(sublevel: SubLevel): List<MonsterSheet> {
         return sublevel.monsterGfx.map { gfx ->
-            val cpsName = gfx.name.filter { it.code in 33..126 }.uppercase() + ".CPS"
-            monsterSheetCache.getOrPut(cpsName) {
-                cpsRepository.loadCps(cpsName)
-                    .map { cps -> cps.monsterSheet(gfx) }
-                    .onFailure { Logger.e(TAG) { "Failed to load monster sheet $cpsName: $it" } }
+            val baseName = gfx.name.filter { it.code in 33..126 }.uppercase()
+            monsterSheetCache.getOrPut(baseName) {
+                val dcr = if (gfx.hasDecorations) {
+                    dcrRepository.loadDcr("$baseName.DCR")
+                        .onFailure { Logger.e(TAG) { "Failed to load overlays for $baseName: $it" } }
+                        .getOrNull()
+                } else {
+                    null
+                }
+
+                cpsRepository.loadCps("$baseName.CPS")
+                    .map { cps -> cps.monsterSheet(gfx, dcr) }
+                    .onFailure { Logger.e(TAG) { "Failed to load monster sheet $baseName: $it" } }
                     .getOrDefault(MonsterSheet.EMPTY)
             }
         }
@@ -360,12 +369,19 @@ class ViewConeRepositoryImpl(
                 val facing = monsterFacing(direction, monster.direction)
                 val frame = sheet.pose(facing.pose, monster.colors) ?: continue
 
+                // the overlays go with the species, not with the instance
+                val decorations = sublevel.monsters
+                    .firstOrNull { it.id == monster.type.value }
+                    ?.decorations.orEmpty()
+                    .mapNotNull { sheet.decoration(it, facing.pose) }
+
                 viewPort.at(
                     DistanceFromParty.standingOnSquare(block.relativeX, block.relativeY),
                     hiddenByCloserThings = true,
                 ) {
                     viewPort.drawMonster(
                         frame = frame,
+                        decorations = decorations,
                         blockIndex = block.blockIndex,
                         subPosition = viewRelativeSubPosition(direction, monster.pos),
                         mirrored = facing.mirrored,

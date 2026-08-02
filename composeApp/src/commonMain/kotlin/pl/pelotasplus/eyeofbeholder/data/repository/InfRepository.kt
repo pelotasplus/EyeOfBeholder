@@ -13,6 +13,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.Item
 import pl.pelotasplus.eyeofbeholder.data.model.Location
 import pl.pelotasplus.eyeofbeholder.data.model.Trigger
 import pl.pelotasplus.eyeofbeholder.data.model.TriggerFlags
+import pl.pelotasplus.eyeofbeholder.data.model.MonsterDecorationSetId
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterGfx
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterInstance
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterTypeId
@@ -661,6 +662,8 @@ class InfRepositoryImpl(
             val dmgModifierEvade = reader.readU8()
 
             val decorations = List(3) { reader.readU8() }
+                .filter { it != 0 }
+                .map { MonsterDecorationSetId(it) }
 
             monsters.add(
                 MonsterProperty(

@@ -7,6 +7,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.ViewPort
 import pl.pelotasplus.eyeofbeholder.data.model.toImageBitmap
 import pl.pelotasplus.eyeofbeholder.data.repository.CpsRepositoryImpl
+import pl.pelotasplus.eyeofbeholder.data.repository.DcrRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.DecRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.InfRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.ItemsRepositoryImpl
@@ -187,6 +188,7 @@ class ViewPortGoldenTest {
                 ),
                 itemsRepository = ItemsRepositoryImpl(resources),
                 cpsRepository = cpsRepository,
+                dcrRepository = DcrRepositoryImpl(resources),
             )
 
             val inf = repository.loadLevel(level).getOrThrow()

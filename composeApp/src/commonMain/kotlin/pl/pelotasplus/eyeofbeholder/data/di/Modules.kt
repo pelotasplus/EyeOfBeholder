@@ -9,6 +9,8 @@ import pl.pelotasplus.eyeofbeholder.data.repository.DialogueTextRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.FontRepository
 import pl.pelotasplus.eyeofbeholder.data.repository.FontRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.DecRepository
+import pl.pelotasplus.eyeofbeholder.data.repository.DcrRepository
+import pl.pelotasplus.eyeofbeholder.data.repository.DcrRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.DecRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.InfRepository
 import pl.pelotasplus.eyeofbeholder.data.repository.InfRepositoryImpl
@@ -51,6 +53,9 @@ val sharedDataModule = module {
     factory<DecRepository> {
         DecRepositoryImpl(get())
     }
+    factory<DcrRepository> {
+        DcrRepositoryImpl(get())
+    }
     factory<InfRepository> {
         InfRepositoryImpl(get(), get(), get(), get(), get(), get(), get())
     }
@@ -64,6 +69,6 @@ val sharedDataModule = module {
         VmpRepositoryImpl(get())
     }
     factory<ViewConeRepository> {
-        ViewConeRepositoryImpl(get(), get(), get())
+        ViewConeRepositoryImpl(get(), get(), get(), get())
     }
 }

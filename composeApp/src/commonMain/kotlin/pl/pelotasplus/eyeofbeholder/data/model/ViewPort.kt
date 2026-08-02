@@ -460,6 +460,7 @@ class ViewPort(
      * Draws a monster pose at one of the visible blocks.
      *
      * @param frame Near-size pose cut from the sprite sheet
+     * @param decorations Overlays for this pose, drawn over the frame in order
      * @param blockIndex Visible-block index 0-17 into [blockScreenCoords]
      * @param subPosition View-relative sub-position: 0-3 (quadrant) or 4 (center)
      * @param mirrored Draw horizontally flipped (for right-facing side poses)
@@ -467,6 +468,7 @@ class ViewPort(
      */
     fun drawMonster(
         frame: Cps.ItemIcon,
+        decorations: List<MonsterDecoration>,
         blockIndex: Int,
         subPosition: Int,
         mirrored: Boolean,
@@ -474,13 +476,31 @@ class ViewPort(
     ) {
         Logger.d(TAG) { "drawMonster block=$blockIndex subPos=$subPosition mirrored=$mirrored scale=$scaleSteps" }
 
-        var icon = frame
-        repeat(scaleSteps.value) { icon = scaleDown(icon) }
+        val icon = frame.shrunk(scaleSteps)
 
         val coordIndex = (blockIndex * 5 + subPosition) * 2
         val startX = ScreenX(blockScreenCoords[coordIndex] + 88 - icon.w / 2)
         val startY = ScreenY(blockScreenCoords[coordIndex + 1] + 127 - icon.h)
 
+        blit(icon, startX, startY, mirrored, scaleSteps)
+
+        for (decoration in decorations) {
+            val overlay = decoration.frame.shrunk(scaleSteps)
+            val offsetX = decoration.offsetX.shrunk(scaleSteps)
+            val offsetY = decoration.offsetY.shrunk(scaleSteps)
+            // the offset is measured from whichever edge the sprite starts at
+            val left = if (mirrored) icon.w - offsetX - overlay.w else offsetX
+            blit(overlay, startX + left, startY + offsetY, mirrored, scaleSteps)
+        }
+    }
+
+    private fun blit(
+        icon: Cps.ItemIcon,
+        startX: ScreenX,
+        startY: ScreenY,
+        mirrored: Boolean,
+        scaleSteps: ScaleSteps,
+    ) {
         for (y in 0 until icon.h) {
             for (x in 0 until icon.w) {
                 val srcX = if (mirrored) icon.w - 1 - x else x
@@ -488,6 +508,19 @@ class ViewPort(
                 draw(startX + x, startY + y, palette.colorOrTransparent(pixel))
             }
         }
+    }
+
+    private fun Cps.ItemIcon.shrunk(scaleSteps: ScaleSteps): Cps.ItemIcon {
+        var icon = this
+        repeat(scaleSteps.value) { icon = scaleDown(icon) }
+        return icon
+    }
+
+    /** An offset shrinks by the same 2/3 a step as the sprite it belongs to. */
+    private fun Int.shrunk(scaleSteps: ScaleSteps): Int {
+        var value = this
+        repeat(scaleSteps.value) { value = value * 2 / 3 }
+        return value
     }
 
     private fun scaleDown(

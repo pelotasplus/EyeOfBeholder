@@ -34,7 +34,8 @@ package pl.pelotasplus.eyeofbeholder.data.model
  * @property sound2 Movement sound effect index
  * @property tuResist Turn undead resistance value
  * @property dmgModifierEvade Damage modifier / evasion chance
- * @property decorations Monster decoration indices for rendering (3 entries)
+ * @property decorations Which overlay sets a monster of this type wears, from
+ *   its sheet's .DCR file — up to three, and often none
  */
 data class MonsterProperty(
     val id: Int,
@@ -59,5 +60,5 @@ data class MonsterProperty(
     val remoteWeapons: List<Int>,
     val tuResist: Int, // turn undead resist
     val dmgModifierEvade: Int,
-    val decorations: List<Int>,
+    val decorations: List<MonsterDecorationSetId>,
 )
