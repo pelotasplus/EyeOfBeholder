@@ -12,6 +12,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.PaletteIndex
 import pl.pelotasplus.eyeofbeholder.data.model.PartyState
 import pl.pelotasplus.eyeofbeholder.data.RecordingStage
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptEvent
+import pl.pelotasplus.eyeofbeholder.data.model.TeleporterPulse
 import pl.pelotasplus.eyeofbeholder.data.model.ViewPort
 import pl.pelotasplus.eyeofbeholder.data.model.toImageBitmap
 import pl.pelotasplus.eyeofbeholder.data.model.DialogueScene
@@ -431,6 +432,42 @@ class ViewPortGoldenTest {
         )
 
     /**
+     * The other half of the teleporter's flicker. Nothing but the sparks may
+     * differ between this and `level5-button-clicked`.
+     */
+    @Test
+    fun `level5 teleporter on the other half of its pulse`() =
+        checkGolden(
+            "level5-teleporter-traded",
+            renderAfterClicking(
+                "LEVEL5.INF",
+                number = 5,
+                x = 10,
+                y = 8,
+                clicked = Location(9, 8),
+                pulse = TeleporterPulse.TRADED,
+            ),
+        )
+
+    /**
+     * The same teleporter a square further back, where it wears the middle of
+     * the three hazes. The corridor turns before the third, so the smallest
+     * haze has nowhere on this level to be seen from.
+     */
+    @Test
+    fun `level5 teleporter two squares back`() =
+        checkGolden(
+            "level5-teleporter-two-back",
+            renderAfterClicking(
+                "LEVEL5.INF",
+                number = 5,
+                x = 11,
+                y = 8,
+                clicked = Location(9, 8),
+            ),
+        )
+
+    /**
      * Renders what the party see, having clicked the wall of [clicked] if
      * anything — the click runs that square's script, which is what changes
      * the wall.
@@ -441,6 +478,7 @@ class ViewPortGoldenTest {
         x: Int,
         y: Int,
         clicked: Location?,
+        pulse: TeleporterPulse = TeleporterPulse.AS_LAID_OUT,
     ): ViewPort = runBlocking {
         val repository = repository()
         val inf = repository.loadLevel(level).getOrThrow()
@@ -470,6 +508,7 @@ class ViewPortGoldenTest {
             playerY = y,
             direction = Direction.WEST,
             wallAt = { at, side -> world.wall(number, at, side) },
+            pulse = pulse,
         ).getOrThrow()
     }
 

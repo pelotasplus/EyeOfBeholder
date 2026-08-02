@@ -442,6 +442,40 @@ class ViewPort(
         drawIcon(icon, startX, startY, fadeSteps = scaleSteps)
     }
 
+    /**
+     * Draws the sparks hanging over a teleporter square.
+     *
+     * Unlike everything else in the cone these are not scaled or faded with
+     * distance: each depth row has its own blobs cut at the size it needs.
+     *
+     * @param decorations DECORATE.CPS, which the blobs are cut from
+     * @param blockIndex Visible-block index 0-17 into [nicheItemX]
+     * @param dim Depth row 0-3; the party's own row shows nothing
+     * @param pulse Which half of the flicker to draw
+     */
+    fun drawTeleporter(
+        decorations: Cps,
+        blockIndex: Int,
+        dim: Int,
+        pulse: TeleporterPulse,
+    ) {
+        val haze = teleporterHazeAt(dim) ?: return
+        val left = nicheItemX[blockIndex] - haze.leftOfNiche
+
+        haze.clouds.forEachIndexed { index, cloud ->
+            val blob = haze.blobFor(index, pulse)
+            val icon = decorations.cut(blob.x, blob.y, blob.w, blob.h)
+
+            for (spark in cloud.sparks) {
+                drawIcon(
+                    icon,
+                    left + cloud.shiftedBy.dx + spark.dx,
+                    haze.top + cloud.shiftedBy.dy + spark.dy,
+                )
+            }
+        }
+    }
+
     private fun drawIcon(
         icon: Cps.ItemIcon,
         startX: ScreenX,

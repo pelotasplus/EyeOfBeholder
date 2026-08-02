@@ -48,6 +48,15 @@ data class Maz(
         return ret
     }
 
+    /**
+     * The square at [at], or null where there is none.
+     *
+     * The view cone reaches three squares ahead and three to the side, so
+     * standing near an edge of the maze asks about squares that are off it.
+     */
+    fun squareOrNull(at: Location): Square? =
+        if (at.x in 0 until width && at.y in 0 until height) this[at.x, at.y] else null
+
     data class Square(
         val x: Int,
         val y: Int,

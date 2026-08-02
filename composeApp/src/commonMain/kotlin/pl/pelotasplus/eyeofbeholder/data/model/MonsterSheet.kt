@@ -118,12 +118,5 @@ private fun Cps.ItemIcon.recolored(table: Map<PaletteIndex, PaletteIndex>): Cps.
     if (table.isEmpty()) this else copy(pixels = pixels.map { table[it] ?: it })
 
 /** Cuts one monster pose out of a sprite sheet CPS. */
-private fun Cps.cutFrame(rect: MonsterFrameRect): Cps.ItemIcon {
-    val out = ArrayList<PaletteIndex>(rect.w * rect.h)
-    for (y in rect.y until rect.y + rect.h) {
-        for (x in rect.x until rect.x + rect.w) {
-            out.add(pixels[y * width + x])
-        }
-    }
-    return Cps.ItemIcon(w = rect.w, h = rect.h, pixels = out)
-}
+private fun Cps.cutFrame(rect: MonsterFrameRect): Cps.ItemIcon =
+    cut(rect.x, rect.y, rect.w, rect.h)

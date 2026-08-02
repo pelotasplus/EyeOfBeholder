@@ -22,7 +22,9 @@ On failure, the actual frame and a red-highlighted diff mask are written to
   byte-identical pass proves the refactor changed nothing.
 - Commits and pushes always wait for explicit user approval.
 
-Current scenes: walls + floor item (`level7-start`), decorations
-(`level7-silver-tower`), niche item (`level6-temple`), stairs
-(`level1-stairs`), door with button (`level1-door`), plus a
-`toImageBitmap` pixel-equivalence test.
+The scenes are whatever sits in `composeApp/src/jvmTest/goldens/`; read the
+directory rather than a list here, which goes stale the first time one is
+added.
+
+A scene that is meant to move — a teleporter's flicker — is frozen at each of
+its phases and rendered from an explicit one, never from a clock.

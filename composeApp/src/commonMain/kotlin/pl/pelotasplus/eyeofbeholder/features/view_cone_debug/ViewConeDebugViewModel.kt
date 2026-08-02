@@ -24,7 +24,6 @@ import pl.pelotasplus.eyeofbeholder.data.model.ClickedWall
 import pl.pelotasplus.eyeofbeholder.data.model.LevelScriptRunner
 import pl.pelotasplus.eyeofbeholder.data.model.Maz
 import pl.pelotasplus.eyeofbeholder.data.model.WallSide
-import pl.pelotasplus.eyeofbeholder.data.model.getWall
 import pl.pelotasplus.eyeofbeholder.data.model.Location
 import pl.pelotasplus.eyeofbeholder.data.model.Palette
 import pl.pelotasplus.eyeofbeholder.data.model.PartyState
@@ -33,9 +32,12 @@ import pl.pelotasplus.eyeofbeholder.data.model.ScriptEvent
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptQuestion
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptSpeech
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptStage
+import pl.pelotasplus.eyeofbeholder.data.model.TELEPORTER_PULSE
+import pl.pelotasplus.eyeofbeholder.data.model.TeleporterPulse
 import pl.pelotasplus.eyeofbeholder.data.model.Ticks
 import pl.pelotasplus.eyeofbeholder.data.model.ViewPort
 import pl.pelotasplus.eyeofbeholder.data.model.levelNumber
+import pl.pelotasplus.eyeofbeholder.data.model.teleportersInView
 import pl.pelotasplus.eyeofbeholder.data.model.script.Dialog
 import pl.pelotasplus.eyeofbeholder.data.model.toImageBitmap
 import pl.pelotasplus.eyeofbeholder.data.repository.CpsRepository
@@ -60,6 +62,10 @@ class ViewConeDebugViewModel(
 
     /** The script holding the world, if one is running. */
     private var playing: Job? = null
+
+    /** Redrawing the view for a teleporter's flicker, while one is in sight. */
+    private var flickering: Job? = null
+    private var pulse = TeleporterPulse.AS_LAID_OUT
 
     /** The view as last drawn, which a script's words are written over. */
     private var drawn: ViewPort? = null
@@ -222,7 +228,9 @@ class ViewConeDebugViewModel(
         val ahead = Location(party.position.x + dx, party.position.y + dy)
         val facingUs = party.facing.transformWallSide(WallSide.SOUTH)
 
-        val wall = sublevel.maz[ahead.x, ahead.y].getWall(facingUs)
+        // the world's wall, not the file's: a wall a script has already opened
+        // is no longer the one with the button on it
+        val wall = _state.value.game.wall(levelNumber(inf.name), ahead, facingUs)
         if (wall !is Maz.WallType.Decoration) return
 
         val decoration = sublevel.decorations
@@ -491,6 +499,8 @@ class ViewConeDebugViewModel(
     private suspend fun drawViewPort() {
         val inf = _state.value.inf ?: return
         val sublevel = inf.subLevels[PLAYED_SUBLEVEL]
+        val level = levelNumber(inf.name)
+        val wallAt = { at: Location, side: WallSide -> _state.value.game.wall(level, at, side) }
 
         viewConeRepository.renderPosition(
             items = inf.items,
@@ -499,12 +509,41 @@ class ViewConeDebugViewModel(
             playerX = party.position.x,
             playerY = party.position.y,
             direction = party.facing,
-            wallAt = { at, side -> _state.value.game.wall(levelNumber(inf.name), at, side) },
+            wallAt = wallAt,
+            pulse = pulse,
         ).onSuccess { viewPort ->
             drawn = viewPort
             paint(viewPort, sublevel.palette)
         }.onFailure {
             Logger.e(it) { "Error while rendering position" }
+        }
+
+        keepFlickering(teleportersInView(party.position, party.facing, wallAt).isNotEmpty())
+    }
+
+    /**
+     * A teleporter in sight is the one thing on screen that moves without the
+     * party doing anything, so it needs a clock of its own — and must not have
+     * one when there is none in sight, or the scene is redrawn for ever.
+     */
+    private fun keepFlickering(anyInSight: Boolean) {
+        if (anyInSight == (flickering?.isActive == true)) return
+
+        flickering?.cancel()
+        flickering = if (!anyInSight) {
+            null
+        } else {
+            viewModelScope.launch {
+                while (true) {
+                    delay(TELEPORTER_PULSE.inMilliseconds)
+                    // a script owns the screen while it runs, and draws the
+                    // frames it wants seen itself
+                    if (playing?.isActive == true) continue
+
+                    pulse = pulse.next
+                    drawViewPort()
+                }
+            }
         }
     }
 

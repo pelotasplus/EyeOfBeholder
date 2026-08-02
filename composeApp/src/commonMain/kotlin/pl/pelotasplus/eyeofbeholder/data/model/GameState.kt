@@ -71,9 +71,6 @@ data class GameState(
     fun wallsChanged(level: Int, at: Location, to: WallByte) =
         copy(changedWalls = changedWalls + WallSide.entries.associate { WallAt(level, at, it) to to })
 
-    private fun Maz.squareOrNull(at: Location) =
-        if (at.x in 0 until width && at.y in 0 until height) this[at.x, at.y] else null
-
     /**
      * How many monsters stand on [location], at most seven.
      *

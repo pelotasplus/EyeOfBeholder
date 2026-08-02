@@ -15,10 +15,13 @@ import pl.pelotasplus.eyeofbeholder.data.model.MonsterSheet
 import pl.pelotasplus.eyeofbeholder.data.model.Door
 import pl.pelotasplus.eyeofbeholder.data.model.DoorIndex
 import pl.pelotasplus.eyeofbeholder.data.model.SubLevel
+import pl.pelotasplus.eyeofbeholder.data.model.TeleporterPulse
+import pl.pelotasplus.eyeofbeholder.data.model.ViewBlock
 import pl.pelotasplus.eyeofbeholder.data.model.ViewPort
 import pl.pelotasplus.eyeofbeholder.data.model.WallSet
 import pl.pelotasplus.eyeofbeholder.data.model.getWall
 import pl.pelotasplus.eyeofbeholder.data.model.itemScaleSteps
+import pl.pelotasplus.eyeofbeholder.data.model.teleportersInView
 import pl.pelotasplus.eyeofbeholder.data.model.viewBlockRows
 import pl.pelotasplus.eyeofbeholder.data.model.monsterFacing
 import pl.pelotasplus.eyeofbeholder.data.model.monsterSheet
@@ -59,6 +62,7 @@ interface ViewConeRepository {
     /**
      * @param wallAt what a square's side is now, which is not what the file
      *   says once a script has changed it. Defaults to the file.
+     * @param pulse which half of their flicker any teleporters in view show
      */
     suspend fun renderPosition(
         items: List<Item>,
@@ -68,8 +72,9 @@ interface ViewConeRepository {
         playerY: Int,
         direction: Direction,
         wallAt: (Location, WallSide) -> Maz.WallType = { at, side ->
-            sublevel.maz[at.x, at.y].getWall(side)
+            sublevel.maz.squareOrNull(at)?.getWall(side) ?: Maz.WallType.NoWall
         },
+        pulse: TeleporterPulse = TeleporterPulse.AS_LAID_OUT,
     ): Result<ViewPort>
 }
 
@@ -82,6 +87,7 @@ class ViewConeRepositoryImpl(
 
     private var smallItemIcons: Cps? = null
     private var largeItemIcons: Cps? = null
+    private var decorationShapes: Cps? = null
     private val monsterSheetCache = mutableMapOf<String, MonsterSheet>()
 
     private suspend fun getSmallItemIcons(): Cps {
@@ -96,6 +102,13 @@ class ViewConeRepositoryImpl(
         }
     }
 
+    /** The sheet the interface art is cut from, which also holds the teleporter blobs. */
+    private suspend fun getDecorations(): Cps {
+        return decorationShapes ?: cpsRepository.loadCps("DECORATE.CPS").getOrThrow().also {
+            decorationShapes = it
+        }
+    }
+
     override suspend fun renderPosition(
         items: List<Item>,
         monsters: List<MonsterInstance>,
@@ -104,6 +117,7 @@ class ViewConeRepositoryImpl(
         playerY: Int,
         direction: Direction,
         wallAt: (Location, WallSide) -> Maz.WallType,
+        pulse: TeleporterPulse,
     ): Result<ViewPort> {
         Logger.d(TAG) { "Render position $playerX x $playerY level ${sublevel.level}"}
 
@@ -117,17 +131,21 @@ class ViewConeRepositoryImpl(
         val smallIcons = getSmallItemIcons()
         val largeIcons = getLargeItemIcons()
         val monsterSheets = loadMonsterSheets(sublevel)
+        val teleporters = teleportersInView(Location(playerX, playerY), direction, wallAt)
+        val decorations = if (teleporters.isEmpty()) null else getDecorations()
 
         // Data-driven wall rendering using the viewSlots table
         viewSlots.forEachIndexed { wallPosition, slot ->
             // Items and monsters of a depth row draw after that row's walls
             // and before the next (nearer) row's walls, so closer walls
-            // occlude them. Items draw first so monsters stand in front.
+            // occlude them. Items draw first so monsters stand in front, and
+            // a teleporter's sparks hang in front of both.
             when (wallPosition) {
                 11, 18, 23 -> {
                     val relY = if (wallPosition == 11) -3 else if (wallPosition == 18) -2 else -1
                     drawItemsAtRow(relY, viewPort, items, smallIcons, largeIcons, sublevel, playerX, playerY, direction)
                     drawMonstersAtRow(relY, viewPort, monsters, monsterSheets, sublevel, playerX, playerY, direction)
+                    drawTeleportersAtRow(relY, viewPort, teleporters, decorations, pulse)
                 }
             }
             // Transform coordinates based on player direction
@@ -263,6 +281,31 @@ class ViewConeRepositoryImpl(
                     .map { cps -> cps.monsterSheet(gfx, dcr) }
                     .onFailure { Logger.e(TAG) { "Failed to load monster sheet $baseName: $it" } }
                     .getOrDefault(MonsterSheet.EMPTY)
+            }
+        }
+    }
+
+    private fun drawTeleportersAtRow(
+        relativeY: Int,
+        viewPort: ViewPort,
+        teleporters: List<ViewBlock>,
+        decorations: Cps?,
+        pulse: TeleporterPulse,
+    ) {
+        if (decorations == null) return
+
+        val dim = when (relativeY) {
+            -3 -> 0
+            -2 -> 1
+            else -> 2
+        }
+
+        for (block in teleporters.filter { it.relativeY == relativeY }) {
+            viewPort.at(
+                DistanceFromParty.standingOnSquare(block.relativeX, block.relativeY),
+                hiddenByCloserThings = true,
+            ) {
+                viewPort.drawTeleporter(decorations, block.blockIndex, dim, pulse)
             }
         }
     }

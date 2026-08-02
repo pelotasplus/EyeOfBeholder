@@ -52,6 +52,10 @@ data class Cps(
         }
     }
 
+    /** A rectangle of the sheet on its own, ready to be drawn. */
+    fun cut(x: Int, y: Int, w: Int, h: Int): ItemIcon =
+        ItemIcon(w = w, h = h, pixels = extractRect(x, y, w, h))
+
     private fun extractRect(x: Int, y: Int, w: Int, h: Int): List<PaletteIndex> {
         return buildList(w * h) {
             for (row in y until y + h) {
