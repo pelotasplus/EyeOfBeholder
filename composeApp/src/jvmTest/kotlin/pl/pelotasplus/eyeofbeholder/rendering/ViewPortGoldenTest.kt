@@ -8,6 +8,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.GameState
 import pl.pelotasplus.eyeofbeholder.data.model.LevelScriptRunner
 import pl.pelotasplus.eyeofbeholder.data.model.Location
 import pl.pelotasplus.eyeofbeholder.data.model.PartyState
+import pl.pelotasplus.eyeofbeholder.data.RecordingStage
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptEvent
 import pl.pelotasplus.eyeofbeholder.data.model.ViewPort
 import pl.pelotasplus.eyeofbeholder.data.model.toImageBitmap
@@ -99,6 +100,26 @@ class ViewPortGoldenTest {
         checkGolden(
             "level6-priest",
             renderAfterStepping("LEVEL6.INF", number = 6, x = 10, y = 2, direction = Direction.EAST),
+        )
+
+    /**
+     * Where the woman by level 4's temple door leaves the party after walking
+     * them up the corridor: four squares north of where they were, which the
+     * script draws one step at a time.
+     */
+    @Test
+    fun `level4 escorted to the temple door`() =
+        checkGolden(
+            "level4-escort",
+            renderAfterStepping(
+                "LEVEL4.INF",
+                number = 4,
+                x = 12,
+                y = 11,
+                direction = Direction.NORTH,
+                answers = listOf(1, 1),
+                frame = LAST_FRAME,
+            ),
         )
 
     @Test
@@ -211,9 +232,13 @@ class ViewPortGoldenTest {
     }
 
     /**
-     * Renders the world a square's trigger script leaves behind rather than
-     * the level as loaded, so a scene the party is walked into — a monster
-     * conjured, the party spun round — is drawn the way the player meets it.
+     * Renders the frame a square's trigger script puts up rather than the level
+     * as loaded, so a scene the party is walked into — a monster conjured, the
+     * party spun round to face it — is drawn the way the player meets it.
+     *
+     * A script says when it wants to be seen, so the frame drawn here is the
+     * one it drew first. Everything after that is the conversation, which a
+     * golden has no way to click through.
      */
     private fun renderAfterStepping(
         level: String,
@@ -221,10 +246,15 @@ class ViewPortGoldenTest {
         x: Int,
         y: Int,
         direction: Direction,
+        /** The buttons to click, in order, for a script that asks its way along. */
+        answers: List<Int> = emptyList(),
+        /** Which frame the script drew to render; [LAST_FRAME] takes its final one. */
+        frame: Int = 0,
     ): ViewPort = runBlocking {
         val repository = repository()
         val inf = repository.loadLevel(level).getOrThrow()
 
+        val stage = RecordingStage(answers)
         val stepped = LevelScriptRunner(inf.script, level = number).onEvent(
             triggers = inf.triggers,
             event = ScriptEvent.PARTY_ENTERED,
@@ -232,15 +262,18 @@ class ViewPortGoldenTest {
                 party = PartyState(Location(x, y), direction),
                 monsters = inf.monsterInstances,
             ),
+            stage = stage,
         )
+        val wanted = if (frame == LAST_FRAME) stage.shown.lastIndex else frame
+        val world = stage.shown.getOrNull(wanted) ?: stepped.state
 
         repository.renderPosition(
             items = inf.items,
-            monsters = stepped.state.monsters,
+            monsters = world.monsters,
             sublevel = inf.subLevels[0],
-            playerX = stepped.state.party.position.x,
-            playerY = stepped.state.party.position.y,
-            direction = stepped.state.party.facing,
+            playerX = world.party.position.x,
+            playerY = world.party.position.y,
+            direction = world.party.facing,
         ).getOrThrow()
     }
 
@@ -307,6 +340,9 @@ class ViewPortGoldenTest {
     }
 
     companion object {
+        /** Render the last frame a script drew rather than its first. */
+        private const val LAST_FRAME = -1
+
         // Gradle runs jvmTest with the subproject as working directory, but be
         // tolerant of an IDE launching from the repository root.
         private val projectDir: File = run {

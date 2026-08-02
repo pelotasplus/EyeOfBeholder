@@ -68,6 +68,7 @@ kotlin {
             implementation(libs.koin.compose.viewmodel)
             implementation(libs.kermit)
             implementation(libs.kotlinx.collections.immutable)
+            implementation(libs.kotlinx.coroutinesCore)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)

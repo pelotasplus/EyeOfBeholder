@@ -9,7 +9,6 @@ import pl.pelotasplus.eyeofbeholder.data.model.LevelScriptRunner
 import pl.pelotasplus.eyeofbeholder.data.model.Location
 import pl.pelotasplus.eyeofbeholder.data.model.PartyState
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptEvent
-import pl.pelotasplus.eyeofbeholder.data.model.ScriptStop
 import pl.pelotasplus.eyeofbeholder.data.model.entryPoints
 import pl.pelotasplus.eyeofbeholder.data.model.script.ClearFlag
 import pl.pelotasplus.eyeofbeholder.data.model.script.Conditional
@@ -80,7 +79,7 @@ class ScriptTraceProbe {
             ),
         )
         println("=== party ${stepped.state.party}")
-        println("=== stopped to ${stepped.stoppedTo}")
+        println("=== changed level to ${stepped.changeLevel}")
 
         println("=== who touches the global flags, across every level")
         (1..16).forEach { number ->
@@ -139,23 +138,19 @@ class ScriptTraceProbe {
             ),
         ))
 
-        val asked = stepped.stoppedTo
-        if (asked is ScriptStop.AskThePlayer) {
-            asked.buttons.forEachIndexed { index, id ->
-                println("=== button ${index + 1} = message $id '${inf.message(id)}'")
-            }
-            listOf(1, 2, 3).forEach { answer ->
-                println("=== answering $answer")
-                val after = LevelScriptRunner(inf.script).answer(
-                    resumeAt = asked.resumeAt,
-                    state = GameState(
-                        party = PartyState(Location(13, 9), Direction.NORTH),
-                        monsters = inf.monsterInstances,
-                    ),
-                    answer = DialogAnswer(answer),
-                )
-                println("=== answer $answer -> $after")
-            }
+        listOf(1, 2, 3).forEach { answer ->
+            val stage = RecordingStage(answers = listOf(answer))
+            val after = LevelScriptRunner(inf.script, level = 5).onEvent(
+                triggers = inf.triggers,
+                event = ScriptEvent.PARTY_ENTERED,
+                state = GameState(
+                    party = PartyState(Location(13, 9), Direction.NORTH),
+                    monsters = inf.monsterInstances,
+                ),
+                stage = stage,
+            )
+            println("=== answering $answer -> ${after.changeLevel ?: after.state.party}")
+            stage.beats.forEach { beat -> println("===   $beat") }
         }
     }
 }

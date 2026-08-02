@@ -4,6 +4,8 @@ import androidx.compose.runtime.Stable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import co.touchlab.kermit.Logger
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -27,8 +29,9 @@ import pl.pelotasplus.eyeofbeholder.data.model.PartyState
 import pl.pelotasplus.eyeofbeholder.data.model.PlayField
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptEvent
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptRun
-import pl.pelotasplus.eyeofbeholder.data.model.ScriptResumePoint
-import pl.pelotasplus.eyeofbeholder.data.model.ScriptStop
+import pl.pelotasplus.eyeofbeholder.data.model.ScriptQuestion
+import pl.pelotasplus.eyeofbeholder.data.model.ScriptStage
+import pl.pelotasplus.eyeofbeholder.data.model.Ticks
 import pl.pelotasplus.eyeofbeholder.data.model.ViewPort
 import pl.pelotasplus.eyeofbeholder.data.model.toImageBitmap
 import pl.pelotasplus.eyeofbeholder.data.repository.CpsRepository
@@ -51,10 +54,24 @@ class ViewConeDebugViewModel(
     private var scriptRunner: LevelScriptRunner? = null
     private var speaker: DialogueScene.Picture? = null
 
+    /** The script holding the world, if one is running. */
+    private var playing: Job? = null
+
+    /** What a script asked, waiting on the click that answers it. */
+    private val awaiting = PendingQuestion()
+
     private val _state = MutableStateFlow(State())
     val state = _state.asStateFlow()
 
     fun onEvent(event: Event) {
+        // A script moves the party itself and holds the world while it does,
+        // so steering is ignored until it lets go. Answering is not steering —
+        // it is what a script asking a question is waiting for.
+        if (playing?.isActive == true && event !is Event.DialogAnswered) {
+            Logger.d(TAG) { "Ignoring $event while a script is playing" }
+            return
+        }
+
         when (event) {
             is Event.Initialize -> onInitialize(
                 level = event.level,
@@ -170,58 +187,66 @@ class ViewConeDebugViewModel(
             y = (y ?: party.position.y).coerceAtLeast(0),
         )
         _state.update { it.copy(game = it.game.partyMovedTo(steppedTo)) }
-
-        if (!runTriggers(steppedTo)) {
-            renderViewPort()
-        }
+        renderViewPort()
+        runTriggers()
     }
 
     private val party get() = _state.value.game.party
 
-    /** @return true when the square's script took over, e.g. by changing level. */
-    private fun runTriggers(at: Location): Boolean {
-        val inf = _state.value.inf ?: return false
-        val runner = scriptRunner ?: return false
+    /**
+     * Plays the script of the square the party has stepped onto, which holds
+     * the world for as long as it runs — it may walk the party about and wait
+     * between steps, and nothing else may move meanwhile.
+     */
+    private fun runTriggers() {
+        val inf = _state.value.inf ?: return
+        val runner = scriptRunner ?: return
 
-        return applyRun(
-            runner.onEvent(
+        playing?.cancel()
+        playing = viewModelScope.launch {
+            val run = runner.onEvent(
                 triggers = inf.triggers,
                 event = ScriptEvent.PARTY_ENTERED,
                 state = _state.value.game,
+                stage = stage,
             )
-        )
+            _state.update { it.copy(game = run.state) }
+
+            val change = run.changeLevel
+            if (change == null) {
+                speaker = null
+                drawViewPort()
+            } else {
+                Logger.i(TAG) { "Changing to level ${change.level} at ${change.location}" }
+                onVmpSelected(
+                    name = "LEVEL${change.level}.INF",
+                    playerX = change.location.x,
+                    playerY = change.location.y,
+                    direction = change.direction,
+                )
+            }
+        }
     }
 
     /**
-     * @param answeredWith the answer the script is still running under, when
-     *   this came out of [onDialogAnswered] rather than a fresh square.
-     * @return true when the script took over the screen.
+     * The screen, from a running script's side.
+     *
+     * A script draws, waits and asks where it stands, so this is what it draws
+     * on, what holds its pauses, and what its question is put up as.
      */
-    private fun applyRun(
-        run: ScriptRun,
-        answeredWith: DialogAnswer? = null,
-    ): Boolean {
-        _state.update { it.copy(game = run.state) }
+    private val stage = object : ScriptStage {
 
-        return when (val stop = run.stoppedTo) {
-            is ScriptStop.ChangeLevel -> {
-                Logger.i(TAG) { "Changing to level ${stop.level} at ${stop.location}" }
-                onVmpSelected(
-                    name = "LEVEL${stop.level}.INF",
-                    playerX = stop.location.x,
-                    playerY = stop.location.y,
-                    direction = stop.direction
-                )
-                true
-            }
+        override suspend fun show(world: GameState) {
+            _state.update { it.copy(game = world) }
+            drawViewPort()
+        }
 
-            is ScriptStop.AskThePlayer -> {
-                Logger.i(TAG) { "Script is showing text ${stop.textId} with ${stop.buttons}" }
-                showDialog(stop, party.position, answeredWith = answeredWith)
-                true
-            }
+        override suspend fun hold(ticks: Ticks) = delay(ticks.inMilliseconds)
 
-            null -> false
+        override suspend fun ask(question: ScriptQuestion): DialogAnswer {
+            Logger.i(TAG) { "Script is showing text ${question.textId} with ${question.buttons}" }
+
+            return awaiting.ask { showDialog(question) }
         }
     }
 
@@ -229,47 +254,38 @@ class ViewConeDebugViewModel(
      * A script stopped to ask something. The speech comes from TEXT.DAT and
      * the button words from the level's own messages.
      */
-    private fun showDialog(
-        ask: ScriptStop.AskThePlayer,
-        at: Location,
-        answeredWith: DialogAnswer?,
-    ) {
+    private suspend fun showDialog(question: ScriptQuestion) {
         val inf = _state.value.inf ?: return
 
-        viewModelScope.launch {
-            val speech = dialogueTextRepository.text(ask.textId)
-                .onFailure { Logger.e(it) { "No dialogue text ${ask.textId}" } }
-                .getOrNull()
-                ?: DialogueText.EMPTY
+        val speech = dialogueTextRepository.text(question.textId)
+            .onFailure { Logger.e(it) { "No dialogue text ${question.textId}" } }
+            .getOrNull()
+            ?: DialogueText.EMPTY
 
-            val labels = ask.buttons.mapNotNull { inf.message(it) }
-            val unread = speech.pages.drop(1)
+        val labels = question.buttons.mapNotNull { inf.message(it) }
+        val unread = speech.pages.drop(1)
 
-            // the party's own line goes in the box above what it answers
-            val spoken = (ask.said.mapNotNull { inf.message(it) } + speech.first)
-                .filter { it.isNotBlank() }
-                .joinToString("\n") { party.fillIn(it) }
+        // the party's own line goes in the box above what it answers
+        val spoken = (question.said.mapNotNull { inf.message(it) } + speech.first)
+            .filter { it.isNotBlank() }
+            .joinToString("\n") { party.fillIn(it) }
 
-            _state.update {
-                it.copy(
-                    dialog = DialogPrompt(
-                        scene = sceneFor(
-                            scene = ask.scene,
-                            text = spoken,
-                            buttonLabels = if (unread.isEmpty()) labels else listOf(MORE),
-                            waitsToBeRead = unread.isNotEmpty() || ask.waitsToBeRead,
-                        ),
-                        resumeAt = ask.resumeAt,
-                        askedAt = at,
-                        answeredWith = answeredWith,
-                        unread = unread,
-                        buttons = labels,
-                        waitsToBeRead = ask.waitsToBeRead,
-                    )
+        _state.update {
+            it.copy(
+                dialog = DialogPrompt(
+                    scene = sceneFor(
+                        scene = question.scene,
+                        text = spoken,
+                        buttonLabels = if (unread.isEmpty()) labels else listOf(MORE),
+                        waitsToBeRead = unread.isNotEmpty() || question.waitsToBeRead,
+                    ),
+                    unread = unread,
+                    buttons = labels,
+                    waitsToBeRead = question.waitsToBeRead,
                 )
-            }
-            renderViewPort()
+            )
         }
+        drawViewPort()
     }
 
     /**
@@ -345,7 +361,6 @@ class ViewConeDebugViewModel(
 
     private fun onDialogAnswered(answer: DialogAnswer) {
         val dialog = _state.value.dialog ?: return
-        val runner = scriptRunner ?: return
 
         if (dialog.unread.isNotEmpty()) {
             turnThePage(dialog)
@@ -353,17 +368,7 @@ class ViewConeDebugViewModel(
         }
 
         _state.update { it.copy(dialog = null) }
-
-        val answered = dialog.answeredWith ?: answer
-        val result = runner.answer(
-            resumeAt = dialog.resumeAt,
-            state = _state.value.game,
-            answer = answered,
-        )
-        if (!applyRun(result, answeredWith = answered)) {
-            speaker = null
-            renderViewPort()
-        }
+        awaiting.answer(answer)
     }
 
     private fun onDirectionChanged(direction: Direction) {
@@ -372,11 +377,16 @@ class ViewConeDebugViewModel(
     }
 
     private fun renderViewPort() {
+        viewModelScope.launch { drawViewPort() }
+    }
+
+    /** Draws the view and waits for it, so a script can hold what it put up. */
+    private suspend fun drawViewPort() {
         val inf = _state.value.inf ?: return
         val background = playFieldBackground
         val decorations = decorations
 
-        viewModelScope.launch {
+        run {
             val sublevel = inf.subLevels[PLAYED_SUBLEVEL]
             viewConeRepository.renderPosition(
                 items = inf.items,
@@ -500,14 +510,6 @@ class ViewConeDebugViewModel(
     /** A question a script is waiting on, drawn as [scene] over the play field. */
     data class DialogPrompt(
         val scene: DialogueScene,
-        val resumeAt: ScriptResumePoint,
-        val askedAt: Location,
-        /**
-         * Set while the script is reading a reply back to the player. The
-         * script is still inside the branch [answeredWith] chose, so clicking
-         * "ok" has to hand it that same answer rather than the first button's.
-         */
-        val answeredWith: DialogAnswer? = null,
         /**
          * What the speaker has not said yet. While there is more, the button
          * turns the page instead of letting the script carry on.

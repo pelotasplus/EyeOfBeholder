@@ -57,6 +57,20 @@ value class ScaleSteps(val value: Int) {
 }
 
 /**
+ * A count of game timer ticks — the 18.2 Hz interrupt the DOS original paced
+ * everything by, one tick being 55 milliseconds.
+ *
+ * Scripts pause in these: a scripted walk moves the party a square and waits
+ * 15, which is the beat between its steps.
+ */
+@JvmInline
+value class Ticks(val value: Int) {
+    val inMilliseconds: Long get() = value.toLong() * MILLISECONDS_PER_TICK
+}
+
+private const val MILLISECONDS_PER_TICK = 55L
+
+/**
  * A horizontal pixel coordinate in the 176x120 [ViewPort], measured from its
  * left edge.
  *

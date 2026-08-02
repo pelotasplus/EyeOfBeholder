@@ -10,7 +10,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.LevelScriptRunner
 import pl.pelotasplus.eyeofbeholder.data.model.Location
 import pl.pelotasplus.eyeofbeholder.data.model.PartyState
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptEvent
-import pl.pelotasplus.eyeofbeholder.data.model.ScriptStop
+import pl.pelotasplus.eyeofbeholder.data.model.Ticks
 import pl.pelotasplus.eyeofbeholder.data.model.script.NewLevelOrMonster
 import pl.pelotasplus.eyeofbeholder.data.repository.CpsRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.DecRepositoryImpl
@@ -44,42 +44,42 @@ class LevelTransitionTest {
     }
 
     @Test
-    fun `the level 4 stairs ask before taking the party down`() {
+    fun `the level 4 stairs ask before taking the party down`() = runBlocking {
         val level = load("LEVEL4.INF")
-        val runner = LevelScriptRunner(level.script)
+        val stage = RecordingStage()
 
-        val stop = runner.onEvent(
+        LevelScriptRunner(level.script).onEvent(
             triggers = level.triggers,
             event = ScriptEvent.PARTY_ENTERED,
             state = GameState(PartyState(Location(15, 10), Direction.NORTH)),
-        ).stoppedTo
-
-        assertTrue(
-            stop is ScriptStop.AskThePlayer,
-            "expected entering (15,10) to ask the player, got $stop"
+            stage = stage,
         )
+
+        val question = stage.questions.firstOrNull()
+        assertTrue(question != null, "expected entering (15,10) to ask the player")
         assertEquals(
             listOf("yes", "no"),
-            stop.buttons.mapNotNull { level.message(it) },
+            question.buttons.mapNotNull { level.message(it) },
         )
     }
 
     @Test
-    fun `saying yes to the level 4 stairs goes down and saying no does not`() {
+    fun `saying yes to the level 4 stairs goes down and saying no does not`() = runBlocking {
         val level = load("LEVEL4.INF")
         val party = GameState(PartyState(Location(15, 10), Direction.NORTH))
-        val ask = LevelScriptRunner(level.script).onEvent(
-            level.triggers, ScriptEvent.PARTY_ENTERED, party,
-        ).stoppedTo as ScriptStop.AskThePlayer
 
-        val yes = LevelScriptRunner(level.script).answer(ask.resumeAt, party, DialogAnswer(1))
-        val goesDown = yes.stoppedTo
-        assertTrue(goesDown is ScriptStop.ChangeLevel, "yes should go down, got $goesDown")
+        val yes = LevelScriptRunner(level.script).onEvent(
+            level.triggers, ScriptEvent.PARTY_ENTERED, party, RecordingStage(answers = listOf(1)),
+        )
+        val goesDown = yes.changeLevel
+        assertTrue(goesDown != null, "yes should go down")
         assertEquals(5, goesDown.level)
         assertEquals(Location(14, 9), goesDown.location)
 
-        val no = LevelScriptRunner(level.script).answer(ask.resumeAt, party, DialogAnswer(2))
-        assertEquals(null, no.stoppedTo, "no should stay on this level")
+        val no = LevelScriptRunner(level.script).onEvent(
+            level.triggers, ScriptEvent.PARTY_ENTERED, party, RecordingStage(answers = listOf(2)),
+        )
+        assertEquals(null, no.changeLevel, "no should stay on this level")
         assertEquals(
             Location(16, 10),
             no.state.party.position,
@@ -87,19 +87,92 @@ class LevelTransitionTest {
         )
     }
 
+    /**
+     * Asking the woman by the temple to lead the party there is the game's
+     * longest scripted walk: four squares with a beat between each, her
+     * parting word, and a last step that puts the party on the door — which
+     * asks its own question, because arriving is arriving however you got
+     * there.
+     */
     @Test
-    fun `a trigger that does not react to entering stays silent`() {
+    fun `the level 4 woman walks the party to the temple door`() = runBlocking {
         val level = load("LEVEL4.INF")
-        val runner = LevelScriptRunner(level.script)
+
+        // inquire, then lead us, then read her word, then decline the door
+        val stage = RecordingStage(answers = listOf(1, 1, 1, 2))
+
+        val run = LevelScriptRunner(level.script, level = 4).onEvent(
+            level.triggers,
+            ScriptEvent.PARTY_ENTERED,
+            GameState(PartyState(Location(12, 11), Direction.NORTH), level.monsterInstances),
+            stage,
+        )
+
+        assertEquals(
+            listOf(Location(15, 14), Location(15, 13), Location(15, 12), Location(15, 11)),
+            stage.shown.map { it.party.position },
+            "she walks them a square at a time rather than putting them there",
+        )
+        assertEquals(List(4) { Ticks(15) }, stage.holds, "with a pause on each step")
+        assertEquals(
+            listOf(14, 16, 17, 18),
+            stage.questions.map { it.textId.number },
+            "she asks, answers, says where they are, and the door asks them in",
+        )
+        assertEquals(null, run.changeLevel, "declining the door stays on this level")
+        assertEquals(
+            Location(15, 11),
+            run.state.party.position,
+            "and leaves the party standing in front of it, not back in the wood",
+        )
+    }
+
+    /**
+     * The staircase down from level 6 tests which way the party face before it
+     * lets them past: they must be looking down it. Anyone who wanders on
+     * sideways is put back on the square they came from.
+     */
+    @Test
+    fun `the level 6 staircase only takes the party who face it`() = runBlocking {
+        val level = load("LEVEL6.INF")
+        val onTheStairs = Location(10, 4)
+
+        suspend fun step(facing: Direction) = LevelScriptRunner(level.script, level = 6).onEvent(
+            level.triggers,
+            ScriptEvent.PARTY_ENTERED,
+            GameState(PartyState(onTheStairs, facing), level.monsterInstances),
+        )
+
+        val down = step(Direction.SOUTH)
+        assertEquals(5, down.changeLevel?.level, "facing down the stairs goes down them")
+        assertEquals(Location(10, 7), down.changeLevel?.location)
+        assertEquals(Direction.SOUTH, down.changeLevel?.direction)
+
+        Direction.entries.filter { it != Direction.SOUTH }.forEach { facing ->
+            val turned = step(facing)
+            assertEquals(null, turned.changeLevel, "facing $facing should not go down")
+            assertEquals(
+                Location(10, 3),
+                turned.state.party.position,
+                "facing $facing should be put back off the stairs",
+            )
+        }
+    }
+
+    @Test
+    fun `a trigger that does not react to entering stays silent`() = runBlocking {
+        val level = load("LEVEL4.INF")
+        val stage = RecordingStage()
 
         // (17,4) has flags 0x0: it reacts to a wall click, not to the party
-        val run = runner.onEvent(
+        LevelScriptRunner(level.script).onEvent(
             triggers = level.triggers,
             event = ScriptEvent.PARTY_ENTERED,
             state = GameState(PartyState(Location(17, 4), Direction.NORTH)),
+            stage = stage,
         )
 
-        assertEquals(null, run.stoppedTo)
+        assertEquals(emptyList(), stage.beats)
     }
 
     /**
@@ -107,23 +180,27 @@ class LevelTransitionTest {
      * script asks by counting the monsters standing on their square.
      */
     @Test
-    fun `the level 5 encounter speaks only while its monsters are alive`() {
+    fun `the level 5 encounter speaks only while its monsters are alive`() = runBlocking {
         val level = load("LEVEL5.INF")
         val party = PartyState(Location(13, 9), Direction.NORTH)
 
-        val alive = LevelScriptRunner(level.script).onEvent(
+        val alive = RecordingStage()
+        LevelScriptRunner(level.script).onEvent(
             level.triggers,
             ScriptEvent.PARTY_ENTERED,
             GameState(party, level.monsterInstances),
-        ).stoppedTo
-        assertTrue(alive is ScriptStop.AskThePlayer, "expected a question, got $alive")
+            alive,
+        )
+        assertTrue(alive.questions.isNotEmpty(), "expected a question")
 
-        val killed = LevelScriptRunner(level.script).onEvent(
+        val killed = RecordingStage()
+        LevelScriptRunner(level.script).onEvent(
             level.triggers,
             ScriptEvent.PARTY_ENTERED,
             GameState(party, monsters = emptyList()),
+            killed,
         )
-        assertEquals(null, killed.stoppedTo)
+        assertEquals(emptyList(), killed.questions)
     }
 
     /**
@@ -132,7 +209,7 @@ class LevelTransitionTest {
      * not one flag saying "done".
      */
     @Test
-    fun `every way in to the level 5 clerics speaks once`() {
+    fun `every way in to the level 5 clerics speaks once`() = runBlocking {
         val level = load("LEVEL5.INF")
         val runner = LevelScriptRunner(level.script, level = 5)
 
@@ -141,48 +218,55 @@ class LevelTransitionTest {
             level.monsterInstances,
         )
 
-        fun stepOnto(x: Int, y: Int): ScriptStop? {
+        suspend fun stepOnto(x: Int, y: Int): Boolean {
+            val stage = RecordingStage()
             val run = runner.onEvent(
                 level.triggers,
                 ScriptEvent.PARTY_ENTERED,
                 state.copy(party = state.party.copy(position = Location(x, y))),
+                stage,
             )
             state = run.state
-            return run.stoppedTo
+            return stage.questions.isNotEmpty()
         }
 
         val ways = listOf(13 to 9, 13 to 11, 11 to 9)
 
         ways.forEach { (x, y) ->
-            assertTrue(
-                stepOnto(x, y) is ScriptStop.AskThePlayer,
-                "approaching from ${x}x$y should speak",
-            )
+            assertTrue(stepOnto(x, y), "approaching from ${x}x$y should speak")
         }
 
-        assertEquals(null, stepOnto(13, 9), "the same way in should not speak twice")
+        assertTrue(!stepOnto(13, 9), "the same way in should not speak twice")
 
         // and none of them waits on another having spoken first
         ways.forEach { (x, y) ->
-            val fresh = LevelScriptRunner(level.script, level = 5)
+            val stage = RecordingStage()
+            LevelScriptRunner(level.script, level = 5).onEvent(
+                level.triggers,
+                ScriptEvent.PARTY_ENTERED,
+                GameState(PartyState(Location(x, y), Direction.NORTH), level.monsterInstances),
+                stage,
+            )
             assertTrue(
-                fresh.onEvent(
-                    level.triggers,
-                    ScriptEvent.PARTY_ENTERED,
-                    GameState(PartyState(Location(x, y), Direction.NORTH), level.monsterInstances),
-                ).stoppedTo is ScriptStop.AskThePlayer,
+                stage.questions.isNotEmpty(),
                 "approaching from ${x}x$y first should speak",
             )
         }
 
         // leaving the level and coming back does not make them greet the party
         // again: the flags belong to the game, not to the runner
-        val returned = LevelScriptRunner(level.script, level = 5).onEvent(
+        val returned = RecordingStage()
+        LevelScriptRunner(level.script, level = 5).onEvent(
             level.triggers,
             ScriptEvent.PARTY_ENTERED,
             state.copy(party = state.party.copy(position = Location(13, 9))),
+            returned,
         )
-        assertEquals(null, returned.stoppedTo, "the clerics should stay quiet on a return visit")
+        assertEquals(
+            emptyList(),
+            returned.questions,
+            "the clerics should stay quiet on a return visit",
+        )
     }
 
     /**
@@ -191,29 +275,30 @@ class LevelTransitionTest {
      * conversation ends.
      */
     @Test
-    fun `the level 5 clerics reply and wait to be read`() {
+    fun `the level 5 clerics reply and wait to be read`() = runBlocking {
         val level = load("LEVEL5.INF")
         val state = GameState(
             PartyState(Location(13, 9), Direction.NORTH),
             level.monsterInstances,
         )
-        val runner = LevelScriptRunner(level.script)
+        val stage = RecordingStage(answers = listOf(1))
 
-        val ask = runner.onEvent(level.triggers, ScriptEvent.PARTY_ENTERED, state)
-            .stoppedTo as ScriptStop.AskThePlayer
+        LevelScriptRunner(level.script)
+            .onEvent(level.triggers, ScriptEvent.PARTY_ENTERED, state, stage)
+
+        val (ask, reply) = stage.questions
         assertEquals(
             listOf("inquire", "attack", "leave"),
             ask.buttons.mapNotNull { level.message(it) },
         )
 
-        val reply = runner.answer(ask.resumeAt, state, DialogAnswer(1)).stoppedTo
-        assertTrue(reply is ScriptStop.AskThePlayer, "inquiring should reply, got $reply")
         assertEquals(DialogueTextId(23), reply.textId)
         assertEquals(listOf("ok"), reply.buttons.mapNotNull { level.message(it) })
+        assertTrue(reply.waitsToBeRead, "the reply is read, not answered")
 
         assertEquals(
-            null,
-            runner.answer(reply.resumeAt, state, DialogAnswer(1)).stoppedTo,
+            2,
+            stage.questions.size,
             "reading the reply should end the conversation",
         )
     }
@@ -223,24 +308,21 @@ class LevelTransitionTest {
      * that has been read does Nadia answer, on a box drawn clean.
      */
     @Test
-    fun `taking leave of the level 5 clerics prints the party's line first`() {
+    fun `taking leave of the level 5 clerics prints the party's line first`() = runBlocking {
         val level = load("LEVEL5.INF")
         val party = PartyState(Location(13, 9), Direction.NORTH)
         val state = GameState(party, level.monsterInstances)
-        val runner = LevelScriptRunner(level.script)
+        val stage = RecordingStage(answers = listOf(3))
 
-        val ask = runner.onEvent(level.triggers, ScriptEvent.PARTY_ENTERED, state)
-            .stoppedTo as ScriptStop.AskThePlayer
+        LevelScriptRunner(level.script)
+            .onEvent(level.triggers, ScriptEvent.PARTY_ENTERED, state, stage)
 
-        val asked = runner.answer(ask.resumeAt, state, DialogAnswer(3))
-            .stoppedTo as ScriptStop.AskThePlayer
+        val (_, asked, replied) = stage.questions
         assertEquals(
             listOf("""Alex: "may we rest a moment in your temple?""""),
             asked.said.mapNotNull { level.message(it) }.map { party.fillIn(it).trim() },
         )
 
-        val replied = runner.answer(asked.resumeAt, state, DialogAnswer(3))
-            .stoppedTo as ScriptStop.AskThePlayer
         assertEquals(DialogueTextId(24), replied.textId)
         assertTrue(
             replied.said.isEmpty(),

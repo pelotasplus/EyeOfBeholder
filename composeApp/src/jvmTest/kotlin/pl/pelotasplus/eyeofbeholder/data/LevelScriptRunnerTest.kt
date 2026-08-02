@@ -11,8 +11,10 @@ import pl.pelotasplus.eyeofbeholder.data.model.LevelScriptRunner
 import pl.pelotasplus.eyeofbeholder.data.model.Location
 import pl.pelotasplus.eyeofbeholder.data.model.PartyState
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptEvent
+import pl.pelotasplus.eyeofbeholder.data.model.ChangeLevel
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptRun
-import pl.pelotasplus.eyeofbeholder.data.model.ScriptStop
+import pl.pelotasplus.eyeofbeholder.data.model.ScriptStage
+import pl.pelotasplus.eyeofbeholder.data.model.Ticks
 import pl.pelotasplus.eyeofbeholder.data.model.Trigger
 import pl.pelotasplus.eyeofbeholder.data.model.TriggerFlags
 import pl.pelotasplus.eyeofbeholder.data.model.script.Conditional
@@ -30,6 +32,9 @@ import pl.pelotasplus.eyeofbeholder.data.model.script.ScriptOffset
 import pl.pelotasplus.eyeofbeholder.data.model.script.ScriptToken
 import pl.pelotasplus.eyeofbeholder.data.model.script.SetWall
 import pl.pelotasplus.eyeofbeholder.data.model.script.Teleport
+import pl.pelotasplus.eyeofbeholder.data.model.script.UpdateScreen
+import pl.pelotasplus.eyeofbeholder.data.model.script.Wait
+import kotlinx.coroutines.runBlocking
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -70,13 +75,13 @@ class LevelScriptRunnerTest {
     }
 
     @Test
-    fun `a trigger on another square is ignored`() {
+    fun `a trigger on another square is ignored`() = runBlocking {
         val runner = LevelScriptRunner(listOf(Script(ScriptOffset(0), changeLevelToken(5))))
         val trigger = Trigger(Location(9, 9), TriggerFlags(0x08), Script(ScriptOffset(0), changeLevelToken(5)))
 
         assertEquals(
             null,
-            runner.onEvent(listOf(trigger), ScriptEvent.PARTY_ENTERED, party()).stoppedTo
+            runner.onEvent(listOf(trigger), ScriptEvent.PARTY_ENTERED, party()).changeLevel
         )
     }
 
@@ -161,7 +166,7 @@ class LevelScriptRunnerTest {
     fun `move party puts the party on the destination`() {
         val run = runFully(0 to Teleport.MoveParty(Location(0, 0), Location(7, 8)))
         assertEquals(Location(7, 8), run.state.party.position)
-        assertEquals(null, run.stoppedTo)
+        assertEquals(null, run.changeLevel)
     }
 
     @Test
@@ -215,7 +220,7 @@ class LevelScriptRunnerTest {
             facing = Direction.NORTH,
         )
         assertEquals(Direction.SOUTH, run.state.party.facing)
-        assertTrue(run.stoppedTo is ScriptStop.ChangeLevel)
+        assertEquals(changeToLevel(6), run.changeLevel)
     }
 
     @Test
@@ -236,8 +241,7 @@ class LevelScriptRunnerTest {
     @Test
     fun `the direction from the script is carried through`() {
         val outcome = run(0 to changeLevelToken(5, Direction.WEST))
-        assertTrue(outcome is ScriptStop.ChangeLevel)
-        assertEquals(Direction.WEST, outcome.direction)
+        assertEquals(Direction.WEST, outcome?.direction)
     }
 
     // --- helpers -------------------------------------------------------------
@@ -250,7 +254,7 @@ class LevelScriptRunnerTest {
             direction = direction,
         )
 
-    private fun changeToLevel(level: Int) = ScriptStop.ChangeLevel(
+    private fun changeToLevel(level: Int) = ChangeLevel(
         level = level,
         subLevel = 0,
         location = Location(14, 9),
@@ -297,28 +301,164 @@ class LevelScriptRunnerTest {
 
     @Test
     fun `a subroutine that asks still returns once the player has answered`() {
-        val script = arrayOf(
+        // the calls a script is inside outlive the question it stopped at,
+        // because they are the interpreter's own and never leave it
+        val outcome = run(
             0 to GoSub(ScriptOffset(100)),
             10 to changeLevelToken(5),
-            100 to Dialog.RunDialog(
-                DialogueTextId(1),
-                MessageId(0),
-                MessageId(1),
-                MessageId(2),
-            ),
+            100 to askSomething(),
             110 to Return,
         )
-        val asked = runFully(*script).stoppedTo as ScriptStop.AskThePlayer
+        assertEquals(changeToLevel(5), outcome)
+    }
 
-        val runner = LevelScriptRunner(
-            script.map { (offset, token) -> Script(ScriptOffset(offset), token) }
+    // --- showing the work ----------------------------------------------------
+
+    @Test
+    fun `a wait holds the screen for as many ticks as the script asks`() {
+        val stage = RecordingStage()
+
+        runFully(
+            0 to Wait(15),
+            10 to Wait(40),
+            20 to End,
+            stage = stage,
+        )
+
+        assertEquals(listOf(Ticks(15), Ticks(40)), stage.holds)
+    }
+
+    @Test
+    fun `the party is shown where the script has moved it to`() {
+        val stage = RecordingStage()
+
+        runFully(
+            0 to Teleport.MoveParty(Location(0, 0), Location(7, 8)),
+            10 to UpdateScreen,
+            20 to End,
+            stage = stage,
+        )
+
+        assertEquals(listOf(Location(7, 8)), stage.shown.map { it.party.position })
+    }
+
+    @Test
+    fun `an escort draws every step it takes, in order`() {
+        val stage = RecordingStage()
+
+        runFully(
+            0 to Teleport.MoveParty(Location(0, 0), Location(15, 14)),
+            10 to UpdateScreen,
+            20 to Wait(15),
+            30 to Teleport.MoveParty(Location(0, 0), Location(15, 13)),
+            40 to UpdateScreen,
+            50 to Wait(15),
+            60 to End,
+            stage = stage,
+        )
+
+        assertEquals(
+            listOf(
+                RecordingStage.Beat.Shown(party().partyMovedTo(Location(15, 14))),
+                RecordingStage.Beat.Held(Ticks(15)),
+                RecordingStage.Beat.Shown(party().partyMovedTo(Location(15, 13))),
+                RecordingStage.Beat.Held(Ticks(15)),
+            ),
+            stage.beats,
+        )
+    }
+
+    @Test
+    fun `a speech acknowledged does not become the answer the script tests`() {
+        // clicking "ok" on a reply hands back the first button, which must not
+        // stand in for the answer the branch was chosen with
+        val stage = RecordingStage(answers = listOf(2))
+
+        val outcome = runFully(
+            0 to askSomething(),
+            10 to Dialog.DialogText(DialogueTextId(2), MessageId(4)),
+            20 to Eval(
+                listOf(
+                    Conditional.DialogResult,
+                    Conditional.ImmediateShort(2),
+                    Conditional.Equals,
+                ),
+                goto = ScriptOffset(40),
+            ),
+            30 to changeLevelToken(5),
+            40 to changeLevelToken(9),
+            stage = stage,
+        ).changeLevel
+
+        assertEquals(changeToLevel(5), outcome)
+    }
+
+    @Test
+    fun `what the script wrote into the box goes up with the question`() {
+        val stage = RecordingStage()
+
+        runFully(
+            0 to Message(MessageId(7), color = 0),
+            10 to askSomething(),
+            20 to End,
+            stage = stage,
+        )
+
+        assertEquals(listOf(MessageId(7)), stage.questions.single().said)
+    }
+
+    private fun askSomething() = Dialog.RunDialog(
+        DialogueTextId(1),
+        MessageId(0),
+        MessageId(1),
+        MessageId(2),
+    )
+
+    // --- arriving somewhere a script put you ---------------------------------
+
+    @Test
+    fun `a script that moves the party runs what is on the square they land on`() = runBlocking {
+        val there = Location(9, 9)
+        val instructions = listOf(
+            Script(ScriptOffset(0), Teleport.MoveParty(Location(0, 0), there)),
+            Script(ScriptOffset(10), End),
+            Script(ScriptOffset(100), changeLevelToken(5)),
+        )
+        val runner = LevelScriptRunner(instructions)
+        val triggers = listOf(
+            Trigger(here, TriggerFlags(0x08), instructions[0]),
+            Trigger(there, TriggerFlags(0x08), instructions[2]),
         )
 
         assertEquals(
             changeToLevel(5),
-            runner.answer(asked.resumeAt, party(), DialogAnswer(1)).stoppedTo,
+            runner.onEvent(triggers, ScriptEvent.PARTY_ENTERED, party()).changeLevel,
         )
     }
+
+    @Test
+    fun `squares that push the party at each other give up rather than recur for ever`() =
+        runBlocking {
+            val there = Location(9, 9)
+            val instructions = listOf(
+                Script(ScriptOffset(0), Teleport.MoveParty(Location(0, 0), there)),
+                Script(ScriptOffset(10), End),
+                Script(ScriptOffset(100), Teleport.MoveParty(Location(0, 0), here)),
+                Script(ScriptOffset(110), End),
+            )
+            val runner = LevelScriptRunner(instructions)
+            val triggers = listOf(
+                Trigger(here, TriggerFlags(0x08), instructions[0]),
+                Trigger(there, TriggerFlags(0x08), instructions[2]),
+            )
+
+            val run = runner.onEvent(triggers, ScriptEvent.PARTY_ENTERED, party())
+
+            assertTrue(
+                run.state.party.position in listOf(here, there),
+                "it should stop somewhere, and it stopped at ${run.state.party.position}",
+            )
+        }
 
     // --- what a script leaves behind ----------------------------------------
 
@@ -351,17 +491,18 @@ class LevelScriptRunnerTest {
     private fun run(
         vararg script: Pair<Int, ScriptToken>,
         facing: Direction = Direction.NORTH,
-    ): ScriptStop? = runFully(*script, facing = facing).stoppedTo
+    ): ChangeLevel? = runFully(*script, facing = facing).changeLevel
 
     private fun runFully(
         vararg script: Pair<Int, ScriptToken>,
         facing: Direction = Direction.NORTH,
         world: GameState = party(facing),
-    ): ScriptRun {
+        stage: ScriptStage = ScriptStage.silent(),
+    ): ScriptRun = runBlocking {
         val instructions = script.map { (offset, token) -> Script(ScriptOffset(offset), token) }
         val runner = LevelScriptRunner(instructions)
         val trigger = Trigger(here, TriggerFlags(0x08), instructions.first())
-        return runner.onEvent(listOf(trigger), ScriptEvent.PARTY_ENTERED, world)
+        runner.onEvent(listOf(trigger), ScriptEvent.PARTY_ENTERED, world, stage)
     }
 
     private fun spawnAt(location: Location) = CreateMonster(
@@ -377,11 +518,11 @@ class LevelScriptRunnerTest {
         pocketItem = 0,
     )
 
-    private fun fire(flags: Int, event: ScriptEvent): ScriptStop? {
+    private fun fire(flags: Int, event: ScriptEvent): ChangeLevel? = runBlocking {
         val instruction = Script(ScriptOffset(0), changeLevelToken(5))
         val runner = LevelScriptRunner(listOf(instruction))
-        return runner
+        runner
             .onEvent(listOf(Trigger(here, TriggerFlags(flags), instruction)), event, party())
-            .stoppedTo
+            .changeLevel
     }
 }

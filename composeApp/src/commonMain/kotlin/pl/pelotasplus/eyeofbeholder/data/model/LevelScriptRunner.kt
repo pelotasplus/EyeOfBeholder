@@ -16,83 +16,92 @@ import pl.pelotasplus.eyeofbeholder.data.model.script.ScriptOffset
 import pl.pelotasplus.eyeofbeholder.data.model.script.SetFlag
 import pl.pelotasplus.eyeofbeholder.data.model.script.SetWall
 import pl.pelotasplus.eyeofbeholder.data.model.script.Teleport
+import pl.pelotasplus.eyeofbeholder.data.model.script.UpdateScreen
+import pl.pelotasplus.eyeofbeholder.data.model.script.Wait
 import kotlin.jvm.JvmInline
 
 /**
- * What came of running a trigger script: the world it left behind, and what it
- * stopped for, if it stopped at all.
+ * What came of running a trigger script: the world it left behind, and the
+ * one thing it can end by asking for.
  *
- * A script moves and turns the party as it goes and may stop part way through,
- * so the two cannot be reported separately — [state] is the world as of
- * wherever it got to, whether or not it reached the end.
+ * A script moves and turns the party as it goes, so [state] is the world as of
+ * wherever it got to.
  */
 data class ScriptRun(
     val state: GameState,
-    /** null when the script simply ran out. */
-    val stoppedTo: ScriptStop? = null,
+    /** Set when the script ended by sending the party to another level. */
+    val changeLevel: ChangeLevel? = null,
+)
+
+/** The party is to leave for another level, which ends the script. */
+data class ChangeLevel(
+    val level: Int,
+    val subLevel: Int,
+    val location: Location,
+    val direction: Direction?,
 )
 
 /**
- * Where a script that stopped picks up again.
+ * A question a script has put on screen and is waiting to have clicked.
  *
- * A script can be several subroutine calls deep when it stops to ask
- * something, and the answer arrives long after — so the calls it was inside
- * travel with the place to carry on from. Without them a [Return] taken after
- * an answer would find nothing to return to and end the script where the
- * caller still had work left: a subroutine that asks and returns is how most
- * of the game's conversations are written.
+ * [buttons] is what may be clicked: three answers to a question, or the single
+ * word — usually "ok" — that acknowledges a speech. A script sets its scene one
+ * instruction at a time (clear the view, draw who is speaking, draw the frame)
+ * and only then speaks, so [scene] holds those instructions in the order they
+ * were run, for the screen to put up first.
  */
-data class ScriptResumePoint(
-    val at: ScriptOffset,
-    /** Innermost call last, each the instruction its [GoSub] is to come back to. */
-    val returnTo: List<ScriptOffset> = emptyList(),
+data class ScriptQuestion(
+    val textId: DialogueTextId,
+    val buttons: List<MessageId>,
+    val scene: List<Dialog>,
+    /**
+     * What the script printed into the box before speaking — the party's own
+     * line, usually. Drawing the box again wipes them, so a reply arrives on a
+     * clean box while an exchange builds up on one.
+     */
+    val said: List<MessageId> = emptyList(),
+    /**
+     * True when the script is being read rather than answered, so the one
+     * button belongs in the corner speeches are read on rather than in the row
+     * of answers under the text.
+     */
+    val waitsToBeRead: Boolean = false,
 )
 
-/** Why a trigger script stopped before its end, and what it wants doing. */
-sealed interface ScriptStop {
+/**
+ * Where a script shows its work: the screen, from the interpreter's side.
+ *
+ * A script draws, waits and asks where it stands, and holds the world still
+ * for as long as it runs — nothing else moves meanwhile. That is why these
+ * suspend: a hold returns when the pause is over, a question when it has been
+ * answered, and the script carries on from the same line either way.
+ *
+ * Since the interpreter never hands control back part way through, the calls a
+ * script is inside, the scene it has built and what it has written into the box
+ * are all plain locals of the run.
+ */
+interface ScriptStage {
 
-    /**
-     * The script has put [textId] on screen and is waiting to be clicked.
-     *
-     * [buttons] is what the player may click: three answers to a question, or
-     * the single word — usually "ok" — that acknowledges a speech. Both stop
-     * the script the same way, and the reply to an answer is itself a speech
-     * waiting to be acknowledged.
-     *
-     * A script sets its scene one instruction at a time — clear the view, draw
-     * who is speaking, draw the frame — and only then speaks. Those
-     * instructions are collected in [scene], in the order the script ran them,
-     * so the screen can put them up first.
-     *
-     * Feed the click back with [LevelScriptRunner.answer] and [resumeAt] to
-     * carry on from where it stopped.
-     */
-    data class AskThePlayer(
-        val textId: DialogueTextId,
-        val buttons: List<MessageId>,
-        val scene: List<Dialog>,
-        val resumeAt: ScriptResumePoint,
+    /** Draw the world as the script has left it, then carry on. */
+    suspend fun show(world: GameState)
+
+    /** Hold what is on screen. Nothing else moves while a script waits. */
+    suspend fun hold(ticks: Ticks)
+
+    /** Put a question up, and wait for it to be answered. */
+    suspend fun ask(question: ScriptQuestion): DialogAnswer
+
+    companion object {
         /**
-         * What the script printed into the box before speaking — the party's
-         * own line, usually. Drawing the box again wipes them, which is how
-         * the clerics' reply arrives on a clean box.
+         * Runs a script straight through: nothing is drawn, no wait takes any
+         * time, and every question is answered with [answer].
          */
-        val said: List<MessageId> = emptyList(),
-        /**
-         * True when the script is being read rather than answered, so the one
-         * button belongs in the corner speeches are read on rather than in the
-         * row of answers under the text.
-         */
-        val waitsToBeRead: Boolean = false,
-    ) : ScriptStop
-
-    data class ChangeLevel(
-        val level: Int,
-        val subLevel: Int,
-        val location: Location,
-        val direction: Direction?,
-    ) : ScriptStop
-
+        fun silent(answer: DialogAnswer = DialogAnswer(1)) = object : ScriptStage {
+            override suspend fun show(world: GameState) = Unit
+            override suspend fun hold(ticks: Ticks) = Unit
+            override suspend fun ask(question: ScriptQuestion) = answer
+        }
+    }
 }
 
 /** A value on [LevelScriptRunner]'s condition stack. Zero is false. */
@@ -112,12 +121,16 @@ private value class ConditionValue(private val raw: Int) : Comparable<ConditionV
 }
 
 /**
- * Runs a square's trigger script far enough to move the party around and
- * between levels.
+ * Runs a square's trigger script: what the game does when the party steps
+ * somewhere that has something to say about it.
  *
- * This is not the full interpreter: it handles control flow, the two movement
- * instructions and level flags, and ignores everything else — monsters,
- * messages, damage, items.
+ * A run goes through to the end of the script rather than in pieces, however
+ * long that takes — a script may hold the screen between steps or wait on an
+ * answer, and it does both through the [ScriptStage] it is given.
+ *
+ * This is not the full interpreter. It handles control flow, the movement
+ * instructions, level flags, monsters spawned by script, and everything a
+ * conversation is made of; it ignores damage, items and sound.
  *
  * Conditions needing state this project does not model yet (party classes,
  * items in hand, dice rolls) evaluate to true, which keeps stairs reachable.
@@ -130,10 +143,19 @@ class LevelScriptRunner(
 ) {
 
     /** Runs the script of the square the party is on, if it reacts to [event]. */
-    fun onEvent(
+    suspend fun onEvent(
         triggers: List<Trigger>,
         event: ScriptEvent,
         state: GameState,
+        stage: ScriptStage = ScriptStage.silent(),
+    ): ScriptRun = onEvent(triggers, event, state, stage, depth = 0)
+
+    private suspend fun onEvent(
+        triggers: List<Trigger>,
+        event: ScriptEvent,
+        state: GameState,
+        stage: ScriptStage,
+        depth: Int,
     ): ScriptRun {
         val position = state.party.position
         val here = triggers.filter { it.location == position }
@@ -152,36 +174,23 @@ class LevelScriptRunner(
         Logger.d(TAG) {
             "Running trigger at $position for $event from offset ${trigger.script.offset}"
         }
-        return run(ScriptResumePoint(trigger.script.offset), state)
+        return runScript(trigger.script.offset, state, stage, triggers, depth).also { result ->
+            Logger.d(TAG) { "Script from ${trigger.script.offset} left ${result.state.party}" }
+        }
     }
 
-    /**
-     * Carries on a script that stopped at a dialogue, with [answer] being the
-     * button the player pressed, numbered from one.
-     */
-    fun answer(resumeAt: ScriptResumePoint, state: GameState, answer: DialogAnswer): ScriptRun {
-        Logger.d(TAG) { "Resuming at $resumeAt with answer $answer" }
-        return run(resumeAt, state, answer)
-    }
-
-    private fun run(
-        from: ScriptResumePoint,
-        state: GameState,
-        dialogAnswer: DialogAnswer? = null,
-    ): ScriptRun = runScript(from, state, dialogAnswer).also { result ->
-        Logger.d(TAG) { "Script from ${from.at} stopped to ${result.stoppedTo ?: "nothing"}" }
-    }
-
-    private fun runScript(
-        from: ScriptResumePoint,
+    private suspend fun runScript(
+        from: ScriptOffset,
         initial: GameState,
-        dialogAnswer: DialogAnswer?,
+        stage: ScriptStage,
+        triggers: List<Trigger>,
+        depth: Int,
     ): ScriptRun {
         var state = initial
 
-        var index = script.indexOfFirst { it.offset == from.at }
+        var index = script.indexOfFirst { it.offset == from }
         if (index < 0) {
-            Logger.w(TAG) { "No script at offset ${from.at}" }
+            Logger.w(TAG) { "No script at offset $from" }
             return ScriptRun(state)
         }
 
@@ -193,17 +202,16 @@ class LevelScriptRunner(
         // and what it has written into the box, which the box outlives
         val said = mutableListOf<MessageId>()
 
-        // starts with the calls the script was already inside when it stopped
-        val returnTo = ArrayDeque(from.returnTo)
+        val returnTo = ArrayDeque<ScriptOffset>()
 
-        fun stop(stoppedTo: ScriptStop? = null) = ScriptRun(state, stoppedTo)
+        // the last answer given, which the script may test more than once
+        var dialogAnswer: DialogAnswer? = null
 
-        fun resumeAfter(index: Int): ScriptResumePoint? =
-            script.getOrNull(index)?.let { ScriptResumePoint(it.offset, returnTo.toList()) }
+        fun stop(changeLevel: ChangeLevel? = null) = ScriptRun(state, changeLevel)
 
         while (index in script.indices) {
             if (steps++ > MAX_STEPS) {
-                Logger.w(TAG) { "Script from ${from.at} did not terminate after $MAX_STEPS steps" }
+                Logger.w(TAG) { "Script from $from did not terminate after $MAX_STEPS steps" }
                 return stop()
             }
 
@@ -264,7 +272,7 @@ class LevelScriptRunner(
                 is SetFlag.GlobalFlag -> state = state.globalFlagSet(token.bit)
 
                 is NewLevelOrMonster.ChangeLevel -> return stop(
-                    ScriptStop.ChangeLevel(
+                    ChangeLevel(
                         level = token.level,
                         subLevel = token.subLevel,
                         location = token.location,
@@ -272,40 +280,56 @@ class LevelScriptRunner(
                     )
                 )
 
-                // A move does not end the script — the stairs scripts step the
-                // party onto the staircase and only then change level, so the
-                // engine goes out of its way to keep running after one.
-                is Teleport.MoveParty -> state = state.partyMovedTo(token.destination)
+                // A move does not end the script. Scripts walk the party a
+                // square at a time and carry on: onto a staircase and only then
+                // to another level, or up a corridor with a pause between steps.
+                //
+                // Being put on a square is arriving on it, so whatever is there
+                // has its say before this script goes on — a scripted walk that
+                // ends on a door is how the door gets asked about.
+                is Teleport.MoveParty -> {
+                    state = state.partyMovedTo(token.destination)
+
+                    if (depth < MAX_NESTED_TRIGGERS) {
+                        val arrival =
+                            onEvent(triggers, ScriptEvent.PARTY_ENTERED, state, stage, depth + 1)
+                        state = arrival.state
+                        arrival.changeLevel?.let { return stop(it) }
+                    } else {
+                        Logger.w(TAG) { "Not following a move onto ${token.destination}, $depth deep" }
+                    }
+                }
 
                 is SetWall.ChangePartyDirection -> state = state.partyTurnedTo(token.direction)
 
-                // Everything after this depends on the player's answer, so
-                // guessing one would run a branch nobody chose — which is how
-                // walking past the Darkmoon priest used to throw the party
-                // down a level. Stop and ask.
-                is Dialog.RunDialog -> return stop(
-                    ScriptStop.AskThePlayer(
+                // The answer is kept rather than used and dropped: a script may
+                // test it more than once, and well past the branch it chose.
+                is Dialog.RunDialog -> dialogAnswer = stage.ask(
+                    ScriptQuestion(
                         textId = token.textId,
                         buttons = listOf(token.button1, token.button2, token.button3),
                         scene = scene.toList(),
-                        resumeAt = resumeAfter(index + 1) ?: return stop(),
                         said = said.toList(),
                     )
                 )
 
-                // A speech waits to be read before the script goes on, and what
-                // comes next can be the point: the clerics slam the door only
-                // once their roar has been acknowledged.
-                is Dialog.DialogText -> return stop(
-                    ScriptStop.AskThePlayer(
+                // A speech is read rather than answered, and the script waits
+                // for that: what follows a speech can be the point of it. The
+                // click that dismisses one is not an answer, so it must not
+                // replace the one the script is still testing.
+                is Dialog.DialogText -> stage.ask(
+                    ScriptQuestion(
                         textId = token.textId,
                         buttons = listOf(token.pageBreakLabel),
                         scene = scene.toList(),
-                        resumeAt = resumeAfter(index + 1) ?: return stop(),
                         said = said.toList(),
                         waitsToBeRead = true,
                     )
                 )
+
+                is Wait -> stage.hold(Ticks(token.delay))
+
+                UpdateScreen -> stage.show(state)
 
                 // the box is drawn empty, taking whatever was written in it
                 Dialog.DrawDialogBox -> {
@@ -384,5 +408,8 @@ class LevelScriptRunner(
         const val TAG = "LevelScriptRunner"
         const val MAX_STEPS = 200
         const val MAX_SUBROUTINE_DEPTH = 10
+
+        /** A script moving the party onto a square that moves them back again. */
+        const val MAX_NESTED_TRIGGERS = 4
     }
 }
