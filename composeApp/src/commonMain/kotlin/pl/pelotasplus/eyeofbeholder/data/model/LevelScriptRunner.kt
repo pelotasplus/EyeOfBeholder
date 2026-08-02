@@ -352,6 +352,12 @@ class LevelScriptRunner(
 
                 is SetWall.ChangePartyDirection -> state = state.partyTurnedTo(token.direction)
 
+                is SetWall.OneSide ->
+                    state = state.wallChanged(level, token.location, token.side, token.to)
+
+                is SetWall.AllSides ->
+                    state = state.wallsChanged(level, token.location, token.to)
+
                 // The answer is kept rather than used and dropped: a script may
                 // test it more than once, and well past the branch it chose.
                 is Dialog.RunDialog -> dialogAnswer = stage.ask(
@@ -445,6 +451,17 @@ class LevelScriptRunner(
                 // different things for being walked onto and for being clicked
                 // asks this first.
                 is Conditional.GetTriggerFlag -> push(ConditionValue.of(event.mask))
+
+                // What a wall is now, which is not what its file says once a
+                // script has changed it: a script that opens a way through
+                // asks this before deciding it has already been opened.
+                is Conditional.GetWallSide -> push(
+                    ConditionValue.of(
+                        WallSide.entries.getOrNull(token.wallIndex)
+                            ?.let { side -> state.wallByte(level, token.location, side).value }
+                            ?: 0
+                    )
+                )
                 is Conditional.GetLevelFlag -> push(state.isLevelFlagSet(level, token.bit))
                 is Conditional.GetGlobalFlag -> push(state.isGlobalFlagSet(token.bit))
                 is Conditional.GetPartyDirection ->

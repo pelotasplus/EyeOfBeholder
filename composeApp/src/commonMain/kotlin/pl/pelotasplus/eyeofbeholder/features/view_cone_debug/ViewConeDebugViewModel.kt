@@ -165,7 +165,11 @@ class ViewConeDebugViewModel(
                         it.copy(
                             inf = inf,
                             game = (leftBehind ?: it.game)
-                                .arrivingAt(arrivingAt, inf.monsterInstances)
+                                .arrivingAt(
+                                    level = arrivingAt,
+                                    places = inf.monsterInstances,
+                                    maz = inf.subLevels[PLAYED_SUBLEVEL].maz,
+                                )
                                 .copy(
                                     party = was.copy(
                                         position = Location(
@@ -494,7 +498,8 @@ class ViewConeDebugViewModel(
             sublevel = sublevel,
             playerX = party.position.x,
             playerY = party.position.y,
-            direction = party.facing
+            direction = party.facing,
+            wallAt = { at, side -> _state.value.game.wall(levelNumber(inf.name), at, side) },
         ).onSuccess { viewPort ->
             drawn = viewPort
             paint(viewPort, sublevel.palette)
@@ -692,9 +697,9 @@ class ViewConeDebugViewModel(
 
         // side areas are not reachable yet, so only the main floor is played
         private const val PLAYED_SUBLEVEL = 0
-        private const val DEFAULT_LEVEL = "LEVEL6.INF"
+        private const val DEFAULT_LEVEL = "LEVEL5.INF"
         private const val DEFAULT_PLAYER_X = 10
-        private const val DEFAULT_PLAYER_Y = 3
+        private const val DEFAULT_PLAYER_Y = 8
         private val DEFAULT_DIRECTION = Direction.WEST
     }
 }

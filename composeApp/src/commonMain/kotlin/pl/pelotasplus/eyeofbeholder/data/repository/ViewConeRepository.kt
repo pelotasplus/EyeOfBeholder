@@ -6,6 +6,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.Inf
 import pl.pelotasplus.eyeofbeholder.data.model.Item
 import pl.pelotasplus.eyeofbeholder.data.model.ItemIconId
+import pl.pelotasplus.eyeofbeholder.data.model.Location
 import pl.pelotasplus.eyeofbeholder.data.model.Maz
 import pl.pelotasplus.eyeofbeholder.data.model.WallSide
 import pl.pelotasplus.eyeofbeholder.data.model.DistanceFromParty
@@ -55,13 +56,20 @@ import pl.pelotasplus.eyeofbeholder.data.model.viewSlots
 interface ViewConeRepository {
     suspend fun loadLevel(name: String): Result<Inf>
 
+    /**
+     * @param wallAt what a square's side is now, which is not what the file
+     *   says once a script has changed it. Defaults to the file.
+     */
     suspend fun renderPosition(
         items: List<Item>,
         monsters: List<MonsterInstance>,
         sublevel: SubLevel,
         playerX: Int,
         playerY: Int,
-        direction: Direction
+        direction: Direction,
+        wallAt: (Location, WallSide) -> Maz.WallType = { at, side ->
+            sublevel.maz[at.x, at.y].getWall(side)
+        },
     ): Result<ViewPort>
 }
 
@@ -94,7 +102,8 @@ class ViewConeRepositoryImpl(
         sublevel: SubLevel,
         playerX: Int,
         playerY: Int,
-        direction: Direction
+        direction: Direction,
+        wallAt: (Location, WallSide) -> Maz.WallType,
     ): Result<ViewPort> {
         Logger.d(TAG) { "Render position $playerX x $playerY level ${sublevel.level}"}
 
@@ -136,12 +145,9 @@ class ViewConeRepositoryImpl(
                 return@forEachIndexed
             }
 
-            // Get the maze square at the calculated position
-            val square = sublevel.maz[mazX, mazY]
-
             // Transform wall side based on player direction
             val actualWallSide = direction.transformWallSide(slot.wallSide)
-            val wallType = square.getWall(actualWallSide)
+            val wallType = wallAt(Location(mazX, mazY), actualWallSide)
 
             // A slot's SOUTH wall is the far face of its square; the others are
             // the faces turned towards the party.

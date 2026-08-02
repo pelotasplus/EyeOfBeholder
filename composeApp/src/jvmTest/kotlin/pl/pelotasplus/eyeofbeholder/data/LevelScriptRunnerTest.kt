@@ -15,6 +15,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.ChangeLevel
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptRun
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptStage
 import pl.pelotasplus.eyeofbeholder.data.model.Ticks
+import pl.pelotasplus.eyeofbeholder.data.model.WallByte
 import pl.pelotasplus.eyeofbeholder.data.model.Trigger
 import pl.pelotasplus.eyeofbeholder.data.model.TriggerFlags
 import pl.pelotasplus.eyeofbeholder.data.model.script.Conditional
@@ -526,6 +527,49 @@ class LevelScriptRunnerTest {
                 "it should stop somewhere, and it stopped at ${run.state.party.position}",
             )
         }
+
+    // --- walls a script changes ----------------------------------------------
+
+    @Test
+    fun `a script changes a wall, and reads back what it changed it to`() {
+        val there = Location(9, 8)
+
+        // set every side to 44, then branch on the north side being 44
+        val outcome = run(
+            0 to SetWall.AllSides(there, WallByte(44)),
+            10 to Eval(
+                listOf(
+                    Conditional.GetWallSide(wallIndex = 0, location = there),
+                    Conditional.ImmediateShort(44),
+                    Conditional.Equals,
+                ),
+                goto = ScriptOffset(30),
+            ),
+            20 to changeLevelToken(5),
+            30 to changeLevelToken(9),
+        )
+
+        assertEquals(changeToLevel(5), outcome)
+    }
+
+    @Test
+    fun `a wall nobody has changed reads as the level file has it`() {
+        val outcome = run(
+            0 to Eval(
+                listOf(
+                    Conditional.GetWallSide(wallIndex = 0, location = Location(9, 8)),
+                    Conditional.ImmediateShort(0),
+                    Conditional.Equals,
+                ),
+                goto = ScriptOffset(20),
+            ),
+            10 to changeLevelToken(5),
+            20 to changeLevelToken(9),
+        )
+
+        // no maze was given, so every wall is nothing
+        assertEquals(changeToLevel(5), outcome)
+    }
 
     // --- what a script leaves behind ----------------------------------------
 

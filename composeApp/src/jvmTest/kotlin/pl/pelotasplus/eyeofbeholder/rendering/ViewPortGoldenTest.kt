@@ -406,6 +406,73 @@ class ViewPortGoldenTest {
         return image
     }
 
+    /**
+     * The wall with the button on it, and the same wall after the button has
+     * been clicked: the script opens it into a teleporter.
+     */
+    @Test
+    fun `level5 wall with a button`() =
+        checkGolden(
+            "level5-button",
+            renderAfterClicking("LEVEL5.INF", number = 5, x = 10, y = 8, clicked = null),
+        )
+
+    @Test
+    fun `level5 wall opened by its button`() =
+        checkGolden(
+            "level5-button-clicked",
+            renderAfterClicking(
+                "LEVEL5.INF",
+                number = 5,
+                x = 10,
+                y = 8,
+                clicked = Location(9, 8),
+            ),
+        )
+
+    /**
+     * Renders what the party see, having clicked the wall of [clicked] if
+     * anything — the click runs that square's script, which is what changes
+     * the wall.
+     */
+    private fun renderAfterClicking(
+        level: String,
+        number: Int,
+        x: Int,
+        y: Int,
+        clicked: Location?,
+    ): ViewPort = runBlocking {
+        val repository = repository()
+        val inf = repository.loadLevel(level).getOrThrow()
+        val sublevel = inf.subLevels[0]
+
+        val standing = GameState(
+            party = PartyState(Location(x, y), Direction.WEST),
+            monsters = inf.monsterInstances,
+        ).arrivingAt(number, inf.monsterInstances, sublevel.maz)
+
+        val world = if (clicked == null) {
+            standing
+        } else {
+            LevelScriptRunner(inf.script, level = number).onEvent(
+                triggers = inf.triggers,
+                event = ScriptEvent.WALL_CLICKED,
+                state = standing,
+                at = clicked,
+            ).state
+        }
+
+        repository.renderPosition(
+            items = inf.items,
+            monsters = world.monsters,
+            sublevel = sublevel,
+            playerX = x,
+            playerY = y,
+            direction = Direction.WEST,
+            wallAt = { at, side -> world.wall(number, at, side) },
+        ).getOrThrow()
+    }
+
     private fun repository(): ViewConeRepositoryImpl {
         val resources = ResourceRepositoryImpl()
         val palRepository = PalRepositoryImpl(resources)

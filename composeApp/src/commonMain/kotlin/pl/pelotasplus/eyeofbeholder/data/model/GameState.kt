@@ -23,6 +23,20 @@ data class GameState(
      * the ones that have been killed will be missing.
      */
     private val asTheyWereLeft: Map<Int, List<MonsterInstance>> = emptyMap(),
+
+    /**
+     * The walls a script has changed, as the byte it changed them to.
+     *
+     * Only the changed ones: a maze is four thousand faces of which a script
+     * moves a handful, and keeping a copy of the rest would be a second answer
+     * to what a wall is — the one nobody updates. The byte is what the script
+     * writes and what the file holds, and [Maz.WallType.fromInt] is the one
+     * place that says what it means.
+     */
+    private val changedWalls: Map<WallAt, WallByte> = emptyMap(),
+
+    /** Each level's maze as its file describes it, for everything unchanged. */
+    private val mazes: Map<Int, Maz> = emptyMap(),
 ) {
 
     /** Remembers [level] as it stands, for whenever the party comes back. */
@@ -30,10 +44,35 @@ data class GameState(
 
     /**
      * Puts the party on [level], as they left it if they have been before, and
-     * as its file [places] it if they have not.
+     * as its file [places] it if they have not. [maz] is that file's walls,
+     * which everything a script has not changed still comes from.
      */
-    fun arrivingAt(level: Int, places: List<MonsterInstance>) =
-        copy(monsters = asTheyWereLeft[level] ?: places)
+    fun arrivingAt(level: Int, places: List<MonsterInstance>, maz: Maz? = null) =
+        copy(
+            monsters = asTheyWereLeft[level] ?: places,
+            mazes = if (maz == null) mazes else mazes + (level to maz),
+        )
+
+    /** The wall on one side of a square, changed or as the file has it. */
+    fun wall(level: Int, at: Location, side: WallSide): Maz.WallType =
+        Maz.WallType.of(wallByte(level, at, side))
+
+    /** The same wall as the byte a script compares against and writes. */
+    fun wallByte(level: Int, at: Location, side: WallSide): WallByte =
+        changedWalls[WallAt(level, at, side)]
+            ?: mazes[level]?.squareOrNull(at)?.getWall(side)?.asByte()
+            ?: WallByte(0)
+
+    /** The same square with one of its sides changed to [to]. */
+    fun wallChanged(level: Int, at: Location, side: WallSide, to: WallByte) =
+        copy(changedWalls = changedWalls + (WallAt(level, at, side) to to))
+
+    /** The same square with all four of its sides changed to [to]. */
+    fun wallsChanged(level: Int, at: Location, to: WallByte) =
+        copy(changedWalls = changedWalls + WallSide.entries.associate { WallAt(level, at, it) to to })
+
+    private fun Maz.squareOrNull(at: Location) =
+        if (at.x in 0 until width && at.y in 0 until height) this[at.x, at.y] else null
 
     /**
      * How many monsters stand on [location], at most seven.
@@ -86,6 +125,9 @@ data class GameState(
     fun isLevelFlagSet(level: Int, bit: FlagBit) = flags.forLevel(level).isSet(bit)
 
     fun isGlobalFlagSet(bit: FlagBit) = flags.global.isSet(bit)
+
+    /** One face of one square of one level. */
+    data class WallAt(val level: Int, val at: Location, val side: WallSide)
 
     private companion object {
         const val MAX_MONSTERS_PER_SQUARE = 7

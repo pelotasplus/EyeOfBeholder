@@ -1,5 +1,7 @@
 package pl.pelotasplus.eyeofbeholder.data.model
 
+import kotlin.jvm.JvmInline
+
 /**
  * Represents a parsed .MAZ file — the dungeon floor layout for a sublevel.
  *
@@ -80,6 +82,8 @@ data class Maz(
         data class Decoration(val decorationWallIndex: Int) : WallType()
 
         companion object {
+            fun of(byte: WallByte): WallType = fromInt(byte.value)
+
             fun fromInt(value: Int): WallType = when (value) {
                 0 -> NoWall
                 1, 2 -> FixedWall(wallType = value - 1)
@@ -93,6 +97,40 @@ data class Maz(
             }
         }
     }
+}
+
+/**
+ * A wall as the maze stores it, and as a script writes and compares it.
+ *
+ * Its own space: it is not a decoration id, a door slot or a wall-set index,
+ * though several of those are packed into its range. [Maz.WallType.fromInt] is
+ * the only thing that says which.
+ */
+@JvmInline
+value class WallByte(val value: Int)
+
+/**
+ * The byte a wall is stored as, which is the inverse of [Maz.WallType.fromInt].
+ *
+ * Scripts deal in these rather than in types: they compare a wall against a
+ * number and set it to one, so a wall read back out of the world has to be the
+ * number again.
+ */
+fun Maz.WallType.asByte(): WallByte = WallByte(toInt())
+
+private fun Maz.WallType.toInt(): Int = when (this) {
+    Maz.WallType.NoWall -> 0
+    is Maz.WallType.FixedWall -> wallType + 1
+    is Maz.WallType.Door -> when {
+        doorIndex.value == 0 && hasButton -> 3
+        doorIndex.value == 0 -> 8
+        hasButton -> 13
+        else -> 18
+    } + state
+
+    Maz.WallType.StairUp -> 23
+    Maz.WallType.StairDown -> 24
+    is Maz.WallType.Decoration -> decorationWallIndex
 }
 
 /**

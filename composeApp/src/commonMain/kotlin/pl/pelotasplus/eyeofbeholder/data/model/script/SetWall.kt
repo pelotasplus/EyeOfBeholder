@@ -3,6 +3,8 @@ package pl.pelotasplus.eyeofbeholder.data.model.script
 import pl.pelotasplus.eyeofbeholder.data.ByteReader
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.Location
+import pl.pelotasplus.eyeofbeholder.data.model.WallByte
+import pl.pelotasplus.eyeofbeholder.data.model.WallSide
 
 /**
  * SetWall script token.
@@ -10,15 +12,13 @@ import pl.pelotasplus.eyeofbeholder.data.model.Location
  */
 sealed class SetWall : ScriptToken {
 
-    
-
     /**
      * Set all sides of a wall.
      * type = -9 (0xF7)
      */
     data class AllSides(
         val location: Location,
-        val to: Int
+        val to: WallByte
     ) : SetWall()
 
     /**
@@ -27,8 +27,8 @@ sealed class SetWall : ScriptToken {
      */
     data class OneSide(
         val location: Location,
-        val side: Int,
-        val to: Int
+        val side: WallSide,
+        val to: WallByte
     ) : SetWall()
 
     /**
@@ -46,13 +46,15 @@ sealed class SetWall : ScriptToken {
             return when (val type = reader.readU8()) {
                 0xF7 -> AllSides(                                // 0xF7 - all sides
                     location = Location.read(reader),
-                    to = reader.readU8()
+                    to = WallByte(reader.readU8())
                 )
 
                 0xE9 -> OneSide(                                // 0xE9 - one side
                     location = Location.read(reader),
-                    side = reader.readU8(),
-                    to = reader.readU8()
+                    // the four sides are stored in the order the maze stores
+                    // them, which is the order they are declared in
+                    side = WallSide.entries[reader.readU8() and 3],
+                    to = WallByte(reader.readU8())
                 )
 
                 0xED -> ChangePartyDirection(                   // 0xED - change party direction
