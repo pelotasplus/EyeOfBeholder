@@ -212,8 +212,9 @@ class ViewConeRepositoryImpl(
                                 viewPort.drawDoor(
                                     wallPosition = wallPosition,
                                     door = door,
+                                    secondLayer = sublevel.doors.getOrNull(1),
                                     showButton = false,
-                                    stuckDoor = true
+                                    stuckDoor = true,
                                 )
                             } ?: viewPort.drawUndrawableWall(wallPosition)
                         } else if ((levelDecoration.wallType - 1) >= 0) {
@@ -231,7 +232,9 @@ class ViewConeRepositoryImpl(
                             viewPort.drawDoor(
                                 wallPosition = wallPosition,
                                 door = door,
-                                showButton = wallType.hasButton
+                                secondLayer = sublevel.doors.getOrNull(wallType.doorIndex.value + 1),
+                                showButton = wallType.hasButton,
+                                opened = wallType.state,
                             )
                         } ?: viewPort.drawUndrawableWall(wallPosition)
                     }

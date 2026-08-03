@@ -229,6 +229,17 @@ class ViewPortGoldenTest {
     fun `level3 3x9 east`() =
         checkGolden("level3-3x9-east", "LEVEL3.INF", x = 3, y = 9, direction = Direction.EAST)
 
+    /**
+     * A door of the kind that has something fixed behind it — here the forest
+     * of the level above, seen through the opening. Only the panel over it
+     * slides, and we draw neither: the opening comes out black.
+     *
+     * Frozen while broken so the fix shows up as a diff.
+     */
+    @Test
+    fun `level5 14x9 east`() =
+        checkGolden("level5-14x9-east", "LEVEL5.INF", x = 14, y = 9, direction = Direction.EAST)
+
     /** A monster two squares off, seen down the corridor it stands in. */
     @Test
     fun `level3 monster at 3x12 facing south`() =

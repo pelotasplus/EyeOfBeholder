@@ -53,3 +53,76 @@ data class Door(
     )
 }
 
+/**
+ * What a door is made of, which is what decides how it opens.
+ *
+ * The two that have a second layer take it from the sublevel's next door
+ * definition rather than carrying one of their own, so a level spends two of
+ * its two door slots on a single door.
+ */
+enum class DoorKind {
+    /** One panel, sliding up out of sight. */
+    PANEL,
+
+    /**
+     * A panel sliding up off something fixed behind it, which is how a door
+     * opens onto a view rather than onto darkness.
+     */
+    OVER_A_VIEW,
+
+    /** Two halves parting, into the lintel and into the threshold. */
+    SPLIT;
+
+    companion object {
+        fun of(type: Int): DoorKind = entries.getOrElse(type) { PANEL }
+    }
+}
+
+/**
+ * A door does not hang in one place: it slides up out of its frame as it
+ * opens, and a jammed one rests a little higher again. Both distances are in
+ * screen pixels, so both change with how far off the door is being drawn.
+ *
+ * [size] is which of the three rectangles is being drawn, which is what names
+ * that distance — 0 the square ahead, 2 three squares back.
+ */
+fun doorPanelTop(size: Int, panelHeight: Int, opened: Int, stuck: Boolean): Int =
+    doorwayRows(size).last + 1 - panelHeight - (opened * LIFTED_PER_STEP[size]) -
+        (if (stuck) STUCK_LIFT[size] else 0)
+
+/**
+ * The rows of the view a door panel may occupy: the opening it hangs in.
+ *
+ * A door slides up into the ceiling, so most of the way open there is nothing
+ * of it left below the lintel and nothing is drawn at all. Only the doorway
+ * shows the panel — above it is masonry the panel has gone behind.
+ */
+fun doorwayRows(size: Int): IntRange = LINTEL[size]..THRESHOLD[size]
+
+fun splitAboveTop(size: Int, opened: Int): Int =
+    UPPER_HALF_FROM[size] - (opened * PARTS_PER_STEP[size])
+
+/**
+ * The lower half sinks at half the rate the upper half rises, having only the
+ * threshold to go into against the other's whole ceiling.
+ */
+fun splitBelowTop(size: Int, panelHeight: Int, opened: Int): Int =
+    THRESHOLD[size] - panelHeight + ((opened * PARTS_PER_STEP[size]) shr 1)
+
+// The tables below are the original game's, one entry per size.
+
+/** Where the opening starts. */
+private val LINTEL = listOf(16, 24, 30)
+
+/** Where it ends, which is also where a shut door's foot rests. */
+private val THRESHOLD = listOf(85, 70, 58)
+
+private val LIFTED_PER_STEP = listOf(18, 12, 8)
+
+private val STUCK_LIFT = listOf(5, 3, 1)
+
+/** Where a shut [DoorKind.SPLIT] door's upper half starts. */
+private val UPPER_HALF_FROM = listOf(15, 24, 31)
+
+private val PARTS_PER_STEP = listOf(12, 8, 5)
+

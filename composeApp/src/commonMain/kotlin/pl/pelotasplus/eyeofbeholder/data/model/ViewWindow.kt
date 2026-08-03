@@ -126,12 +126,13 @@ private const val NO_BITE = -40
 /** This wall covers this square completely. */
 private const val HIDES_IT_ENTIRELY = -41
 
+// Both tables below are the original game's, one entry per (square being
+// drawn, wall in the view) pair.
+
 /**
- * Which edge a solid wall cuts a square back to, one entry per (square being
- * drawn, wall in the view) pair: positive is a right edge, negative a left one,
- * with [NO_BITE] and [HIDES_IT_ENTIRELY] as the two special answers.
- *
- * From the original game.
+ * Which edge a solid wall cuts a square back to: positive is a right edge,
+ * negative a left one, with [NO_BITE] and [HIDES_IT_ENTIRELY] as the two
+ * special answers.
  */
 private val solidEdges: List<Int> = listOf(
     -41, -41, -41, -41, -41, -41, -41, -41, -41, -41, -41, -41, -41, -41, -41, -41, -40, -41,
@@ -155,11 +156,8 @@ private val solidEdges: List<Int> = listOf(
 )
 
 /**
- * The pair of edges a wall with an opening leaves a square, in the same order
- * as [solidEdges] — a left edge and a right one, since what shows through a
- * doorway is bounded on both sides.
- *
- * From the original game.
+ * The pair of edges a wall with an opening leaves a square — a left one and a
+ * right one, since what shows through a doorway is bounded on both sides.
  */
 private val seenPastEdges: List<Int> = listOf(
     22, 0, 22, 0, 22, 0, 22, 0, 22, 0, 22, 0, 22, 0, 22, 0, 22, 0, 22, 0, 22, 0, 22, 0, 22, 0, 22, 0, 22, 0, 22, 0, 0, 22, 22, 0,
