@@ -123,18 +123,17 @@ fun splitBelowTop(size: Int, panelHeight: Int, opened: Int): Int =
     THRESHOLD[size] - panelHeight + ((opened * PARTS_PER_STEP[size]) shr 1)
 
 /**
- * How wide a doorway is, the same for every one in a row.
+ * How wide a doorway is, the same for every one in a row: the width of the
+ * frame [viewSlots] draws for the doorway straight ahead, which is the one of a
+ * row that fits on the screen whole.
  *
- * Not the original's own number but the width of the frame [viewSlots] draws
- * for the doorway straight ahead, which is the one of a row that fits on the
- * screen whole. It agrees with every hand-placed panel the view table used to
- * carry save one, and that one was the position that looked wrong.
- *
- * Working it instead from the game's own table of where the middle of each
- * square lands — which we hold and which matches the game's byte for byte —
- * puts the panels of the two squares off to the side somewhere else again, and
- * plainly out of their doorways. Something about that route is still misread,
- * so this stands until someone finds what.
+ * Not to be replaced by [blockScreenCoords], which is the near thing and the
+ * wrong one. That says where the middle of a square lands, because it places
+ * what stands in a square — a monster, an item on the floor. A door hangs on
+ * the face of a square instead, and a face is nearer than a middle, so it
+ * projects wider: 48 against 40 three rows back, 80 against 59 two rows back,
+ * 128 against 98 one row ahead. Reaching for the square's middle puts the
+ * doorways of a row too close together and their panels too far in.
  */
 private val DOORWAY_WIDTH = listOf(128, 80, 48)
 

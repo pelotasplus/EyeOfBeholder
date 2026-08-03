@@ -25,7 +25,7 @@ import kotlin.jvm.JvmInline
  * ```
  * 0       = NoWall (open passage, party can walk through)
  * 1-2     = FixedWall (solid wall, wallType 0 or 1 → indexes into VMP wall tile sets)
- * 3-7     = Door 1 with button (state 0-4: closed/opening/open/closing/stuck)
+ * 3-7     = Door 1 with button (state 0-4: shut, then four steps open)
  * 8-12    = Door 1 without button (state 0-4)
  * 13-17   = Door 2 with button (state 0-4, uses second door CPS graphic)
  * 18-22   = Door 2 without button (state 0-4)
@@ -79,7 +79,10 @@ data class Maz(
         /**
          * @property doorIndex Which door definition to use (0 or 1 → [SubLevel.doors])
          * @property hasButton Whether the door has a clickable open/close button
-         * @property state 0-4: closed/opening/open/closing/stuck
+         * @property state How far the door has slid out of its frame: 0 shut,
+         *   4 open, the three between them the steps it opens through. A door
+         *   jammed in its frame is not one of these — that is a decoration with
+         *   a special type of its own.
          */
         data class Door(
             val doorIndex: DoorIndex,
