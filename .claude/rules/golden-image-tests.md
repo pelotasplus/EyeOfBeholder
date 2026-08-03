@@ -21,6 +21,11 @@ On failure, the actual frame and a red-highlighted diff mask are written to
   code, `git stash` back to the old code, and run the test against it — a
   byte-identical pass proves the refactor changed nothing.
 - Commits and pushes always wait for explicit user approval.
+- Getting a verdict on a rendering change means regenerating the affected
+  goldens so the file in `composeApp/src/jvmTest/goldens/` **is** the candidate,
+  and naming that path — or `composeApp/build/golden-failures/` for one not yet
+  accepted. Never ask for a judgement on a file in a temp or scratch directory.
+  Regenerate back if the answer is no.
 
 The scenes are whatever sits in `composeApp/src/jvmTest/goldens/`; read the
 directory rather than a list here, which goes stale the first time one is
