@@ -29,13 +29,13 @@ data class WallRenderData(
  * Door-specific rendering parameters for a wall at one view position.
  *
  * When a wall position contains a door, the renderer first draws the door frame
- * (VCN wall type 2), then overlays the door panel from the door's CPS graphic
- * using these offsets.
+ * (VCN wall type 2), then overlays the door panel from the door's CPS graphic.
+ * Only where the panel goes across is a position's own business; how high it
+ * hangs is [doorPanelTop]'s, since that depends on how far open the door is.
  *
  * @property offsetInViewPortX Screen X position to draw the door panel;
  *           null means the door panel is not visible at this wall position
  *           (only the frame is drawn, e.g. for side-view doors)
- * @property offsetInViewPortY Screen Y position for the door panel
  * @property buttonIndex Which button definition from [Door.buttons] to use;
  *           null = no button rendered at this position
  * @property rectangleIndex Which rectangle from [Door.rectangles] to use
@@ -43,7 +43,6 @@ data class WallRenderData(
  */
 data class DoorRenderData(
     val offsetInViewPortX: Int?,
-    val offsetInViewPortY: Int,
     val buttonIndex: Int?,
     val rectangleIndex: Int,
 )
@@ -127,19 +126,19 @@ val viewSlots: List<ViewSlot> = listOf(
     ViewSlot(
         label = "A-east", relativeX = -3, relativeY = -3, wallSide = WallSide.EAST,
         wall = WallRenderData(104, 66, 5, 1, 2, 0),
-        door = DoorRenderData(null, 66, null, 2),
+        door = DoorRenderData(null, null, 2),
         decoration = DecorationPosition(xFlip = 0, wall = -1, xDelta = 0),
     ),
     ViewSlot(
         label = "B-east", relativeX = -2, relativeY = -3, wallSide = WallSide.EAST,
         wall = WallRenderData(102, 68, 5, 3, 0, 0),
-        door = DoorRenderData(null, 68, null, 2),
+        door = DoorRenderData(null, null, 2),
         decoration = DecorationPosition(xFlip = 0, wall = 9, xDelta = 0),
     ),
     ViewSlot(
         label = "C-east", relativeX = -1, relativeY = -3, wallSide = WallSide.EAST,
         wall = WallRenderData(97, 74, 5, 1, 0, 0),
-        door = DoorRenderData(null, 74, null, 2),
+        door = DoorRenderData(null, null, 2),
         decoration = DecorationPosition(xFlip = 0, wall = 7, xDelta = 0),
     ),
 
@@ -147,19 +146,19 @@ val viewSlots: List<ViewSlot> = listOf(
     ViewSlot(
         label = "E-west", relativeX = 1, relativeY = -3, wallSide = WallSide.WEST,
         wall = WallRenderData(97, 79, 5, 1, 0, 1),
-        door = DoorRenderData(null, 79, null, 2),
+        door = DoorRenderData(null, null, 2),
         decoration = DecorationPosition(xFlip = 1, wall = 7, xDelta = 0),
     ),
     ViewSlot(
         label = "F-west", relativeX = 2, relativeY = -3, wallSide = WallSide.WEST,
         wall = WallRenderData(102, 83, 5, 3, 0, 1),
-        door = DoorRenderData(null, 83, null, 2),
+        door = DoorRenderData(null, null, 2),
         decoration = DecorationPosition(xFlip = 1, wall = 9, xDelta = 0),
     ),
     ViewSlot(
         label = "G-west", relativeX = 3, relativeY = -3, wallSide = WallSide.WEST,
         wall = WallRenderData(104, 87, 5, 1, 2, 1),
-        door = DoorRenderData(null, 87, null, 2),
+        door = DoorRenderData(null, null, 2),
         decoration = DecorationPosition(xFlip = 0, wall = -1, xDelta = 0),
     ),
 
@@ -167,34 +166,34 @@ val viewSlots: List<ViewSlot> = listOf(
     ViewSlot(
         label = "B-south", relativeX = -2, relativeY = -3, wallSide = WallSide.SOUTH,
         wall = WallRenderData(133, 66, 5, 2, 4, 0),
-        door = DoorRenderData(-24, 30, null, 2),
+        door = DoorRenderData(-24, null, 2),
         decoration = DecorationPosition(xFlip = 0, wall = 3, xDelta = -12),
         floorDecorationX = -88,
     ),
     ViewSlot(
         label = "C-south", relativeX = -1, relativeY = -3, wallSide = WallSide.SOUTH,
         wall = WallRenderData(129, 68, 5, 6, 0, 0),
-        door = DoorRenderData(24, 30, null, 2),
+        door = DoorRenderData(24, null, 2),
         decoration = DecorationPosition(xFlip = 0, wall = 3, xDelta = -6),
         floorDecorationX = -40,
     ),
     ViewSlot(
         label = "D-south", relativeX = 0, relativeY = -3, wallSide = WallSide.SOUTH,
         wall = WallRenderData(129, 74, 5, 6, 0, 0),
-        door = DoorRenderData(72, 30, null, 2),
+        door = DoorRenderData(72, null, 2),
         decoration = DecorationPosition(xFlip = 0, wall = 3, xDelta = 0),
     ),
     ViewSlot(
         label = "E-south", relativeX = 1, relativeY = -3, wallSide = WallSide.SOUTH,
         wall = WallRenderData(129, 80, 5, 6, 0, 0),
-        door = DoorRenderData(120, 30, null, 2),
+        door = DoorRenderData(120, null, 2),
         decoration = DecorationPosition(xFlip = 0, wall = 3, xDelta = 6),
         floorDecorationX = 40,
     ),
     ViewSlot(
         label = "F-south", relativeX = 2, relativeY = -3, wallSide = WallSide.SOUTH,
         wall = WallRenderData(129, 86, 5, 2, 4, 0),
-        door = DoorRenderData(168, 30, null, 2),
+        door = DoorRenderData(168, null, 2),
         decoration = DecorationPosition(xFlip = 0, wall = 3, xDelta = 12),
         floorDecorationX = 88,
     ),
@@ -203,25 +202,25 @@ val viewSlots: List<ViewSlot> = listOf(
     ViewSlot(
         label = "H-east", relativeX = -2, relativeY = -2, wallSide = WallSide.EAST,
         wall = WallRenderData(117, 66, 6, 2, 0, 0),
-        door = DoorRenderData(null, 66, null, 2),
+        door = DoorRenderData(null, null, 2),
         decoration = DecorationPosition(xFlip = 0, wall = 8, xDelta = 0),
     ),
     ViewSlot(
         label = "I-east", relativeX = -1, relativeY = -2, wallSide = WallSide.EAST,
         wall = WallRenderData(81, 50, 8, 2, 0, 0),
-        door = DoorRenderData(null, 50, null, 2),
+        door = DoorRenderData(null, null, 2),
         decoration = DecorationPosition(xFlip = 0, wall = 6, xDelta = 0),
     ),
     ViewSlot(
         label = "K-west", relativeX = 1, relativeY = -2, wallSide = WallSide.WEST,
         wall = WallRenderData(81, 58, 8, 2, 0, 1),
-        door = DoorRenderData(null, 58, null, 2),
+        door = DoorRenderData(null, null, 2),
         decoration = DecorationPosition(xFlip = 1, wall = 6, xDelta = 0),
     ),
     ViewSlot(
         label = "L-west", relativeX = 2, relativeY = -2, wallSide = WallSide.WEST,
         wall = WallRenderData(117, 86, 6, 2, 0, 1),
-        door = DoorRenderData(null, 86, null, 2),
+        door = DoorRenderData(null, null, 2),
         decoration = DecorationPosition(xFlip = 1, wall = 8, xDelta = 0),
     ),
 
@@ -229,20 +228,20 @@ val viewSlots: List<ViewSlot> = listOf(
     ViewSlot(
         label = "I-south", relativeX = -1, relativeY = -2, wallSide = WallSide.SOUTH,
         wall = WallRenderData(163, 44, 8, 6, 4, 0),
-        door = DoorRenderData(0, 24, null, 1),
+        door = DoorRenderData(0, null, 1),
         decoration = DecorationPosition(xFlip = 0, wall = 2, xDelta = -10),
         floorDecorationX = -59,
     ),
     ViewSlot(
         label = "J-south", relativeX = 0, relativeY = -2, wallSide = WallSide.SOUTH,
         wall = WallRenderData(159, 50, 8, 10, 0, 0),
-        door = DoorRenderData(60, 25, 1, 1),
+        door = DoorRenderData(60, 1, 1),
         decoration = DecorationPosition(xFlip = 0, wall = 2, xDelta = 0),
     ),
     ViewSlot(
         label = "K-south", relativeX = 1, relativeY = -2, wallSide = WallSide.SOUTH,
         wall = WallRenderData(159, 60, 8, 6, 4, 0),
-        door = DoorRenderData(140, 24, null, 1),
+        door = DoorRenderData(140, null, 1),
         decoration = DecorationPosition(xFlip = 0, wall = 2, xDelta = 10),
         floorDecorationX = 59,
     ),
@@ -251,13 +250,13 @@ val viewSlots: List<ViewSlot> = listOf(
     ViewSlot(
         label = "M-east", relativeX = -1, relativeY = -1, wallSide = WallSide.EAST,
         wall = WallRenderData(45, 25, 12, 3, 0, 0),
-        door = DoorRenderData(null, 25, null, 1),
+        door = DoorRenderData(null, null, 1),
         decoration = DecorationPosition(xFlip = 0, wall = 5, xDelta = 0),
     ),
     ViewSlot(
         label = "O-west", relativeX = 1, relativeY = -1, wallSide = WallSide.WEST,
         wall = WallRenderData(45, 38, 12, 3, 0, 1),
-        door = DoorRenderData(null, 38, null, 1),
+        door = DoorRenderData(null, null, 1),
         decoration = DecorationPosition(xFlip = 1, wall = 5, xDelta = 0),
     ),
 
@@ -265,20 +264,20 @@ val viewSlots: List<ViewSlot> = listOf(
     ViewSlot(
         label = "M-south", relativeX = -1, relativeY = -1, wallSide = WallSide.SOUTH,
         wall = WallRenderData(252, 22, 12, 3, 13, 0),
-        door = DoorRenderData(null, -1, null, 1),
+        door = DoorRenderData(null, null, 1),
         decoration = DecorationPosition(xFlip = 0, wall = 1, xDelta = -16),
         floorDecorationX = -98,
     ),
     ViewSlot(
         label = "N-south", relativeX = 0, relativeY = -1, wallSide = WallSide.SOUTH,
         wall = WallRenderData(239, 25, 12, 16, 0, 0),
-        door = DoorRenderData(52, 17, 0, 0),
+        door = DoorRenderData(52, 0, 0),
         decoration = DecorationPosition(xFlip = 0, wall = 1, xDelta = 0),
     ),
     ViewSlot(
         label = "O-south", relativeX = 1, relativeY = -1, wallSide = WallSide.SOUTH,
         wall = WallRenderData(239, 41, 12, 3, 13, 0),
-        door = DoorRenderData(null, -1, 0, 0),
+        door = DoorRenderData(null, 0, 0),
         decoration = DecorationPosition(xFlip = 0, wall = 1, xDelta = 16),
         floorDecorationX = 98,
     ),
@@ -287,7 +286,7 @@ val viewSlots: List<ViewSlot> = listOf(
     ViewSlot(
         label = "P-east", relativeX = -1, relativeY = 0, wallSide = WallSide.EAST,
         wall = WallRenderData(0, 0, 15, 3, 0, 0),
-        door = DoorRenderData(null, 0, 0, 0),
+        door = DoorRenderData(null, 0, 0),
         decoration = DecorationPosition(xFlip = 0, wall = 4, xDelta = 0),
     ),
     ViewSlot(
@@ -295,7 +294,7 @@ val viewSlots: List<ViewSlot> = listOf(
         wall = WallRenderData(0, 19, 15, 3, 0, 1),
         // rectangleIndex 9 is out of the documented 0-2 range but unused:
         // offsetInViewPortX is null, so no door panel is ever drawn here.
-        door = DoorRenderData(null, 19, 0, 9),
+        door = DoorRenderData(null, 0, 9),
         decoration = DecorationPosition(xFlip = 1, wall = 4, xDelta = 0),
     ),
 )
