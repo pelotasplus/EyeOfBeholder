@@ -47,11 +47,20 @@ data class GameState(
      * as its file [places] it if they have not. [maz] is that file's walls,
      * which everything a script has not changed still comes from.
      */
-    fun arrivingAt(level: Int, places: List<MonsterInstance>, maz: Maz? = null) =
-        copy(
-            monsters = asTheyWereLeft[level] ?: places,
-            mazes = if (maz == null) mazes else mazes + (level to maz),
-        )
+    /**
+     * @param subLevel the one being entered, which the monsters the file lists
+     *   take as their own — they are read by whichever sublevel's tables the
+     *   party arrive under, and are a different creature under each.
+     */
+    fun arrivingAt(
+        level: Int,
+        places: List<MonsterInstance>,
+        maz: Maz? = null,
+        subLevel: Int = 0,
+    ) = copy(
+        monsters = asTheyWereLeft[level] ?: places.map { it.copy(subLevel = subLevel) },
+        mazes = if (maz == null) mazes else mazes + (level to maz),
+    )
 
     /** The wall on one side of a square, changed or as the file has it. */
     fun wall(level: Int, at: Location, side: WallSide): Maz.WallType =
@@ -95,7 +104,8 @@ data class GameState(
      * it if it still lives. Nothing dies here, so a full world drops the
      * spawn instead.
      */
-    fun monsterCreated(spawn: CreateMonster): GameState {
+    /** @param subLevel the one the party are in, which a new monster joins. */
+    fun monsterCreated(spawn: CreateMonster, subLevel: Int = 0): GameState {
         val taken = monsters.map { it.index }.toSet()
         val slot = (0 until MONSTER_SLOTS).firstOrNull { it !in taken }
 
@@ -103,7 +113,7 @@ data class GameState(
             spawn.location == party.position -> this
             monstersOn(spawn.location) >= MAX_MONSTERS_PER_SQUARE -> this
             slot == null -> this
-            else -> copy(monsters = monsters + MonsterInstance.spawnedBy(spawn, slot))
+            else -> copy(monsters = monsters + MonsterInstance.spawnedBy(spawn, slot, subLevel))
         }
     }
 

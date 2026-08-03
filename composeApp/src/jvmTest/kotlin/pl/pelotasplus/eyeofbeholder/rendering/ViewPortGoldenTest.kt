@@ -8,6 +8,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.GameState
 import pl.pelotasplus.eyeofbeholder.data.model.Inf
 import pl.pelotasplus.eyeofbeholder.data.model.Maz
+import pl.pelotasplus.eyeofbeholder.data.model.MonsterInstance
 import pl.pelotasplus.eyeofbeholder.data.model.WallByte
 import pl.pelotasplus.eyeofbeholder.data.model.WallSide
 import pl.pelotasplus.eyeofbeholder.data.model.getWall
@@ -934,7 +935,7 @@ class ViewPortGoldenTest {
 
         repository.renderPosition(
             items = inf.items,
-            monsters = inf.monsterInstances,
+            monsters = inf.monsterInstances.arrivingIn(sublevel.index),
             sublevel = sublevel,
             playerX = x,
             playerY = y,
@@ -947,6 +948,10 @@ class ViewPortGoldenTest {
         ).getOrThrow()
     }
 
+    /** What the party entering a sublevel does to the monsters the file lists. */
+    private fun List<MonsterInstance>.arrivingIn(subLevel: Int) =
+        map { it.copy(subLevel = subLevel) }
+
     private fun renderFrame(
         level: String,
         x: Int,
@@ -957,10 +962,11 @@ class ViewPortGoldenTest {
         runBlocking {
             val repository = repository()
             val inf = repository.loadLevel(level).getOrThrow()
+            val sublevel = inf.subLevels[inf.subLevelAt(arrivedIn, x, y, direction)]
             repository.renderPosition(
                 items = inf.items,
-                monsters = inf.monsterInstances,
-                sublevel = inf.subLevels[inf.subLevelAt(arrivedIn, x, y, direction)],
+                monsters = inf.monsterInstances.arrivingIn(sublevel.index),
+                sublevel = sublevel,
                 playerX = x,
                 playerY = y,
                 direction = direction

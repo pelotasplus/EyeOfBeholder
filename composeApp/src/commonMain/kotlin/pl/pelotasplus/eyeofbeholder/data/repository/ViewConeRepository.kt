@@ -468,8 +468,11 @@ class ViewConeRepositoryImpl(
             val mazX = playerX + dx
             val mazY = playerY + dy
 
+            // A monster of another sublevel is not somewhere else, it is
+            // nowhere: its type and graphic index mean whatever that sublevel's
+            // tables say, and this one's would make it a different creature.
             val monstersHere = monsters
-                .filter { it.x == mazX && it.y == mazY }
+                .filter { it.x == mazX && it.y == mazY && it.subLevel == sublevel.index }
                 .sortedBy { viewRelativeSubPosition(direction, it.pos) }
 
             for (monster in monstersHere) {

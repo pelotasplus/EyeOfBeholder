@@ -178,6 +178,8 @@ class LevelScriptRunner(
     private val script: List<Script>,
     /** Which level's flags this script reads and writes. */
     private val level: Int = 0,
+    /** Which sublevel the party are in, which a monster it conjures joins. */
+    private val subLevel: Int = 0,
 ) {
 
     /**
@@ -310,7 +312,7 @@ class LevelScriptRunner(
                     }
                 }
 
-                is CreateMonster -> state = state.monsterCreated(token)
+                is CreateMonster -> state = state.monsterCreated(token, subLevel)
 
                 is SetFlag.LevelFlag -> state = state.levelFlagSet(level, token.bit)
 
