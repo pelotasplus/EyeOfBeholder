@@ -98,7 +98,7 @@ class SubLevelShowingTest {
         return subLevelShowing(
             showing = showing,
             sight = wallsInSight(at, facing) { square, side ->
-                maz.squareOrNull(square)?.getWall(side) ?: Maz.WallType.NoWall
+                maz.square(square).getWall(side)
             },
         )
     }

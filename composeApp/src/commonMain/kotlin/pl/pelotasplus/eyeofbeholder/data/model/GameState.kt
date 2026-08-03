@@ -69,7 +69,7 @@ data class GameState(
     /** The same wall as the byte a script compares against and writes. */
     fun wallByte(level: Int, at: Location, side: WallSide): WallByte =
         changedWalls[WallAt(level, at, side)]
-            ?: mazes[level]?.squareOrNull(at)?.getWall(side)?.asByte()
+            ?: mazes[level]?.square(at)?.getWall(side)?.asByte()
             ?: WallByte(0)
 
     /** The same square with one of its sides changed to [to]. */

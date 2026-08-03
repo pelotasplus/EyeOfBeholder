@@ -280,6 +280,16 @@ class ViewPortGoldenTest {
         checkGolden("level3-5x11-west", "LEVEL3.INF", x = 5, y = 11, direction = Direction.WEST)
 
     /**
+     * The party on the top row of the maze looking off the edge of it, where a
+     * wall is missing.
+     *
+     * Frozen while broken so the fix shows up as a diff.
+     */
+    @Test
+    fun `level1 25x0 north`() =
+        checkGolden("level1-25x0-north", "LEVEL1.INF", x = 25, y = 0, direction = Direction.NORTH)
+
+    /**
      * A keyhole wall with a scroll hanging in the air in front of it.
      *
      * Frozen while broken so the fix shows up as a diff.
@@ -966,8 +976,7 @@ class ViewPortGoldenTest {
             direction = direction,
             wallAt = { at, side ->
                 instead(at, side)?.let { Maz.WallType.of(it) }
-                    ?: sublevel.maz.squareOrNull(at)?.getWall(side)
-                    ?: Maz.WallType.NoWall
+                    ?: sublevel.maz.square(at).getWall(side)
             },
         ).getOrThrow()
     }
@@ -1003,7 +1012,7 @@ class ViewPortGoldenTest {
         return subLevelShowing(
             showing = showing,
             sight = wallsInSight(Location(x, y), direction) { at, side ->
-                maz.squareOrNull(at)?.getWall(side) ?: Maz.WallType.NoWall
+                maz.square(at).getWall(side)
             },
         )
     }

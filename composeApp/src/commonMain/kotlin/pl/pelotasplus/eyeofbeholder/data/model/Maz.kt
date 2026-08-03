@@ -50,13 +50,20 @@ data class Maz(
     }
 
     /**
-     * The square at [at], or null where there is none.
+     * The square at [at], counting round the ends.
      *
-     * The view cone reaches three squares ahead and three to the side, so
-     * standing near an edge of the maze asks about squares that are off it.
+     * The view cone reaches three squares ahead and three to either side, so a
+     * party near an edge ask about squares beyond it, and there is no beyond:
+     * a maze is one run of squares that the game walks by index, so a step off
+     * the top comes out at the bottom of the same column and a step off a side
+     * lands at the far end of the next row. The border rows are solid rock in
+     * every level, so what the party actually see there is a wall rather than
+     * the far side of the world.
      */
-    fun squareOrNull(at: Location): Square? =
-        if (at.x in 0 until width && at.y in 0 until height) this[at.x, at.y] else null
+    fun square(at: Location): Square {
+        val square = ((at.y * width + at.x) % squares.size + squares.size) % squares.size
+        return this[square % width, square / width]
+    }
 
     data class Square(
         val x: Int,

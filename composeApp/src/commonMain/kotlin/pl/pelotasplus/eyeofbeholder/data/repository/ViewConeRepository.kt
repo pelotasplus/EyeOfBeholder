@@ -77,7 +77,7 @@ interface ViewConeRepository {
         playerY: Int,
         direction: Direction,
         wallAt: (Location, WallSide) -> Maz.WallType = { at, side ->
-            sublevel.maz.squareOrNull(at)?.getWall(side) ?: Maz.WallType.NoWall
+            sublevel.maz.square(at).getWall(side)
         },
         pulse: TeleporterPulse = TeleporterPulse.AS_LAID_OUT,
     ): Result<ViewPort>
@@ -163,11 +163,6 @@ class ViewConeRepositoryImpl(
             // Calculate actual maze position
             val mazX = playerX + dx
             val mazY = playerY + dy
-
-            // Bounds check
-            if (mazX !in 0 until sublevel.maz.width || mazY !in 0 until sublevel.maz.height) {
-                return@forEachIndexed
-            }
 
             // Transform wall side based on player direction
             val actualWallSide = direction.transformWallSide(slot.wallSide)
