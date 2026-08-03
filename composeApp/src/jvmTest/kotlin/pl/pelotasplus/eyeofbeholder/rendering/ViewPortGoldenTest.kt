@@ -213,10 +213,21 @@ class ViewPortGoldenTest {
     fun `level3 doors either side facing the boundary`() =
         checkGolden("level3-doors-facing-the-boundary", "LEVEL3.INF", x = 3, y = 10, direction = Direction.EAST)
 
-    /** The same doors a square back, where they sit beside carved side walls. */
+    /**
+     * The door at 4x9 seen two squares off and one to the side, where its panel
+     * sits wrongly in its frame: the wall byte says the door stands open, and
+     * the panel is drawn as though it were shut.
+     *
+     * Frozen while broken so the fix shows up as a diff.
+     */
     @Test
-    fun `level3 doors either side from a step back`() =
-        checkGolden("level3-doors-a-step-back", "LEVEL3.INF", x = 2, y = 10, direction = Direction.EAST)
+    fun `level3 2x10 east`() =
+        checkGolden("level3-2x10-east", "LEVEL3.INF", x = 2, y = 10, direction = Direction.EAST)
+
+    /** The same door straight ahead from 3x9, for comparison. */
+    @Test
+    fun `level3 3x9 east`() =
+        checkGolden("level3-3x9-east", "LEVEL3.INF", x = 3, y = 9, direction = Direction.EAST)
 
     /** A monster two squares off, seen down the corridor it stands in. */
     @Test
