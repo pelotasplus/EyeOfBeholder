@@ -280,6 +280,30 @@ class ViewPortGoldenTest {
         checkGolden("level3-5x11-west", "LEVEL3.INF", x = 5, y = 11, direction = Direction.WEST)
 
     /**
+     * A spider's web drawn over the wall standing in front of it rather than
+     * on the wall it hangs from.
+     *
+     * Frozen while broken so the fix shows up as a diff.
+     */
+    @Test
+    fun `level1 28x4 south`() =
+        checkGolden("level1-28x4-south", "LEVEL1.INF", x = 28, y = 4, direction = Direction.SOUTH)
+
+    /**
+     * The same web a square further back.
+     *
+     * Frozen while broken so the fix shows up as a diff.
+     */
+    @Test
+    fun `level1 28x5 south`() =
+        checkGolden("level1-28x5-south", "LEVEL1.INF", x = 28, y = 5, direction = Direction.SOUTH)
+
+    /** The same web from a square that shows it where it belongs. */
+    @Test
+    fun `level1 26x6 south`() =
+        checkGolden("level1-26x6-south", "LEVEL1.INF", x = 26, y = 6, direction = Direction.SOUTH)
+
+    /**
      * The party on the top row of the maze looking off the edge of it, where a
      * wall is missing.
      *
