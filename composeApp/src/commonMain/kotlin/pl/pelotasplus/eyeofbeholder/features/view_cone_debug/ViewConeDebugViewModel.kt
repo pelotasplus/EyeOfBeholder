@@ -182,7 +182,11 @@ class ViewConeDebugViewModel(
                 .onFailure { Logger.e(it) { "Error while loading $PORTRAITS_CPS" } }
             // a level picked from the Levels screen is an instruction, so it
             // wins over wherever the party were last left
-            val resumed = if (level != null) null else savedGames.load(SaveSlot.AUTOSAVE).getOrNull()
+            val resumed = if (level != null || !AUTOSAVES) {
+                null
+            } else {
+                savedGames.load(SaveSlot.AUTOSAVE).getOrNull()
+            }
             if (resumed == null) resumeNothing() else resume(resumed)
 
             onVmpSelected(
@@ -223,6 +227,7 @@ class ViewConeDebugViewModel(
      * JSON, which is cheap once and not cheap thirty times a second.
      */
     private fun autosave() {
+        if (!AUTOSAVES) return
         val inf = _state.value.inf ?: return
 
         autosaving?.cancel()
@@ -949,6 +954,16 @@ class ViewConeDebugViewModel(
         /** The bigger one the interface is set in. */
         private const val MENU_FONT = "FONT8.FNT"
         private const val PORTRAITS_CPS = "CHARGENA.CPS"
+
+        /**
+         * Whether the game writes where the party got to and picks it up again
+         * next time.
+         *
+         * Off while the renderer is being worked on: an autosave puts the party
+         * back where they were, and walking to a position someone has reported
+         * wants the opposite. The named slots are unaffected.
+         */
+        private const val AUTOSAVES = false
 
         /** How long the party must stand still before where they are is written. */
         private val AUTOSAVE_SETTLES = Ticks(9)
