@@ -280,6 +280,30 @@ class ViewPortGoldenTest {
         checkGolden("level3-5x11-west", "LEVEL3.INF", x = 5, y = 11, direction = Direction.WEST)
 
     /**
+     * A keyhole wall with a scroll hanging in the air in front of it.
+     *
+     * Frozen while broken so the fix shows up as a diff.
+     */
+    @Test
+    fun `level3 29x6 east`() =
+        checkGolden("level3-29x6-east", "LEVEL3.INF", x = 29, y = 6, direction = Direction.EAST)
+
+    /** The same square looked north from, where no scroll shows. */
+    @Test
+    fun `level3 29x6 north`() =
+        checkGolden("level3-29x6-north", "LEVEL3.INF", x = 29, y = 6, direction = Direction.NORTH)
+
+    /**
+     * The locked shelf straight ahead, four scrolls on the square behind it.
+     * A wall keeps what is on its square to itself unless it is marked as one
+     * that shows it, and a shelf that locks is not: nothing should hang there
+     * until a key turns.
+     */
+    @Test
+    fun `level3 29x5 east`() =
+        checkGolden("level3-29x5-east", "LEVEL3.INF", x = 29, y = 5, direction = Direction.EAST)
+
+    /**
      * A door jammed in its frame, which rests a little higher than a shut one
      * and by less the further off it is. Level 2 has the nearest of the four
      * the game keeps.

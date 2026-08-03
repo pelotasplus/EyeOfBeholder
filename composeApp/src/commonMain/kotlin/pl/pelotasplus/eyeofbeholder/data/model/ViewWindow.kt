@@ -58,6 +58,38 @@ fun SubLevel.sightThrough(wall: Maz.WallType): WallSight = when (wall) {
 }
 
 /**
+ * Whether a square shows what lies on it, given the wall it turns towards the
+ * party.
+ *
+ * A wall keeps its square's contents to itself unless it is marked as one that
+ * does not: an open alcove carries the mark and shows what is shelved in it, a
+ * shelf that locks does not and shows nothing until it is opened. A doorway
+ * carries it too, which is how a party see the floor of the square beyond one.
+ *
+ * A face with no wall drawn on it hides nothing, having nothing to hide behind.
+ */
+fun SubLevel.showsWhatIsOnIt(wall: Maz.WallType): Boolean = when (wall) {
+    Maz.WallType.NoWall -> true
+    is Maz.WallType.Door -> true
+    is Maz.WallType.FixedWall, Maz.WallType.StairUp, Maz.WallType.StairDown -> false
+    is Maz.WallType.Decoration -> {
+        val mapped = decorations.firstOrNull { it.decorationWallIndex == wall.decorationWallIndex }
+        when {
+            mapped == null -> true
+            mapped.wallType == NO_WALL_BEHIND -> true
+            else -> mapped.flags and SHOWS_ITS_CONTENTS != 0
+        }
+    }
+}
+
+/**
+ * The mark a wall carries when what is on its square can be seen. A level
+ * writes it inverted in the low bits but not in this one, so it is read
+ * straight off what the file says.
+ */
+private const val SHOWS_ITS_CONTENTS = 0x80
+
+/**
  * A decoration with no wall type behind it is painted straight onto whatever
  * the square already shows — a floor plate, a stain — so it hides nothing.
  */

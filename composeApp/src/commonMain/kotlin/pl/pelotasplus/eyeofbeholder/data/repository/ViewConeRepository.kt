@@ -22,6 +22,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.ViewWindow
 import pl.pelotasplus.eyeofbeholder.data.model.WallSet
 import pl.pelotasplus.eyeofbeholder.data.model.getWall
 import pl.pelotasplus.eyeofbeholder.data.model.itemScaleSteps
+import pl.pelotasplus.eyeofbeholder.data.model.showsWhatIsOnIt
 import pl.pelotasplus.eyeofbeholder.data.model.sightThrough
 import pl.pelotasplus.eyeofbeholder.data.model.teleportersInView
 import pl.pelotasplus.eyeofbeholder.data.model.viewBlockRows
@@ -148,7 +149,7 @@ class ViewConeRepositoryImpl(
             when (wallPosition) {
                 11, 18, 23 -> {
                     val relY = if (wallPosition == 11) -3 else if (wallPosition == 18) -2 else -1
-                    drawItemsAtRow(relY, viewPort, items, smallIcons, largeIcons, sublevel, playerX, playerY, direction, windows)
+                    drawItemsAtRow(relY, viewPort, items, smallIcons, largeIcons, sublevel, playerX, playerY, direction, windows, wallAt)
                     drawMonstersAtRow(relY, viewPort, monsters, monsterSheets, sublevel, playerX, playerY, direction, windows)
                     drawTeleportersAtRow(relY, viewPort, teleporters, decorations, pulse, windows)
                 }
@@ -365,6 +366,7 @@ class ViewConeRepositoryImpl(
         playerY: Int,
         direction: Direction,
         windows: List<ViewWindow>,
+        wallAt: (Location, WallSide) -> Maz.WallType,
     ) {
         val dim = when (relativeY) {
             -3 -> 0
@@ -372,11 +374,21 @@ class ViewConeRepositoryImpl(
             else -> 2
         }
 
+        val facingUs = direction.transformWallSide(WallSide.SOUTH)
+
         for (block in viewBlockRows.getValue(relativeY)) {
             val window = windows[block.blockIndex]
             if (window.closed) continue
 
             val (dx, dy) = direction.transformCoordinates(block.relativeX, block.relativeY)
+
+            // What a square holds is behind the wall it turns towards the
+            // party, and stays there unless that wall is one that shows it: an
+            // alcove open to the room, a doorway, or no wall at all. A shelf
+            // that locks keeps its scrolls until something unlocks it.
+            val face = wallAt(Location(playerX + dx, playerY + dy), facingUs)
+            if (!sublevel.showsWhatIsOnIt(face)) continue
+
             viewPort.at(
                 DistanceFromParty.standingOnSquare(block.relativeX, block.relativeY),
                 hiddenByCloserThings = true,
