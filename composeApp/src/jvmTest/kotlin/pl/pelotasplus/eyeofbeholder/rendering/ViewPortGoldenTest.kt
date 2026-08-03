@@ -160,6 +160,23 @@ class ViewPortGoldenTest {
     fun `level4 item against the wall facing west`() =
         checkGolden("level4-item-west", "LEVEL4.INF", x = 18, y = 14, direction = Direction.WEST)
 
+    /**
+     * A monster stands at 21x26, with the solid block at 22x26 between it and
+     * the party and the button wall two squares ahead beside it. The two walls
+     * close its band between them, so none of it is drawn.
+     */
+    @Test
+    fun `level3 monster two ahead and one left`() =
+        checkGolden("level3-monster-through-the-block", "LEVEL3.INF", x = 23, y = 25, direction = Direction.WEST)
+
+    /**
+     * The same monster from a step nearer, where the button wall now stands one
+     * square ahead and closes its band on its own.
+     */
+    @Test
+    fun `level3 monster one ahead and one left`() =
+        checkGolden("level3-monster-on-the-diagonal", "LEVEL3.INF", x = 22, y = 25, direction = Direction.WEST)
+
     @Test
     fun `toImageBitmap matches the raw pixel buffer`() {
         val viewPort = renderFrame("LEVEL7.INF", x = 29, y = 15, direction = Direction.SOUTH)

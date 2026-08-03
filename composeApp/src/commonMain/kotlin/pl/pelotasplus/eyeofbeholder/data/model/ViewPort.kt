@@ -55,29 +55,36 @@ class ViewPort(
 
     private var painting = DistanceFromParty.BEYOND_EVERYTHING
     private var hiddenByCloserThings = false
+    private var within = ViewWindow.WHOLE_VIEW
 
     /**
-     * Everything drawn inside [block] is [distance] away from the party.
+     * Everything drawn inside [block] is [distance] away from the party, and
+     * stays inside [within].
      *
      * Walls paint regardless of what is already there, so their existing order
-     * keeps deciding how they meet each other. Only what stands on a square —
-     * items, monsters — sets [hiddenByCloserThings], and is then cut off
-     * wherever something closer has already painted.
+     * keeps deciding how they meet each other, and they see the whole view
+     * because they are what narrows it for everything else. Only what stands on
+     * a square — items, monsters — sets [hiddenByCloserThings], and is then cut
+     * off wherever something closer has already painted.
      */
     fun <T> at(
         distance: DistanceFromParty,
         hiddenByCloserThings: Boolean = false,
+        within: ViewWindow = ViewWindow.WHOLE_VIEW,
         block: () -> T,
     ): T {
         val previousDistance = painting
         val previouslyHidden = this.hiddenByCloserThings
+        val previousWindow = this.within
         painting = distance
         this.hiddenByCloserThings = hiddenByCloserThings
+        this.within = within
         try {
             return block()
         } finally {
             painting = previousDistance
             this.hiddenByCloserThings = previouslyHidden
+            this.within = previousWindow
         }
     }
 
@@ -85,6 +92,7 @@ class ViewPort(
         if (x.value !in 0..<COLS) return
         if (y.value !in 0..<ROWS) return
         if (rgb.transparent) return
+        if (x.value < within.leftPixel || x.value >= within.rightPixel) return
 
         val offset = y.value * COLS + x.value
         // something closer already claimed this pixel

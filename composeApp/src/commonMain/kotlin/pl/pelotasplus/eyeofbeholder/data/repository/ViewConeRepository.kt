@@ -18,11 +18,15 @@ import pl.pelotasplus.eyeofbeholder.data.model.SubLevel
 import pl.pelotasplus.eyeofbeholder.data.model.TeleporterPulse
 import pl.pelotasplus.eyeofbeholder.data.model.ViewBlock
 import pl.pelotasplus.eyeofbeholder.data.model.ViewPort
+import pl.pelotasplus.eyeofbeholder.data.model.ViewWindow
 import pl.pelotasplus.eyeofbeholder.data.model.WallSet
 import pl.pelotasplus.eyeofbeholder.data.model.getWall
 import pl.pelotasplus.eyeofbeholder.data.model.itemScaleSteps
+import pl.pelotasplus.eyeofbeholder.data.model.sightThrough
 import pl.pelotasplus.eyeofbeholder.data.model.teleportersInView
 import pl.pelotasplus.eyeofbeholder.data.model.viewBlockRows
+import pl.pelotasplus.eyeofbeholder.data.model.viewWindow
+import pl.pelotasplus.eyeofbeholder.data.model.visibleBlocks
 import pl.pelotasplus.eyeofbeholder.data.model.monsterFacing
 import pl.pelotasplus.eyeofbeholder.data.model.monsterSheet
 import pl.pelotasplus.eyeofbeholder.data.model.viewRelativeSubPosition
@@ -133,6 +137,7 @@ class ViewConeRepositoryImpl(
         val monsterSheets = loadMonsterSheets(sublevel)
         val teleporters = teleportersInView(Location(playerX, playerY), direction, wallAt)
         val decorations = if (teleporters.isEmpty()) null else getDecorations()
+        val windows = viewWindows(sublevel, playerX, playerY, direction, wallAt)
 
         // Data-driven wall rendering using the viewSlots table
         viewSlots.forEachIndexed { wallPosition, slot ->
@@ -143,9 +148,9 @@ class ViewConeRepositoryImpl(
             when (wallPosition) {
                 11, 18, 23 -> {
                     val relY = if (wallPosition == 11) -3 else if (wallPosition == 18) -2 else -1
-                    drawItemsAtRow(relY, viewPort, items, smallIcons, largeIcons, sublevel, playerX, playerY, direction)
-                    drawMonstersAtRow(relY, viewPort, monsters, monsterSheets, sublevel, playerX, playerY, direction)
-                    drawTeleportersAtRow(relY, viewPort, teleporters, decorations, pulse)
+                    drawItemsAtRow(relY, viewPort, items, smallIcons, largeIcons, sublevel, playerX, playerY, direction, windows)
+                    drawMonstersAtRow(relY, viewPort, monsters, monsterSheets, sublevel, playerX, playerY, direction, windows)
+                    drawTeleportersAtRow(relY, viewPort, teleporters, decorations, pulse, windows)
                 }
             }
             // Transform coordinates based on player direction
@@ -285,12 +290,38 @@ class ViewConeRepositoryImpl(
         }
     }
 
+    /**
+     * How much of each of the 18 squares in the view is left once the walls
+     * have covered what they cover, worked out before anything is drawn.
+     *
+     * Only the face a square turns towards the party takes part: a wall the
+     * party sees side-on stands along their line of sight rather than across
+     * it, and hides nothing that the face at the end of it does not.
+     */
+    private fun viewWindows(
+        sublevel: SubLevel,
+        playerX: Int,
+        playerY: Int,
+        direction: Direction,
+        wallAt: (Location, WallSide) -> Maz.WallType,
+    ): List<ViewWindow> {
+        val facingUs = direction.transformWallSide(WallSide.SOUTH)
+
+        val sight = visibleBlocks.map { block ->
+            val (dx, dy) = direction.transformCoordinates(block.relativeX, block.relativeY)
+            sublevel.sightThrough(wallAt(Location(playerX + dx, playerY + dy), facingUs))
+        }
+
+        return visibleBlocks.indices.map { block -> viewWindow(block) { sight[it] } }
+    }
+
     private fun drawTeleportersAtRow(
         relativeY: Int,
         viewPort: ViewPort,
         teleporters: List<ViewBlock>,
         decorations: Cps?,
         pulse: TeleporterPulse,
+        windows: List<ViewWindow>,
     ) {
         if (decorations == null) return
 
@@ -301,9 +332,13 @@ class ViewConeRepositoryImpl(
         }
 
         for (block in teleporters.filter { it.relativeY == relativeY }) {
+            val window = windows[block.blockIndex]
+            if (window.closed) continue
+
             viewPort.at(
                 DistanceFromParty.standingOnSquare(block.relativeX, block.relativeY),
                 hiddenByCloserThings = true,
+                within = window,
             ) {
                 viewPort.drawTeleporter(decorations, block.blockIndex, dim, pulse)
             }
@@ -320,6 +355,7 @@ class ViewConeRepositoryImpl(
         playerX: Int,
         playerY: Int,
         direction: Direction,
+        windows: List<ViewWindow>,
     ) {
         val dim = when (relativeY) {
             -3 -> 0
@@ -328,10 +364,14 @@ class ViewConeRepositoryImpl(
         }
 
         for (block in viewBlockRows.getValue(relativeY)) {
+            val window = windows[block.blockIndex]
+            if (window.closed) continue
+
             val (dx, dy) = direction.transformCoordinates(block.relativeX, block.relativeY)
             viewPort.at(
                 DistanceFromParty.standingOnSquare(block.relativeX, block.relativeY),
                 hiddenByCloserThings = true,
+                within = window,
             ) {
                 drawItemsAtBlock(
                     viewPort, items, smallIcons, largeIcons, sublevel,
@@ -409,8 +449,12 @@ class ViewConeRepositoryImpl(
         playerX: Int,
         playerY: Int,
         direction: Direction,
+        windows: List<ViewWindow>,
     ) {
         for (block in viewBlockRows.getValue(relativeY)) {
+            val window = windows[block.blockIndex]
+            if (window.closed) continue
+
             val (dx, dy) = direction.transformCoordinates(block.relativeX, block.relativeY)
             val mazX = playerX + dx
             val mazY = playerY + dy
@@ -433,6 +477,7 @@ class ViewConeRepositoryImpl(
                 viewPort.at(
                     DistanceFromParty.standingOnSquare(block.relativeX, block.relativeY),
                     hiddenByCloserThings = true,
+                    within = window,
                 ) {
                     viewPort.drawMonster(
                         frame = frame,
