@@ -99,6 +99,19 @@ fun doorPanelTop(size: Int, panelHeight: Int, opened: Int, stuck: Boolean): Int 
  */
 fun doorwayRows(size: Int): IntRange = LINTEL[size]..THRESHOLD[size]
 
+/**
+ * Where a door panel's left edge goes: the middle of the doorway it fills,
+ * less half the panel.
+ *
+ * The doorways of a row are all as wide as the one straight ahead and sit side
+ * by side, so the ones off to either side run past the edge of the view and
+ * only part of each is on screen. That is why the frame drawn for one of them
+ * is narrower than the doorway really is, and why centring a panel on the
+ * frame's own tiles puts it too far in.
+ */
+fun doorPanelLeft(size: Int, panelWidth: Int, relativeX: Int): Int =
+    ViewPort.COLS / 2 + (relativeX * DOORWAY_WIDTH[size]) - panelWidth / 2
+
 fun splitAboveTop(size: Int, opened: Int): Int =
     UPPER_HALF_FROM[size] - (opened * PARTS_PER_STEP[size])
 
@@ -108,6 +121,22 @@ fun splitAboveTop(size: Int, opened: Int): Int =
  */
 fun splitBelowTop(size: Int, panelHeight: Int, opened: Int): Int =
     THRESHOLD[size] - panelHeight + ((opened * PARTS_PER_STEP[size]) shr 1)
+
+/**
+ * How wide a doorway is, the same for every one in a row.
+ *
+ * Not the original's own number but the width of the frame [viewSlots] draws
+ * for the doorway straight ahead, which is the one of a row that fits on the
+ * screen whole. It agrees with every hand-placed panel the view table used to
+ * carry save one, and that one was the position that looked wrong.
+ *
+ * Working it instead from the game's own table of where the middle of each
+ * square lands — which we hold and which matches the game's byte for byte —
+ * puts the panels of the two squares off to the side somewhere else again, and
+ * plainly out of their doorways. Something about that route is still misread,
+ * so this stands until someone finds what.
+ */
+private val DOORWAY_WIDTH = listOf(128, 80, 48)
 
 // The tables below are the original game's, one entry per size.
 

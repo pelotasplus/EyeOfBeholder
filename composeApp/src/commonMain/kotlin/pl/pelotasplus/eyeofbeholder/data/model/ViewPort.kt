@@ -224,17 +224,18 @@ class ViewPort(
     ) {
         drawWall(WallSet.DOOR_FRAME, wallPosition)
 
-        val renderData = viewSlots[wallPosition].door
+        val slot = viewSlots[wallPosition]
 
-        if (renderData.offsetInViewPortX == null) {
-            Logger.d(TAG) { "Skipping door rendering for wallPosition $wallPosition as offsetInViewPortX is -1" }
-            return
-        }
+        // A door seen edge-on is a frame and nothing else: its panel lies along
+        // the line of sight rather than across it, so there is no picture of it
+        // to draw.
+        if (!slot.isFrontWall) return
 
-        val size = renderData.rectangleIndex
-        val left = renderData.offsetInViewPortX
+        val size = slot.door.rectangleIndex
         val doorway = doorwayRows(size)
         val panel = door.rectangles[size]
+
+        val left = doorPanelLeft(size, panel.w, slot.relativeX)
 
         when (DoorKind.of(door.type)) {
             DoorKind.PANEL -> blitDoor(
@@ -244,7 +245,10 @@ class ViewPort(
 
             // the fixed layer keeps a shut door's place whatever the door does
             DoorKind.OVER_A_VIEW -> {
-                blitDoor(door, panel, left, doorPanelTop(size, panel.h, 0, false), doorway)
+                blitDoor(
+                    door, panel, left,
+                    doorPanelTop(size, panel.h, 0, false), doorway,
+                )
                 secondLayer?.let {
                     blitDoor(
                         it, it.rectangles[size], left,
@@ -254,16 +258,22 @@ class ViewPort(
             }
 
             DoorKind.SPLIT -> {
-                blitDoor(door, panel, left, splitAboveTop(size, opened), doorway)
+                blitDoor(
+                    door, panel, left,
+                    splitAboveTop(size, opened), doorway,
+                )
                 secondLayer?.let {
                     val below = it.rectangles[size]
-                    blitDoor(it, below, left, splitBelowTop(size, below.h, opened), doorway)
+                    blitDoor(
+                        it, below, left,
+                        splitBelowTop(size, below.h, opened), doorway,
+                    )
                 }
             }
         }
 
-        if (showButton && renderData.buttonIndex != null) {
-            val button = door.buttons[renderData.buttonIndex]
+        if (showButton && slot.door.buttonIndex != null) {
+            val button = door.buttons[slot.door.buttonIndex]
 
             for (srcX in button.x until button.x + button.w) {
                 for (srcY in button.y until button.y + button.h) {
@@ -286,12 +296,14 @@ class ViewPort(
         doorway: IntRange,
     ) {
         for (srcX in rectangle.x until rectangle.x + rectangle.w) {
+            val targetX = ScreenX(srcX - rectangle.x + left)
+
             for (srcY in rectangle.y until rectangle.y + rectangle.h) {
                 val targetY = ScreenY(srcY - rectangle.y + top)
                 if (targetY.value !in doorway) continue
 
                 val pixel = door.cps.pixels[srcY * door.cps.width + srcX]
-                draw(ScreenX(srcX - rectangle.x + left), targetY, palette.colors[pixel.value])
+                draw(targetX, targetY, palette.colors[pixel.value])
             }
         }
     }

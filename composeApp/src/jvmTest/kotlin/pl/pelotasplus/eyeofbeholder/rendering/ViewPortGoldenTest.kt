@@ -8,6 +8,8 @@ import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.GameState
 import pl.pelotasplus.eyeofbeholder.data.model.Inf
 import pl.pelotasplus.eyeofbeholder.data.model.Maz
+import pl.pelotasplus.eyeofbeholder.data.model.WallByte
+import pl.pelotasplus.eyeofbeholder.data.model.WallSide
 import pl.pelotasplus.eyeofbeholder.data.model.getWall
 import pl.pelotasplus.eyeofbeholder.data.model.wallsInSight
 import pl.pelotasplus.eyeofbeholder.data.model.LevelScriptRunner
@@ -221,13 +223,43 @@ class ViewPortGoldenTest {
      * Frozen while broken so the fix shows up as a diff.
      */
     @Test
-    fun `level3 2x10 east`() =
-        checkGolden("level3-2x10-east", "LEVEL3.INF", x = 2, y = 10, direction = Direction.EAST)
+    fun `level3 2x10 east`() = checkGolden(
+        "level3-2x10-east",
+        // both doors a step down from the open the level holds them at, so the
+        // two positions off to a side each have a panel to place
+        renderFrame("LEVEL3.INF", x = 2, y = 10, direction = Direction.EAST) { at, side ->
+            ALMOST_OPEN.takeIf { side == WallSide.WEST && at in DOORS_BESIDE_2X10 }
+        },
+    )
 
     /** The same door straight ahead from 3x9, for comparison. */
     @Test
     fun `level3 3x9 east`() =
         checkGolden("level3-3x9-east", "LEVEL3.INF", x = 3, y = 9, direction = Direction.EAST)
+
+    /**
+     * The doors either side of 2x10 held half open, which level 3 never does —
+     * its own are open to the last step, and an open door has no panel to look
+     * at. Half way there is one, in both of the positions off to a side at
+     * once, which is where a panel is hardest to place.
+     */
+    @Test
+    fun `level3 doors either side held half open`() = checkGolden(
+        "level3-doors-half-open",
+        renderFrame("LEVEL3.INF", x = 2, y = 10, direction = Direction.EAST) { at, side ->
+            HALF_OPEN.takeIf { side == WallSide.WEST && at in DOORS_BESIDE_2X10 }
+        },
+    )
+
+    /**
+     * A door jammed in its frame, which rests a little higher than a shut one
+     * and by less the further off it is. Level 2 has the nearest of the four
+     * the game keeps.
+     */
+    @Test
+    fun `level2 the jammed door at 8x3`() =
+        checkGolden("level2-jammed-door", "LEVEL2.INF", x = 8, y = 4, direction = Direction.NORTH)
+
 
     /**
      * A door of the kind that has something fixed behind it — here the forest
@@ -239,6 +271,21 @@ class ViewPortGoldenTest {
     @Test
     fun `level5 14x9 east`() =
         checkGolden("level5-14x9-east", "LEVEL5.INF", x = 14, y = 9, direction = Direction.EAST)
+
+    /**
+     * The door at 11x9 seen off to one side, where its panel spills past the
+     * frame it hangs in.
+     *
+     * Frozen while broken so the fix shows up as a diff.
+     */
+    @Test
+    fun `level5 13x8 west`() =
+        checkGolden("level5-13x8-west", "LEVEL5.INF", x = 13, y = 8, direction = Direction.WEST)
+
+    /** The same door off the other side, where it stays inside its frame. */
+    @Test
+    fun `level5 13x10 west`() =
+        checkGolden("level5-13x10-west", "LEVEL5.INF", x = 13, y = 10, direction = Direction.WEST)
 
     /** A monster two squares off, seen down the corridor it stands in. */
     @Test
@@ -252,8 +299,15 @@ class ViewPortGoldenTest {
      * the wrong one draws a different animal entirely.
      */
     @Test
-    fun `level3 monster at 3x12 facing west`() =
-        checkGolden("level3-monster-west", "LEVEL3.INF", x = 3, y = 12, direction = Direction.WEST)
+    fun `level3 monster at 3x12 facing west`() = checkGolden(
+        "level3-monster-west",
+        // the door at 1x13 is held open by the level, and an open door is not
+        // drawn — a step down from that puts a panel in the frame beside the
+        // monster, where a sprite and a door have to agree about the same square
+        renderFrame("LEVEL3.INF", x = 3, y = 12, direction = Direction.WEST) { at, side ->
+            ALMOST_OPEN.takeIf { side == WallSide.EAST && at == Location(1, 13) }
+        },
+    )
 
     /**
      * Two doors seen while the party are still carrying level 3's second
@@ -834,6 +888,38 @@ class ViewPortGoldenTest {
         ).getOrThrow()
     }
 
+    /**
+     * The same view with some faces set to a byte the level does not hold, so a
+     * door a level keeps fully open can be seen as a panel.
+     *
+     * @param instead the byte to use at a face, or null to take the level's own
+     */
+    private fun renderFrame(
+        level: String,
+        x: Int,
+        y: Int,
+        direction: Direction,
+        instead: (Location, WallSide) -> WallByte?,
+    ): ViewPort = runBlocking {
+        val repository = repository()
+        val inf = repository.loadLevel(level).getOrThrow()
+        val sublevel = inf.subLevels[inf.subLevelAt(0, x, y, direction)]
+
+        repository.renderPosition(
+            items = inf.items,
+            monsters = inf.monsterInstances,
+            sublevel = sublevel,
+            playerX = x,
+            playerY = y,
+            direction = direction,
+            wallAt = { at, side ->
+                instead(at, side)?.let { Maz.WallType.of(it) }
+                    ?: sublevel.maz.squareOrNull(at)?.getWall(side)
+                    ?: Maz.WallType.NoWall
+            },
+        ).getOrThrow()
+    }
+
     private fun renderFrame(
         level: String,
         x: Int,
@@ -916,6 +1002,14 @@ class ViewPortGoldenTest {
     companion object {
         /** Render the last frame a script drew rather than its first. */
         private const val LAST_FRAME = -1
+
+        /** Door 1 without a button, two steps of five out of its frame. */
+        private val HALF_OPEN = WallByte(10)
+
+        /** Door 1 without a button, three steps of five out of its frame. */
+        private val ALMOST_OPEN = WallByte(11)
+
+        private val DOORS_BESIDE_2X10 = listOf(Location(4, 9), Location(4, 11))
 
         // Gradle runs jvmTest with the subproject as working directory, but be
         // tolerant of an IDE launching from the repository root.
