@@ -365,22 +365,56 @@ class InfRepositoryImpl(
 
         return Inf(
             name = name,
-            subLevels = subLevels.map { sub ->
-                val mine = sub.decorations.mapTo(mutableSetOf()) { it.decorationWallIndex }
-                sub.copy(
-                    mappedNextDoor = subLevels
-                        .filter { it !== sub }
-                        .flatMapTo(mutableSetOf()) { other ->
-                            other.decorations.map { it.decorationWallIndex }
-                        } - mine,
-                )
-            },
+            subLevels = subLevels.inheriting(),
             script = script,
             messages = messages,
             items = items,
             monsterInstances = monsterInstances,
             triggers = triggers
         )
+    }
+
+    /**
+     * Each sublevel given what the ones before it set up, which is how the game
+     * has it: entering a sublevel runs the setup of every sublevel up to and
+     * including it, over tables cleared once at the start. So a later sublevel
+     * keeps every wall mapping and door of an earlier one and replaces only
+     * what it names again — level 3's second half defines no doors at all and
+     * uses its first half's.
+     *
+     * The last word wins because that is the order the game applies them in.
+     * The monsters go the same way, which is why a creature keeps its shape
+     * across a boundary instead of turning into whatever else is at its index.
+     */
+    private fun List<SubLevel>.inheriting(): List<SubLevel> {
+        val decorations = mutableMapOf<Int, Decoration>()
+        val doors = mutableMapOf<Int, Door>()
+        val gfx = mutableMapOf<Int, MonsterGfx>()
+        val kinds = mutableMapOf<Int, MonsterProperty>()
+
+        val handedDown = map { sub ->
+            sub.decorations.forEach { decorations[it.decorationWallIndex] = it }
+            sub.doors.forEachIndexed { index, door -> doors[index] = door }
+            sub.monsterGfx.forEach { gfx[it.slot] = it }
+            sub.monsters.forEach { kinds[it.id] = it }
+
+            sub.copy(
+                decorations = decorations.values.toList(),
+                doors = doors.entries.sortedBy { it.key }.map { it.value },
+                monsterGfx = gfx.entries.sortedBy { it.key }.map { it.value },
+                monsters = kinds.entries.sortedBy { it.key }.map { it.value },
+            )
+        }
+
+        return handedDown.map { sub ->
+            val mine = sub.decorations.mapTo(mutableSetOf()) { it.decorationWallIndex }
+            sub.copy(
+                mappedNextDoor = handedDown
+                    .flatMapTo(mutableSetOf()) { other ->
+                        other.decorations.map { it.decorationWallIndex }
+                    } - mine,
+            )
+        }
     }
 
     /** Everything in Block B that comes before the script bytecode. */

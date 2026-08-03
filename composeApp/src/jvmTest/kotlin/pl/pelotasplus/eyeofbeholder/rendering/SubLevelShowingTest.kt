@@ -64,40 +64,33 @@ class SubLevelShowingTest {
     }
 
     /**
-     * A door is as much an appearance as a decoration is, and level 3's second
-     * sublevel defines none — so a door in sight rules it out however little
-     * the decorations have to say.
+     * A sublevel is handed the doors of the ones before it, so level 3's second
+     * defines none of its own and uses its first's. A door in sight therefore
+     * says nothing about which of them the party are in, and nothing pulls them
+     * back out of the second.
      */
     @Test
-    fun `only the sublevel with doors can show the doors at 3x8`() = withLevel3 { inf ->
-        assertEquals(0, inf.subLevels[1].doors.size, "sublevel 1 should define no doors")
+    fun `a door tells the sublevels apart no longer`() = withLevel3 { inf ->
         assertTrue(inf.subLevels[0].doors.isNotEmpty(), "sublevel 0 should define doors")
+        assertEquals(
+            inf.subLevels[0].doors.size,
+            inf.subLevels[1].doors.size,
+            "sublevel 1 should have been handed them",
+        )
 
-        assertEquals(0, inf.showingAt(1, Location(3, 8), Direction.SOUTH))
+        assertEquals(1, inf.showingAt(1, Location(3, 8), Direction.SOUTH))
     }
 
     /**
-     * Turning on the spot does not move the party between halves. Facing west
-     * from 3x12 brings three faces of the other half into the far corner while
-     * the doors and the decoration beside the party stay this half's, and the
-     * near ones are the ones that say where the party stand.
+     * Walls only the second sublevel maps carry the party into it wherever they
+     * come into sight, and being handed everything the first has means nothing
+     * carries them back. The walls can say "further on" and never "back".
      */
     @Test
-    fun `turning to face the other half does not cross into it`() = withLevel3 { inf ->
-        assertEquals(0, inf.showingAt(0, Location(3, 12), Direction.SOUTH))
-        assertEquals(0, inf.showingAt(0, Location(3, 12), Direction.WEST))
-    }
-
-    /**
-     * Looking straight at the boundary, where most of what is in sight belongs
-     * to the half the party are not in: seven faces of byte 61 and one of 67,
-     * against two doors one square ahead that only the first sublevel defines.
-     * The doors are nearer, so the doors decide.
-     */
-    @Test
-    fun `a crowd of far walls does not outvote the doors alongside`() = withLevel3 { inf ->
-        assertEquals(0, inf.showingAt(0, Location(3, 10), Direction.EAST))
-        assertEquals(0, inf.showingAt(0, Location(2, 10), Direction.EAST))
+    fun `walls of the second sublevel carry the party forward only`() = withLevel3 { inf ->
+        assertEquals(1, inf.showingAt(0, Location(3, 12), Direction.WEST))
+        assertEquals(1, inf.showingAt(0, Location(3, 10), Direction.EAST))
+        assertEquals(1, inf.showingAt(1, Location(3, 10), Direction.EAST))
     }
 
     private fun Inf.showingAt(showing: Int, at: Location, facing: Direction): Int {

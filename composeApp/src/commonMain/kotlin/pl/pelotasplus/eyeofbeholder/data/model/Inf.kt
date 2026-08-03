@@ -64,47 +64,28 @@ data class Inf(
      */
     fun subLevelShowing(showing: Int, sight: List<Maz.WallType>): Int {
         val stuck = subLevels.map { it.cannotDraw(sight) }
-        val least = stuck.minWith(NEAREST_ROW_FIRST)
+        val least = stuck.min()
 
-        return if (NEAREST_ROW_FIRST.compare(stuck[showing], least) == 0) {
-            showing
-        } else {
-            stuck.indexOfFirst { NEAREST_ROW_FIRST.compare(it, least) == 0 }
-        }
+        return if (stuck[showing] == least) showing else stuck.indexOf(least)
     }
 }
 
 /**
- * The nearest row that tells two sublevels apart decides between them; rows
- * further back are only consulted where it says nothing.
+ * How much of [sight] this sublevel has no appearance for: a decoration whose
+ * index it does not map, or a door it does not define.
  *
- * The view is three squares deep and a level's sublevels sit next to each
- * other, so it habitually shows walls of more than one of them — a party
- * looking towards the boundary can have most of what they see belong to rooms
- * they are not in. What settles where they stand is what stands beside them,
- * however much of the distance disagrees.
+ * A plain count settles it because a sublevel is handed everything the ones
+ * before it set up, so a later one can only fail on a subset of what an
+ * earlier one fails on. Where they differ at all, the later one wins outright
+ * and there is nothing to weigh.
  */
-private val NEAREST_ROW_FIRST = Comparator<List<Int>> { a, b ->
-    a.indices.firstNotNullOfOrNull { row -> (a[row] - b[row]).takeIf { it != 0 } } ?: 0
-}
+private fun SubLevel.cannotDraw(sight: List<Maz.WallType>): Int = sight.count { wall ->
+    when (wall) {
+        is Maz.WallType.Decoration ->
+            decorations.none { it.decorationWallIndex == wall.decorationWallIndex }
 
-/** What this sublevel cannot draw of [sight], counted by row, nearest first. */
-private fun SubLevel.cannotDraw(sight: List<Maz.WallType>): List<Int> {
-    val rows = MutableList(ROWS_DEEP + 1) { 0 }
+        is Maz.WallType.Door -> wall.doorIndex.value !in doors.indices
 
-    sight.forEachIndexed { slot, wall ->
-        if (hasNoAppearanceFor(wall)) rows[-viewSlots[slot].relativeY]++
+        else -> false
     }
-    return rows
 }
-
-private fun SubLevel.hasNoAppearanceFor(wall: Maz.WallType): Boolean = when (wall) {
-    is Maz.WallType.Decoration ->
-        decorations.none { it.decorationWallIndex == wall.decorationWallIndex }
-
-    is Maz.WallType.Door -> wall.doorIndex.value !in doors.indices
-
-    else -> false
-}
-
-private const val ROWS_DEEP = 3

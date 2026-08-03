@@ -252,6 +252,33 @@ class ViewPortGoldenTest {
     )
 
     /**
+     * The end of a corridor with its walls to either side, which is what a
+     * square back from it ought to look like too.
+     */
+    @Test
+    fun `level3 4x11 east`() =
+        checkGolden("level3-4x11-east", "LEVEL3.INF", x = 4, y = 11, direction = Direction.EAST)
+
+    /**
+     * A square further back, where the sides of the same corridor are missing.
+     *
+     * Frozen while broken so the fix shows up as a diff.
+     */
+    @Test
+    fun `level3 3x11 east`() =
+        checkGolden("level3-3x11-east", "LEVEL3.INF", x = 3, y = 11, direction = Direction.EAST)
+
+    /**
+     * The same corridor looked back along, where a wall has no appearance and
+     * is painted red.
+     *
+     * Frozen while broken so the fix shows up as a diff.
+     */
+    @Test
+    fun `level3 5x11 west`() =
+        checkGolden("level3-5x11-west", "LEVEL3.INF", x = 5, y = 11, direction = Direction.WEST)
+
+    /**
      * A door jammed in its frame, which rests a little higher than a shut one
      * and by less the further off it is. Level 2 has the nearest of the four
      * the game keeps.
