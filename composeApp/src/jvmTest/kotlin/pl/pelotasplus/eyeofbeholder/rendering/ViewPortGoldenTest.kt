@@ -191,6 +191,64 @@ class ViewPortGoldenTest {
     fun `level3 rooms of the second sublevel`() =
         checkGolden("level3-second-sublevel", "LEVEL3.INF", x = 7, y = 14, direction = Direction.NORTH)
 
+    /**
+     * The far corner of this view is a face of the level's other half, which
+     * this one has no appearance for and so leaves blank.
+     */
+    @Test
+    fun `level3 a wall of the other half in the far corner`() =
+        checkGolden("level3-boundary-wall", "LEVEL3.INF", x = 3, y = 10, direction = Direction.SOUTH)
+
+    /** The same corridor a square west, where that corner falls off the maze. */
+    @Test
+    fun `level3 a step west of the boundary wall`() =
+        checkGolden("level3-boundary-wall-stepped", "LEVEL3.INF", x = 2, y = 10, direction = Direction.SOUTH)
+
+    /**
+     * A door to either side, looking straight at the boundary: nearly
+     * everything beyond them belongs to the sublevel the party are not in, and
+     * the doors alongside are all that says so.
+     */
+    @Test
+    fun `level3 doors either side facing the boundary`() =
+        checkGolden("level3-doors-facing-the-boundary", "LEVEL3.INF", x = 3, y = 10, direction = Direction.EAST)
+
+    /** The same doors a square back, where they sit beside carved side walls. */
+    @Test
+    fun `level3 doors either side from a step back`() =
+        checkGolden("level3-doors-a-step-back", "LEVEL3.INF", x = 2, y = 10, direction = Direction.EAST)
+
+    /** A monster two squares off, seen down the corridor it stands in. */
+    @Test
+    fun `level3 monster at 3x12 facing south`() =
+        checkGolden("level3-monster-south", "LEVEL3.INF", x = 3, y = 12, direction = Direction.SOUTH)
+
+    /**
+     * The same monster from the same square after turning right, where the
+     * faces of the level's other half come into view. It is the same creature:
+     * a monster's graphic is an index into its sublevel's own list, so being in
+     * the wrong one draws a different animal entirely.
+     */
+    @Test
+    fun `level3 monster at 3x12 facing west`() =
+        checkGolden("level3-monster-west", "LEVEL3.INF", x = 3, y = 12, direction = Direction.WEST)
+
+    /**
+     * Two doors seen while the party are still carrying level 3's second
+     * sublevel, which defines no doors whatever. Its own rooms have none, so
+     * being able to see one is what says the party have left them.
+     */
+    @Test
+    fun `level3 doors seen while carrying the other sublevel`() =
+        checkGolden(
+            "level3-doors-from-the-other-sublevel",
+            "LEVEL3.INF",
+            x = 3,
+            y = 8,
+            direction = Direction.SOUTH,
+            arrivedIn = 1,
+        )
+
     @Test
     fun `toImageBitmap matches the raw pixel buffer`() {
         val viewPort = renderFrame("LEVEL7.INF", x = 29, y = 15, direction = Direction.SOUTH)
@@ -212,8 +270,18 @@ class ViewPortGoldenTest {
         }
     }
 
-    private fun checkGolden(name: String, level: String, x: Int, y: Int, direction: Direction) =
-        checkGolden(name, renderFrame(level, x, y, direction))
+    /**
+     * @param arrivedIn the sublevel the party are carrying, which is whichever
+     *   one they were last put in rather than anything the square knows.
+     */
+    private fun checkGolden(
+        name: String,
+        level: String,
+        x: Int,
+        y: Int,
+        direction: Direction,
+        arrivedIn: Int = 0,
+    ) = checkGolden(name, renderFrame(level, x, y, direction, arrivedIn))
 
     private fun checkGolden(name: String, viewPort: ViewPort) =
         checkGolden(name, viewPort.toImage())
@@ -744,14 +812,20 @@ class ViewPortGoldenTest {
         ).getOrThrow()
     }
 
-    private fun renderFrame(level: String, x: Int, y: Int, direction: Direction): ViewPort =
+    private fun renderFrame(
+        level: String,
+        x: Int,
+        y: Int,
+        direction: Direction,
+        arrivedIn: Int = 0,
+    ): ViewPort =
         runBlocking {
             val repository = repository()
             val inf = repository.loadLevel(level).getOrThrow()
             repository.renderPosition(
                 items = inf.items,
                 monsters = inf.monsterInstances,
-                sublevel = inf.subLevels[inf.subLevelAt(0, x, y, direction)],
+                sublevel = inf.subLevels[inf.subLevelAt(arrivedIn, x, y, direction)],
                 playerX = x,
                 playerY = y,
                 direction = direction

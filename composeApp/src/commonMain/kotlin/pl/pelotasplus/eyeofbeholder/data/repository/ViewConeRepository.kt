@@ -192,11 +192,17 @@ class ViewConeRepositoryImpl(
                             // keep whatever bytes were left there, so an
                             // unmapped index is expected — as long as it stays
                             // out of sight. Painting it red says otherwise.
-                            Logger.w(TAG) {
-                                "Wall index ${wallType.decorationWallIndex} at ($mazX,$mazY) " +
-                                        "is not mapped by this level"
+                            //
+                            // Except a face of a sublevel the party are not in,
+                            // which is in sight all the time and is meant to be
+                            // left blank.
+                            if (wallType.decorationWallIndex !in sublevel.mappedNextDoor) {
+                                Logger.w(TAG) {
+                                    "Wall index ${wallType.decorationWallIndex} at ($mazX,$mazY) " +
+                                            "is not mapped by this level"
+                                }
+                                viewPort.drawUndrawableWall(wallPosition)
                             }
-                            viewPort.drawUndrawableWall(wallPosition)
                             return@at
                         }
 

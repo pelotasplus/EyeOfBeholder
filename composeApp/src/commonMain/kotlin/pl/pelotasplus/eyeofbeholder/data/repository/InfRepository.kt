@@ -365,7 +365,16 @@ class InfRepositoryImpl(
 
         return Inf(
             name = name,
-            subLevels = subLevels.toList(),
+            subLevels = subLevels.map { sub ->
+                val mine = sub.decorations.mapTo(mutableSetOf()) { it.decorationWallIndex }
+                sub.copy(
+                    mappedNextDoor = subLevels
+                        .filter { it !== sub }
+                        .flatMapTo(mutableSetOf()) { other ->
+                            other.decorations.map { it.decorationWallIndex }
+                        } - mine,
+                )
+            },
             script = script,
             messages = messages,
             items = items,

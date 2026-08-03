@@ -24,13 +24,14 @@ import kotlin.test.assertTrue
 
 /**
  * Walking through a wall can put the party in rooms belonging to a sublevel no
- * script sent them to, where the walls have no appearance and the renderer
- * paints red. The walls themselves say which sublevel they are, because each
- * one maps a different set of wall indices.
+ * script sent them to, where doors have no appearance and monsters are drawn
+ * from the wrong sheet. Which one they are in is read back off what is in
+ * sight, each sublevel mapping its own wall indices and defining its own doors.
  *
- * What the answers should be comes from level 3's own two mapping tables, not
+ * What the answers should be comes from level 3's own two tables rather than
  * from what the renderer does with them: bytes 61 and 64 are mapped by its
- * second sublevel and by neither the first nor anything else.
+ * second sublevel and by neither the first nor anything else, and only its
+ * first sublevel defines any doors at all.
  */
 class SubLevelShowingTest {
 
@@ -60,6 +61,43 @@ class SubLevelShowingTest {
     @Test
     fun `a sublevel that can draw what is in sight is kept`() = withLevel3 { inf ->
         assertEquals(1, inf.showingAt(1, Location(7, 14), Direction.NORTH))
+    }
+
+    /**
+     * A door is as much an appearance as a decoration is, and level 3's second
+     * sublevel defines none — so a door in sight rules it out however little
+     * the decorations have to say.
+     */
+    @Test
+    fun `only the sublevel with doors can show the doors at 3x8`() = withLevel3 { inf ->
+        assertEquals(0, inf.subLevels[1].doors.size, "sublevel 1 should define no doors")
+        assertTrue(inf.subLevels[0].doors.isNotEmpty(), "sublevel 0 should define doors")
+
+        assertEquals(0, inf.showingAt(1, Location(3, 8), Direction.SOUTH))
+    }
+
+    /**
+     * Turning on the spot does not move the party between halves. Facing west
+     * from 3x12 brings three faces of the other half into the far corner while
+     * the doors and the decoration beside the party stay this half's, and the
+     * near ones are the ones that say where the party stand.
+     */
+    @Test
+    fun `turning to face the other half does not cross into it`() = withLevel3 { inf ->
+        assertEquals(0, inf.showingAt(0, Location(3, 12), Direction.SOUTH))
+        assertEquals(0, inf.showingAt(0, Location(3, 12), Direction.WEST))
+    }
+
+    /**
+     * Looking straight at the boundary, where most of what is in sight belongs
+     * to the half the party are not in: seven faces of byte 61 and one of 67,
+     * against two doors one square ahead that only the first sublevel defines.
+     * The doors are nearer, so the doors decide.
+     */
+    @Test
+    fun `a crowd of far walls does not outvote the doors alongside`() = withLevel3 { inf ->
+        assertEquals(0, inf.showingAt(0, Location(3, 10), Direction.EAST))
+        assertEquals(0, inf.showingAt(0, Location(2, 10), Direction.EAST))
     }
 
     private fun Inf.showingAt(showing: Int, at: Location, facing: Direction): Int {

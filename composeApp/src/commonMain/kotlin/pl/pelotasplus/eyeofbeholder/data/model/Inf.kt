@@ -59,20 +59,52 @@ data class Inf(
      * script that sends the party across, and never works it out.
      *
      * This is for arriving somewhere no script sent us, which walking through
-     * a wall is. [showing] is kept unless something in sight cannot be drawn
-     * in it, and kept anyway when no sublevel can draw it — that is a wall
-     * nobody maps rather than a party in the wrong place.
+     * a wall is. [sight] must be in [viewSlots] order, since which row a wall
+     * stands in is what decides between two sublevels.
      */
     fun subLevelShowing(showing: Int, sight: List<Maz.WallType>): Int {
-        val wanted = sight
-            .filterIsInstance<Maz.WallType.Decoration>()
-            .mapTo(mutableSetOf()) { it.decorationWallIndex }
+        val stuck = subLevels.map { it.cannotDraw(sight) }
+        val least = stuck.minWith(NEAREST_ROW_FIRST)
 
-        if (wanted.isEmpty() || subLevels[showing].maps(wanted)) return showing
-
-        return subLevels.indices.firstOrNull { subLevels[it].maps(wanted) } ?: showing
+        return if (NEAREST_ROW_FIRST.compare(stuck[showing], least) == 0) {
+            showing
+        } else {
+            stuck.indexOfFirst { NEAREST_ROW_FIRST.compare(it, least) == 0 }
+        }
     }
 }
 
-private fun SubLevel.maps(wallIndices: Set<Int>): Boolean =
-    decorations.mapTo(mutableSetOf()) { it.decorationWallIndex }.containsAll(wallIndices)
+/**
+ * The nearest row that tells two sublevels apart decides between them; rows
+ * further back are only consulted where it says nothing.
+ *
+ * The view is three squares deep and a level's sublevels sit next to each
+ * other, so it habitually shows walls of more than one of them — a party
+ * looking towards the boundary can have most of what they see belong to rooms
+ * they are not in. What settles where they stand is what stands beside them,
+ * however much of the distance disagrees.
+ */
+private val NEAREST_ROW_FIRST = Comparator<List<Int>> { a, b ->
+    a.indices.firstNotNullOfOrNull { row -> (a[row] - b[row]).takeIf { it != 0 } } ?: 0
+}
+
+/** What this sublevel cannot draw of [sight], counted by row, nearest first. */
+private fun SubLevel.cannotDraw(sight: List<Maz.WallType>): List<Int> {
+    val rows = MutableList(ROWS_DEEP + 1) { 0 }
+
+    sight.forEachIndexed { slot, wall ->
+        if (hasNoAppearanceFor(wall)) rows[-viewSlots[slot].relativeY]++
+    }
+    return rows
+}
+
+private fun SubLevel.hasNoAppearanceFor(wall: Maz.WallType): Boolean = when (wall) {
+    is Maz.WallType.Decoration ->
+        decorations.none { it.decorationWallIndex == wall.decorationWallIndex }
+
+    is Maz.WallType.Door -> wall.doorIndex.value !in doors.indices
+
+    else -> false
+}
+
+private const val ROWS_DEEP = 3
