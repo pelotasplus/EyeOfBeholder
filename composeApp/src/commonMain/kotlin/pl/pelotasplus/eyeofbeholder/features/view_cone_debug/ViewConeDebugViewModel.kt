@@ -49,6 +49,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.levelNumber
 import pl.pelotasplus.eyeofbeholder.data.model.speakerFrom
 import pl.pelotasplus.eyeofbeholder.data.model.spokenBy
 import pl.pelotasplus.eyeofbeholder.data.model.teleportersInView
+import pl.pelotasplus.eyeofbeholder.data.model.wallsInSight
 import pl.pelotasplus.eyeofbeholder.data.model.script.Dialog
 import pl.pelotasplus.eyeofbeholder.data.model.toImageBitmap
 import pl.pelotasplus.eyeofbeholder.data.repository.CpsRepository
@@ -191,6 +192,7 @@ class ViewConeDebugViewModel(
 
             onVmpSelected(
                 name = resumed?.let { "LEVEL${it.level}.INF" } ?: level ?: DEFAULT_LEVEL,
+                subLevel = resumed?.subLevel ?: 0,
                 playerX = resumed?.world?.party?.position?.x ?: startX ?: DEFAULT_PLAYER_X,
                 playerY = resumed?.world?.party?.position?.y ?: startY ?: DEFAULT_PLAYER_Y,
                 direction = resumed?.world?.party?.facing ?: startDirection ?: DEFAULT_DIRECTION,
@@ -238,6 +240,7 @@ class ViewConeDebugViewModel(
                 description = inf.name.removeSuffix(".INF"),
                 savedAt = rightNow(),
                 level = levelNumber(inf.name),
+                subLevel = _state.value.subLevel,
                 champions = roster,
                 world = _state.value.game,
                 messages = _state.value.messages,
@@ -247,6 +250,7 @@ class ViewConeDebugViewModel(
 
     private fun onVmpSelected(
         name: String,
+        subLevel: Int = 0,
         playerX: Int? = null,
         playerY: Int? = null,
         direction: Direction? = null
@@ -256,6 +260,7 @@ class ViewConeDebugViewModel(
                 .loadLevel(name = name)
                 .onSuccess { inf ->
                     val arrivingAt = levelNumber(inf.name)
+                    val showing = subLevel.coerceIn(inf.subLevels.indices)
                     scriptRunner = LevelScriptRunner(inf.script, arrivingAt)
                     _state.update {
                         val was = it.game.party
@@ -264,11 +269,12 @@ class ViewConeDebugViewModel(
 
                         it.copy(
                             inf = inf,
+                            subLevel = showing,
                             game = (leftBehind ?: it.game)
                                 .arrivingAt(
                                     level = arrivingAt,
                                     places = inf.monsterInstances,
-                                    maz = inf.subLevels[PLAYED_SUBLEVEL].maz,
+                                    maz = inf.subLevels[showing].maz,
                                 )
                                 .copy(
                                     party = was.copy(
@@ -397,6 +403,7 @@ class ViewConeDebugViewModel(
             description = description,
             savedAt = rightNow(),
             level = levelNumber(inf.name),
+            subLevel = _state.value.subLevel,
             champions = roster,
             world = _state.value.game,
             messages = _state.value.messages,
@@ -414,6 +421,7 @@ class ViewConeDebugViewModel(
         showMenu(null)
         onVmpSelected(
             name = "LEVEL${saved.level}.INF",
+            subLevel = saved.subLevel,
             playerX = saved.world.party.position.x,
             playerY = saved.world.party.position.y,
             direction = saved.world.party.facing,
@@ -427,7 +435,7 @@ class ViewConeDebugViewModel(
      */
     private fun onClickedTheView(x: Int, y: Int) {
         val inf = _state.value.inf ?: return
-        val sublevel = inf.subLevels[PLAYED_SUBLEVEL]
+        val sublevel = inf.subLevels[_state.value.subLevel]
 
         val (dx, dy) = party.facing.transformCoordinates(0, -1)
         val ahead = Location(party.position.x + dx, party.position.y + dy)
@@ -492,9 +500,13 @@ class ViewConeDebugViewModel(
                 drawViewPort()
                 autosave()
             } else {
-                Logger.i(TAG) { "Changing to level ${change.level} at ${change.location}" }
+                Logger.i(TAG) {
+                    "Changing to level ${change.level} sublevel ${change.subLevel} " +
+                        "at ${change.location}"
+                }
                 onVmpSelected(
                     name = "LEVEL${change.level}.INF",
+                    subLevel = change.subLevel,
                     playerX = change.location.x,
                     playerY = change.location.y,
                     direction = change.direction,
@@ -705,9 +717,10 @@ class ViewConeDebugViewModel(
     /** Draws the view and waits for it, so a script can hold what it put up. */
     private suspend fun drawViewPort() {
         val inf = _state.value.inf ?: return
-        val sublevel = inf.subLevels[PLAYED_SUBLEVEL]
         val level = levelNumber(inf.name)
         val wallAt = { at: Location, side: WallSide -> _state.value.game.wall(level, at, side) }
+
+        val sublevel = inf.subLevels[followTheWalls(inf, wallAt)]
 
         viewConeRepository.renderPosition(
             items = inf.items,
@@ -726,6 +739,28 @@ class ViewConeDebugViewModel(
         }
 
         keepFlickering(teleportersInView(party.position, party.facing, wallAt).isNotEmpty())
+    }
+
+    /**
+     * Which sublevel to draw, having let the walls in sight correct it.
+     *
+     * Only walking through one can put the party somewhere no script sent
+     * them, so this is a debugging affordance rather than the game's own rule
+     * — but it costs a set comparison per frame and saves picking the sublevel
+     * by hand every time.
+     */
+    private fun followTheWalls(inf: Inf, wallAt: (Location, WallSide) -> Maz.WallType): Int {
+        val was = _state.value.subLevel
+        val showing = inf.subLevelShowing(
+            showing = was,
+            sight = wallsInSight(party.position, party.facing, wallAt),
+        )
+
+        if (showing != was) {
+            Logger.i(TAG) { "The walls at ${party.position} are sublevel $showing, not $was" }
+            _state.update { it.copy(subLevel = showing) }
+        }
+        return showing
     }
 
     /**
@@ -766,7 +801,7 @@ class ViewConeDebugViewModel(
         val inf = _state.value.inf ?: return
         val viewPort = drawn ?: return
 
-        paint(viewPort, inf.subLevels[PLAYED_SUBLEVEL].palette)
+        paint(viewPort, inf.subLevels[_state.value.subLevel].palette)
     }
 
     private fun paint(viewPort: ViewPort, palette: Palette) {
@@ -912,6 +947,14 @@ class ViewConeDebugViewModel(
 
     data class State(
         val inf: Inf? = null,
+
+        /**
+         * Which of the level's sublevels the party are in. Nothing in the maze
+         * says: a script puts them in one, and walking somewhere no script
+         * sent them is settled by [Inf.subLevelShowing].
+         */
+        val subLevel: Int = 0,
+
         val dialog: DialogPrompt? = null,
 
         /** The camp menu, if it is open, which owns the screen while it is. */
@@ -968,8 +1011,6 @@ class ViewConeDebugViewModel(
         /** How long the party must stand still before where they are is written. */
         private val AUTOSAVE_SETTLES = Ticks(9)
 
-        // side areas are not reachable yet, so only the main floor is played
-        private const val PLAYED_SUBLEVEL = 0
         private const val DEFAULT_LEVEL = "LEVEL5.INF"
         private const val DEFAULT_PLAYER_X = 10
         private const val DEFAULT_PLAYER_Y = 8

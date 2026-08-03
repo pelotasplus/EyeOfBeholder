@@ -46,4 +46,33 @@ data class Inf(
     /** null where the script named no message, or named one this level lacks. */
     fun message(id: MessageId): String? =
         messages.getOrNull(id.index)?.takeIf { it.isNotBlank() }
+
+    /**
+     * Which sublevel the walls in [sight] belong to, [showing] being the one
+     * being drawn now.
+     *
+     * A level's sublevels share one maze and are told apart only by which wall
+     * indices each of them maps, so the same byte is a bookcase in one and a
+     * tree in the next, and a byte a sublevel has never heard of has no
+     * appearance in it at all. Nothing in the data marks where one sublevel's
+     * rooms end and another's begin: the game is told which it is in, by the
+     * script that sends the party across, and never works it out.
+     *
+     * This is for arriving somewhere no script sent us, which walking through
+     * a wall is. [showing] is kept unless something in sight cannot be drawn
+     * in it, and kept anyway when no sublevel can draw it — that is a wall
+     * nobody maps rather than a party in the wrong place.
+     */
+    fun subLevelShowing(showing: Int, sight: List<Maz.WallType>): Int {
+        val wanted = sight
+            .filterIsInstance<Maz.WallType.Decoration>()
+            .mapTo(mutableSetOf()) { it.decorationWallIndex }
+
+        if (wanted.isEmpty() || subLevels[showing].maps(wanted)) return showing
+
+        return subLevels.indices.firstOrNull { subLevels[it].maps(wanted) } ?: showing
+    }
 }
+
+private fun SubLevel.maps(wallIndices: Set<Int>): Boolean =
+    decorations.mapTo(mutableSetOf()) { it.decorationWallIndex }.containsAll(wallIndices)

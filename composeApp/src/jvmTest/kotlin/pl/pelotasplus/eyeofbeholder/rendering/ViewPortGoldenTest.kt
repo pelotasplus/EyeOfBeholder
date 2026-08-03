@@ -6,6 +6,10 @@ import kotlinx.coroutines.runBlocking
 import pl.pelotasplus.eyeofbeholder.data.model.CampMenu
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.GameState
+import pl.pelotasplus.eyeofbeholder.data.model.Inf
+import pl.pelotasplus.eyeofbeholder.data.model.Maz
+import pl.pelotasplus.eyeofbeholder.data.model.getWall
+import pl.pelotasplus.eyeofbeholder.data.model.wallsInSight
 import pl.pelotasplus.eyeofbeholder.data.model.LevelScriptRunner
 import pl.pelotasplus.eyeofbeholder.data.model.Location
 import pl.pelotasplus.eyeofbeholder.data.model.MessageId
@@ -176,6 +180,16 @@ class ViewPortGoldenTest {
     @Test
     fun `level3 monster one ahead and one left`() =
         checkGolden("level3-monster-on-the-diagonal", "LEVEL3.INF", x = 22, y = 25, direction = Direction.WEST)
+
+    /**
+     * Rooms belonging to level 3's second sublevel, which the party can walk
+     * into without a script sending them. Drawn with the sublevel its own walls
+     * name, so bytes 61 and 64 have the appearance only that sublevel gives
+     * them instead of the red that says nobody does.
+     */
+    @Test
+    fun `level3 rooms of the second sublevel`() =
+        checkGolden("level3-second-sublevel", "LEVEL3.INF", x = 7, y = 14, direction = Direction.NORTH)
 
     @Test
     fun `toImageBitmap matches the raw pixel buffer`() {
@@ -737,12 +751,23 @@ class ViewPortGoldenTest {
             repository.renderPosition(
                 items = inf.items,
                 monsters = inf.monsterInstances,
-                sublevel = inf.subLevels[0],
+                sublevel = inf.subLevels[inf.subLevelAt(0, x, y, direction)],
                 playerX = x,
                 playerY = y,
                 direction = direction
             ).getOrThrow()
         }
+
+    /** The same choice the game makes when no script has said which sublevel. */
+    private fun Inf.subLevelAt(showing: Int, x: Int, y: Int, direction: Direction): Int {
+        val maz = subLevels[showing].maz
+        return subLevelShowing(
+            showing = showing,
+            sight = wallsInSight(Location(x, y), direction) { at, side ->
+                maz.squareOrNull(at)?.getWall(side) ?: Maz.WallType.NoWall
+            },
+        )
+    }
 
     private fun ViewPort.toImage(): BufferedImage {
         val image = BufferedImage(ViewPort.COLS, ViewPort.ROWS, BufferedImage.TYPE_INT_ARGB)

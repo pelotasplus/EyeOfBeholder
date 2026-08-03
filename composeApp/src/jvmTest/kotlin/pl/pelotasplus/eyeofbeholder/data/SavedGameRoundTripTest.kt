@@ -106,7 +106,7 @@ class SavedGameRoundTripTest {
     @Test
     fun `a save from before messages were kept reads as having none`() = runBlocking {
         val slot = SaveSlot.numbered[3]
-        repository.save(slot, "older", 0, 5, champions, world).getOrThrow()
+        repository.save(slot, "older", 0, 5, champions = champions, world = world).getOrThrow()
 
         assertEquals(emptyList(), repository.load(slot).getOrThrow().messages)
     }
@@ -162,7 +162,7 @@ class SavedGameRoundTripTest {
         val dropped = SaveSlot.numbered[2]
 
         listOf(kept, dropped).forEach {
-            repository.save(it, it.name, 0, 5, champions, world).getOrThrow()
+            repository.save(it, it.name, 0, 5, champions = champions, world = world).getOrThrow()
         }
         repository.erase(dropped).getOrThrow()
 

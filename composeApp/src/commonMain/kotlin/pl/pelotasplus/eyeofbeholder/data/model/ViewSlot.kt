@@ -121,10 +121,6 @@ data class ViewSlot(
  * Coordinates are relative to the player facing NORTH (negative Y = forward);
  * they are rotated by the actual facing direction at render time. Positions are
  * rendered in list order (back-to-front) so closer walls occlude farther ones.
- *
- * Note: the original data had a 26th entry (index 25, decoration slot 0 =
- * "party's own square") that is unreachable — the renderer only iterates
- * positions 0-24 — so it is not carried over.
  */
 val viewSlots: List<ViewSlot> = listOf(
     // ── Layer 4: side walls left ─────────────────────────────────────────
@@ -303,3 +299,13 @@ val viewSlots: List<ViewSlot> = listOf(
         decoration = DecorationPosition(xFlip = 1, wall = 4, xDelta = 0),
     ),
 )
+
+/** Every wall the party can see from [from], facing [facing]. */
+fun wallsInSight(
+    from: Location,
+    facing: Direction,
+    wallAt: (Location, WallSide) -> Maz.WallType,
+): List<Maz.WallType> = viewSlots.map { slot ->
+    val (dx, dy) = facing.transformCoordinates(slot.relativeX, slot.relativeY)
+    wallAt(Location(from.x + dx, from.y + dy), facing.transformWallSide(slot.wallSide))
+}

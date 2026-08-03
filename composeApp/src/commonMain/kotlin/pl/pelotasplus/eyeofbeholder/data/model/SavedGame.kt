@@ -25,6 +25,10 @@ data class SavedGame(
     /** Milliseconds since the epoch, for showing which save is the newest. */
     val savedAt: Long,
     val level: Int,
+
+    /** Which of the level's sublevels, the main floor being 0. */
+    val subLevel: Int = 0,
+
     val champions: List<Champion>,
     val world: SavedWorld,
     /**
