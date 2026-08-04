@@ -73,7 +73,9 @@ class ViewPortGoldenTest {
      * levels as their files describe them, so the file is what they render.
      */
     private val dungeonItems: List<Item> by lazy {
-        runBlocking { ItemsRepositoryImpl(ResourceRepositoryImpl()).loadItems().getOrThrow() }
+        runBlocking {
+            ItemsRepositoryImpl(ResourceRepositoryImpl()).loadItems().getOrThrow().items
+        }
     }
 
     /** The mage's spellbook, which nobody but a mage has any use for. */
