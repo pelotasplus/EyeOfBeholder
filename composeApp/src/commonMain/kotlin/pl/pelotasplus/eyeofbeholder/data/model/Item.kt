@@ -16,7 +16,7 @@ import pl.pelotasplus.eyeofbeholder.data.ByteReader
  * ```
  * 0  1  name while unidentified, an index into the name table
  * 1  1  name once identified
- * 2  1  flags; bit 7 is identified
+ * 2  1  flags; 0x20 stuck to its slot, 0x40 identified, 0x80 magical
  * 3  1  icon
  * 4  1  type
  * 5  1  where in its square
@@ -59,6 +59,9 @@ data class Item(
     /** A cursed thing cannot be taken out of the slot it was put in. */
     val stuckToItsSlot: Boolean get() = flags and STUCK != 0
 
+    /** Whether the party know what this really is, and so what to call it. */
+    val identified: Boolean get() = flags and IDENTIFIED != 0
+
     companion object {
         /**
          * The square an item that is on none lies on: the packed word 0xFFFF,
@@ -66,7 +69,25 @@ data class Item(
          */
         val NOWHERE = Location(31, 2047)
 
+        /**
+         * Where a thing on a stack lies: not on the map and not in a slot of
+         * its own, but strung onto the one thing the slot names.
+         */
+        val ON_A_STACK = Location(30, 2047)
+
+        /** A stacked thing is on no level either, which is written this way. */
+        const val NO_LEVEL = 255
+
+        /**
+         * Where a thing being carried lies. It is square zero of level zero,
+         * which is a real square that nothing is ever drawn on — the levels
+         * are numbered from one.
+         */
+        val CARRIED = Location(0, 0)
+        const val CARRIED_LEVEL = 0
+
         private const val STUCK = 0x20
+        private const val IDENTIFIED = 0x40
 
         fun read(reader: ByteReader) = Item(
             nameUnidentified = ItemNameId(reader.readU8()),
@@ -81,6 +102,46 @@ data class Item(
             level = reader.readU8(),
             value = reader.readI8(),
         )
+    }
+}
+
+/**
+ * The places a thing can be put. Every kind of item names the ones it fits,
+ * in these bits, and every slot on a champion's page takes one of them.
+ *
+ * What each one is was read off the items that fit it: [QUIVER] takes arrows
+ * and nothing else, [ARMOUR] takes leather and plate and robes and cloaks,
+ * [BRACERS] takes bracers, [POUCH] takes the small carryable things — a
+ * dagger, a scroll, a potion, a key.
+ */
+enum class ItemFits(val bit: Int) {
+    QUIVER(0x0001),
+    ARMOUR(0x0002),
+    BRACERS(0x0004),
+    HAND(0x0008),
+    BOOTS(0x0010),
+    HELMET(0x0020),
+    NECKLACE(0x0040),
+    POUCH(0x0080),
+    RING(0x0100),
+}
+
+/** What one slot will take: one kind of place, or anything at all. */
+sealed interface SlotTakes {
+    /** A pocket of the pack, which is what a pack is for. */
+    data object Anything : SlotTakes
+
+    data class Only(val fits: ItemFits) : SlotTakes
+
+    /** @param kinds the places an item's own kind says it fits. */
+    fun accepts(kinds: Int): Boolean = when (this) {
+        Anything -> kinds != NOWHERE_AT_ALL
+        is Only -> kinds and fits.bit != 0
+    }
+
+    private companion object {
+        /** A kind that fits nowhere fits nowhere, a pocket included. */
+        const val NOWHERE_AT_ALL = 0
     }
 }
 
@@ -124,6 +185,42 @@ data class ItemTypes(private val types: List<ItemType>) {
         return allows(champion, second)
     }
 
+    /**
+     * Whether [slot] of [champion] will take what is being held and give up
+     * [inSlot], which is what one click on it does.
+     *
+     * A stack is not a swap, so the quiver refuses until the chain of arrows
+     * in it is modelled. What a curse has stuck to a hand stays there — only
+     * the hands hold a thing that way. And armour is the one slot that asks
+     * whether the champion is of a class that may wear what is offered.
+     */
+    fun willSwap(
+        champion: Champion,
+        slot: InventorySlot,
+        held: Item?,
+        inSlot: Item?,
+    ): Boolean = when {
+        slot.isQuiver -> false
+        slot.slot < Champion.HANDS && inSlot?.stuckToItsSlot == true -> false
+        slot.slot == WORN_ARMOUR && !usableBy(champion, held) -> false
+        else -> mayGoIn(slot.takes, held)
+    }
+
+    /**
+     * Whether what is being held may go into a slot that [takes] these kinds
+     * of thing.
+     *
+     * An empty hand fits everywhere: putting nothing anywhere is taking, not
+     * putting, and there is nothing to refuse.
+     */
+    fun mayGoIn(takes: SlotTakes, held: Item?): Boolean {
+        if (held == null) return true
+        return takes.accepts(this[held.type]?.invFlags ?: return false)
+    }
+
+    /** Whether an item is for a champion of this class at all. */
+    fun usableBy(champion: Champion, item: Item?) = allows(champion, item)
+
     /** Nothing in a hand is something anyone may do. */
     private fun allows(champion: Champion, item: Item?): Boolean {
         if (item == null) return true
@@ -134,6 +231,9 @@ data class ItemTypes(private val types: List<ItemType>) {
     private companion object {
         const val FIRST_HAND = 0
         const val BOTH_HANDS = 2
+
+        /** The slot armour is worn in, and the only one that asks about class. */
+        const val WORN_ARMOUR = 17
 
         /** The low seven bits of an item's extra properties say what kind it is. */
         const val KIND = 0x7F

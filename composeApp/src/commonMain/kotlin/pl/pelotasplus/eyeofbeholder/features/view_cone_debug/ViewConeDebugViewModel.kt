@@ -33,7 +33,12 @@ import pl.pelotasplus.eyeofbeholder.data.model.Font
 import pl.pelotasplus.eyeofbeholder.data.model.GameState
 import pl.pelotasplus.eyeofbeholder.data.model.Inf
 import pl.pelotasplus.eyeofbeholder.data.model.InventorySlot
+import pl.pelotasplus.eyeofbeholder.data.model.inventorySlotAt
+import pl.pelotasplus.eyeofbeholder.data.model.inventorySlotPositions
 import pl.pelotasplus.eyeofbeholder.data.model.Item
+import pl.pelotasplus.eyeofbeholder.data.model.ItemIndex
+import pl.pelotasplus.eyeofbeholder.data.model.ItemMessages
+import pl.pelotasplus.eyeofbeholder.data.model.ItemNames
 import pl.pelotasplus.eyeofbeholder.data.model.ItemTypes
 import pl.pelotasplus.eyeofbeholder.data.model.OriginalSave
 import pl.pelotasplus.eyeofbeholder.data.model.ClickedWall
@@ -67,6 +72,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.toImageBitmap
 import pl.pelotasplus.eyeofbeholder.data.repository.CpsRepository
 import pl.pelotasplus.eyeofbeholder.data.repository.DialogueTextRepository
 import pl.pelotasplus.eyeofbeholder.data.repository.FontRepository
+import pl.pelotasplus.eyeofbeholder.data.repository.ItemsRepository
 import pl.pelotasplus.eyeofbeholder.data.repository.ItemTypesRepository
 import pl.pelotasplus.eyeofbeholder.data.repository.SaveSlot
 import pl.pelotasplus.eyeofbeholder.data.repository.SavedGameRepository
@@ -83,6 +89,7 @@ class ViewConeDebugViewModel(
     private val originalSaveRepository: OriginalSaveRepository,
     private val savedGames: SavedGameRepository,
     private val itemTypesRepository: ItemTypesRepository,
+    private val itemsRepository: ItemsRepository,
 ) : ViewModel() {
 
     private var playFieldBackground: Cps? = null
@@ -92,6 +99,9 @@ class ViewConeDebugViewModel(
     private var invent: Cps? = null
     private var carriedItemIcons: Cps? = null
     private var itemTypes: ItemTypes? = null
+
+    /** What every item in the game is called, which no save carries. */
+    private var itemNames: ItemNames? = null
 
     /** Who the party are, as against [party], which is where they stand. */
     private var roster: List<Champion> = emptyList()
@@ -207,6 +217,9 @@ class ViewConeDebugViewModel(
             itemTypesRepository.loadItemTypes()
                 .onSuccess { itemTypes = it }
                 .onFailure { Logger.e(it) { "Error while loading the item types" } }
+            itemsRepository.loadItems()
+                .onSuccess { itemNames = it.names }
+                .onFailure { Logger.e(it) { "Error while loading the item names" } }
             // a level picked from the Levels screen is an instruction, so it
             // wins over wherever the party were last left
             val resumed = if (level != null || !AUTOSAVES) {
@@ -504,7 +517,7 @@ class ViewConeDebugViewModel(
         if (sheet == null) {
             val hand = handAt(x, y)
             if (hand != null) {
-                swapHandWith(hand.first, hand.second)
+                swapHandWith(hand.first, inventorySlotPositions[hand.second])
                 return
             }
 
@@ -517,6 +530,15 @@ class ViewConeDebugViewModel(
             sheet.clicked(x, y)?.let { choice ->
                 onSheetChoice(sheet, choice)
                 return
+            }
+
+            // an open page puts all twenty-seven of a champion's slots within
+            // reach, the two hands among them
+            if (sheet.page == CharacterSheet.Page.BELONGINGS) {
+                inventorySlotAt(x, y)?.let { slot ->
+                    swapHandWith(sheet.slot, slot)
+                    return
+                }
             }
         }
 
@@ -545,36 +567,95 @@ class ViewConeDebugViewModel(
     }
 
     /**
-     * Swaps what is being held with what is in one of a champion's hands.
-     * With an empty hand that is taking the item, and with an empty slot it is
-     * putting one there; the original does not tell the three cases apart.
+     * Swaps what is being held with what is in one of a champion's slots.
+     *
+     * With an empty hand that is taking what was there, and with an empty slot
+     * it is putting something down; the original does not tell the three cases
+     * apart, and neither does this.
      */
-    private fun swapHandWith(slot: Int, hand: Int) {
-        val champion = roster.getOrNull(slot) ?: return
+    private fun swapHandWith(champion: Int, slot: InventorySlot) {
+        val who = roster.getOrNull(champion) ?: return
         val world = _state.value.game
+        val inSlot = who.carrying.getOrNull(slot.slot) ?: return
 
-        val inSlot = champion.carrying.getOrNull(hand) ?: return
-        if (world.item(inSlot)?.stuckToItsSlot == true) return
-        if (!itemMayGoInAHand(world.held)) return
-
-        roster = roster.toMutableList().also {
-            it[slot] = champion.copy(
-                carrying = champion.carrying.toMutableList()
-                    .also { carrying -> carrying[hand] = world.inHand },
-            )
+        if (slot.isQuiver) {
+            useQuiver(champion, slot, inSlot)
+            return
         }
+
+        val refused = itemTypes?.willSwap(
+            champion = who,
+            slot = slot,
+            held = world.held,
+            inSlot = world.item(inSlot),
+        ) == false
+
+        if (refused) {
+            say(ItemMessages.WILL_NOT_GO_THERE)
+            // Nothing moved, so nothing else will draw and the line would sit
+            // unseen until something did. Only the words are new.
+            drawWords()
+            return
+        }
+
+        carried(champion, slot.slot, world.inHand)
         _state.update { it.copy(game = world.holding(inSlot)) }
+        announceTaking(world.item(inSlot))
         renderViewPort()
     }
 
     /**
-     * Whether what is being held may go in a hand at all. Nothing always may;
-     * something may when its kind says a hand is one of the places it fits.
+     * The quiver, which holds a stack rather than one thing. An arrow in the
+     * hand joins the ones already in it and the tally goes up; an empty hand
+     * takes one back out and the tally goes down.
      */
-    private fun itemMayGoInAHand(held: Item?): Boolean {
-        if (held == null) return true
-        val fits = itemTypes?.get(held.type)?.invFlags ?: return true
-        return fits and IN_A_HAND != 0
+    private fun useQuiver(champion: Int, slot: InventorySlot, head: ItemIndex) {
+        val world = _state.value.game
+
+        val stacked = if (world.inHand.isSomething) {
+            if (itemTypes?.mayGoIn(slot.takes, world.held) == false) {
+                say(ItemMessages.WILL_NOT_GO_THERE)
+                drawWords()
+                return
+            }
+            world.stacking(head)
+        } else {
+            if (!head.isSomething) return
+            announceTaking(world.item(head))
+            world.unstacking(head)
+        }
+
+        carried(champion, slot.slot, stacked.head)
+        _state.update { it.copy(game = stacked.world) }
+        renderViewPort()
+    }
+
+    /** The same roster with one of a champion's slots holding something else. */
+    private fun carried(champion: Int, slot: Int, item: ItemIndex) {
+        val who = roster.getOrNull(champion) ?: return
+
+        roster = roster.toMutableList().also {
+            it[champion] = who.copy(
+                carrying = who.carrying.toMutableList().also { carrying -> carrying[slot] = item },
+            )
+        }
+    }
+
+    /** Whatever comes into the hand says what it is, the way the original does. */
+    private fun announceTaking(item: Item?) {
+        val names = itemNames ?: return
+        if (item == null) return
+
+        say(ItemMessages.taken(names.of(item, itemTypes)))
+    }
+
+    private fun say(line: String) {
+        _state.update {
+            it.copy(
+                messages = (it.messages + PlayField.Message(line, ScriptSpeech.DEFAULT_INK))
+                    .takeLast(MESSAGES_KEPT),
+            )
+        }
     }
 
     /**
@@ -602,7 +683,9 @@ class ViewConeDebugViewModel(
         val changed = if (world.inHand.isSomething) {
             world.puttingDown(level, at, quadrant)
         } else {
-            world.takingUp(world.lyingAt(level, at, quadrant) ?: return false)
+            val lying = world.lyingAt(level, at, quadrant) ?: return false
+            announceTaking(world.item(lying))
+            world.takingUp(lying)
         }
 
         _state.update { it.copy(game = changed) }
@@ -1258,9 +1341,6 @@ class ViewConeDebugViewModel(
 
         /** More than the bar can show, so a long line still has its history. */
         private const val MESSAGES_KEPT = 8
-
-        /** The bit an item's kind sets when a hand is one of the places it fits. */
-        private const val IN_A_HAND = 0x08
 
         /** Wall kinds that run their script without anything to aim at. */
         private val ANSWERS_ANY_CLICK = setOf(7, 9)
