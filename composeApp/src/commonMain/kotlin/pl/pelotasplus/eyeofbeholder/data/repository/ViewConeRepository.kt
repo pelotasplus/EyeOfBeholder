@@ -217,10 +217,25 @@ class ViewConeRepositoryImpl(
                             viewPort.drawWall(levelDecoration.wallType - 1, wallPosition)
                         }
 
-                        viewPort.drawDecoration(
-                            decoration = levelDecoration,
-                            wallPosition = wallPosition,
-                        )
+                        // The wall a decoration is on is drawn whole, the way
+                        // every wall is; the decoration on it is a shape and is
+                        // cut to what the walls in front leave of its square —
+                        // to nothing at all where they leave nothing.
+                        //
+                        // Only a face turned towards the party is cut by its own
+                        // square. A side face is the wall of a corridor running
+                        // away from them, and is in sight exactly when the square
+                        // behind it is not: cutting it by that square's window
+                        // takes away the far end of every corridor. Leaving it
+                        // whole is right for every scene there is a golden for,
+                        // and is not known to be the rule the original follows.
+                        val clip = if (slot.isFrontWall) windows[slot.block] else ViewWindow.WHOLE_VIEW
+                        viewPort.at(distance, within = clip) {
+                            viewPort.drawDecoration(
+                                decoration = levelDecoration,
+                                wallPosition = wallPosition,
+                            )
+                        }
                     }
 
                     is Maz.WallType.Door -> {

@@ -100,6 +100,12 @@ data class ViewSlot(
 ) {
     /** Front walls face the player; the decoration mirror flag (bit 0) only applies there. */
     val isFrontWall: Boolean get() = wallSide == WallSide.SOUTH
+
+    /**
+     * Which of the squares in sight this position is a face of, so that what is
+     * drawn on it can be cut to what that square has left showing.
+     */
+    val block: Int get() = visibleBlocks.indexOf(BlockOffset(relativeX, relativeY))
 }
 
 /**

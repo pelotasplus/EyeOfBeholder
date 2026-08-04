@@ -331,6 +331,56 @@ class ViewPortGoldenTest {
     fun `level1 26x6 south`() =
         checkGolden("level1-26x6-south", "LEVEL1.INF", x = 26, y = 6, direction = Direction.SOUTH)
 
+    /*
+     * A decoration is cut down to what the walls in front of it leave showing,
+     * and dropped when they leave nothing. These stand one in a window of every
+     * shape — shut, a sliver, half a view, at each depth a front wall is drawn
+     * at, and on a side wall — and none of them moved when the cutting was put
+     * in, which is what they are here to keep saying. A narrowed window is not
+     * the same as a decoration that overruns it, and only the second is a
+     * change anyone should see.
+     */
+
+    /** Straight ahead with the way to it shut, so none of it should show. */
+    @Test
+    fun `level3 5x3 north`() =
+        checkGolden("level3-5x3-north", "LEVEL3.INF", x = 5, y = 3, direction = Direction.NORTH)
+
+    /** The same decoration and the same position, left half in view. */
+    @Test
+    fun `level3 10x3 north`() =
+        checkGolden("level3-10x3-north", "LEVEL3.INF", x = 10, y = 3, direction = Direction.NORTH)
+
+    /** The furthest row a front wall is drawn at, down to six columns. */
+    @Test
+    fun `level3 29x13 north`() =
+        checkGolden("level3-29x13-north", "LEVEL3.INF", x = 29, y = 13, direction = Direction.NORTH)
+
+    /** The same far row on another level, seen along a corridor. */
+    @Test
+    fun `level4 19x10 west`() =
+        checkGolden("level4-19x10-west", "LEVEL4.INF", x = 19, y = 10, direction = Direction.WEST)
+
+    /** A decoration on a side wall beside the party, cut to three columns. */
+    @Test
+    fun `level4 16x12 north`() =
+        checkGolden("level4-16x12-north", "LEVEL4.INF", x = 16, y = 12, direction = Direction.NORTH)
+
+    /** The row between, on the level whose decorations are the biggest. */
+    @Test
+    fun `level7 10x4 north`() =
+        checkGolden("level7-10x4-north", "LEVEL7.INF", x = 10, y = 4, direction = Direction.NORTH)
+
+    /** Another shut window, where the same decoration should not be drawn. */
+    @Test
+    fun `level7 7x11 south`() =
+        checkGolden("level7-7x11-south", "LEVEL7.INF", x = 7, y = 11, direction = Direction.SOUTH)
+
+    /** A decoration close on the party's own row, clipped to its left edge. */
+    @Test
+    fun `level1 27x3 south`() =
+        checkGolden("level1-27x3-south", "LEVEL1.INF", x = 27, y = 3, direction = Direction.SOUTH)
+
     /**
      * The party on the top row of the maze looking off the edge of it, where a
      * wall is missing.
