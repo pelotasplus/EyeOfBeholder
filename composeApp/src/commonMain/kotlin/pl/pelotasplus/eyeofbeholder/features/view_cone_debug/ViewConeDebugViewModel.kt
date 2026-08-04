@@ -1012,11 +1012,7 @@ class ViewConeDebugViewModel(
         /** How long the party must stand still before where they are is written. */
         private val AUTOSAVE_SETTLES = Ticks(9)
 
-        /**
-         * Where a new party begin, from the original: the fourth level, at the
-         * square it counts as block 171 — 171 across a 32-wide maze — facing
-         * south.
-         */
+        /** Where a new party begin. */
         private const val DEFAULT_LEVEL = "LEVEL4.INF"
         private const val DEFAULT_PLAYER_X = 11
         private const val DEFAULT_PLAYER_Y = 5
