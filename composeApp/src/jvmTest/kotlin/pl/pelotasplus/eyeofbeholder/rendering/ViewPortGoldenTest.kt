@@ -592,6 +592,21 @@ class ViewPortGoldenTest {
             ),
         )
 
+    /**
+     * A question asked with nobody drawn: the grave on level 4, which the
+     * party stand in front of and click. The dungeon stays up and the box that
+     * would have framed a speaker is not drawn at all.
+     */
+    @Test
+    fun `dialogue asked by nobody`() =
+        checkGolden(
+            "dialogue-nobody",
+            dialogueOver(
+                level = "LEVEL4.INF", x = 17, y = 5,
+                message = 8, buttons = listOf("yes", "no"),
+            ),
+        )
+
     /** A script writing a line and holding the screen, with nothing to click. */
     @Test
     fun `dialogue with a line and nothing to click`() =
@@ -813,13 +828,14 @@ class ViewPortGoldenTest {
         level: String,
         x: Int,
         y: Int,
-        picture: String,
-        sourceLeft: Int,
-        sourceTop: Int,
-        goes: DialogueScene.PictureFrame,
+        picture: String? = null,
+        sourceLeft: Int = 0,
+        sourceTop: Int = 0,
+        goes: DialogueScene.PictureFrame = DialogueScene.PictureFrame.SPEAKER,
         textId: Int? = null,
         message: Int? = null,
         buttons: List<String> = emptyList(),
+        direction: Direction = Direction.NORTH,
     ): BufferedImage = runBlocking {
         val resources = ResourceRepositoryImpl()
         val cps = CpsRepositoryImpl(resources)
@@ -854,14 +870,15 @@ class ViewPortGoldenTest {
             viewPort = viewPort,
             direction = Direction.NORTH,
             dialogue = DialogueScene.layout(
-                frame = cps.loadCps("BORDER.CPS").getOrThrow()
-                    .takeUnless { goes.insteadOfTheFrame },
-                portrait = DialogueScene.Picture(
-                    cps = cps.loadCps(picture).getOrThrow(),
-                    sourceLeft = sourceLeft,
-                    sourceTop = sourceTop,
-                    goes = goes,
-                ),
+                frame = cps.loadCps("BORDER.CPS").getOrThrow(),
+                portrait = picture?.let {
+                    DialogueScene.Picture(
+                        cps = cps.loadCps(it).getOrThrow(),
+                        sourceLeft = sourceLeft,
+                        sourceTop = sourceTop,
+                        goes = goes,
+                    )
+                },
                 text = text,
                 buttonLabels = buttons,
                 font = font,

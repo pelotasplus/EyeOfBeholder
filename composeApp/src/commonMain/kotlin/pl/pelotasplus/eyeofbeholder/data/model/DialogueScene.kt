@@ -78,6 +78,12 @@ data class DialogueScene(
          * written — except the single button a speech is read on, which has a
          * corner of its own and does not move with the text. It is the same
          * button whether it turns the page or ends the speech.
+         *
+         * [frame] is the box a speaker sits in, so it goes down only when there
+         * is someone to put in it and nothing already covers it. A script can
+         * ask a question while drawing nobody, and then there is no box: an
+         * empty one hides the view and says nothing, while the words and the
+         * answers below it are the whole of what is being asked.
          */
         fun layout(
             frame: Cps?,
@@ -93,7 +99,7 @@ data class DialogueScene(
                 if (buttonLabels.size > TWO_ACROSS.size) THREE_ACROSS else TWO_ACROSS
 
             return DialogueScene(
-                frame = frame,
+                frame = frame.takeIf { portrait != null && !portrait.goes.insteadOfTheFrame },
                 portrait = portrait,
                 lines = lines,
                 buttons = buttonLabels.mapIndexed { index, label ->

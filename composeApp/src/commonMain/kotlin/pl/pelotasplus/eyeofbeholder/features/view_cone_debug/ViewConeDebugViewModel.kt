@@ -662,7 +662,7 @@ class ViewConeDebugViewModel(
         speaker = portrait
 
         return DialogueScene.layout(
-            frame = dialogueFrame.takeUnless { portrait?.goes?.insteadOfTheFrame == true },
+            frame = dialogueFrame,
             portrait = portrait,
             text = text,
             buttonLabels = buttonLabels,
