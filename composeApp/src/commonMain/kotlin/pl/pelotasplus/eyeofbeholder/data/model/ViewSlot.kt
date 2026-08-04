@@ -38,7 +38,9 @@ data class WallRenderData(
  * @property buttonIndex Which button definition from [Door.buttons] to use;
  *           null = no button rendered at this position
  * @property rectangleIndex Which rectangle from [Door.rectangles] to use
- *           (0=close, 1=medium, 2=far distance)
+ *           (0=close, 1=medium, 2=far distance). A row is all the same distance
+ *           away, so the positions of one share a rectangle; giving the left of
+ *           a row a smaller one draws its door shrunk and pulled inwards.
  */
 data class DoorRenderData(
     val buttonIndex: Int?,
@@ -262,7 +264,7 @@ val viewSlots: List<ViewSlot> = listOf(
     ViewSlot(
         label = "M-south", relativeX = -1, relativeY = -1, wallSide = WallSide.SOUTH,
         wall = WallRenderData(252, 22, 12, 3, 13, 0),
-        door = DoorRenderData(null, 1),
+        door = DoorRenderData(null, 0),
         decoration = DecorationPosition(xFlip = 0, wall = 1, xDelta = -16),
         floorDecorationX = -98,
     ),

@@ -280,6 +280,34 @@ class ViewPortGoldenTest {
         checkGolden("level3-5x11-west", "LEVEL3.INF", x = 5, y = 11, direction = Direction.WEST)
 
     /**
+     * A door on the front-left square, which is where one used to be drawn a
+     * size too small and pulled in towards the middle with it.
+     */
+    @Test
+    fun `level3 14x11 north`() =
+        checkGolden("level3-14x11-north", "LEVEL3.INF", x = 14, y = 11, direction = Direction.NORTH)
+
+    /** A square nearer the same doors, where they sit where they belong. */
+    @Test
+    fun `level3 13x11 north`() =
+        checkGolden("level3-13x11-north", "LEVEL3.INF", x = 13, y = 11, direction = Direction.NORTH)
+
+    /** The rooms further west, which have no door in sight at all. */
+    @Test
+    fun `level3 11x12 north`() =
+        checkGolden("level3-11x12-north", "LEVEL3.INF", x = 11, y = 12, direction = Direction.NORTH)
+
+    /** The corridor a square back from them. */
+    @Test
+    fun `level3 14x12 north`() =
+        checkGolden("level3-14x12-north", "LEVEL3.INF", x = 14, y = 12, direction = Direction.NORTH)
+
+    /** The same corridor from its western end. */
+    @Test
+    fun `level3 12x12 north`() =
+        checkGolden("level3-12x12-north", "LEVEL3.INF", x = 12, y = 12, direction = Direction.NORTH)
+
+    /**
      * A spider's web drawn over the wall standing in front of it rather than
      * on the wall it hangs from.
      *
