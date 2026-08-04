@@ -1,5 +1,6 @@
 package pl.pelotasplus.eyeofbeholder.data.repository
 
+import co.touchlab.kermit.Logger
 import kotlinx.serialization.json.Json
 import pl.pelotasplus.eyeofbeholder.data.model.Champion
 import pl.pelotasplus.eyeofbeholder.data.model.GameState
@@ -39,9 +40,18 @@ class SavedGameRepositoryImpl(
     private val store: SaveStore,
 ) : SavedGameRepository {
 
+    /**
+     * A slot that cannot be read is left out of the list rather than shown as
+     * something the player can load — but it is said out loud, because a save
+     * silently missing from the list looks exactly like one that was never
+     * written, and the difference matters: the bytes are still there.
+     */
     override suspend fun saved(): Map<SaveSlot, SavedGame> =
         store.written().mapNotNull { slot ->
-            load(slot).getOrNull()?.let { slot to it }
+            load(slot)
+                .onFailure { Logger.e(it) { "Cannot read what is saved in ${slot.name}" } }
+                .getOrNull()
+                ?.let { slot to it }
         }.toMap()
 
     override suspend fun load(slot: SaveSlot): Result<SavedGame> = runCatching {

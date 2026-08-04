@@ -1,6 +1,11 @@
 package pl.pelotasplus.eyeofbeholder.data.model
 
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.descriptors.PrimitiveKind
+import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
 import kotlin.jvm.JvmInline
 import pl.pelotasplus.eyeofbeholder.data.model.CharacterClass.CLERIC
 import pl.pelotasplus.eyeofbeholder.data.model.CharacterClass.FIGHTER
@@ -29,10 +34,12 @@ data class Champion(
     val hitPoints: HitPoints,
     val armorClass: ArmorClass,
     val food: Food,
-    val race: Race?,
-    val sex: Sex?,
-    val characterClass: CharacterClass?,
-    val alignment: Alignment?,
+    val race: Race? = null,
+    val sex: Sex? = null,
+    @Serializable(with = CharacterClassAsTheGameWritesIt::class)
+    val characterClass: CharacterClass? = null,
+    @Serializable(with = AlignmentAsTheGameWritesIt::class)
+    val alignment: Alignment? = null,
     /** One per class the champion has levels in, so a multi-class has several. */
     val levels: List<ClassLevel>,
     val carrying: List<ItemIndex>,
@@ -216,6 +223,38 @@ private val levelled: Map<CharacterClass, List<CharacterClass>> = mapOf(
     CharacterClass.RANGER_CLERIC to listOf(RANGER, CLERIC),
     CharacterClass.CLERIC_MAGE to listOf(CLERIC, MAGE),
 )
+
+/**
+ * A champion's class and alignment are written into a save as the numbers the
+ * game itself uses, not as the names given here.
+ *
+ * Two reasons, and the first is why these exist at all: a save written before
+ * either had a type of its own holds a number, and it should still be
+ * readable. The second is that a name written into a save is a name that can
+ * no longer be changed without breaking one.
+ */
+object CharacterClassAsTheGameWritesIt : KSerializer<CharacterClass?> {
+    override val descriptor = PrimitiveSerialDescriptor("CharacterClass", PrimitiveKind.INT)
+
+    override fun serialize(encoder: Encoder, value: CharacterClass?) =
+        encoder.encodeInt(value?.ordinal ?: NONE)
+
+    override fun deserialize(decoder: Decoder): CharacterClass? =
+        CharacterClass.of(decoder.decodeInt())
+}
+
+object AlignmentAsTheGameWritesIt : KSerializer<Alignment?> {
+    override val descriptor = PrimitiveSerialDescriptor("Alignment", PrimitiveKind.INT)
+
+    override fun serialize(encoder: Encoder, value: Alignment?) =
+        encoder.encodeInt(value?.ordinal ?: NONE)
+
+    override fun deserialize(decoder: Decoder): Alignment? =
+        Alignment.of(decoder.decodeInt())
+}
+
+/** What is written for somebody who has no class or alignment: nobody. */
+private const val NONE = -1
 
 /** One of the six races a champion can be. */
 enum class Race {
