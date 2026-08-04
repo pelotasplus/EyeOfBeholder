@@ -15,9 +15,6 @@ import pl.pelotasplus.eyeofbeholder.data.model.CharacterClass.THIEF
  * and around a figure; [Page.STATS] is what they are, which is where the
  * ability scores live. The corner at the bottom right turns from one to the
  * other, and the arrows above walk along the party without closing the page.
- *
- * The strings, every coordinate and every table in this file come from the
- * original game.
  */
 data class CharacterSheet(
     /** Which of the six party slots is being looked at. */
@@ -310,10 +307,24 @@ data class InventorySlot(val slot: Int, private val left: Int, private val top: 
     val iconTop: Int get() = if (undersized) top - ICON_OVERHANG else top
 
     /**
-     * The quiver says how many arrows are in it rather than showing one of
-     * them, in a strip cut out of its box.
+     * The quiver holds a stack rather than one thing, which makes it unlike
+     * every other slot twice over: it says how many arrows are in it instead
+     * of showing one of them, and taking from it or adding to it works the
+     * stack rather than swapping what is there.
      */
-    val countsRatherThanShows: Boolean get() = slot == QUIVER
+    val isQuiver: Boolean get() = slot == QUIVER
+
+    /**
+     * What this slot will take. The pack takes anything; the rest take one
+     * kind each, which is what keeps a helmet off a foot.
+     */
+    val takes: SlotTakes get() = slotTakes.getOrElse(slot) { SlotTakes.Anything }
+
+    /** Whether a click landed on this slot's box. */
+    fun holdsAt(x: Int, y: Int): Boolean {
+        val side = if (undersized) SMALL_BOX else BOX
+        return x in left until left + side && y in top until top + side
+    }
 
     val tallyLeft: Int get() = left + TALLY_X
     val tallyTop: Int get() = top + TALLY_Y
@@ -333,6 +344,10 @@ data class InventorySlot(val slot: Int, private val left: Int, private val top: 
         /** Which of a champion's slots the arrows go in. */
         const val QUIVER = 16
 
+        /** The two slots at the bottom have smaller boxes than the rest. */
+        private const val BOX = 16
+        private const val SMALL_BOX = 10
+
         private const val FIRST_UNDERSIZED = 25
         private const val ICON_OVERHANG = 4
 
@@ -342,6 +357,41 @@ data class InventorySlot(val slot: Int, private val left: Int, private val top: 
         private const val WIDE_TALLY_X = 2
     }
 }
+
+/**
+ * What each of the twenty-seven slots will take, in the order
+ * [Champion.carrying] is in: the two hands, the fourteen pockets of the pack,
+ * and then what is worn.
+ */
+private val slotTakes: List<SlotTakes> = buildList {
+    add(SlotTakes.Only(ItemFits.HAND))
+    add(SlotTakes.Only(ItemFits.HAND))
+
+    repeat(POCKETS) { add(SlotTakes.Anything) }
+
+    add(SlotTakes.Only(ItemFits.QUIVER))
+    add(SlotTakes.Only(ItemFits.ARMOUR))
+    add(SlotTakes.Only(ItemFits.BRACERS))
+    add(SlotTakes.Only(ItemFits.HELMET))
+    add(SlotTakes.Only(ItemFits.NECKLACE))
+    add(SlotTakes.Only(ItemFits.BOOTS))
+    add(SlotTakes.Anything)
+    add(SlotTakes.Only(ItemFits.POUCH))
+    add(SlotTakes.Only(ItemFits.POUCH))
+    add(SlotTakes.Only(ItemFits.RING))
+    add(SlotTakes.Only(ItemFits.RING))
+}
+
+/** How many pockets the pack has, in two columns down the left of the page. */
+private const val POCKETS = 14
+
+/**
+ * Which slot a click on an open page landed on, if any. The order matters
+ * where boxes overlap: the two small ones at the bottom sit inside what the
+ * bigger boxes would cover.
+ */
+fun inventorySlotAt(x: Int, y: Int): InventorySlot? =
+    inventorySlotPositions.firstOrNull { it.holdsAt(x, y) }
 
 /**
  * One of the icons packed into ITEMICN.CPS, which is where an item is drawn

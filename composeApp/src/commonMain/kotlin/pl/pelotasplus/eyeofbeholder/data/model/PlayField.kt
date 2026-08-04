@@ -243,7 +243,7 @@ class PlayField(
 
     private fun drawCarried(carrying: List<Item?>, arrows: Int) {
         inventorySlotPositions.forEach { slot ->
-            if (slot.countsRatherThanShows) {
+            if (slot.isQuiver) {
                 drawTally(slot, arrows)
                 return@forEach
             }
