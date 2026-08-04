@@ -588,6 +588,13 @@ class LevelScriptRunner(
                 is Conditional.IsMonsterAtLocation.BlockFlags ->
                     push(ConditionValue.of(state.monstersOn(token.location)))
 
+                // What a script leaves to luck: whether searching a wall turns
+                // anything up, which of two things a bed has to say. The roll
+                // goes on the stack as a number like any other, and what is
+                // made of it is the script's business.
+                is Conditional.RollDice ->
+                    push(ConditionValue.of(dice.roll(token.rolls, token.size, token.base)))
+
                 is Conditional.Equals -> compare { left, right -> left == right }
                 is Conditional.NotEquals -> compare { left, right -> left != right }
                 is Conditional.MoreThan -> compare { left, right -> left > right }

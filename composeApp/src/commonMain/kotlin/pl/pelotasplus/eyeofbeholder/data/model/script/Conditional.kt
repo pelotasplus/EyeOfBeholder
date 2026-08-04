@@ -277,21 +277,28 @@ sealed interface Conditional {
         }
     }
 
+    /**
+     * A throw of [rolls] dice of [size] sides each, plus [base] — which the
+     * script then tests like any other number.
+     *
+     * All three are signed: the levels only ever add to a throw, but the
+     * record they are read from does not say so, and a base of -1 read
+     * unsigned would add 255.
+     */
     data class RollDice(
         val rolls: Int,
         val size: Int,
         val base: Int
-    ) : Conditional {                        //
+    ) : Conditional {                        // 0xDB
 
         override fun read(reader: ByteReader): Conditional = this
 
-        // 0xDB
         companion object : Conditional {
             override fun read(reader: ByteReader): RollDice {
                 return RollDice(
-                    rolls = reader.readU8(),
-                    size = reader.readU8(),
-                    base = reader.readU8()
+                    rolls = reader.readI8(),
+                    size = reader.readI8(),
+                    base = reader.readI8()
                 )
             }
         }
