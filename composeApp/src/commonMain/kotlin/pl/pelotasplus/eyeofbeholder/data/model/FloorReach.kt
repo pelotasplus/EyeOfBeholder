@@ -6,8 +6,6 @@ package pl.pelotasplus.eyeofbeholder.data.model
  *
  * Clicking one puts down what is being held, or picks up what is lying there
  * — the same place answers both, because a hand is either full or empty.
- *
- * The rectangles and the table of quadrants come from the original game.
  */
 enum class FloorReach(
     private val x: Int,

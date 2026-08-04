@@ -115,15 +115,84 @@ data class GameState(
 
     /**
      * Takes what lies at one quadrant of a square into the hand. What is
-     * picked up is on no square while it is held, which is what keeps it from
-     * being drawn where it was left.
+     * picked up is being carried rather than lying anywhere, which is what
+     * keeps it from being drawn where it was left.
      */
     fun takingUp(slot: ItemIndex) = copy(
         items = items.mapIndexed { at, item ->
-            if (at != slot.value) item else item.copy(location = Item.NOWHERE, level = 0)
+            if (at != slot.value) item
+            else item.copy(location = Item.CARRIED, level = Item.CARRIED_LEVEL)
         },
         inHand = slot,
     )
+
+    /**
+     * Puts what is being held onto the stack that [head] names the top of,
+     * and leaves the hand empty.
+     *
+     * A dozen arrows are a dozen items in one slot, strung into a ring, so
+     * joining one is a matter of linking into it: the newcomer becomes the
+     * top and the ring closes round it.
+     */
+    fun stacking(head: ItemIndex): Stacked {
+        val joining = inHand
+        if (!joining.isSomething) return Stacked(this, head)
+
+        val table = items.toMutableList()
+        table[joining.value] = table[joining.value].copy(
+            location = Item.ON_A_STACK,
+            level = Item.NO_LEVEL,
+            pos = 0,
+        )
+
+        if (!head.isSomething) {
+            // the first of a stack is a ring of one, pointing at itself
+            table[joining.value] = table[joining.value].copy(
+                next = joining.value,
+                prev = joining.value,
+            )
+        } else {
+            val below = table[head.value].next
+            table[joining.value] = table[joining.value].copy(
+                prev = table[below].prev,
+                next = below,
+            )
+            table[below] = table[below].copy(prev = joining.value)
+            table[head.value] = table[head.value].copy(next = joining.value)
+        }
+
+        return Stacked(
+            world = copy(items = table, inHand = ItemIndex(ItemIndex.NOTHING)),
+            head = joining,
+        )
+    }
+
+    /**
+     * Takes the top thing off the stack [head] names into the hand, closing
+     * the ring behind it. A stack of one leaves the slot empty.
+     */
+    fun unstacking(head: ItemIndex): Stacked {
+        if (!head.isSomething) return Stacked(this, head)
+
+        val taken = head.value
+        val table = items.toMutableList()
+        val above = table[taken].next
+        val below = table[taken].prev
+
+        table[above] = table[above].copy(prev = below)
+        table[below] = table[below].copy(next = above)
+        table[taken] = table[taken].copy(
+            next = 0,
+            prev = 0,
+            location = Item.CARRIED,
+            level = Item.CARRIED_LEVEL,
+        )
+
+        return Stacked(
+            world = copy(items = table, inHand = head),
+            head = if (below == taken) ItemIndex(ItemIndex.NOTHING) else ItemIndex(below),
+        )
+    }
 
     /** Remembers [level] as it stands, for whenever the party comes back. */
     fun leaving(level: Int) = copy(asTheyWereLeft = asTheyWereLeft + (level to monsters))
@@ -221,6 +290,12 @@ data class GameState(
 
     /** One face of one square of one level. */
     data class WallAt(val level: Int, val at: Location, val side: WallSide)
+
+    /**
+     * A stack after something joined it or left it: the world as it now
+     * stands, and which item the slot holding the stack should name.
+     */
+    data class Stacked(val world: GameState, val head: ItemIndex)
 
     /**
      * Everything here the game files cannot say, ready to be written out.

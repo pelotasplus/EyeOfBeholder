@@ -145,8 +145,6 @@ fun Set<CharacterClass>.anyAllowedBy(classes: Int) = any { classes and it.bit !=
  * This is not the same as which classes they have levels in, and the game's
  * own tables keep the two apart: a ranger/cleric may hold whatever a fighter
  * may, though neither of the classes they are levelled in is a fighter's.
- *
- * From the original game.
  */
 private val classAllowances: List<Set<CharacterClass>> = listOf(
     setOf(FIGHTER), setOf(RANGER), setOf(PALADIN),

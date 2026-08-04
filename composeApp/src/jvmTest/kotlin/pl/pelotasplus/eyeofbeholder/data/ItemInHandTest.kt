@@ -65,12 +65,19 @@ class ItemInHandTest {
         assertNull(world.lyingAt(level + 1, here, quadrant = 0))
     }
 
+    /**
+     * What is picked up is being carried, which is not the same as not being
+     * there at all: a slot of the table that holds nothing is marked another
+     * way, and something in a hand is still something.
+     */
     @Test
-    fun `taking something up puts it in the hand and on no square`() {
+    fun `taking something up carries it and takes it off the square`() {
         val taken = world.takingUp(dagger)
 
         assertEquals(dagger, taken.inHand)
-        assertEquals(Item.NOWHERE, taken.item(dagger)?.location)
+        assertEquals(Item.CARRIED, taken.item(dagger)?.location)
+        assertEquals(Item.CARRIED_LEVEL, taken.item(dagger)?.level)
+        assertTrue(taken.item(dagger)?.exists == true)
         assertNull(taken.lyingAt(level, here, quadrant = 0))
     }
 
