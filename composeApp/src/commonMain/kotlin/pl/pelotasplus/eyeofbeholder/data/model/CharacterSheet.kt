@@ -1,5 +1,12 @@
 package pl.pelotasplus.eyeofbeholder.data.model
 
+import pl.pelotasplus.eyeofbeholder.data.model.CharacterClass.CLERIC
+import pl.pelotasplus.eyeofbeholder.data.model.CharacterClass.FIGHTER
+import pl.pelotasplus.eyeofbeholder.data.model.CharacterClass.MAGE
+import pl.pelotasplus.eyeofbeholder.data.model.CharacterClass.PALADIN
+import pl.pelotasplus.eyeofbeholder.data.model.CharacterClass.RANGER
+import pl.pelotasplus.eyeofbeholder.data.model.CharacterClass.THIEF
+
 /**
  * A champion's own page, which takes over the right-hand side of the screen
  * from the six party boxes for as long as it is open.
@@ -8,6 +15,9 @@ package pl.pelotasplus.eyeofbeholder.data.model
  * and around a figure; [Page.STATS] is what they are, which is where the
  * ability scores live. The corner at the bottom right turns from one to the
  * other, and the arrows above walk along the party without closing the page.
+ *
+ * The strings, every coordinate and every table in this file come from the
+ * original game.
  */
 data class CharacterSheet(
     /** Which of the six party slots is being looked at. */
@@ -142,7 +152,7 @@ object StatsPage {
     val BLANK_COLOUR = PaletteIndex(183)
 }
 
-/** The six ability scores in the order the page lists them. From the original game. */
+/** The six ability scores in the order the page lists them. */
 val abilityNames: List<String> = listOf(
     "STRENGTH", "INTELLIGENCE", "WISDOM", "DEXTERITY", "CONSTITUTION", "CHARISMA",
 )
@@ -150,8 +160,6 @@ val abilityNames: List<String> = listOf(
 /**
  * What a champion's class byte says they are. The last six repeat the single
  * classes, and are what each half of a multi-class is called on its own line.
- *
- * From the original game.
  */
 val classNames: List<String> = listOf(
     "FIGHTER", "RANGER", "PALADIN", "MAGE", "CLERIC", "THIEF",
@@ -160,14 +168,13 @@ val classNames: List<String> = listOf(
     "FIGHTER", "MAGE", "CLERIC", "THIEF", "PALADIN", "RANGER",
 )
 
-/** From the original game. */
 val alignmentNames: List<String> = listOf(
     "LAWFUL GOOD", "NEUTRAL GOOD", "CHAOTIC GOOD",
     "LAWFUL NEUTRAL", "TRUE NEUTRAL", "CHAOTIC NEUTRAL",
     "LAWFUL EVIL", "NEUTRAL EVIL", "CHAOTIC EVIL",
 )
 
-/** Race and sex are one number, the sexes alternating. From the original game. */
+/** Race and sex are one number, the sexes alternating. */
 val raceAndSexNames: List<String> = listOf(
     "HUMAN MALE", "HUMAN FEMALE",
     "ELF MALE", "ELF FEMALE",
@@ -184,24 +191,28 @@ val raceAndSexNames: List<String> = listOf(
 val Champion.className: String get() = classNames.getOrNull(characterClass).orEmpty()
 
 /**
- * Which single classes a champion's class is made of, in the order their
- * levels and experience are kept in — one for most, two or three for a
- * multi-class. From the original game.
+ * Which classes a champion's own class is made of, in the order their levels
+ * and experience are kept in — one for most, two or three for a multi-class.
+ *
+ * This is not the same list as the one that says what they may hold; see
+ * [Champion.countsAs] for why the two differ.
  */
-private val careersOfClass: List<List<Int>> = listOf(
-    listOf(0), listOf(5), listOf(4), listOf(1), listOf(2), listOf(3),
-    listOf(0, 2), listOf(0, 3), listOf(0, 1), listOf(0, 1, 3),
-    listOf(3, 1), listOf(2, 3), listOf(0, 2, 1), listOf(5, 2), listOf(2, 1),
+private val levelledClasses: List<List<CharacterClass>> = listOf(
+    listOf(FIGHTER), listOf(RANGER), listOf(PALADIN),
+    listOf(MAGE), listOf(CLERIC), listOf(THIEF),
+    listOf(FIGHTER, CLERIC), listOf(FIGHTER, THIEF), listOf(FIGHTER, MAGE),
+    listOf(FIGHTER, MAGE, THIEF), listOf(THIEF, MAGE), listOf(CLERIC, THIEF),
+    listOf(FIGHTER, CLERIC, MAGE), listOf(RANGER, CLERIC), listOf(CLERIC, MAGE),
 )
 
 /**
- * What each of a champion's careers is called on its own, which is what goes
- * beside its level and experience. The single-class names sit after the
- * combined ones in [classNames].
+ * What each of the classes a champion is levelled in is called on its own,
+ * which is what goes beside its level and experience. The single-class names
+ * sit after the combined ones in [classNames].
  */
-val Champion.careerNames: List<String>
-    get() = careersOfClass.getOrElse(characterClass) { emptyList() }
-        .map { classNames.getOrNull(COMBINED_CLASS_NAMES + it).orEmpty() }
+val Champion.levelledClassNames: List<String>
+    get() = levelledClasses.getOrElse(characterClass) { emptyList() }
+        .map { classNames.getOrNull(COMBINED_CLASS_NAMES + it.ordinal).orEmpty() }
 
 private const val COMBINED_CLASS_NAMES = 15
 val Champion.alignmentName: String get() = alignmentNames.getOrNull(alignment).orEmpty()
@@ -253,9 +264,7 @@ sealed interface SheetChoice {
 }
 
 /**
- * The parts of the page that can be clicked, in the original's 320×200 screen
- * space. Taken from the original game's button table, where each entry is
- * `{ x, y, w, h }`.
+ * The parts of the page that can be clicked, in the 320×200 screen space.
  */
 enum class SheetControl(
     private val x: Int,
@@ -282,8 +291,6 @@ enum class SheetControl(
  * first, then the fourteen pockets of the pack down the left, then what is
  * worn — and the last two boxes are smaller than the rest, so their icons hang
  * out over the edges of them.
- *
- * From the original game.
  */
 val inventorySlotPositions: List<InventorySlot> = listOf(
     230 to 116, 278 to 116,

@@ -29,7 +29,8 @@ data class ChampionBox(val left: Int, val top: Int) {
      * face, one hand above the other, with the icon set in from the left of
      * its slot rather than centred in it.
      */
-    val handLeft: Int get() = left + HAND_X + HAND_ICON_X
+    val handSlotLeft: Int get() = left + HAND_X
+    val handLeft: Int get() = handSlotLeft + HAND_ICON_X
 
     fun handTop(hand: Int): Int = top + HAND_Y + hand * HAND_STEP
 
@@ -75,12 +76,26 @@ val boxInTheArt: ChampionBox = championBoxes.first()
  * What an empty hand is drawn as, one icon for each of the two — the hand
  * itself, which is what says a champion would strike with it rather than with
  * anything they are holding.
- *
- * From the original game.
  */
 fun emptyHandIcon(hand: Int) = ItemIconId(FIRST_EMPTY_HAND + hand)
 
 private const val FIRST_EMPTY_HAND = 85
+
+/**
+ * The grid laid over a hand its champion cannot strike with, cut from the same
+ * sheet as the compass.
+ */
+fun Cps.weaponSlotGrid(): Cps.ItemIcon = cut(
+    x = GRID_X,
+    y = GRID_Y,
+    w = GRID_WIDTH,
+    h = GRID_HEIGHT,
+)
+
+private const val GRID_X = 64
+private const val GRID_Y = 88
+private const val GRID_WIDTH = 32
+private const val GRID_HEIGHT = 16
 
 /**
  * One of the 44 faces a champion can wear, cut from CHARGENA.CPS, where they

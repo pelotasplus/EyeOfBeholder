@@ -2,6 +2,12 @@ package pl.pelotasplus.eyeofbeholder.data.model
 
 import kotlinx.serialization.Serializable
 import kotlin.jvm.JvmInline
+import pl.pelotasplus.eyeofbeholder.data.model.CharacterClass.CLERIC
+import pl.pelotasplus.eyeofbeholder.data.model.CharacterClass.FIGHTER
+import pl.pelotasplus.eyeofbeholder.data.model.CharacterClass.MAGE
+import pl.pelotasplus.eyeofbeholder.data.model.CharacterClass.PALADIN
+import pl.pelotasplus.eyeofbeholder.data.model.CharacterClass.RANGER
+import pl.pelotasplus.eyeofbeholder.data.model.CharacterClass.THIEF
 
 /**
  * One of the six who make up the party.
@@ -41,6 +47,17 @@ data class Champion(
     val inTrouble: Boolean get() = flags.inTrouble
 
     val dead: Boolean get() = hitPoints.current <= 0
+
+    /** Held or paralysed: still standing, but able to do nothing about it. */
+    val heldFast: Boolean get() = flags.heldFast
+
+    /**
+     * Which classes this champion counts as when an item asks who may hold
+     * it — a fighter/thief counts as both, and may hold whatever either of
+     * them may.
+     */
+    val countsAs: Set<CharacterClass>
+        get() = classAllowances.getOrElse(characterClass) { emptySet() }
 
     /** Past the point a cleric can bring them back. */
     val deadForGood: Boolean get() = hitPoints.current <= BEYOND_RAISING
@@ -96,12 +113,48 @@ value class ChampionFlags(val value: Int) {
     /** Turned to stone, which only stone to flesh undoes. */
     val petrified: Boolean get() = value and PETRIFIED != 0
 
+    /** The two of the troubles that leave a champion unable to use their hands. */
+    val heldFast: Boolean get() = value and HELD_FAST != 0
+
     private companion object {
         const val IN_THE_PARTY = 0x01
         const val TROUBLE = 0x0E
         const val PETRIFIED = 0x08
+        const val HELD_FAST = 0x0C
     }
 }
+
+/**
+ * One of the six classes there are. A champion's own class is one of these or
+ * a combination of them, and an item says who may hold it as a set of them —
+ * in these bits, one to a class, in this order.
+ */
+enum class CharacterClass {
+    FIGHTER, MAGE, CLERIC, THIEF, PALADIN, RANGER;
+
+    val bit: Int get() = 1 shl ordinal
+}
+
+/** Whether an item allowed to [classes], as the file gives them, may be held. */
+fun Set<CharacterClass>.anyAllowedBy(classes: Int) = any { classes and it.bit != 0 }
+
+/**
+ * Which classes each of the fifteen a champion can be counts as when an item
+ * asks who may hold it.
+ *
+ * This is not the same as which classes they have levels in, and the game's
+ * own tables keep the two apart: a ranger/cleric may hold whatever a fighter
+ * may, though neither of the classes they are levelled in is a fighter's.
+ *
+ * From the original game.
+ */
+private val classAllowances: List<Set<CharacterClass>> = listOf(
+    setOf(FIGHTER), setOf(RANGER), setOf(PALADIN),
+    setOf(MAGE), setOf(CLERIC), setOf(THIEF),
+    setOf(FIGHTER, CLERIC), setOf(FIGHTER, THIEF), setOf(FIGHTER, MAGE),
+    setOf(FIGHTER, MAGE, THIEF), setOf(THIEF, MAGE), setOf(CLERIC, THIEF),
+    setOf(FIGHTER, CLERIC, MAGE), setOf(FIGHTER, CLERIC), setOf(CLERIC, MAGE),
+)
 
 /** Which of the 44 faces in CHARGENA.CPS a champion wears. */
 @JvmInline

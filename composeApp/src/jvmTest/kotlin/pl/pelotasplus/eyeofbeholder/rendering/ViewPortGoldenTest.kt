@@ -11,6 +11,8 @@ import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.GameState
 import pl.pelotasplus.eyeofbeholder.data.model.Inf
 import pl.pelotasplus.eyeofbeholder.data.model.Item
+import pl.pelotasplus.eyeofbeholder.data.model.ItemIndex
+import pl.pelotasplus.eyeofbeholder.data.repository.ItemTypesRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.model.Maz
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterInstance
 import pl.pelotasplus.eyeofbeholder.data.model.WallByte
@@ -72,6 +74,9 @@ class ViewPortGoldenTest {
     private val dungeonItems: List<Item> by lazy {
         runBlocking { ItemsRepositoryImpl(ResourceRepositoryImpl()).loadItems().getOrThrow() }
     }
+
+    /** The mage's spellbook, which nobody but a mage has any use for. */
+    private val SPELLBOOK = ItemIndex(462)
 
     @Test
     fun `level7 start position`() =
@@ -691,6 +696,23 @@ class ViewPortGoldenTest {
         checkGolden("party-panel", partyOver(level = "LEVEL4.INF", x = 15, y = 11))
 
     /**
+     * A hand its champion cannot strike with is drawn over with a grid. The
+     * paladin has been handed the mage's spellbook, which is for a class he
+     * is not; the mage keeps hers, where it is no trouble at all.
+     */
+    @Test
+    fun `a hand its champion cannot use`() =
+        checkGolden(
+            "party-panel-unusable",
+            partyOver(
+                level = "LEVEL4.INF",
+                x = 15,
+                y = 11,
+                lendingTo = 0 to SPELLBOOK,
+            ),
+        )
+
+    /**
      * The same panel with the party hurt, so the bars show all three of their
      * colours at once: well, down to a third, and out cold.
      */
@@ -834,13 +856,17 @@ class ViewPortGoldenTest {
         ).toImage()
     }
 
-    /** @param hurtTo current hit points per champion, or empty to leave them well. */
+    /**
+     * @param hurtTo current hit points per champion, or empty to leave them well
+     * @param lendingTo which party slot to put which item in the second hand of
+     */
     private fun partyOver(
         level: String,
         x: Int,
         y: Int,
         hurtTo: List<Int> = emptyList(),
         preferences: Preferences = Preferences(),
+        lendingTo: Pair<Int, ItemIndex>? = null,
     ): BufferedImage = runBlocking {
         val resources = ResourceRepositoryImpl()
         val cps = CpsRepositoryImpl(resources)
@@ -855,10 +881,16 @@ class ViewPortGoldenTest {
         val world = GameState(party = saved.standing, items = saved.items)
 
         var hurt = 0
-        val party = saved.party.map { champion ->
-            if (!champion.inTheParty || hurtTo.isEmpty()) champion
-            else champion.copy(
+        val party = saved.party.mapIndexed { slot, champion ->
+            if (!champion.inTheParty) return@mapIndexed champion
+
+            val hurtChampion = if (hurtTo.isEmpty()) champion else champion.copy(
                 hitPoints = champion.hitPoints.copy(current = hurtTo[hurt++]),
+            )
+
+            if (lendingTo?.first != slot) hurtChampion else hurtChampion.copy(
+                carrying = hurtChampion.carrying.toMutableList()
+                    .also { it[1] = lendingTo.second },
             )
         }
 
@@ -877,6 +909,7 @@ class ViewPortGoldenTest {
             palette = sublevel.palette,
             font = FontRepositoryImpl(resources).loadFont("FONT6.FNT").getOrThrow(),
             itemIcons = cps.loadCps("ITEMICN.CPS").getOrThrow(),
+            itemTypes = ItemTypesRepositoryImpl(resources).loadItemTypes().getOrThrow(),
             preferences = preferences,
         ).render(
             viewPort = viewPort,
@@ -924,6 +957,7 @@ class ViewPortGoldenTest {
             font = FontRepositoryImpl(resources).loadFont("FONT6.FNT").getOrThrow(),
             invent = cps.loadCps("INVENT.CPS").getOrThrow(),
             itemIcons = cps.loadCps("ITEMICN.CPS").getOrThrow(),
+            itemTypes = ItemTypesRepositoryImpl(resources).loadItemTypes().getOrThrow(),
             preferences = preferences,
         ).render(
             viewPort = viewPort,

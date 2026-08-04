@@ -19,6 +19,8 @@ class PlayField(
     private val invent: Cps? = null,
     /** ITEMICN.CPS, where an item being carried is drawn from. */
     private val itemIcons: Cps? = null,
+    /** What each kind of item is, which says whose hand it is any use in. */
+    private val itemTypes: ItemTypes? = null,
     private val preferences: Preferences = Preferences(),
 ) {
     private val pixels = MutableList(WIDTH * HEIGHT) { RGB(0, 0, 0, true) }
@@ -169,13 +171,13 @@ class PlayField(
             colour = StatsPage.LABEL_COLOUR,
         )
 
-        // one line per career, so a multi-class has its two one under the other
-        val careers = champion.careerNames
+        // one line per class, so a multi-class has its two one under the other
+        val classes = champion.levelledClassNames
         champion.levels.forEachIndexed { line, career ->
             val top = StatsPage.CAREER_TOP + line * StatsPage.CAREER_LINE
 
             write(
-                text = careers.getOrElse(line) { "" },
+                text = classes.getOrElse(line) { "" },
                 font = font,
                 left = StatsPage.CAREER_LEFT,
                 top = top,
@@ -404,6 +406,9 @@ class PlayField(
     /**
      * What the champion has in each hand, in the two slots beside their face.
      * An empty hand is not left blank — the hand itself is drawn there.
+     *
+     * A hand its champion cannot strike with is drawn over with a grid: the
+     * item is still shown, and shown to be no use.
      */
     private fun drawHands(champion: Champion, box: ChampionBox, carrying: (ItemIndex) -> Item?) {
         val icons = itemIcons ?: return
@@ -416,7 +421,30 @@ class PlayField(
                 left = box.handLeft,
                 top = box.handTop(hand),
             )
+
+            if (!canStrikeWith(champion, hand, carrying)) {
+                drawIcon(
+                    icon = decorations.weaponSlotGrid(),
+                    colours = decorations.palette ?: palette,
+                    left = box.handSlotLeft,
+                    top = box.handTop(hand),
+                )
+            }
         }
+    }
+
+    /**
+     * Whether the hand is any use. Being down or held stops both hands
+     * whatever is in them; the rest is a question about the items.
+     */
+    private fun canStrikeWith(
+        champion: Champion,
+        hand: Int,
+        carrying: (ItemIndex) -> Item?,
+    ): Boolean = when {
+        champion.dead || champion.heldFast -> false
+        itemTypes == null -> true
+        else -> itemTypes.canStrikeWith(champion, hand, carrying)
     }
 
     /** The hit point bar, sunk into the strip it sits on, with HP written beside it. */

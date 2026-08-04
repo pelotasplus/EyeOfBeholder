@@ -33,6 +33,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.GameState
 import pl.pelotasplus.eyeofbeholder.data.model.Inf
 import pl.pelotasplus.eyeofbeholder.data.model.InventorySlot
 import pl.pelotasplus.eyeofbeholder.data.model.Item
+import pl.pelotasplus.eyeofbeholder.data.model.ItemTypes
 import pl.pelotasplus.eyeofbeholder.data.model.OriginalSave
 import pl.pelotasplus.eyeofbeholder.data.model.ClickedWall
 import pl.pelotasplus.eyeofbeholder.data.model.LevelScriptRunner
@@ -63,6 +64,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.toImageBitmap
 import pl.pelotasplus.eyeofbeholder.data.repository.CpsRepository
 import pl.pelotasplus.eyeofbeholder.data.repository.DialogueTextRepository
 import pl.pelotasplus.eyeofbeholder.data.repository.FontRepository
+import pl.pelotasplus.eyeofbeholder.data.repository.ItemTypesRepository
 import pl.pelotasplus.eyeofbeholder.data.repository.SaveSlot
 import pl.pelotasplus.eyeofbeholder.data.repository.SavedGameRepository
 import pl.pelotasplus.eyeofbeholder.data.repository.OriginalSaveRepository
@@ -77,6 +79,7 @@ class ViewConeDebugViewModel(
     private val fontRepository: FontRepository,
     private val originalSaveRepository: OriginalSaveRepository,
     private val savedGames: SavedGameRepository,
+    private val itemTypesRepository: ItemTypesRepository,
 ) : ViewModel() {
 
     private var playFieldBackground: Cps? = null
@@ -85,6 +88,7 @@ class ViewConeDebugViewModel(
     private var portraits: Cps? = null
     private var invent: Cps? = null
     private var carriedItemIcons: Cps? = null
+    private var itemTypes: ItemTypes? = null
 
     /** Who the party are, as against [party], which is where they stand. */
     private var roster: List<Champion> = emptyList()
@@ -197,6 +201,9 @@ class ViewConeDebugViewModel(
             cpsRepository.loadCps(CARRIED_ITEM_ICONS_CPS)
                 .onSuccess { carriedItemIcons = it }
                 .onFailure { Logger.e(it) { "Error while loading $CARRIED_ITEM_ICONS_CPS" } }
+            itemTypesRepository.loadItemTypes()
+                .onSuccess { itemTypes = it }
+                .onFailure { Logger.e(it) { "Error while loading the item types" } }
             // a level picked from the Levels screen is an instruction, so it
             // wins over wherever the party were last left
             val resumed = if (level != null || !AUTOSAVES) {
@@ -933,6 +940,7 @@ class ViewConeDebugViewModel(
                 menuFont = menuFont,
                 invent = invent,
                 itemIcons = carriedItemIcons,
+                itemTypes = itemTypes,
                 preferences = _state.value.preferences,
             )
                 .render(

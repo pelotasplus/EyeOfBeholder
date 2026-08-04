@@ -80,6 +80,65 @@ data class Item(
 }
 
 /**
+ * What each kind of item is, from ITEMTYPE.DAT, which is what says who may
+ * hold one and whether it takes both hands.
+ */
+data class ItemTypes(private val types: List<ItemType>) {
+    operator fun get(id: ItemTypeId): ItemType? = types.getOrNull(id.value)
+
+    /**
+     * Whether a champion may strike with what is in [hand], the other hand
+     * being part of the answer.
+     *
+     * Three things stop them, and the original draws the same grid over the
+     * slot for all three. The item may be for a class they are not — a
+     * spellbook in a fighter's hand, thieves' tools in anyone else's. The
+     * other hand may be holding something that wants both. And a weapon that
+     * wants both hands cannot be wielded from the shield hand at all.
+     *
+     * @param held what a slot of the world's item table holds
+     */
+    fun canStrikeWith(champion: Champion, hand: Int, held: (ItemIndex) -> Item?): Boolean {
+        val first = champion.carrying.getOrNull(0)?.let(held)
+
+        if (hand == FIRST_HAND) return allows(champion, first)
+
+        // whatever the second hand holds, a two-handed weapon in the first
+        // leaves nothing for it to be held with
+        if (first != null && this[first.type]?.requiredHands == BOTH_HANDS) return false
+
+        val second = champion.carrying.getOrNull(1)?.let(held) ?: return true
+
+        val kind = (this[second.type]?.extraProperties ?: 0) and KIND
+        val hands = this[second.type]?.requiredHands ?: 0
+
+        // a weapon in the shield hand must be one that asks for no hand in
+        // particular; anything that is not a weapon is only a question of class
+        if (kind in WIELDED && hands != 0) return false
+
+        return allows(champion, second)
+    }
+
+    /** Nothing in a hand is something anyone may do. */
+    private fun allows(champion: Champion, item: Item?): Boolean {
+        if (item == null) return true
+        val allowed = this[item.type]?.allowedClasses ?: return false
+        return champion.countsAs.anyAllowedBy(allowed)
+    }
+
+    private companion object {
+        const val FIRST_HAND = 0
+        const val BOTH_HANDS = 2
+
+        /** The low seven bits of an item's extra properties say what kind it is. */
+        const val KIND = 0x7F
+
+        /** The kinds that count as being wielded rather than merely carried. */
+        val WIELDED = 1..3
+    }
+}
+
+/**
  * Defines properties for an item type/category.
  *
  * @property invFlags Inventory slot flags (where item can be placed)
