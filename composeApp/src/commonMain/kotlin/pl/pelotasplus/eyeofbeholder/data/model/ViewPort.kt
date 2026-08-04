@@ -440,43 +440,42 @@ class ViewPort(
     }
 
     /**
-     * Draws a floor item (pos 0-3) lying in one quadrant of a visible block.
+     * Draws an item lying at one corner of a visible block.
      *
-     * Placement is quadrant-accurate via [blockScreenCoords] (baseline y 124),
-     * so an item keeps its side of the square as the party approaches and
-     * steps onto it. On the party's own square (block 16) only the two
-     * quadrants ahead are visible — [scaleSteps] is -1 for the rear ones and
-     * the caller skips them. The per-item screen jitter the original adds is
-     * not implemented yet.
+     * Placement is corner-accurate via [blockSpot] (baseline y 124), so an
+     * item keeps its side of the square as the party approaches and steps onto
+     * it. On the party's own square (block 16) only the two corners ahead are
+     * visible — [scaleSteps] is -1 for the ones behind and the caller skips
+     * them.
      *
      * @param largeIcons The floor-item icon sheet (ITEML1.CPS)
      * @param iconIdx Item icon index
-     * @param blockIndex Visible-block index 0-17 into [blockScreenCoords]
-     * @param viewQuadrant View-relative sub-position 0-3
-     * @param scaleSteps 2/3 shrink steps from [itemScaleSteps]
+     * @param blockIndex Visible-block index 0-17
+     * @param place Where on the block, as the party see it
+     * @param scaleSteps 2/3 shrink steps from [itemScaleStepsAt]
      */
     fun drawFloorItem(
         largeIcons: Cps,
         iconIdx: ItemIconId,
         blockIndex: Int,
-        viewQuadrant: Int,
+        place: ViewPlace,
         scaleSteps: ScaleSteps,
         nudge: ItemNudge,
     ) {
-        Logger.d(TAG) { "drawFloorItem $iconIdx block=$blockIndex quadrant=$viewQuadrant scale=$scaleSteps" }
+        Logger.d(TAG) { "drawFloorItem $iconIdx block=$blockIndex at=$place scale=$scaleSteps" }
 
         var icon = largeIcons.getItemIcon(iconIdx) ?: return
         repeat(scaleSteps.value) { icon = scaleDown(icon) }
 
-        val coordIndex = (blockIndex * 5 + viewQuadrant) * 2
-        val startX = ScreenX(blockScreenCoords[coordIndex] + 88 - icon.w / 2 + nudge.across)
-        val startY = ScreenY(blockScreenCoords[coordIndex + 1] + 124 - icon.h + nudge.down)
+        val spot = blockSpot(blockIndex, place)
+        val startX = ScreenX(spot.x + 88 - icon.w / 2 + nudge.across)
+        val startY = ScreenY(spot.y + 124 - icon.h + nudge.down)
 
         drawIcon(icon, startX, startY, fadeSteps = scaleSteps)
     }
 
     /**
-     * Draws a niche/shelf item (pos 8) centered in its alcove.
+     * Draws an item shelved in a wall niche, centered in its alcove.
      *
      * @param smallIcons The niche-item icon sheet (ITEMS1.CPS)
      * @param iconIdx Item icon index
@@ -492,7 +491,8 @@ class ViewPort(
     ) {
         Logger.d(TAG) { "drawNicheItem $iconIdx block=$blockIndex dim=$dim" }
 
-        val scaleSteps = itemScaleSteps[dim * 4]
+        // a niche is drawn at the size the far-left corner of its square would be
+        val scaleSteps = itemScaleStepsAt(dim, ViewPlace.FAR_LEFT)
         var icon = smallIcons.getItemIcon(iconIdx) ?: return
         repeat(scaleSteps.value) { icon = scaleDown(icon) }
 
@@ -556,8 +556,8 @@ class ViewPort(
      *
      * @param frame Near-size pose cut from the sprite sheet
      * @param decorations Overlays for this pose, drawn over the frame in order
-     * @param blockIndex Visible-block index 0-17 into [blockScreenCoords]
-     * @param subPosition View-relative sub-position: 0-3 (quadrant) or 4 (center)
+     * @param blockIndex Visible-block index 0-17
+     * @param place Where on the block, as the party see it
      * @param mirrored Draw horizontally flipped (for right-facing side poses)
      * @param scaleSteps Number of 2/3 shrink steps for distance
      */
@@ -565,17 +565,17 @@ class ViewPort(
         frame: Cps.ItemIcon,
         decorations: List<MonsterDecoration>,
         blockIndex: Int,
-        subPosition: Int,
+        place: ViewPlace,
         mirrored: Boolean,
         scaleSteps: ScaleSteps,
     ) {
-        Logger.d(TAG) { "drawMonster block=$blockIndex subPos=$subPosition mirrored=$mirrored scale=$scaleSteps" }
+        Logger.d(TAG) { "drawMonster block=$blockIndex at=$place mirrored=$mirrored scale=$scaleSteps" }
 
         val icon = frame.shrunk(scaleSteps)
 
-        val coordIndex = (blockIndex * 5 + subPosition) * 2
-        val startX = ScreenX(blockScreenCoords[coordIndex] + 88 - icon.w / 2)
-        val startY = ScreenY(blockScreenCoords[coordIndex + 1] + 127 - icon.h)
+        val spot = blockSpot(blockIndex, place)
+        val startX = ScreenX(spot.x + 88 - icon.w / 2)
+        val startY = ScreenY(spot.y + 127 - icon.h)
 
         blit(icon, startX, startY, mirrored, scaleSteps)
 

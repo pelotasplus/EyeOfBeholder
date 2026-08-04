@@ -10,6 +10,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.MonsterTypeId
 import pl.pelotasplus.eyeofbeholder.data.model.LevelScriptRunner
 import pl.pelotasplus.eyeofbeholder.data.model.Location
 import pl.pelotasplus.eyeofbeholder.data.model.PartyState
+import pl.pelotasplus.eyeofbeholder.data.model.SquarePlace
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptEvent
 import pl.pelotasplus.eyeofbeholder.data.model.ChangeLevel
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptRun
@@ -619,7 +620,7 @@ class LevelScriptRunnerTest {
     private fun spawnAt(location: Location) = CreateMonster(
         unit = 0,
         location = location,
-        pos = 4,
+        place = SquarePlace.MIDDLE,
         direction = Direction.EAST,
         type = MonsterTypeId(0),
         gfxIndex = 0,

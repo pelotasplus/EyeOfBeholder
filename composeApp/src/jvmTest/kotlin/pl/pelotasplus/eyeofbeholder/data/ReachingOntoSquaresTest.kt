@@ -3,7 +3,7 @@ package pl.pelotasplus.eyeofbeholder.data
 import kotlinx.coroutines.runBlocking
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.GameState
-import pl.pelotasplus.eyeofbeholder.data.model.IN_A_NICHE
+import pl.pelotasplus.eyeofbeholder.data.model.SquarePlace
 import pl.pelotasplus.eyeofbeholder.data.model.Inf
 import pl.pelotasplus.eyeofbeholder.data.model.PartyState
 import pl.pelotasplus.eyeofbeholder.data.model.WallAction
@@ -110,12 +110,12 @@ class ReachingOntoSquaresTest {
             items = dungeon.items,
         )
 
-        val shelved = world.lyingAt(level = 6, at = Location(16, 1), quadrant = IN_A_NICHE)
+        val shelved = world.lyingAt(level = 6, at = Location(16, 1), place = SquarePlace.IN_A_NICHE)
         assertNotNull(shelved, "nothing is shelved in the niche")
 
         val taken = world.takingUp(shelved)
         assertEquals(shelved, taken.inHand)
-        assertNull(taken.lyingAt(level = 6, at = Location(16, 1), quadrant = IN_A_NICHE))
+        assertNull(taken.lyingAt(level = 6, at = Location(16, 1), place = SquarePlace.IN_A_NICHE))
     }
 
     /** An open way is one a thing can be put through, or there is nowhere to put it. */

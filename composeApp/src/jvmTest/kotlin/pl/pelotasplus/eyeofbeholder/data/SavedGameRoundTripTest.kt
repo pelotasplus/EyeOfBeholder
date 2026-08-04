@@ -10,6 +10,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.MonsterInstance
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterTypeId
 import pl.pelotasplus.eyeofbeholder.data.model.PaletteIndex
 import pl.pelotasplus.eyeofbeholder.data.model.PartyState
+import pl.pelotasplus.eyeofbeholder.data.model.SquarePlace
 import pl.pelotasplus.eyeofbeholder.data.model.PlayField
 import pl.pelotasplus.eyeofbeholder.data.model.SavedGame
 import pl.pelotasplus.eyeofbeholder.data.model.WallByte
@@ -206,7 +207,7 @@ class SavedGameRoundTripTest {
             index = slot,
             unit = 0,
             block = onLevel * 32 + slot,
-            pos = 4,
+            place = SquarePlace.MIDDLE,
             direction = Direction.SOUTH,
             type = MonsterTypeId(onLevel),
             gfxIndex = 0,

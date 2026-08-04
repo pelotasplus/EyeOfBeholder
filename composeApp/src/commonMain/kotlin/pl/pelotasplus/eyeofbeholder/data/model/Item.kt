@@ -1,11 +1,12 @@
 package pl.pelotasplus.eyeofbeholder.data.model
 
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import pl.pelotasplus.eyeofbeholder.data.ByteReader
 
 /**
- * One item, wherever it happens to be: lying in a quadrant of a square, or in
- * one of a champion's slots.
+ * One item, wherever it happens to be: lying somewhere on a square, or in one
+ * of a champion's slots.
  *
  * An item does not know who has it. Everything that can hold one — a
  * champion's [Champion.carrying], a square's floor — names it by its place in
@@ -27,7 +28,6 @@ import pl.pelotasplus.eyeofbeholder.data.ByteReader
  * 13 1  value
  * ```
  *
- * @property pos where in the square: 0-3 a floor quadrant, 8 a wall niche
  * @property value what the number counts depends on the type — a magical
  *   bonus, charges left, which door a key opens
  */
@@ -38,7 +38,9 @@ data class Item(
     val flags: Int,
     val icon: ItemIconId,
     val type: ItemTypeId,
-    val pos: Int,
+    @SerialName("pos")
+    @Serializable(with = SquarePlaceAsTheGameWritesIt::class)
+    val place: SquarePlace,
     val location: Location,
     /**
      * The chain of items lying on one square, as the original keeps it.
@@ -95,7 +97,7 @@ data class Item(
             flags = reader.readU8(),
             icon = ItemIconId(reader.readI8()),
             type = ItemTypeId(reader.readI8()),
-            pos = reader.readI8(),
+            place = SquarePlace.of(reader.readI8()),
             location = Location.read(reader),
             next = reader.readI16LE(),
             prev = reader.readI16LE(),

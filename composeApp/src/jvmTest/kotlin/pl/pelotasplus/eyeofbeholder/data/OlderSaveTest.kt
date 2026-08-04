@@ -3,6 +3,7 @@ package pl.pelotasplus.eyeofbeholder.data
 import kotlinx.coroutines.runBlocking
 import pl.pelotasplus.eyeofbeholder.data.model.Alignment
 import pl.pelotasplus.eyeofbeholder.data.model.CharacterClass
+import pl.pelotasplus.eyeofbeholder.data.model.SquarePlace
 import pl.pelotasplus.eyeofbeholder.data.repository.FileSaveStore
 import pl.pelotasplus.eyeofbeholder.data.repository.SaveSlot
 import pl.pelotasplus.eyeofbeholder.data.repository.SavedGameRepositoryImpl
@@ -29,6 +30,9 @@ class OlderSaveTest {
      * A save as it was written before the champions' numbers were typed and
      * before race and sex were told apart: one champion, a class of 2 and an
      * alignment of 0, and a `raceAndSex` nothing reads any more.
+     *
+     * It also holds a monster and an item from before where a thing stands on
+     * its square had a type: both call it `pos`, and both write a number.
      */
     private val asItUsedToBeWritten = """
         {
@@ -55,10 +59,24 @@ class OlderSaveTest {
           ],
           "world": {
             "party": { "position": { "x": 15, "y": 11 }, "facing": "SOUTH" },
-            "monsters": [],
+            "monsters": [
+              {
+                "index": 0, "unit": 0, "block": 367, "pos": 4,
+                "direction": "NORTH", "type": 1, "gfxIndex": 0,
+                "mode": 0, "pause": 0, "weapon": 0, "pocketItem": 0
+              }
+            ],
             "flags": {},
             "leftBehind": {},
-            "changedWalls": []
+            "changedWalls": [],
+            "items": [
+              {
+                "nameUnidentified": 1, "nameIdentified": 2, "flags": 64,
+                "icon": 3, "type": 4, "pos": 8,
+                "location": { "x": 16, "y": 1 },
+                "next": 0, "prev": 0, "level": 6, "value": 0
+              }
+            ]
           },
           "messages": []
         }
@@ -99,6 +117,21 @@ class OlderSaveTest {
 
         assertEquals(null, pericles.race)
         assertEquals(null, pericles.sex)
+    }
+
+    /**
+     * Where a thing stands on its square is a number in a save and a name in
+     * the code, and the two have to keep agreeing: 8 is the niche a thing is
+     * shelved in, and 4 the middle of the square a big monster fills.
+     */
+    @Test
+    fun `a place written as a number comes back as the place it names`() = runBlocking {
+        store.write(SaveSlot.AUTOSAVE, asItUsedToBeWritten)
+
+        val world = repository.load(SaveSlot.AUTOSAVE).getOrThrow().world
+
+        assertEquals(SquarePlace.IN_A_NICHE, world.items.single().place)
+        assertEquals(SquarePlace.MIDDLE, world.monsters.single().place)
     }
 
     /**

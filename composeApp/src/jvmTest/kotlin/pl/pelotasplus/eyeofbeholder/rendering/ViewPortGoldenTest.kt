@@ -960,7 +960,7 @@ class ViewPortGoldenTest {
             dagger.copy(
                 level = sublevel.level,
                 location = if (reach.aheadOfTheParty) ahead else here,
-                pos = reach.quadrantFacing(facing),
+                place = reach.placeFacing(facing),
             )
         }
 

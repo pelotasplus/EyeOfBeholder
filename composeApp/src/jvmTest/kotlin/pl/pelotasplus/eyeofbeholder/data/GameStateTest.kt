@@ -9,6 +9,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.WallSide
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterInstance
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterTypeId
 import pl.pelotasplus.eyeofbeholder.data.model.PartyState
+import pl.pelotasplus.eyeofbeholder.data.model.SquarePlace
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -133,7 +134,7 @@ class GameStateTest {
         index = slot,
         unit = 0,
         block = 0,
-        pos = 4,
+        place = SquarePlace.MIDDLE,
         direction = Direction.SOUTH,
         type = MonsterTypeId(0),
         gfxIndex = 0,

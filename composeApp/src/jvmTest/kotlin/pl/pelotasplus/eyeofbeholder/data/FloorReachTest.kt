@@ -2,7 +2,8 @@ package pl.pelotasplus.eyeofbeholder.data
 
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.FloorReach
-import pl.pelotasplus.eyeofbeholder.data.model.viewRelativeSubPosition
+import pl.pelotasplus.eyeofbeholder.data.model.SquarePlace
+import pl.pelotasplus.eyeofbeholder.data.model.ViewPlace
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -48,12 +49,12 @@ class FloorReachTest {
     fun `a corner reached into is the corner it is drawn in`() {
         Direction.entries.forEach { facing ->
             FloorReach.entries.forEach { reach ->
-                val quadrant = reach.quadrantFacing(facing)
+                val place = reach.placeFacing(facing)
 
                 assertEquals(
-                    expectedCorner(reach),
-                    viewRelativeSubPosition(facing, quadrant),
-                    "$reach facing $facing reaches quadrant $quadrant",
+                    seenAt(reach),
+                    place.asSeenFacing(facing),
+                    "$reach facing $facing reaches $place",
                 )
             }
         }
@@ -64,28 +65,40 @@ class FloorReachTest {
      * shows the two the camera has not passed, and the square in front shows
      * the two nearest.
      */
-    private fun expectedCorner(reach: FloorReach) = when (reach) {
-        FloorReach.OWN_LEFT -> 0
-        FloorReach.OWN_RIGHT -> 1
-        FloorReach.AHEAD_LEFT -> 2
-        FloorReach.AHEAD_RIGHT -> 3
+    private fun seenAt(reach: FloorReach) = when (reach) {
+        FloorReach.OWN_LEFT -> ViewPlace.FAR_LEFT
+        FloorReach.OWN_RIGHT -> ViewPlace.FAR_RIGHT
+        FloorReach.AHEAD_LEFT -> ViewPlace.NEAR_LEFT
+        FloorReach.AHEAD_RIGHT -> ViewPlace.NEAR_RIGHT
     }
 
-    /** Facing north, nothing is turned, so the two numberings agree. */
+    /** Facing north, nothing is turned, so the view and the maze agree. */
     @Test
-    fun `facing north a corner is its own quadrant`() {
-        assertEquals(0, FloorReach.OWN_LEFT.quadrantFacing(Direction.NORTH))
-        assertEquals(1, FloorReach.OWN_RIGHT.quadrantFacing(Direction.NORTH))
-        assertEquals(2, FloorReach.AHEAD_LEFT.quadrantFacing(Direction.NORTH))
-        assertEquals(3, FloorReach.AHEAD_RIGHT.quadrantFacing(Direction.NORTH))
+    fun `facing north a corner of the view is the corner it names`() {
+        assertEquals(SquarePlace.NORTH_WEST, FloorReach.OWN_LEFT.placeFacing(Direction.NORTH))
+        assertEquals(SquarePlace.NORTH_EAST, FloorReach.OWN_RIGHT.placeFacing(Direction.NORTH))
+        assertEquals(SquarePlace.SOUTH_WEST, FloorReach.AHEAD_LEFT.placeFacing(Direction.NORTH))
+        assertEquals(SquarePlace.SOUTH_EAST, FloorReach.AHEAD_RIGHT.placeFacing(Direction.NORTH))
     }
 
     /** Facing south turns the square right round, so every corner swaps. */
     @Test
     fun `facing south every corner is its opposite`() {
-        assertEquals(3, FloorReach.OWN_LEFT.quadrantFacing(Direction.SOUTH))
-        assertEquals(2, FloorReach.OWN_RIGHT.quadrantFacing(Direction.SOUTH))
-        assertEquals(1, FloorReach.AHEAD_LEFT.quadrantFacing(Direction.SOUTH))
-        assertEquals(0, FloorReach.AHEAD_RIGHT.quadrantFacing(Direction.SOUTH))
+        assertEquals(SquarePlace.SOUTH_EAST, FloorReach.OWN_LEFT.placeFacing(Direction.SOUTH))
+        assertEquals(SquarePlace.SOUTH_WEST, FloorReach.OWN_RIGHT.placeFacing(Direction.SOUTH))
+        assertEquals(SquarePlace.NORTH_EAST, FloorReach.AHEAD_LEFT.placeFacing(Direction.SOUTH))
+        assertEquals(SquarePlace.NORTH_WEST, FloorReach.AHEAD_RIGHT.placeFacing(Direction.SOUTH))
+    }
+
+    /**
+     * A niche is on a wall, and so is drawn where the wall is rather than
+     * anywhere on the floor. Asking where on the square it is seen is asking
+     * the wrong question, and the answer is nowhere rather than a corner.
+     */
+    @Test
+    fun `a niche is at no corner of the view`() {
+        Direction.entries.forEach { facing ->
+            assertNull(SquarePlace.IN_A_NICHE.asSeenFacing(facing))
+        }
     }
 }

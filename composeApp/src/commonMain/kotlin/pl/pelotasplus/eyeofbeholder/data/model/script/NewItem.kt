@@ -3,6 +3,7 @@ package pl.pelotasplus.eyeofbeholder.data.model.script
 import pl.pelotasplus.eyeofbeholder.data.ByteReader
 import pl.pelotasplus.eyeofbeholder.data.model.ItemIndex
 import pl.pelotasplus.eyeofbeholder.data.model.Location
+import pl.pelotasplus.eyeofbeholder.data.model.SquarePlace
 
 /**
  * Where a thing a script makes is put.
@@ -20,19 +21,19 @@ sealed interface ItemDestination {
     /** Onto the square the party stand on, in a corner in front of them. */
     data object Underfoot : ItemDestination
 
-    data class OnASquare(val at: Location, val corner: Int) : ItemDestination
+    data class OnASquare(val at: Location, val place: SquarePlace) : ItemDestination
 
     companion object {
         /**
          * @param block the square as the script writes it, which is -1 for the
          *   hand and -2 for underfoot
          */
-        fun of(block: Int, corner: Int): ItemDestination = when (block) {
+        fun of(block: Int, place: SquarePlace): ItemDestination = when (block) {
             THE_HAND -> IntoTheHand
             UNDERFOOT -> Underfoot
             else -> OnASquare(
                 at = Location(block and MAZE_WIDTH_MASK, block / MAZE_WIDTH),
-                corner = corner,
+                place = place,
             )
         }
 
@@ -69,12 +70,12 @@ data class NewItem(
         fun read(reader: ByteReader): NewItem {
             val copyOf = ItemIndex(reader.readU16LE())
             val block = reader.readU16LE()
-            val corner = reader.readU8()
+            val place = SquarePlace.of(reader.readU8())
             val flags = reader.readU8()
 
             return NewItem(
                 copyOf = copyOf,
-                goes = ItemDestination.of(block, corner),
+                goes = ItemDestination.of(block, place),
                 flags = flags,
                 itemValue = if (flags and 1 == 1) reader.readU8() else null,
                 itemFlag = if (flags and 2 == 2) reader.readU8() else null,

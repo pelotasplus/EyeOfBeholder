@@ -28,13 +28,24 @@ val viewBlockRows: Map<Int, List<ViewBlock>> = mapOf(
 )
 
 /**
+ * Where within a block a thing standing at [place] is drawn: [BlockSpot.x]
+ * from the middle of the viewport, [BlockSpot.y] from the baseline its feet
+ * stand on.
+ */
+fun blockSpot(blockIndex: Int, place: ViewPlace): BlockSpot {
+    val coord = (blockIndex * ViewPlace.entries.size + place.ordinal) * 2
+    return BlockSpot(blockScreenCoords[coord], blockScreenCoords[coord + 1])
+}
+
+/** One of the five places a block draws a thing at, as an offset. */
+data class BlockSpot(val x: Int, val y: Int)
+
+/**
  * Screen coordinates for objects in the view cone: 18 visible blocks ×
  * 5 sub-positions × (x, y). x is relative to the viewport horizontal center
  * (88); y to the baseline — 127 for monsters, 124 for items. The sprite is
  * drawn centered on x with its feet on y. Shared by monsters everywhere and
  * by items lying on the party's own square (block 16).
- *
- * From the original game, converted from unsigned hex to signed.
  */
 val blockScreenCoords: List<Int> = listOf(
     // blocks 0-6: three rows ahead
@@ -59,29 +70,4 @@ val blockScreenCoords: List<Int> = listOf(
     -128, -4, 128, -4, -128, -66, 128, -66, 128, 0,
     -38, -4, 38, -4, -38, -66, 38, -66, 0, 0,
     -128, -4, 128, -4, -128, -66, 128, -66, 128, 0,
-)
-
-/**
- * Rotates something's sub-position within its square (0=NW, 1=NE, 2=SW, 3=SE
- * in maze coordinates, 4 = the middle) into a view-relative one, so that 0 is
- * always the far-left corner as the party sees it. Shared by items and
- * monsters.
- *
- * From the original game.
- */
-fun viewRelativeSubPosition(partyFacing: Direction, subPosition: Int): Int =
-    if (subPosition == SQUARE_MIDDLE) {
-        SQUARE_MIDDLE
-    } else {
-        subPositionRotation[partyFacing.ordinal * 4 + subPosition]
-    }
-
-/** The one sub-position a rotation leaves where it is. */
-private const val SQUARE_MIDDLE = 4
-
-private val subPositionRotation: List<Int> = listOf(
-    0, 1, 2, 3,
-    2, 0, 3, 1,
-    3, 2, 1, 0,
-    1, 3, 0, 2,
 )

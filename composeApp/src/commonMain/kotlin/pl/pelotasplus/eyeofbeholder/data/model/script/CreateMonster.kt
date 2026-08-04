@@ -4,6 +4,7 @@ import pl.pelotasplus.eyeofbeholder.data.ByteReader
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.Location
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterTypeId
+import pl.pelotasplus.eyeofbeholder.data.model.SquarePlace
 
 /**
  * Puts a monster into the world. Opcode 0xFB.
@@ -14,7 +15,6 @@ import pl.pelotasplus.eyeofbeholder.data.model.MonsterTypeId
  *
  * @property unit Which group the monster is updated with
  * @property location Maze square to stand on
- * @property pos Sub-position within the square (0-3 = quadrants, 4 = middle)
  * @property direction Which way it faces
  * @property type Its species, an index into the sublevel's monster properties
  * @property gfxIndex Which of the sublevel's sprite sheets it is drawn from
@@ -26,7 +26,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.MonsterTypeId
 data class CreateMonster(
     val unit: Int,
     val location: Location,
-    val pos: Int,
+    val place: SquarePlace,
     val direction: Direction,
     val type: MonsterTypeId,
     val gfxIndex: Int,
@@ -45,7 +45,7 @@ data class CreateMonster(
             return CreateMonster(
                 unit = reader.readU8(),
                 location = Location.read(reader),
-                pos = reader.readU8(),
+                place = SquarePlace.of(reader.readU8()),
                 // -1 asks the engine to roll for a facing, which no level does
                 direction = Direction.entries.getOrElse(reader.readI8()) { Direction.NORTH },
                 type = MonsterTypeId(reader.readU8()),

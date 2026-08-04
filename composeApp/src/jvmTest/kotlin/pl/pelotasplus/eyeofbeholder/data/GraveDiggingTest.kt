@@ -9,6 +9,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.GameState
 import pl.pelotasplus.eyeofbeholder.data.model.LevelScriptRunner
 import pl.pelotasplus.eyeofbeholder.data.model.Location
 import pl.pelotasplus.eyeofbeholder.data.model.PartyState
+import pl.pelotasplus.eyeofbeholder.data.model.SquarePlace
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptEvent
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptQuestion
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptStage
@@ -196,7 +197,7 @@ class GraveDiggingTest {
     /** What comes out is on the floor of the grave, not shelved in it. */
     @Test
     fun `what is dug up lies on the floor`() {
-        cornersDugInto().forEach { assertTrue(it < 4, "corner $it is not on the floor") }
+        cornersDugInto().forEach { assertTrue(it.onTheFloor, "$it is not on the floor") }
     }
 
     /**
@@ -210,22 +211,22 @@ class GraveDiggingTest {
         val dugInto = cornersDugInto()
 
         val fromOutside = setOf(
-            FloorReach.AHEAD_LEFT.quadrantFacing(Direction.NORTH),
-            FloorReach.AHEAD_RIGHT.quadrantFacing(Direction.NORTH),
+            FloorReach.AHEAD_LEFT.placeFacing(Direction.NORTH),
+            FloorReach.AHEAD_RIGHT.placeFacing(Direction.NORTH),
         )
         val standingOnIt = setOf(
-            FloorReach.OWN_LEFT.quadrantFacing(Direction.NORTH),
-            FloorReach.OWN_RIGHT.quadrantFacing(Direction.NORTH),
+            FloorReach.OWN_LEFT.placeFacing(Direction.NORTH),
+            FloorReach.OWN_RIGHT.placeFacing(Direction.NORTH),
         )
 
         assertTrue(dugInto.none { it in fromOutside }, "$dugInto was reachable from outside")
         assertTrue(dugInto.all { it in standingOnIt }, "$dugInto is out of reach even standing on it")
     }
 
-    private fun cornersDugInto(): Set<Int> = dig().state.let { dug ->
+    private fun cornersDugInto(): Set<SquarePlace> = dig().state.let { dug ->
         dug.items.indices
             .filter { dug.items[it].level == LEVEL && dug.items[it].location == grave }
-            .map { dug.items[it].pos }
+            .map { dug.items[it].place }
             .toSet()
     }
 

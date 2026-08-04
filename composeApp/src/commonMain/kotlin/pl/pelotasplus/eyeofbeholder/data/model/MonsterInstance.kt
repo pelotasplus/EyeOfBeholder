@@ -1,5 +1,6 @@
 package pl.pelotasplus.eyeofbeholder.data.model
 
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import pl.pelotasplus.eyeofbeholder.data.model.script.CreateMonster
 
@@ -17,7 +18,6 @@ import pl.pelotasplus.eyeofbeholder.data.model.script.CreateMonster
  *   therefore a different creature in each — level 3's type 0 is a gelatinous
  *   cube read by its first sublevel and a worker ant by its second.
  * @property block Packed maze square: x = block and 0x1F, y = block shr 5
- * @property pos Position within the square (0-3 = quadrants, 4 = center)
  * @property direction Which way the monster faces
  * @property type Index into [SubLevel.monsters] (the species' stats)
  * @property gfxIndex Index into [SubLevel.monsterGfx] (which sprite sheet)
@@ -31,7 +31,9 @@ data class MonsterInstance(
     val index: Int,
     val unit: Int,
     val block: Int,
-    val pos: Int,
+    @SerialName("pos")
+    @Serializable(with = SquarePlaceAsTheGameWritesIt::class)
+    val place: SquarePlace,
     val direction: Direction,
     val type: MonsterTypeId,
     val gfxIndex: Int,
@@ -57,7 +59,7 @@ data class MonsterInstance(
             index = slot,
             unit = spawn.unit,
             block = (spawn.location.y shl 5) or spawn.location.x,
-            pos = spawn.pos,
+            place = spawn.place,
             direction = spawn.direction,
             type = spawn.type,
             gfxIndex = spawn.gfxIndex,

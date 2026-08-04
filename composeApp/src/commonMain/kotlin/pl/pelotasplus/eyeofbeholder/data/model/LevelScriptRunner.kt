@@ -344,7 +344,7 @@ class LevelScriptRunner(
                 // the same one.
                 is NewItem -> state = when (val goes = token.goes) {
                     is ItemDestination.OnASquare ->
-                        state.itemCopied(token.copyOf, level, goes.at, goes.corner)
+                        state.itemCopied(token.copyOf, level, goes.at, goes.place)
 
                     ItemDestination.IntoTheHand ->
                         state.itemCopiedIntoTheHand(token.copyOf, level, cornerOfTwo())
@@ -353,7 +353,7 @@ class LevelScriptRunner(
                         copyOf = token.copyOf,
                         level = level,
                         at = state.party.position,
-                        corner = cornerInFront(state.party.facing),
+                        place = cornerInFront(state.party.facing),
                     )
                 }
 
@@ -489,16 +489,16 @@ class LevelScriptRunner(
      * One of the two corners nearest the party as they are looking, which is
      * where a thing dropped at their feet lands.
      */
-    private fun cornerInFront(facing: Direction): Int =
+    private fun cornerInFront(facing: Direction): SquarePlace =
         (if (dice.roll(1, 2, -1) == 0) FloorReach.OWN_LEFT else FloorReach.OWN_RIGHT)
-            .quadrantFacing(facing)
+            .placeFacing(facing)
 
     /**
      * The same choice made without regard to which way the party look, which
      * is what the game does when a thing meant for the hand has to go on the
      * floor instead.
      */
-    private fun cornerOfTwo(): Int = dice.roll(1, 2, -1)
+    private fun cornerOfTwo(): SquarePlace = SquarePlace.of(dice.roll(1, 2, -1))
 
     /** Postfix stack machine over a condition's tokens. */
     private fun evaluate(

@@ -21,9 +21,9 @@ import pl.pelotasplus.eyeofbeholder.data.model.ViewPort
 import pl.pelotasplus.eyeofbeholder.data.model.ViewWindow
 import pl.pelotasplus.eyeofbeholder.data.model.WallSet
 import pl.pelotasplus.eyeofbeholder.data.model.getWall
-import pl.pelotasplus.eyeofbeholder.data.model.IN_A_NICHE
 import pl.pelotasplus.eyeofbeholder.data.model.ItemIndex
-import pl.pelotasplus.eyeofbeholder.data.model.itemScaleSteps
+import pl.pelotasplus.eyeofbeholder.data.model.SquarePlace
+import pl.pelotasplus.eyeofbeholder.data.model.itemScaleStepsAt
 import pl.pelotasplus.eyeofbeholder.data.model.nudgeOf
 import pl.pelotasplus.eyeofbeholder.data.model.showsWhatIsOnIt
 import pl.pelotasplus.eyeofbeholder.data.model.sightThrough
@@ -35,7 +35,6 @@ import pl.pelotasplus.eyeofbeholder.data.model.monsterFacing
 import pl.pelotasplus.eyeofbeholder.data.model.monsterSheet
 import pl.pelotasplus.eyeofbeholder.data.model.WallAction
 import pl.pelotasplus.eyeofbeholder.data.model.doesWhenClicked
-import pl.pelotasplus.eyeofbeholder.data.model.viewRelativeSubPosition
 import pl.pelotasplus.eyeofbeholder.data.model.viewSlots
 
 /**
@@ -425,12 +424,12 @@ class ViewConeRepositoryImpl(
         }
 
         for ((index, item) in itemsHere) {
-            Logger.d(TAG) { "drawItem icon=${item.icon} at ($mazX, $mazY) pos=${item.pos} block=$blockIndex" }
+            Logger.d(TAG) { "drawItem icon=${item.icon} at ($mazX, $mazY) ${item.place} block=$blockIndex" }
 
             val nudge = nudgeOf(ItemIndex(index))
 
             when {
-                item.pos == IN_A_NICHE -> {
+                item.place == SquarePlace.IN_A_NICHE -> {
                     // niche items are hidden when too far (dim 0) or on the own square (dim 3)
                     if (dim == 1 || dim == 2) {
                         sheetFor(item.icon, smallIcons, largeIcons)?.let { sheet ->
@@ -439,16 +438,16 @@ class ViewConeRepositoryImpl(
                     }
                 }
 
-                item.pos < 4 -> {
-                    val quadrant = viewRelativeSubPosition(partyFacing, item.pos)
-                    val scaleSteps = itemScaleSteps[dim * 4 + quadrant]
+                item.place.onTheFloor -> {
+                    val seenAt = item.place.asSeenFacing(partyFacing) ?: continue
+                    val scaleSteps = itemScaleStepsAt(dim, seenAt)
                     if (scaleSteps.isVisible) {
                         sheetFor(item.icon, smallIcons, largeIcons)?.let { sheet ->
                             viewPort.drawFloorItem(
                                 largeIcons = sheet,
                                 iconIdx = item.icon,
                                 blockIndex = blockIndex,
-                                viewQuadrant = quadrant,
+                                place = seenAt,
                                 scaleSteps = scaleSteps,
                                 nudge = nudge,
                             )
@@ -456,7 +455,9 @@ class ViewConeRepositoryImpl(
                     }
                 }
 
-                else -> Logger.w(TAG) { "Unexpected item position: ${item.pos}, skipping" }
+                // in the middle of a square is where a thing in the air is,
+                // and what is in the air is not drawn lying on the floor
+                else -> Logger.d(TAG) { "Not on the floor: ${item.place}, skipping" }
             }
         }
     }
@@ -498,9 +499,10 @@ class ViewConeRepositoryImpl(
             // tables say, and this one's would make it a different creature.
             val monstersHere = monsters
                 .filter { it.x == mazX && it.y == mazY && it.subLevel == sublevel.index }
-                .sortedBy { viewRelativeSubPosition(direction, it.pos) }
+                .sortedBy { it.place.asSeenFacing(direction) }
 
             for (monster in monstersHere) {
+                val seenAt = monster.place.asSeenFacing(direction) ?: continue
                 val sheet = monsterSheets.getOrNull(monster.gfxIndex) ?: continue
                 val facing = monsterFacing(direction, monster.direction)
                 val frame = sheet.pose(facing.pose, monster.colors) ?: continue
@@ -520,7 +522,7 @@ class ViewConeRepositoryImpl(
                         frame = frame,
                         decorations = decorations,
                         blockIndex = block.blockIndex,
-                        subPosition = viewRelativeSubPosition(direction, monster.pos),
+                        place = seenAt,
                         mirrored = facing.mirrored,
                         scaleSteps = block.scaleSteps,
                     )

@@ -132,35 +132,35 @@ data class GameState(
     fun holding(slot: ItemIndex) = copy(inHand = slot)
 
     /**
-     * Which item lies in one quadrant of a square, if any. A square can hold
+     * Which item lies at one place on a square, if any. A square can hold
      * several, and the original takes them one at a time from where they were
      * put rather than off a pile.
      */
-    fun lyingAt(level: Int, at: Location, quadrant: Int): ItemIndex? =
+    fun lyingAt(level: Int, at: Location, place: SquarePlace): ItemIndex? =
         items.indices.firstOrNull { slot ->
-            items[slot].let { it.level == level && it.location == at && it.pos == quadrant }
+            items[slot].let { it.level == level && it.location == at && it.place == place }
         }?.let(::ItemIndex)
 
     /**
-     * Puts what is in the hand down at one quadrant of a square, and leaves
-     * the hand empty. Putting nothing down changes nothing.
+     * Puts what is in the hand down at one place on a square, and leaves the
+     * hand empty. Putting nothing down changes nothing.
      */
-    fun puttingDown(level: Int, at: Location, quadrant: Int): GameState {
+    fun puttingDown(level: Int, at: Location, place: SquarePlace): GameState {
         if (!inHand.isSomething) return this
 
         return copy(
             items = items.mapIndexed { slot, item ->
                 if (slot != inHand.value) item
-                else item.copy(level = level, location = at, pos = quadrant)
+                else item.copy(level = level, location = at, place = place)
             },
             inHand = ItemIndex(ItemIndex.NOTHING),
         )
     }
 
     /**
-     * Takes what lies at one quadrant of a square into the hand. What is
-     * picked up is being carried rather than lying anywhere, which is what
-     * keeps it from being drawn where it was left.
+     * Takes what lies at one place on a square into the hand. What is picked
+     * up is being carried rather than lying anywhere, which is what keeps it
+     * from being drawn where it was left.
      */
     fun takingUp(slot: ItemIndex) = copy(
         items = items.mapIndexed { at, item ->
@@ -171,8 +171,7 @@ data class GameState(
     )
 
     /**
-     * Another thing like the one in [copyOf], put down at [corner] of a
-     * square.
+     * Another thing like the one in [copyOf], put down at [place] on a square.
      *
      * A script does not describe what it makes; it points at something the
      * world already holds and asks for another like it. The copy goes into
@@ -187,9 +186,9 @@ data class GameState(
         copyOf: ItemIndex,
         level: Int,
         at: Location,
-        corner: Int,
+        place: SquarePlace,
     ): GameState {
-        val made = copyOf(copyOf) { it.copy(location = at, level = level, pos = corner) }
+        val made = copyOf(copyOf) { it.copy(location = at, level = level, place = place) }
         return made?.world ?: this
     }
 
@@ -223,11 +222,11 @@ data class GameState(
      * the player to be holding. A hand that is already full has the thing put
      * on the floor at their feet instead, since it has to go somewhere.
      */
-    fun itemCopiedIntoTheHand(copyOf: ItemIndex, level: Int, corner: Int): GameState {
-        if (inHand.isSomething) return itemCopied(copyOf, level, party.position, corner)
+    fun itemCopiedIntoTheHand(copyOf: ItemIndex, level: Int, place: SquarePlace): GameState {
+        if (inHand.isSomething) return itemCopied(copyOf, level, party.position, place)
 
         val made = copyOf(copyOf) {
-            it.copy(location = Item.CARRIED, level = Item.CARRIED_LEVEL, pos = 0)
+            it.copy(location = Item.CARRIED, level = Item.CARRIED_LEVEL)
         } ?: return this
 
         return made.world.copy(inHand = made.slot)
@@ -249,7 +248,6 @@ data class GameState(
         table[joining.value] = table[joining.value].copy(
             location = Item.ON_A_STACK,
             level = Item.NO_LEVEL,
-            pos = 0,
         )
 
         if (!head.isSomething) {

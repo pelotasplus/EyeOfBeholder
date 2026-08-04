@@ -9,6 +9,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.ItemNameId
 import pl.pelotasplus.eyeofbeholder.data.model.ItemTypeId
 import pl.pelotasplus.eyeofbeholder.data.model.Location
 import pl.pelotasplus.eyeofbeholder.data.model.PartyState
+import pl.pelotasplus.eyeofbeholder.data.model.SquarePlace
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -27,13 +28,13 @@ class ItemInHandTest {
     private val here = Location(5, 6)
     private val level = 4
 
-    private fun lying(at: Location, quadrant: Int, level: Int = this.level) = Item(
+    private fun lying(at: Location, place: SquarePlace, level: Int = this.level) = Item(
         nameUnidentified = ItemNameId(0),
         nameIdentified = ItemNameId(0),
         flags = 0,
         icon = ItemIconId(3),
         type = ItemTypeId(0),
-        pos = quadrant,
+        place = place,
         location = at,
         next = 0,
         prev = 0,
@@ -41,12 +42,12 @@ class ItemInHandTest {
         value = 0,
     )
 
-    private val nothing = lying(Item.NOWHERE, quadrant = 0, level = 0)
+    private val nothing = lying(Item.NOWHERE, SquarePlace.NORTH_WEST, level = 0)
 
     /** Slot 0 is nothing; a dagger lies in the north-west corner of (5,6). */
     private val world = GameState(
         party = PartyState(here, Direction.NORTH),
-        items = listOf(nothing, lying(here, quadrant = 0)),
+        items = listOf(nothing, lying(here, SquarePlace.NORTH_WEST)),
     )
 
     private val dagger = ItemIndex(1)
@@ -59,10 +60,10 @@ class ItemInHandTest {
 
     @Test
     fun `what lies in a corner is found by that corner`() {
-        assertEquals(dagger, world.lyingAt(level, here, quadrant = 0))
-        assertNull(world.lyingAt(level, here, quadrant = 1))
-        assertNull(world.lyingAt(level, Location(5, 7), quadrant = 0))
-        assertNull(world.lyingAt(level + 1, here, quadrant = 0))
+        assertEquals(dagger, world.lyingAt(level, here, SquarePlace.NORTH_WEST))
+        assertNull(world.lyingAt(level, here, SquarePlace.NORTH_EAST))
+        assertNull(world.lyingAt(level, Location(5, 7), SquarePlace.NORTH_WEST))
+        assertNull(world.lyingAt(level + 1, here, SquarePlace.NORTH_WEST))
     }
 
     /**
@@ -78,22 +79,23 @@ class ItemInHandTest {
         assertEquals(Item.CARRIED, taken.item(dagger)?.location)
         assertEquals(Item.CARRIED_LEVEL, taken.item(dagger)?.level)
         assertTrue(taken.item(dagger)?.exists == true)
-        assertNull(taken.lyingAt(level, here, quadrant = 0))
+        assertNull(taken.lyingAt(level, here, SquarePlace.NORTH_WEST))
     }
 
     @Test
     fun `putting it down again leaves it where it was put`() {
-        val moved = world.takingUp(dagger).puttingDown(level, Location(7, 8), quadrant = 2)
+        val moved = world.takingUp(dagger)
+            .puttingDown(level, Location(7, 8), SquarePlace.SOUTH_WEST)
 
         assertTrue(!moved.inHand.isSomething)
-        assertEquals(ItemIndex(1), moved.lyingAt(level, Location(7, 8), quadrant = 2))
+        assertEquals(ItemIndex(1), moved.lyingAt(level, Location(7, 8), SquarePlace.SOUTH_WEST))
         assertEquals(level, moved.item(dagger)?.level)
     }
 
     /** A hand with nothing in it has nothing to put down. */
     @Test
     fun `putting down an empty hand changes nothing`() {
-        assertSame(world, world.puttingDown(level, here, quadrant = 0))
+        assertSame(world, world.puttingDown(level, here, SquarePlace.NORTH_WEST))
     }
 
     /**
@@ -102,9 +104,9 @@ class ItemInHandTest {
      */
     @Test
     fun `only one of two in a corner comes up at a time`() {
-        val two = world.copy(items = world.items + lying(here, quadrant = 0))
-        val taken = two.takingUp(two.lyingAt(level, here, quadrant = 0)!!)
+        val two = world.copy(items = world.items + lying(here, SquarePlace.NORTH_WEST))
+        val taken = two.takingUp(two.lyingAt(level, here, SquarePlace.NORTH_WEST)!!)
 
-        assertEquals(ItemIndex(2), taken.lyingAt(level, here, quadrant = 0))
+        assertEquals(ItemIndex(2), taken.lyingAt(level, here, SquarePlace.NORTH_WEST))
     }
 }

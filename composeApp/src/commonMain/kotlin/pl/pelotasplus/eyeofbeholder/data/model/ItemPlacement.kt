@@ -1,26 +1,32 @@
 package pl.pelotasplus.eyeofbeholder.data.model
 
 /**
- * How far away an item lying on the floor is drawn, by depth row and
- * view-relative quadrant: index = dim * 4 + quadrant, where dim runs 0 (three
- * rows ahead) to 3 (the party's own square). Not visible ([ScaleSteps.isVisible])
- * means the item is not drawn there at all — too far to make out, or behind
- * the camera on the party's own square. Niche items use quadrant 0.
+ * How far away an item lying at [place] on a square [dim] rows ahead is drawn,
+ * where dim runs 0 (three rows ahead) to 3 (the party's own square).
  *
- * From the original game.
+ * Not visible ([ScaleSteps.isVisible]) means the item is not drawn there at
+ * all — too far to make out, or behind the party on their own square. Nothing
+ * is drawn in the middle of a square either: an item is there only while it is
+ * in the air.
  */
-val itemScaleSteps: List<ScaleSteps> = listOf(
+fun itemScaleStepsAt(dim: Int, place: ViewPlace): ScaleSteps =
+    if (place == ViewPlace.MIDDLE) NOT_DRAWN
+    else itemScaleSteps[dim * CORNERS + place.ordinal]
+
+private val itemScaleSteps: List<ScaleSteps> = listOf(
     -1, -1, 3, 3,
     2, 2, 2, 2,
     1, 1, 1, 1,
     0, 0, -1, -1,
 ).map { ScaleSteps(it) }
 
+private val NOT_DRAWN = ScaleSteps(-1)
+
+private const val CORNERS = 4
+
 /**
  * Screen X of an item sitting in a wall niche, per visible block, before
  * centering it on the icon's width.
- *
- * From the original game.
  */
 val nicheItemX: List<ScreenX> = listOf(
     -56, -8, 40, 88, 136, 184, 232,
@@ -28,12 +34,6 @@ val nicheItemX: List<ScreenX> = listOf(
     -40, 88, 216,
     -88, 88, 264,
 ).map { ScreenX(it) }
-
-/**
- * Where on a square a thing shelved in a wall niche lies, as against the four
- * corners of its floor.
- */
-const val IN_A_NICHE = 8
 
 /**
  * How far a thing is nudged from the middle of where it lies, so that two

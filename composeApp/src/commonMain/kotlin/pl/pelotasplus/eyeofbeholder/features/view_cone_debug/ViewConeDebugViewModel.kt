@@ -38,7 +38,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.InventorySlot
 import pl.pelotasplus.eyeofbeholder.data.model.inventorySlotAt
 import pl.pelotasplus.eyeofbeholder.data.model.inventorySlotPositions
 import pl.pelotasplus.eyeofbeholder.data.model.Item
-import pl.pelotasplus.eyeofbeholder.data.model.IN_A_NICHE
+import pl.pelotasplus.eyeofbeholder.data.model.SquarePlace
 import pl.pelotasplus.eyeofbeholder.data.model.ItemIndex
 import pl.pelotasplus.eyeofbeholder.data.model.WallAction
 import pl.pelotasplus.eyeofbeholder.data.model.doesWhenClicked
@@ -684,12 +684,12 @@ class ViewConeDebugViewModel(
         // nothing can be put through the wall a square turns towards the party
         if (reach.aheadOfTheParty && !canReachOnto(inf, level, at)) return false
 
-        val quadrant = reach.quadrantFacing(party.facing)
+        val place = reach.placeFacing(party.facing)
 
         val changed = if (world.inHand.isSomething) {
-            world.puttingDown(level, at, quadrant)
+            world.puttingDown(level, at, place)
         } else {
-            val lying = world.lyingAt(level, at, quadrant) ?: return false
+            val lying = world.lyingAt(level, at, place) ?: return false
             announceTaking(world.item(lying))
             world.takingUp(lying)
         }
@@ -804,7 +804,7 @@ class ViewConeDebugViewModel(
         val world = _state.value.game
 
         val changed = if (!world.inHand.isSomething) {
-            val shelved = world.lyingAt(level, at, IN_A_NICHE) ?: return
+            val shelved = world.lyingAt(level, at, SquarePlace.IN_A_NICHE) ?: return
             announceTaking(world.item(shelved))
             world.takingUp(shelved)
         } else {
@@ -813,7 +813,7 @@ class ViewConeDebugViewModel(
                 drawWords()
                 return
             }
-            world.puttingDown(level, at, IN_A_NICHE)
+            world.puttingDown(level, at, SquarePlace.IN_A_NICHE)
         }
 
         _state.update { it.copy(game = changed) }

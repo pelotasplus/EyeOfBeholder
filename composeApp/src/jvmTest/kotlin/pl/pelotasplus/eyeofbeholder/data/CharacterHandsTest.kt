@@ -13,6 +13,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.ItemTypeId
 import pl.pelotasplus.eyeofbeholder.data.model.ItemTypes
 import pl.pelotasplus.eyeofbeholder.data.model.Location
 import pl.pelotasplus.eyeofbeholder.data.model.PartyState
+import pl.pelotasplus.eyeofbeholder.data.model.SquarePlace
 import pl.pelotasplus.eyeofbeholder.data.repository.ItemTypesRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.OriginalSaveRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.ResourceRepositoryImpl
@@ -155,7 +156,7 @@ class CharacterHandsTest {
         flags = 0,
         icon = ItemIconId(0),
         type = ItemTypeId(type),
-        pos = 0,
+        place = SquarePlace.NORTH_WEST,
         location = Location(0, 0),
         next = 0,
         prev = 0,

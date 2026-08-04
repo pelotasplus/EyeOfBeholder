@@ -34,6 +34,17 @@
 - `WallSet` enum (in `Vmp.kt`) names the fixed VMP wall tile sets:
   `DOOR_FRAME(2)`, `STAIRS_UP(3)`, `STAIRS_DOWN(4)`
 
+**SquarePlace & ViewPlace — where on a square a thing is**
+- `SquarePlace` (in `SquarePlace.kt`) is the one name for it: the four corners
+  of a square's floor named as the maze has them, the middle, and `IN_A_NICHE`.
+  An item, a monster and a script's spawn all carry one as `place`
+- `ViewPlace` is the same place as the party see it — `FAR_LEFT`, `FAR_RIGHT`,
+  `NEAR_LEFT`, `NEAR_RIGHT`, `MIDDLE`, in the order the screen coordinates are
+  kept in. `asSeenFacing()` and `onASquareFacing()` are inverses, and the test
+  that they undo each other is what catches a rotation table written backwards
+- A save writes the number the game writes, under the name a save already gives
+  it (`pos`), so typing this did not break saves
+
 **Direction & WallSide**
 - `Direction` enum with `transformCoordinates()` and `transformWallSide()` for rotating coordinates based on player facing direction
 - `WallSide` enum for cardinal directions in absolute maze coordinates

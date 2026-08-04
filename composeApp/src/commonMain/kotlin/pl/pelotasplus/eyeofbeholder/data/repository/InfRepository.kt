@@ -19,6 +19,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.MonsterInstance
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterTypeId
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterProperty
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptTimer
+import pl.pelotasplus.eyeofbeholder.data.model.SquarePlace
 import pl.pelotasplus.eyeofbeholder.data.model.SubLevel
 import pl.pelotasplus.eyeofbeholder.data.model.script.ScriptOffset
 import pl.pelotasplus.eyeofbeholder.data.model.script.ClearFlag
@@ -524,8 +525,8 @@ class InfRepositoryImpl(
                 val unit = reader.readU8()
                 val block = reader.readU16LE()
 
-                val pos = reader.readU8() // pos
-                val dir = reader.readU8() // dir
+                val place = SquarePlace.of(reader.readU8())
+                val dir = reader.readU8()
 
                 val type = reader.readU8()
                 val shpIndex = reader.readU8()
@@ -535,14 +536,14 @@ class InfRepositoryImpl(
 
                 val weapon = reader.readU16LE()
                 val pocketItem = reader.readU16LE()
-                Logger.d(TAG) { "Monster index $idx -> monsterIndex $monsterIndex unit $unit block $block location $pos $dir type $type" }
+                Logger.d(TAG) { "Monster index $idx -> monsterIndex $monsterIndex unit $unit block $block $place facing $dir type $type" }
 
                 monsters.add(
                     MonsterInstance(
                         index = monsterIndex,
                         unit = unit,
                         block = block,
-                        pos = pos,
+                        place = place,
                         direction = Direction.entries[dir and 3],
                         type = MonsterTypeId(type),
                         gfxIndex = shpIndex,

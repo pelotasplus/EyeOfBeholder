@@ -9,6 +9,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.ItemNameId
 import pl.pelotasplus.eyeofbeholder.data.model.ItemTypeId
 import pl.pelotasplus.eyeofbeholder.data.model.Location
 import pl.pelotasplus.eyeofbeholder.data.model.PartyState
+import pl.pelotasplus.eyeofbeholder.data.model.SquarePlace
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -30,7 +31,7 @@ class QuiverTest {
         flags = 0,
         icon = ItemIconId(1),
         type = ItemTypeId(0),
-        pos = 0,
+        place = SquarePlace.NORTH_WEST,
         location = Item.CARRIED,
         next = 0,
         prev = 0,
