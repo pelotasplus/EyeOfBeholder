@@ -93,6 +93,14 @@ class ViewPortGoldenTest {
     fun `level6 temple`() =
         checkGolden("level6-temple", "LEVEL6.INF", x = 27, y = 29, direction = Direction.NORTH)
 
+    /**
+     * A face that is seen through but cannot be reached through, which is
+     * what showed that the two are not the same question.
+     */
+    @Test
+    fun `level6 16x2 north`() =
+        checkGolden("level6-16x2-north", "LEVEL6.INF", x = 16, y = 2, direction = Direction.NORTH)
+
     @Test
     fun `level1 stairs down`() =
         checkGolden("level1-stairs", "LEVEL1.INF", x = 10, y = 12, direction = Direction.SOUTH)

@@ -83,6 +83,26 @@ fun SubLevel.showsWhatIsOnIt(wall: Maz.WallType): Boolean = when (wall) {
 }
 
 /**
+ * Whether the party can reach onto a square, given the wall it turns towards
+ * them — which is what says where they may put a thing down.
+ *
+ * Seeing is not reaching, so this is not [showsWhatIsOnIt] and the two must
+ * not be swapped. A doorway shows the floor beyond it and an open alcove
+ * shows what is shelved in it; neither can be reached through. A door has to
+ * be all the way open, and a wall with something painted on it is still a
+ * wall.
+ */
+fun SubLevel.canBeReachedOnto(wall: Maz.WallType): Boolean = when (wall) {
+    Maz.WallType.NoWall -> true
+    is Maz.WallType.Door -> wall.isOpen
+    is Maz.WallType.FixedWall, Maz.WallType.StairUp, Maz.WallType.StairDown -> false
+    is Maz.WallType.Decoration -> {
+        val mapped = decorations.firstOrNull { it.decorationWallIndex == wall.decorationWallIndex }
+        mapped == null || mapped.wallType == NO_WALL_BEHIND
+    }
+}
+
+/**
  * The mark a wall carries when what is on its square can be seen. A level
  * writes it inverted in the low bits but not in this one, so it is read
  * straight off what the file says.

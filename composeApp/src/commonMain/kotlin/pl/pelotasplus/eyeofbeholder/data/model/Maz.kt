@@ -95,7 +95,14 @@ data class Maz(
             val doorIndex: DoorIndex,
             val hasButton: Boolean,
             val state: Int,
-        ) : WallType()
+        ) : WallType() {
+            /** Only a door all the way out of its frame lets anything past. */
+            val isOpen: Boolean get() = state == FULLY_OPEN
+
+            private companion object {
+                const val FULLY_OPEN = 4
+            }
+        }
 
         data object StairUp : WallType()
         data object StairDown : WallType()

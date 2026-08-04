@@ -61,7 +61,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.TeleporterPulse
 import pl.pelotasplus.eyeofbeholder.data.model.Ticks
 import pl.pelotasplus.eyeofbeholder.data.model.ViewPort
 import pl.pelotasplus.eyeofbeholder.data.model.levelNumber
-import pl.pelotasplus.eyeofbeholder.data.model.showsWhatIsOnIt
+import pl.pelotasplus.eyeofbeholder.data.model.canBeReachedOnto
 import pl.pelotasplus.eyeofbeholder.data.model.speakerFrom
 import pl.pelotasplus.eyeofbeholder.data.model.spokenBy
 import pl.pelotasplus.eyeofbeholder.data.model.teleportersInView
@@ -676,7 +676,7 @@ class ViewConeDebugViewModel(
         }
 
         // nothing can be put through the wall a square turns towards the party
-        if (reach.aheadOfTheParty && !squareIsOpen(inf, level, at)) return false
+        if (reach.aheadOfTheParty && !canReachOnto(inf, level, at)) return false
 
         val quadrant = reach.quadrantFacing(party.facing)
 
@@ -700,11 +700,11 @@ class ViewConeDebugViewModel(
         return true
     }
 
-    /** Whether the square in front shows what is on it, rather than hiding it. */
-    private fun squareIsOpen(inf: Inf, level: Int, at: Location): Boolean {
+    /** Whether the party can reach onto the square in front to put a thing on it. */
+    private fun canReachOnto(inf: Inf, level: Int, at: Location): Boolean {
         val facingUs = party.facing.transformWallSide(WallSide.SOUTH)
         val sublevel = inf.subLevels[_state.value.subLevel]
-        return sublevel.showsWhatIsOnIt(_state.value.game.wall(level, at, facingUs))
+        return sublevel.canBeReachedOnto(_state.value.game.wall(level, at, facingUs))
     }
 
     private fun onSheetChoice(sheet: CharacterSheet, choice: SheetChoice) {
