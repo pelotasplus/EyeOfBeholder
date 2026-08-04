@@ -364,8 +364,12 @@ class ViewConeDebugViewModel(
 
     /** Opens the camp menu, or shuts it if it is already open. */
     private fun onCamped() {
+        val opening = _state.value.menu == null
+
         viewModelScope.launch {
-            showMenu(if (_state.value.menu == null) CampMenu.camp() else null)
+            // camping puts a champion's page down and the party back up
+            _state.update { it.copy(sheet = null) }
+            showMenu(if (opening) CampMenu.camp() else null)
         }
     }
 
