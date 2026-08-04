@@ -1,6 +1,8 @@
 package pl.pelotasplus.eyeofbeholder.data.model
 
 import co.touchlab.kermit.Logger
+import kotlin.random.Random
+import pl.pelotasplus.eyeofbeholder.data.model.script.ClearFlag
 import pl.pelotasplus.eyeofbeholder.data.model.script.Conditional
 import pl.pelotasplus.eyeofbeholder.data.model.script.CreateMonster
 import pl.pelotasplus.eyeofbeholder.data.model.script.Dialog
@@ -9,6 +11,8 @@ import pl.pelotasplus.eyeofbeholder.data.model.script.Eval
 import pl.pelotasplus.eyeofbeholder.data.model.script.GoSub
 import pl.pelotasplus.eyeofbeholder.data.model.script.Goto
 import pl.pelotasplus.eyeofbeholder.data.model.script.Message
+import pl.pelotasplus.eyeofbeholder.data.model.script.ItemDestination
+import pl.pelotasplus.eyeofbeholder.data.model.script.NewItem
 import pl.pelotasplus.eyeofbeholder.data.model.script.NewLevelOrMonster
 import pl.pelotasplus.eyeofbeholder.data.model.script.Return
 import pl.pelotasplus.eyeofbeholder.data.model.script.Script
@@ -142,6 +146,24 @@ interface ScriptStage {
     }
 }
 
+/**
+ * Where a script's luck comes from, so that a test can decide how it falls.
+ *
+ * The game rolls for more than damage: which corner a thing it makes lands
+ * in, and whether searching a wall turns anything up.
+ */
+fun interface Dice {
+    /** [times] dice of [pips] sides each, plus [modifier]. */
+    fun roll(times: Int, pips: Int, modifier: Int): Int
+
+    companion object {
+        val random = Dice { times, pips, modifier ->
+            if (times <= 0 || pips <= 0) modifier
+            else (1..times).sumOf { Random.nextInt(1, pips + 1) } + modifier
+        }
+    }
+}
+
 /** A value on [LevelScriptRunner]'s condition stack. Zero is false. */
 @JvmInline
 private value class ConditionValue(private val raw: Int) : Comparable<ConditionValue> {
@@ -180,6 +202,7 @@ class LevelScriptRunner(
     private val level: Int = 0,
     /** Which sublevel the party are in, which a monster it conjures joins. */
     private val subLevel: Int = 0,
+    private val dice: Dice = Dice.random,
 ) {
 
     /**
@@ -314,9 +337,38 @@ class LevelScriptRunner(
 
                 is CreateMonster -> state = state.monsterCreated(token, subLevel)
 
+                // A script makes a thing by pointing at another like it. Where
+                // it lands can be a square outright, or the hand, or the floor
+                // in front of the party — and the last two pick a corner by
+                // rolling for it, so two things made at once do not land in
+                // the same one.
+                is NewItem -> state = when (val goes = token.goes) {
+                    is ItemDestination.OnASquare ->
+                        state.itemCopied(token.copyOf, level, goes.at, goes.corner)
+
+                    ItemDestination.IntoTheHand ->
+                        state.itemCopiedIntoTheHand(token.copyOf, level, cornerOfTwo())
+
+                    ItemDestination.Underfoot -> state.itemCopied(
+                        copyOf = token.copyOf,
+                        level = level,
+                        at = state.party.position,
+                        corner = cornerInFront(state.party.facing),
+                    )
+                }
+
                 is SetFlag.LevelFlag -> state = state.levelFlagSet(level, token.bit)
 
                 is SetFlag.GlobalFlag -> state = state.globalFlagSet(token.bit)
+
+                // Clearing a flag is how a script takes something back. The
+                // grave on level 4 sets the flag that says to dig, then clears
+                // it again if the party's cleric talks them out of it, so a
+                // script that cannot clear one cannot be argued with.
+                is ClearFlag.LevelFlag ->
+                    state = state.levelFlagCleared(level, FlagBit(token.flag))
+
+                is ClearFlag.GlobalFlag -> state = state.globalFlagCleared(FlagBit(token.flag))
 
                 is NewLevelOrMonster.ChangeLevel -> return stop(
                     ChangeLevel(
@@ -432,6 +484,21 @@ class LevelScriptRunner(
         }
         return stop()
     }
+
+    /**
+     * One of the two corners nearest the party as they are looking, which is
+     * where a thing dropped at their feet lands.
+     */
+    private fun cornerInFront(facing: Direction): Int =
+        (if (dice.roll(1, 2, -1) == 0) FloorReach.OWN_LEFT else FloorReach.OWN_RIGHT)
+            .quadrantFacing(facing)
+
+    /**
+     * The same choice made without regard to which way the party look, which
+     * is what the game does when a thing meant for the hand has to go on the
+     * floor instead.
+     */
+    private fun cornerOfTwo(): Int = dice.roll(1, 2, -1)
 
     /** Postfix stack machine over a condition's tokens. */
     private fun evaluate(

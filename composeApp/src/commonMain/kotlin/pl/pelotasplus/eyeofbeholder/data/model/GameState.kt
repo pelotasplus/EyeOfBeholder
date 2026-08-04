@@ -127,6 +127,69 @@ data class GameState(
     )
 
     /**
+     * Another thing like the one in [copyOf], put down at [corner] of a
+     * square.
+     *
+     * A script does not describe what it makes; it points at something the
+     * world already holds and asks for another like it. The copy goes into
+     * the first slot of the table that holds nothing, which is what all the
+     * spare slots in a save are for — and if every one of them is taken the
+     * table simply grows, so a level can never quietly stop making things.
+     *
+     * Nothing is made when there is nothing to copy, and the world comes back
+     * unchanged.
+     */
+    fun itemCopied(
+        copyOf: ItemIndex,
+        level: Int,
+        at: Location,
+        corner: Int,
+    ): GameState {
+        val made = copyOf(copyOf) { it.copy(location = at, level = level, pos = corner) }
+        return made?.world ?: this
+    }
+
+    /**
+     * Puts a copy of [copyOf] somewhere in the table, [placed] where it goes,
+     * and says which slot it landed in.
+     */
+    private fun copyOf(copyOf: ItemIndex, placed: (Item) -> Item): Made? {
+        val template = item(copyOf)?.takeIf { it.exists } ?: return null
+        val free = items.indexOfFirst { !it.exists }.takeIf { it > 0 }
+
+        return if (free == null) {
+            Made(copy(items = items + placed(template)), ItemIndex(items.size))
+        } else {
+            Made(
+                world = copy(
+                    items = items.mapIndexed { slot, item ->
+                        if (slot == free) placed(template) else item
+                    },
+                ),
+                slot = ItemIndex(free),
+            )
+        }
+    }
+
+    /** A thing a script has just made, and which slot of the table it is in. */
+    private data class Made(val world: GameState, val slot: ItemIndex)
+
+    /**
+     * The same, into the hand — which is where a script puts a thing it means
+     * the player to be holding. A hand that is already full has the thing put
+     * on the floor at their feet instead, since it has to go somewhere.
+     */
+    fun itemCopiedIntoTheHand(copyOf: ItemIndex, level: Int, corner: Int): GameState {
+        if (inHand.isSomething) return itemCopied(copyOf, level, party.position, corner)
+
+        val made = copyOf(copyOf) {
+            it.copy(location = Item.CARRIED, level = Item.CARRIED_LEVEL, pos = 0)
+        } ?: return this
+
+        return made.world.copy(inHand = made.slot)
+    }
+
+    /**
      * Puts what is being held onto the stack that [head] names the top of,
      * and leaves the hand empty.
      *
@@ -283,6 +346,12 @@ data class GameState(
 
     fun globalFlagSet(bit: FlagBit) =
         copy(flags = flags.settingGlobal(bit))
+
+    fun levelFlagCleared(level: Int, bit: FlagBit) =
+        copy(flags = flags.clearing(level, bit))
+
+    fun globalFlagCleared(bit: FlagBit) =
+        copy(flags = flags.clearingGlobal(bit))
 
     fun isLevelFlagSet(level: Int, bit: FlagBit) = flags.forLevel(level).isSet(bit)
 

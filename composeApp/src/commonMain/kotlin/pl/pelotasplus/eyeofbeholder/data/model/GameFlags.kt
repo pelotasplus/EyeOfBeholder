@@ -36,9 +36,12 @@ import kotlinx.serialization.Serializable
  * Not every bit is a memory. Level 4's bit 7 is how a subroutine answers the
  * square that called it: five graves share one routine that asks whether to
  * dig, and it clears the bit, sets it if the answer was yes, and clears it
- * again if a paladin in the party refuses to desecrate a grave. Each grave
- * reads the bit afterwards to decide whether to open itself and scatter what
- * it held. Bits 5 and 6 are short-lived in the same way: which of the two
+ * again if the party are talked out of it. Each grave reads the bit afterwards
+ * to decide whether to open itself and scatter what it held.
+ *
+ * Who objects is a cleric or a paladin, either of them — the routine asks
+ * whether the party hold anybody of one class or the other, and only then
+ * puts the second question. A party of neither is never asked twice. Bits 5 and 6 are short-lived in the same way: which of the two
  * squares outside the temple the party stepped from, so that declining to go
  * in puts them back on it, and whether they were walked to the door rather
  * than arriving on their own, which decides whether the door's scene has to
@@ -85,4 +88,9 @@ data class GameFlags(
         copy(levels = levels + (level to forLevel(level).with(bit)))
 
     fun settingGlobal(bit: FlagBit) = copy(global = global.with(bit))
+
+    fun clearing(level: Int, bit: FlagBit) =
+        copy(levels = levels + (level to forLevel(level).without(bit)))
+
+    fun clearingGlobal(bit: FlagBit) = copy(global = global.without(bit))
 }
