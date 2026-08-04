@@ -36,7 +36,10 @@ import pl.pelotasplus.eyeofbeholder.data.model.InventorySlot
 import pl.pelotasplus.eyeofbeholder.data.model.inventorySlotAt
 import pl.pelotasplus.eyeofbeholder.data.model.inventorySlotPositions
 import pl.pelotasplus.eyeofbeholder.data.model.Item
+import pl.pelotasplus.eyeofbeholder.data.model.IN_A_NICHE
 import pl.pelotasplus.eyeofbeholder.data.model.ItemIndex
+import pl.pelotasplus.eyeofbeholder.data.model.WallAction
+import pl.pelotasplus.eyeofbeholder.data.model.doesWhenClicked
 import pl.pelotasplus.eyeofbeholder.data.model.ItemMessages
 import pl.pelotasplus.eyeofbeholder.data.model.ItemNames
 import pl.pelotasplus.eyeofbeholder.data.model.ItemTypes
@@ -771,15 +774,55 @@ class ViewConeDebugViewModel(
         val hanging = decoration.dec.decorations
             .firstOrNull { it.index == decoration.decorationID }
 
+        val does = decoration.doesWhenClicked
+
         // Some walls have nothing to aim at and answer a click anywhere on
         // them; the rest want the thing hanging there hit.
-        val hit = decoration.specialType in ANSWERS_ANY_CLICK ||
+        val hit = does.answersAnyClick ||
             (hanging != null && ClickedWall.hits(hanging, decoration.dec.rectangles, x, y))
 
-        Logger.d(TAG) { "Clicked $ahead $facingUs special=${decoration.specialType} hit=$hit" }
+        Logger.d(TAG) { "Clicked $ahead $facingUs is a $does, hit=$hit" }
         if (!hit) return
 
+        // A niche is worked rather than merely triggered: what is shelved in
+        // it is taken, or what is held is put on it.
+        if (does == WallAction.NICHE) {
+            reachedIntoNiche(levelNumber(inf.name), ahead)
+            return
+        }
+
         runTriggersAt(ahead, ScriptEvent.WALL_CLICKED)
+    }
+
+    /**
+     * The shelf set into a wall: what is on it comes into an empty hand, and
+     * what is held goes onto it — but only if it is one of the small shapes,
+     * a niche having no room for anything bigger.
+     */
+    private fun reachedIntoNiche(level: Int, at: Location) {
+        val world = _state.value.game
+
+        val changed = if (!world.inHand.isSomething) {
+            val shelved = world.lyingAt(level, at, IN_A_NICHE) ?: return
+            announceTaking(world.item(shelved))
+            world.takingUp(shelved)
+        } else {
+            if (Cps.shapeOf(world.held!!.icon) !is Cps.ShapeLocation.SmallItem) {
+                say(ItemMessages.TOO_LARGE_TO_FIT)
+                drawWords()
+                return
+            }
+            world.puttingDown(level, at, IN_A_NICHE)
+        }
+
+        _state.update { it.copy(game = changed) }
+
+        val told = runTriggersAt(
+            at = at,
+            event = if (world.inHand.isSomething) ScriptEvent.ITEM_PUT_DOWN
+            else ScriptEvent.ITEM_TAKEN,
+        )
+        if (!told) renderViewPort()
     }
 
     /**
@@ -1342,8 +1385,6 @@ class ViewConeDebugViewModel(
         /** More than the bar can show, so a long line still has its history. */
         private const val MESSAGES_KEPT = 8
 
-        /** Wall kinds that run their script without anything to aim at. */
-        private val ANSWERS_ANY_CLICK = setOf(7, 9)
         private const val PLAY_FIELD_CPS = "PLAYFLD.CPS"
         private const val DECORATIONS_CPS = "DECORATE.CPS"
         private const val DIALOGUE_FRAME_CPS = "BORDER.CPS"

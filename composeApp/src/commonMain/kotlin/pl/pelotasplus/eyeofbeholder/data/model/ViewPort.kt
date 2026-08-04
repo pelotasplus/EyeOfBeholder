@@ -461,6 +461,7 @@ class ViewPort(
         blockIndex: Int,
         viewQuadrant: Int,
         scaleSteps: ScaleSteps,
+        nudge: ItemNudge,
     ) {
         Logger.d(TAG) { "drawFloorItem $iconIdx block=$blockIndex quadrant=$viewQuadrant scale=$scaleSteps" }
 
@@ -468,8 +469,8 @@ class ViewPort(
         repeat(scaleSteps.value) { icon = scaleDown(icon) }
 
         val coordIndex = (blockIndex * 5 + viewQuadrant) * 2
-        val startX = ScreenX(blockScreenCoords[coordIndex] + 88 - icon.w / 2)
-        val startY = ScreenY(blockScreenCoords[coordIndex + 1] + 124 - icon.h)
+        val startX = ScreenX(blockScreenCoords[coordIndex] + 88 - icon.w / 2 + nudge.across)
+        val startY = ScreenY(blockScreenCoords[coordIndex + 1] + 124 - icon.h + nudge.down)
 
         drawIcon(icon, startX, startY, fadeSteps = scaleSteps)
     }
@@ -487,6 +488,7 @@ class ViewPort(
         iconIdx: ItemIconId,
         blockIndex: Int,
         dim: Int,
+        nudge: ItemNudge,
     ) {
         Logger.d(TAG) { "drawNicheItem $iconIdx block=$blockIndex dim=$dim" }
 
@@ -494,7 +496,8 @@ class ViewPort(
         var icon = smallIcons.getItemIcon(iconIdx) ?: return
         repeat(scaleSteps.value) { icon = scaleDown(icon) }
 
-        val startX = nicheItemX[blockIndex] - icon.w / 2
+        // sideways only: a shelf is not deep enough to move a thing along
+        val startX = nicheItemX[blockIndex] - icon.w / 2 + nudge.across
         val startY = nicheItemY[dim] - icon.h
 
         drawIcon(icon, startX, startY, fadeSteps = scaleSteps)

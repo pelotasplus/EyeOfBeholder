@@ -8,7 +8,7 @@ package pl.pelotasplus.eyeofbeholder.data.model
  * This determines:
  * - What base wall graphic to draw ([wallType] → VMP wall type index; 0 = no base wall)
  * - What overlay image to draw on top ([decorationID] → index into [Dec.decorations])
- * - Special interactive behavior ([specialType]: 5 = stuck door, others = levers, buttons, etc.)
+ * - What it does when clicked ([specialType], read as a [WallAction])
  *
  * ## Examples of decorations
  * - Lever on a stone wall: wallType=1 (stone wall backdrop), decorationID=lever graphic
@@ -19,7 +19,8 @@ package pl.pelotasplus.eyeofbeholder.data.model
  * @property wallIndex Index used by the .MAZ file to reference this decoration
  * @property wallType VMP wall type index for the base wall (0 = no base wall, decoration only)
  * @property decorationID Index into [Dec.decorations] for the overlay graphic
- * @property specialType Interactive behavior type (5 = stuck door, etc.)
+ * @property specialType What the wall does when it is clicked; read it through
+ *   [doesWhenClicked] rather than by number
  * @property flags Additional rendering/behavior flags
  * @property dec Parsed DEC file with decoration rectangle and coordinate data
  * @property cps CPS image containing the decoration overlay pixels

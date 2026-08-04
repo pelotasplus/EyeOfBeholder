@@ -144,4 +144,7 @@ object ItemMessages {
     fun taken(name: String) = "$name taken."
 
     const val WILL_NOT_GO_THERE = "You can't put that item there."
+
+    /** Only the small shapes fit on a shelf set into a wall. */
+    const val TOO_LARGE_TO_FIT = "The item is too large to fit."
 }

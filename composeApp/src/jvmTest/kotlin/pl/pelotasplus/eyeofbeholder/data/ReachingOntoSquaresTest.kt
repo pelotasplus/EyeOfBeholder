@@ -2,7 +2,12 @@ package pl.pelotasplus.eyeofbeholder.data
 
 import kotlinx.coroutines.runBlocking
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
+import pl.pelotasplus.eyeofbeholder.data.model.GameState
+import pl.pelotasplus.eyeofbeholder.data.model.IN_A_NICHE
 import pl.pelotasplus.eyeofbeholder.data.model.Inf
+import pl.pelotasplus.eyeofbeholder.data.model.PartyState
+import pl.pelotasplus.eyeofbeholder.data.model.WallAction
+import pl.pelotasplus.eyeofbeholder.data.model.doesWhenClicked
 import pl.pelotasplus.eyeofbeholder.data.model.Location
 import pl.pelotasplus.eyeofbeholder.data.model.Maz
 import pl.pelotasplus.eyeofbeholder.data.model.SubLevel
@@ -13,13 +18,17 @@ import pl.pelotasplus.eyeofbeholder.data.model.showsWhatIsOnIt
 import pl.pelotasplus.eyeofbeholder.data.repository.CpsRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.DecRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.InfRepositoryImpl
+import pl.pelotasplus.eyeofbeholder.data.repository.ItemsRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.MazRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.PalRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.ResourceRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.VcnRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.VmpRepositoryImpl
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
@@ -70,6 +79,43 @@ class ReachingOntoSquaresTest {
         // square beyond it, which is why asking about sight let a thing be put
         // down there
         assertTrue(sublevel.showsWhatIsOnIt(wall), "$wall was never seen through")
+    }
+
+    /**
+     * The same face, read as what it does rather than as a number: it is a
+     * shelf, so it is worked rather than merely triggered.
+     */
+    @Test
+    fun `the wall at level 6's 16x2 is a niche`() {
+        val inf = level("LEVEL6.INF")
+        val sublevel = inf.subLevels[0]
+        val wall = wallAhead(sublevel, Location(16, 2), Direction.NORTH)
+
+        val decoration = sublevel.decorations.first {
+            it.decorationWallIndex == (wall as Maz.WallType.Decoration).decorationWallIndex
+        }
+
+        assertEquals(WallAction.NICHE, decoration.doesWhenClicked)
+        assertFalse(decoration.doesWhenClicked.answersAnyClick)
+    }
+
+    /** And there is something on that shelf to be taken. */
+    @Test
+    fun `something is shelved in level 6's niche at 16x1`() {
+        val dungeon = runBlocking {
+            ItemsRepositoryImpl(resources).loadItems().getOrThrow()
+        }
+        val world = GameState(
+            party = PartyState(Location(16, 2), Direction.NORTH),
+            items = dungeon.items,
+        )
+
+        val shelved = world.lyingAt(level = 6, at = Location(16, 1), quadrant = IN_A_NICHE)
+        assertNotNull(shelved, "nothing is shelved in the niche")
+
+        val taken = world.takingUp(shelved)
+        assertEquals(shelved, taken.inHand)
+        assertNull(taken.lyingAt(level = 6, at = Location(16, 1), quadrant = IN_A_NICHE))
     }
 
     /** An open way is one a thing can be put through, or there is nowhere to put it. */

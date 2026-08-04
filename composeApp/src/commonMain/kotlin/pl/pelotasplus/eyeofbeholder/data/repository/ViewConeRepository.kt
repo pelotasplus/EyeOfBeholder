@@ -21,7 +21,10 @@ import pl.pelotasplus.eyeofbeholder.data.model.ViewPort
 import pl.pelotasplus.eyeofbeholder.data.model.ViewWindow
 import pl.pelotasplus.eyeofbeholder.data.model.WallSet
 import pl.pelotasplus.eyeofbeholder.data.model.getWall
+import pl.pelotasplus.eyeofbeholder.data.model.IN_A_NICHE
+import pl.pelotasplus.eyeofbeholder.data.model.ItemIndex
 import pl.pelotasplus.eyeofbeholder.data.model.itemScaleSteps
+import pl.pelotasplus.eyeofbeholder.data.model.nudgeOf
 import pl.pelotasplus.eyeofbeholder.data.model.showsWhatIsOnIt
 import pl.pelotasplus.eyeofbeholder.data.model.sightThrough
 import pl.pelotasplus.eyeofbeholder.data.model.teleportersInView
@@ -30,6 +33,8 @@ import pl.pelotasplus.eyeofbeholder.data.model.viewWindow
 import pl.pelotasplus.eyeofbeholder.data.model.visibleBlocks
 import pl.pelotasplus.eyeofbeholder.data.model.monsterFacing
 import pl.pelotasplus.eyeofbeholder.data.model.monsterSheet
+import pl.pelotasplus.eyeofbeholder.data.model.WallAction
+import pl.pelotasplus.eyeofbeholder.data.model.doesWhenClicked
 import pl.pelotasplus.eyeofbeholder.data.model.viewRelativeSubPosition
 import pl.pelotasplus.eyeofbeholder.data.model.viewSlots
 
@@ -201,8 +206,7 @@ class ViewConeRepositoryImpl(
                             return@at
                         }
 
-                        // stuck door?
-                        if (levelDecoration.specialType == 5) {
+                        if (levelDecoration.doesWhenClicked == WallAction.STUCK_DOOR) {
                             sublevel.door(DoorIndex(0), mazX, mazY)?.let { door ->
                                 viewPort.drawDoor(
                                     wallPosition = wallPosition,
@@ -414,19 +418,23 @@ class ViewConeRepositoryImpl(
         dim: Int,
         partyFacing: Direction,
     ) {
-        val itemsHere = items.filter {
-            it.level == sublevel.level && it.location.x == mazX && it.location.y == mazY
+        // the index is the item's place in the world's table, which is what
+        // its nudge is taken from, so it is carried along with it
+        val itemsHere = items.withIndex().filter { (_, item) ->
+            item.level == sublevel.level && item.location.x == mazX && item.location.y == mazY
         }
 
-        for (item in itemsHere) {
+        for ((index, item) in itemsHere) {
             Logger.d(TAG) { "drawItem icon=${item.icon} at ($mazX, $mazY) pos=${item.pos} block=$blockIndex" }
 
+            val nudge = nudgeOf(ItemIndex(index))
+
             when {
-                item.pos == 8 -> {
+                item.pos == IN_A_NICHE -> {
                     // niche items are hidden when too far (dim 0) or on the own square (dim 3)
                     if (dim == 1 || dim == 2) {
                         sheetFor(item.icon, smallIcons, largeIcons)?.let { sheet ->
-                            viewPort.drawNicheItem(sheet, item.icon, blockIndex, dim)
+                            viewPort.drawNicheItem(sheet, item.icon, blockIndex, dim, nudge)
                         }
                     }
                 }
@@ -436,7 +444,14 @@ class ViewConeRepositoryImpl(
                     val scaleSteps = itemScaleSteps[dim * 4 + quadrant]
                     if (scaleSteps.isVisible) {
                         sheetFor(item.icon, smallIcons, largeIcons)?.let { sheet ->
-                            viewPort.drawFloorItem(sheet, item.icon, blockIndex, quadrant, scaleSteps)
+                            viewPort.drawFloorItem(
+                                largeIcons = sheet,
+                                iconIdx = item.icon,
+                                blockIndex = blockIndex,
+                                viewQuadrant = quadrant,
+                                scaleSteps = scaleSteps,
+                                nudge = nudge,
+                            )
                         }
                     }
                 }

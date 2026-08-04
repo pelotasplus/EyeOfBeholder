@@ -29,5 +29,40 @@ val nicheItemX: List<ScreenX> = listOf(
     -88, 88, 264,
 ).map { ScreenX(it) }
 
+/**
+ * Where on a square a thing shelved in a wall niche lies, as against the four
+ * corners of its floor.
+ */
+const val IN_A_NICHE = 8
+
+/**
+ * How far a thing is nudged from the middle of where it lies, so that two
+ * things sharing a corner or a shelf do not sit exactly on top of one
+ * another.
+ *
+ * @property across sideways, which every thing gets
+ * @property down along the floor, which only a thing lying on one gets — a
+ *   shelf has no depth to move a thing along
+ */
+data class ItemNudge(val across: Int, val down: Int)
+
+/**
+ * The nudge is taken from the thing's own place in the world's table, so it
+ * never changes for a given thing and differs between any two that happen to
+ * come to rest together.
+ */
+fun nudgeOf(item: ItemIndex) = ItemNudge(
+    across = nudges[item.value and WRAP] * ACROSS_STEP,
+    down = nudges[(item.value shr 1) and WRAP],
+)
+
+private val nudges = listOf(0, -2, 1, -1, 2, 0, 1, -1)
+
+/** The sideways nudge is taken in twos, the one along the floor in ones. */
+private const val ACROSS_STEP = 2
+
+/** Eight nudges, so every eighth thing in the table shares one. */
+private const val WRAP = 7
+
 /** Niche-item baseline Y per depth row (dim 0-3); the icon's bottom edge. */
 val nicheItemY: List<ScreenY> = listOf(37, 49, 56, 0).map { ScreenY(it) }
