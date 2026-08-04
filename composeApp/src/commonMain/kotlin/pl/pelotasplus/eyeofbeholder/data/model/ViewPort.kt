@@ -280,7 +280,10 @@ class ViewPort(
                     val pixel = door.cps.pixels[srcY * door.cps.width + srcX]
                     val color = palette.colors[pixel.value]
 
-                    val targetX = ScreenX(srcX - button.x + button.posX)
+                    val targetX = ScreenX(
+                        srcX - button.x + button.posX +
+                                doorwayOffset(size, slot.relativeX)
+                    )
                     val targetY = ScreenY(srcY - button.y + button.posY)
                     draw(targetX, targetY, color)
                 }

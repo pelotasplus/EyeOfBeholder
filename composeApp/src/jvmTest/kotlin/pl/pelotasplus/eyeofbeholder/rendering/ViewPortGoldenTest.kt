@@ -451,6 +451,20 @@ class ViewPortGoldenTest {
     fun `level5 13x10 west`() =
         checkGolden("level5-13x10-west", "LEVEL5.INF", x = 13, y = 10, direction = Direction.WEST)
 
+    /**
+     * The same door one square off to the side, where the wall straight ahead
+     * is what the party actually see. The button belongs to the doorway and
+     * goes where the doorway went, which here is past the edge of the view.
+     */
+    @Test
+    fun `level5 10x8 east`() =
+        checkGolden("level5-10x8-east", "LEVEL5.INF", x = 10, y = 8, direction = Direction.EAST)
+
+    /** A door with a button, straight ahead, where the button is written to go. */
+    @Test
+    fun `level5 10x9 east`() =
+        checkGolden("level5-10x9-east", "LEVEL5.INF", x = 10, y = 9, direction = Direction.EAST)
+
     /** A monster two squares off, seen down the corridor it stands in. */
     @Test
     fun `level3 monster at 3x12 facing south`() =

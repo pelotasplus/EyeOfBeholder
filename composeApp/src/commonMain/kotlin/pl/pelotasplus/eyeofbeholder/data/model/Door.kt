@@ -110,7 +110,16 @@ fun doorwayRows(size: Int): IntRange = LINTEL[size]..THRESHOLD[size]
  * frame's own tiles puts it too far in.
  */
 fun doorPanelLeft(size: Int, panelWidth: Int, relativeX: Int): Int =
-    ViewPort.COLS / 2 + (relativeX * DOORWAY_WIDTH[size]) - panelWidth / 2
+    ViewPort.COLS / 2 + doorwayOffset(size, relativeX) - panelWidth / 2
+
+/**
+ * How far across the view a doorway sits from the one straight ahead.
+ *
+ * Everything hung on a door is written for the doorway straight ahead and has
+ * to be carried by this: a button given its own position alone stays in the
+ * middle of the screen while the door it belongs to is off at the side.
+ */
+fun doorwayOffset(size: Int, relativeX: Int): Int = relativeX * DOORWAY_WIDTH[size]
 
 fun splitAboveTop(size: Int, opened: Int): Int =
     UPPER_HALF_FROM[size] - (opened * PARTS_PER_STEP[size])
