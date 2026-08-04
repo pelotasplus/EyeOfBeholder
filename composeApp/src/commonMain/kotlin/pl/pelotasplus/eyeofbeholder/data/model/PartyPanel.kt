@@ -24,6 +24,15 @@ data class ChampionBox(val left: Int, val top: Int) {
     val barLabelLeft: Int get() = left + BAR_LABEL_X
     val barLabelTop: Int get() = top + BAR_LABEL_Y
 
+    /**
+     * Where what a champion holds is drawn: two slots stacked beside the
+     * face, one hand above the other, with the icon set in from the left of
+     * its slot rather than centred in it.
+     */
+    val handLeft: Int get() = left + HAND_X + HAND_ICON_X
+
+    fun handTop(hand: Int): Int = top + HAND_Y + hand * HAND_STEP
+
     /** Whether a click landed on the face, which is what opens a champion's page. */
     fun showsFaceAt(x: Int, y: Int): Boolean =
         x in portraitLeft until portraitLeft + PORTRAIT_SIZE &&
@@ -37,6 +46,11 @@ data class ChampionBox(val left: Int, val top: Int) {
         private const val NAME_Y = 2
         private const val PORTRAIT_X = 0
         private const val PORTRAIT_Y = 9
+        private const val HAND_X = 32
+        private const val HAND_Y = 9
+        private const val HAND_STEP = 16
+        private const val HAND_ICON_X = 8
+
         private const val BAR_X = 15
         private const val BAR_Y = 44
         private const val BAR_LABEL_X = 2
@@ -56,6 +70,17 @@ val championBoxes: List<ChampionBox> = listOf(2, 54, 106).flatMap { top ->
 
 /** The one the play field art draws, which the rest are stamped from. */
 val boxInTheArt: ChampionBox = championBoxes.first()
+
+/**
+ * What an empty hand is drawn as, one icon for each of the two — the hand
+ * itself, which is what says a champion would strike with it rather than with
+ * anything they are holding.
+ *
+ * From the original game.
+ */
+fun emptyHandIcon(hand: Int) = ItemIconId(FIRST_EMPTY_HAND + hand)
+
+private const val FIRST_EMPTY_HAND = 85
 
 /**
  * One of the 44 faces a champion can wear, cut from CHARGENA.CPS, where they

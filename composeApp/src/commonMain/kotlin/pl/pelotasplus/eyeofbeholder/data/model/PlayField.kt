@@ -32,10 +32,11 @@ class PlayField(
         portraits: Cps? = null,
         menu: CampMenu? = null,
         sheet: OpenSheet? = null,
+        carrying: (ItemIndex) -> Item? = { null },
     ): PlayField {
         drawBackground()
         // a champion's own page takes the six boxes' side of the screen
-        if (sheet == null) drawParty(party, portraits) else drawSheet(sheet, portraits)
+        if (sheet == null) drawParty(party, portraits, carrying) else drawSheet(sheet, portraits)
         drawViewPort(viewPort)
         drawCompass(direction)
         drawMessages(messages)
@@ -248,14 +249,21 @@ class PlayField(
             val icons = itemIcons ?: return@forEach
             val item = carrying.getOrNull(slot.slot) ?: return@forEach
 
-            val icon = icons.itemIcon(item.icon)
-            val colours = icons.palette ?: palette
-            for (y in 0 until icon.h) {
-                for (x in 0 until icon.w) {
-                    val index = icon.pixels[y * icon.w + x]
-                    if (index.isTransparent) continue
-                    draw(slot.iconLeft + x, slot.iconTop + y, colours.colors[index.value])
-                }
+            drawIcon(
+                icon = icons.itemIcon(item.icon),
+                colours = icons.palette ?: palette,
+                left = slot.iconLeft,
+                top = slot.iconTop,
+            )
+        }
+    }
+
+    private fun drawIcon(icon: Cps.ItemIcon, colours: Palette, left: Int, top: Int) {
+        for (y in 0 until icon.h) {
+            for (x in 0 until icon.w) {
+                val index = icon.pixels[y * icon.w + x]
+                if (index.isTransparent) continue
+                draw(left + x, top + y, colours.colors[index.value])
             }
         }
     }
@@ -345,7 +353,7 @@ class PlayField(
      * somebody is in it, so a party of four leaves the bottom of the panel as
      * bare wall.
      */
-    private fun drawParty(party: List<Champion>, portraits: Cps?) {
+    private fun drawParty(party: List<Champion>, portraits: Cps?, carrying: (ItemIndex) -> Item?) {
         championBoxes.forEachIndexed { slot, box ->
             val champion = party.getOrNull(slot)?.takeIf { it.inTheParty } ?: return@forEachIndexed
 
@@ -358,11 +366,16 @@ class PlayField(
                 left = box.left,
                 top = box.top,
             )
-            drawChampion(champion, box, portraits)
+            drawChampion(champion, box, portraits, carrying)
         }
     }
 
-    private fun drawChampion(champion: Champion, box: ChampionBox, portraits: Cps?) {
+    private fun drawChampion(
+        champion: Champion,
+        box: ChampionBox,
+        portraits: Cps?,
+        carrying: (ItemIndex) -> Item?,
+    ) {
         portraits?.let { sheet ->
             val face = sheet.portrait(champion.portrait)
             val colours = sheet.palette ?: palette
@@ -384,7 +397,26 @@ class PlayField(
             )
         }
 
+        drawHands(champion, box, carrying)
         drawHitPointBar(champion, box)
+    }
+
+    /**
+     * What the champion has in each hand, in the two slots beside their face.
+     * An empty hand is not left blank — the hand itself is drawn there.
+     */
+    private fun drawHands(champion: Champion, box: ChampionBox, carrying: (ItemIndex) -> Item?) {
+        val icons = itemIcons ?: return
+
+        repeat(Champion.HANDS) { hand ->
+            val held = champion.carrying.getOrNull(hand)?.let(carrying)
+            drawIcon(
+                icon = icons.itemIcon(held?.icon ?: emptyHandIcon(hand)),
+                colours = icons.palette ?: palette,
+                left = box.handLeft,
+                top = box.handTop(hand),
+            )
+        }
     }
 
     /** The hit point bar, sunk into the strip it sits on, with HP written beside it. */

@@ -56,6 +56,9 @@ data class Champion(
         /** How many champions the party has room for, filled or not. */
         const val PARTY_SLOTS = 6
 
+        /** The first two of [carrying] are the hands, in the order they are drawn. */
+        const val HANDS = 2
+
         /** Hit points at which nothing short of a resurrection will do. */
         const val BEYOND_RAISING = -10
 

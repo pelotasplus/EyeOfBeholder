@@ -944,6 +944,7 @@ class ViewConeDebugViewModel(
                     portraits = portraits,
                     menu = _state.value.menu,
                     sheet = openSheet(),
+                    carrying = { _state.value.game.item(it) },
                 )
                 .toImageBitmap()
         } else {

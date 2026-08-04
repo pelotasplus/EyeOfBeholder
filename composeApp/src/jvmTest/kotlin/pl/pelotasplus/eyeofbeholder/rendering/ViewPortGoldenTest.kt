@@ -852,6 +852,8 @@ class ViewPortGoldenTest {
             .loadOriginalSave(OriginalSaveRepositoryImpl.QUICK_START)
             .getOrThrow()
 
+        val world = GameState(party = saved.standing, items = saved.items)
+
         var hurt = 0
         val party = saved.party.map { champion ->
             if (!champion.inTheParty || hurtTo.isEmpty()) champion
@@ -874,12 +876,14 @@ class ViewPortGoldenTest {
             decorations = cps.loadCps("DECORATE.CPS").getOrThrow(),
             palette = sublevel.palette,
             font = FontRepositoryImpl(resources).loadFont("FONT6.FNT").getOrThrow(),
+            itemIcons = cps.loadCps("ITEMICN.CPS").getOrThrow(),
             preferences = preferences,
         ).render(
             viewPort = viewPort,
             direction = Direction.NORTH,
             party = party,
             portraits = cps.loadCps("CHARGENA.CPS").getOrThrow(),
+            carrying = { slot -> world.item(slot) },
         ).toImage()
     }
 
