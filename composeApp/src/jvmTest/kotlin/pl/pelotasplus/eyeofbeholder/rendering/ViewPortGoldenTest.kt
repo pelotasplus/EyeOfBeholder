@@ -20,6 +20,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.WallSide
 import pl.pelotasplus.eyeofbeholder.data.model.getWall
 import pl.pelotasplus.eyeofbeholder.data.model.wallsInSight
 import pl.pelotasplus.eyeofbeholder.data.model.LevelScriptRunner
+import pl.pelotasplus.eyeofbeholder.data.model.FloorReach
 import pl.pelotasplus.eyeofbeholder.data.model.Location
 import pl.pelotasplus.eyeofbeholder.data.model.MessageId
 import pl.pelotasplus.eyeofbeholder.data.model.Naming
@@ -696,6 +697,16 @@ class ViewPortGoldenTest {
         checkGolden("party-panel", partyOver(level = "LEVEL4.INF", x = 15, y = 11))
 
     /**
+     * One item put down in each piece of floor the party can reach, so that
+     * where a click puts a thing can be checked against where the renderer
+     * draws it. Facing east, so that none of the four corners is its own
+     * quadrant and a table written out backwards would show.
+     */
+    @Test
+    fun `an item in each corner the party can reach`() =
+        checkGolden("floor-reach", itemsInReach(level = "LEVEL4.INF", x = 15, y = 11))
+
+    /**
      * A hand its champion cannot strike with is drawn over with a grid. The
      * paladin has been handed the mage's spellbook, which is for a class he
      * is not; the mage keeps hers, where it is no trouble at all.
@@ -918,6 +929,39 @@ class ViewPortGoldenTest {
             portraits = cps.loadCps("CHARGENA.CPS").getOrThrow(),
             carrying = { slot -> world.item(slot) },
         ).toImage()
+    }
+
+    /**
+     * The level as it stands with one item put into each corner the party can
+     * reach into from where they are.
+     */
+    private fun itemsInReach(level: String, x: Int, y: Int): BufferedImage = runBlocking {
+        val repository = repository()
+        val inf = repository.loadLevel(level).getOrThrow()
+        val sublevel = inf.subLevels[0]
+        val facing = Direction.EAST
+
+        val here = Location(x, y)
+        val (dx, dy) = facing.transformCoordinates(0, -1)
+        val ahead = Location(x + dx, y + dy)
+
+        val dagger = dungeonItems.first { it.icon.value > 0 }
+        val putDown = FloorReach.entries.map { reach ->
+            dagger.copy(
+                level = sublevel.level,
+                location = if (reach.aheadOfTheParty) ahead else here,
+                pos = reach.quadrantFacing(facing),
+            )
+        }
+
+        repository.renderPosition(
+            items = dungeonItems + putDown,
+            monsters = inf.monsterInstances,
+            sublevel = sublevel,
+            playerX = x,
+            playerY = y,
+            direction = facing,
+        ).getOrThrow().toImage()
     }
 
     /** @param slot which of the six the page belongs to. */

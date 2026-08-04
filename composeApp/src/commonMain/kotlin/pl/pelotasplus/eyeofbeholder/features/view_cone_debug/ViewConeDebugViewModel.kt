@@ -28,6 +28,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.DialogueScene
 import pl.pelotasplus.eyeofbeholder.data.model.DialogueScene.Companion.MORE
 import pl.pelotasplus.eyeofbeholder.data.model.DialogueText
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
+import pl.pelotasplus.eyeofbeholder.data.model.FloorReach
 import pl.pelotasplus.eyeofbeholder.data.model.Font
 import pl.pelotasplus.eyeofbeholder.data.model.GameState
 import pl.pelotasplus.eyeofbeholder.data.model.Inf
@@ -55,11 +56,13 @@ import pl.pelotasplus.eyeofbeholder.data.model.TeleporterPulse
 import pl.pelotasplus.eyeofbeholder.data.model.Ticks
 import pl.pelotasplus.eyeofbeholder.data.model.ViewPort
 import pl.pelotasplus.eyeofbeholder.data.model.levelNumber
+import pl.pelotasplus.eyeofbeholder.data.model.showsWhatIsOnIt
 import pl.pelotasplus.eyeofbeholder.data.model.speakerFrom
 import pl.pelotasplus.eyeofbeholder.data.model.spokenBy
 import pl.pelotasplus.eyeofbeholder.data.model.teleportersInView
 import pl.pelotasplus.eyeofbeholder.data.model.wallsInSight
 import pl.pelotasplus.eyeofbeholder.data.model.script.Dialog
+import pl.pelotasplus.eyeofbeholder.data.model.itemIcon
 import pl.pelotasplus.eyeofbeholder.data.model.toImageBitmap
 import pl.pelotasplus.eyeofbeholder.data.repository.CpsRepository
 import pl.pelotasplus.eyeofbeholder.data.repository.DialogueTextRepository
@@ -248,11 +251,11 @@ class ViewConeDebugViewModel(
     private suspend fun resumeNothing() {
         val save = quickStart() ?: return
         roster = save.party
-        carry(save.items)
+        carry(save)
     }
 
     private suspend fun itemsFromTheQuickStart() {
-        quickStart()?.let { carry(it.items) }
+        quickStart()?.let(::carry)
     }
 
     private suspend fun quickStart(): OriginalSave? =
@@ -260,8 +263,10 @@ class ViewConeDebugViewModel(
             .onFailure { Logger.e(it) { "Error while loading the quick start party" } }
             .getOrNull()
 
-    private fun carry(items: List<Item>) {
-        _state.update { it.copy(game = it.game.copy(items = items)) }
+    private fun carry(save: OriginalSave) {
+        _state.update {
+            it.copy(game = it.game.copy(items = save.items, inHand = save.inHand))
+        }
     }
 
     /**
@@ -497,6 +502,12 @@ class ViewConeDebugViewModel(
         val sheet = sheetOnShow
 
         if (sheet == null) {
+            val hand = handAt(x, y)
+            if (hand != null) {
+                swapHandWith(hand.first, hand.second)
+                return
+            }
+
             val face = championBoxes.indexOfFirst { it.showsFaceAt(x, y) }
             if (face >= 0) {
                 if (roster.getOrNull(face)?.inTheParty == true) showSheet(CharacterSheet(face))
@@ -509,7 +520,108 @@ class ViewConeDebugViewModel(
             }
         }
 
-        if (x < ViewPort.COLS && y < ViewPort.ROWS) onClickedTheWorld(x, y)
+        if (x >= ViewPort.COLS || y >= ViewPort.ROWS) return
+
+        // A piece of floor answers a click only when there is something to do
+        // with it — otherwise the click is the wall's, so a lever low on one
+        // stays clickable with an empty hand.
+        FloorReach.at(x, y)?.let { reach ->
+            if (reachedInto(reach)) return
+        }
+
+        onClickedTheWorld(x, y)
+    }
+
+    /** Which champion's which hand a click landed on, if it landed on one. */
+    private fun handAt(x: Int, y: Int): Pair<Int, Int>? {
+        championBoxes.forEachIndexed { slot, box ->
+            if (roster.getOrNull(slot)?.inTheParty != true) return@forEachIndexed
+
+            repeat(Champion.HANDS) { hand ->
+                if (box.holdsHandAt(x, y, hand)) return slot to hand
+            }
+        }
+        return null
+    }
+
+    /**
+     * Swaps what is being held with what is in one of a champion's hands.
+     * With an empty hand that is taking the item, and with an empty slot it is
+     * putting one there; the original does not tell the three cases apart.
+     */
+    private fun swapHandWith(slot: Int, hand: Int) {
+        val champion = roster.getOrNull(slot) ?: return
+        val world = _state.value.game
+
+        val inSlot = champion.carrying.getOrNull(hand) ?: return
+        if (world.item(inSlot)?.stuckToItsSlot == true) return
+        if (!itemMayGoInAHand(world.held)) return
+
+        roster = roster.toMutableList().also {
+            it[slot] = champion.copy(
+                carrying = champion.carrying.toMutableList()
+                    .also { carrying -> carrying[hand] = world.inHand },
+            )
+        }
+        _state.update { it.copy(game = world.holding(inSlot)) }
+        renderViewPort()
+    }
+
+    /**
+     * Whether what is being held may go in a hand at all. Nothing always may;
+     * something may when its kind says a hand is one of the places it fits.
+     */
+    private fun itemMayGoInAHand(held: Item?): Boolean {
+        if (held == null) return true
+        val fits = itemTypes?.get(held.type)?.invFlags ?: return true
+        return fits and IN_A_HAND != 0
+    }
+
+    /**
+     * Puts down what is being held on a piece of floor, or picks up what is
+     * lying there.
+     *
+     * @return false when there was nothing to do, so the click belongs to
+     *   whatever is behind the floor.
+     */
+    private fun reachedInto(reach: FloorReach): Boolean {
+        val inf = _state.value.inf ?: return false
+        val level = levelNumber(inf.name)
+        val world = _state.value.game
+
+        val at = if (!reach.aheadOfTheParty) party.position else {
+            val (dx, dy) = party.facing.transformCoordinates(0, -1)
+            Location(party.position.x + dx, party.position.y + dy)
+        }
+
+        // nothing can be put through the wall a square turns towards the party
+        if (reach.aheadOfTheParty && !squareIsOpen(inf, level, at)) return false
+
+        val quadrant = reach.quadrantFacing(party.facing)
+
+        val changed = if (world.inHand.isSomething) {
+            world.puttingDown(level, at, quadrant)
+        } else {
+            world.takingUp(world.lyingAt(level, at, quadrant) ?: return false)
+        }
+
+        _state.update { it.copy(game = changed) }
+        // A square with something to say about what was left on it draws for
+        // itself, the way it does when the party step onto it.
+        val told = runTriggersAt(
+            at = at,
+            event = if (world.inHand.isSomething) ScriptEvent.ITEM_PUT_DOWN
+            else ScriptEvent.ITEM_TAKEN,
+        )
+        if (!told) renderViewPort()
+        return true
+    }
+
+    /** Whether the square in front shows what is on it, rather than hiding it. */
+    private fun squareIsOpen(inf: Inf, level: Int, at: Location): Boolean {
+        val facingUs = party.facing.transformWallSide(WallSide.SOUTH)
+        val sublevel = inf.subLevels[_state.value.subLevel]
+        return sublevel.showsWhatIsOnIt(_state.value.game.wall(level, at, facingUs))
     }
 
     private fun onSheetChoice(sheet: CharacterSheet, choice: SheetChoice) {
@@ -959,7 +1071,19 @@ class ViewConeDebugViewModel(
             // the frame art failed to load; still show the raw view
             viewPort.toImageBitmap()
         }
-        _state.update { it.copy(viewPort = image) }
+        _state.update { it.copy(viewPort = image, held = heldIcon(palette)) }
+    }
+
+    /**
+     * The icon of whatever is being held, which the screen draws under the
+     * pointer. It is not part of the play field: it is over everything and
+     * moves without anything else changing.
+     */
+    private fun heldIcon(palette: Palette): ImageBitmap? {
+        val icons = carriedItemIcons ?: return null
+        val held = _state.value.game.held ?: return null
+
+        return icons.itemIcon(held.icon).toImageBitmap(icons.palette ?: palette)
     }
 
     private fun onStrafe(left: Boolean) {
@@ -1114,6 +1238,9 @@ class ViewConeDebugViewModel(
 
         val viewPort: ImageBitmap? = null,
 
+        /** What is being held, drawn under the pointer rather than on the field. */
+        val held: ImageBitmap? = null,
+
         /**
          * The world, as the scripts see it. There is one, and it is this: a
          * script is handed it and hands back what it changed.
@@ -1131,6 +1258,9 @@ class ViewConeDebugViewModel(
 
         /** More than the bar can show, so a long line still has its history. */
         private const val MESSAGES_KEPT = 8
+
+        /** The bit an item's kind sets when a hand is one of the places it fits. */
+        private const val IN_A_HAND = 0x08
 
         /** Wall kinds that run their script without anything to aim at. */
         private val ANSWERS_ANY_CLICK = setOf(7, 9)

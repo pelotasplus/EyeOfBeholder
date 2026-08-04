@@ -66,6 +66,9 @@ data class SavedWorld(
      * slots in here.
      */
     val items: List<Item> = emptyList(),
+
+    /** What was being held when the game was saved, which belongs to nobody. */
+    val inHand: ItemIndex = ItemIndex(ItemIndex.NOTHING),
 )
 
 /**

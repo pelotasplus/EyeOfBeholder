@@ -24,6 +24,13 @@ data class GameState(
      * hand. A game begins with ITEM.DAT's table and a save carries its own.
      */
     val items: List<Item> = emptyList(),
+
+    /**
+     * What the player is holding, which in the original is the mouse cursor
+     * itself. It belongs to nobody in the party: it has been picked up out of
+     * a hand or off the floor and not yet put anywhere.
+     */
+    val inHand: ItemIndex = ItemIndex(ItemIndex.NOTHING),
     /**
      * How each level stood when the party walked out of it, which is not how
      * its file describes it: monsters a script conjured are there, and in time
@@ -73,6 +80,50 @@ data class GameState(
         }
         return counted
     }
+
+    /** What is being held, if anything. */
+    val held: Item? get() = item(inHand)
+
+    /** The same world with [slot] in the hand instead of whatever was. */
+    fun holding(slot: ItemIndex) = copy(inHand = slot)
+
+    /**
+     * Which item lies in one quadrant of a square, if any. A square can hold
+     * several, and the original takes them one at a time from where they were
+     * put rather than off a pile.
+     */
+    fun lyingAt(level: Int, at: Location, quadrant: Int): ItemIndex? =
+        items.indices.firstOrNull { slot ->
+            items[slot].let { it.level == level && it.location == at && it.pos == quadrant }
+        }?.let(::ItemIndex)
+
+    /**
+     * Puts what is in the hand down at one quadrant of a square, and leaves
+     * the hand empty. Putting nothing down changes nothing.
+     */
+    fun puttingDown(level: Int, at: Location, quadrant: Int): GameState {
+        if (!inHand.isSomething) return this
+
+        return copy(
+            items = items.mapIndexed { slot, item ->
+                if (slot != inHand.value) item
+                else item.copy(level = level, location = at, pos = quadrant)
+            },
+            inHand = ItemIndex(ItemIndex.NOTHING),
+        )
+    }
+
+    /**
+     * Takes what lies at one quadrant of a square into the hand. What is
+     * picked up is on no square while it is held, which is what keeps it from
+     * being drawn where it was left.
+     */
+    fun takingUp(slot: ItemIndex) = copy(
+        items = items.mapIndexed { at, item ->
+            if (at != slot.value) item else item.copy(location = Item.NOWHERE, level = 0)
+        },
+        inHand = slot,
+    )
 
     /** Remembers [level] as it stands, for whenever the party comes back. */
     fun leaving(level: Int) = copy(asTheyWereLeft = asTheyWereLeft + (level to monsters))
@@ -183,6 +234,7 @@ data class GameState(
         monsters = monsters,
         flags = flags,
         items = items,
+        inHand = inHand,
         leftBehind = asTheyWereLeft,
         changedWalls = changedWalls.map { (where, to) ->
             ChangedWall(where.level, where.at, where.side, to)
@@ -204,6 +256,7 @@ data class GameState(
             monsters = saved.monsters,
             flags = saved.flags,
             items = saved.items,
+            inHand = saved.inHand,
             asTheyWereLeft = saved.leftBehind + (on to saved.monsters),
             changedWalls = saved.changedWalls.associate {
                 WallAt(it.level, it.at, it.side) to it.to

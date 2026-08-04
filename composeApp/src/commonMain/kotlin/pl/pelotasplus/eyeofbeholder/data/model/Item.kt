@@ -56,12 +56,17 @@ data class Item(
      */
     val exists: Boolean get() = location != NOWHERE
 
+    /** A cursed thing cannot be taken out of the slot it was put in. */
+    val stuckToItsSlot: Boolean get() = flags and STUCK != 0
+
     companion object {
         /**
          * The square an item that is on none lies on: the packed word 0xFFFF,
          * which is what -1 comes to when read as a position.
          */
         val NOWHERE = Location(31, 2047)
+
+        private const val STUCK = 0x20
 
         fun read(reader: ByteReader) = Item(
             nameUnidentified = ItemNameId(reader.readU8()),

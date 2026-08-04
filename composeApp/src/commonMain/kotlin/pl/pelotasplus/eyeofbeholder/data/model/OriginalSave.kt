@@ -41,6 +41,8 @@ data class OriginalSave(
     val subLevel: Int,
     val standing: PartyState,
     val flags: GameFlags,
+    /** What was under the cursor, which belongs to nobody in the party. */
+    val inHand: ItemIndex,
     /**
      * Every item in the game as this save has it — the dungeon's and the
      * party's in one table, which is what a champion's [Champion.carrying] and
@@ -66,7 +68,7 @@ data class OriginalSave(
             val subLevel = reader.readI16LE()
             val block = reader.readU16LE()
             val facing = reader.readU16LE()
-            reader.readI16LE()                  // the item in hand
+            val inHand = ItemIndex(reader.readI16LE())
             reader.readU32LE()                  // which levels have data saved
             reader.readU32LE()                  // party effect flags
             reader.skip(1)
@@ -82,6 +84,7 @@ data class OriginalSave(
                     facing = Direction.entries[facing % Direction.entries.size],
                 ),
                 flags = readFlags(reader),
+                inHand = inHand,
                 items = List(ITEM_SLOTS) { Item.read(reader) },
             )
         }

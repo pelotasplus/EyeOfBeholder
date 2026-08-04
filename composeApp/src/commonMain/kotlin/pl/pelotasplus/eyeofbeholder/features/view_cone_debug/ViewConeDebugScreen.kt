@@ -15,7 +15,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -27,8 +29,11 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.key.utf16CodePoint
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -146,12 +151,24 @@ private fun ViewConeDebugContent(
             availableHeight / image.height
         ).toInt().coerceAtLeast(1)
 
+        // where the pointer is, so that whatever is being held can follow it
+        var pointer by remember { mutableStateOf(Offset.Unspecified) }
+
         Box(
             modifier = Modifier
                 .size(
                     width = with(density) { (image.width * scaleFactor).toDp() },
                     height = with(density) { (image.height * scaleFactor).toDp() },
                 )
+                .pointerInput(Unit) {
+                    awaitPointerEventScope {
+                        while (true) {
+                            val event = awaitPointerEvent(PointerEventPass.Initial)
+                            pointer = event.changes.firstOrNull()?.position
+                                ?: Offset.Unspecified
+                        }
+                    }
+                }
                 .pointerInput(scaleFactor, state.dialog, state.menu) {
                     detectTapGestures { offset ->
                         // the Debug menu takes focus and does not give it back,
@@ -193,6 +210,23 @@ private fun ViewConeDebugContent(
                     dstSize = IntSize(image.width * scaleFactor, image.height * scaleFactor),
                     // nearest-neighbor keeps the retro pixels crisp
                     filterQuality = FilterQuality.None
+                )
+
+                // What is being held is the pointer, so it is drawn over
+                // everything and centred on it rather than laid out anywhere.
+                val held = state.held ?: return@Canvas
+                if (pointer == Offset.Unspecified) return@Canvas
+
+                val width = held.width * scaleFactor
+                val height = held.height * scaleFactor
+                drawImage(
+                    image = held,
+                    dstOffset = IntOffset(
+                        x = (pointer.x - width / 2).toInt(),
+                        y = (pointer.y - height / 2).toInt(),
+                    ),
+                    dstSize = IntSize(width, height),
+                    filterQuality = FilterQuality.None,
                 )
             }
         }

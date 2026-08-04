@@ -34,6 +34,11 @@ data class ChampionBox(val left: Int, val top: Int) {
 
     fun handTop(hand: Int): Int = top + HAND_Y + hand * HAND_STEP
 
+    /** Whether a click landed on one of the two slots a champion holds with. */
+    fun holdsHandAt(x: Int, y: Int, hand: Int): Boolean =
+        x in handSlotLeft until handSlotLeft + HAND_SLOT_WIDTH &&
+            y in handTop(hand) until handTop(hand) + HAND_SLOT_HEIGHT
+
     /** Whether a click landed on the face, which is what opens a champion's page. */
     fun showsFaceAt(x: Int, y: Int): Boolean =
         x in portraitLeft until portraitLeft + PORTRAIT_SIZE &&
@@ -51,6 +56,8 @@ data class ChampionBox(val left: Int, val top: Int) {
         private const val HAND_Y = 9
         private const val HAND_STEP = 16
         private const val HAND_ICON_X = 8
+        private const val HAND_SLOT_WIDTH = 31
+        private const val HAND_SLOT_HEIGHT = 16
 
         private const val BAR_X = 15
         private const val BAR_Y = 44
