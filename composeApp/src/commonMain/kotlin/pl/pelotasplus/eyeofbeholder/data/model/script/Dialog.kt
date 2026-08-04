@@ -40,6 +40,10 @@ sealed class Dialog : ScriptToken {
      * waits on a button labelled with [pageBreakLabel] — usually "ok". The
      * speech is allowed to be empty: the branches that roar at the party print
      * that as a message first and use this only to be acknowledged.
+     *
+     * So is the label, and then there is no button and nothing is waited for:
+     * the words go up and the script carries straight on, which is how a
+     * speaker says its piece and then moves while it stands on screen.
      */
     data class DialogText(
         val textId: DialogueTextId,

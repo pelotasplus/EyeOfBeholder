@@ -113,6 +113,17 @@ class ViewConeDebugViewModel(
     private var scriptRunner: LevelScriptRunner? = null
     private var speaker: DialogueScene.Picture? = null
 
+    /**
+     * The speeches standing in the dialogue box, which stay in it until the
+     * script draws the box again.
+     *
+     * Saying a thing and waiting for it to be acknowledged are two
+     * instructions, and the second of them usually has nothing of its own to
+     * say — so without this the words would go up and then be wiped by the
+     * button that answers them.
+     */
+    private var standingInTheBox = emptyList<String>()
+
     /** The script holding the world, if one is running. */
     private var playing: Job? = null
 
@@ -898,14 +909,17 @@ class ViewConeDebugViewModel(
         override suspend fun say(speech: ScriptSpeech) {
             val inf = _state.value.inf ?: return
 
+            if (speech.boxJustDrawn) standingInTheBox = emptyList()
+
             if (speech.isEmpty) {
                 _state.update { it.copy(dialog = null) }
                 speaker = null
+                standingInTheBox = emptyList()
                 drawWords()
                 return
             }
 
-            val spoken = speech.said.mapNotNull { inf.message(it) }
+            val spoken = (standingInTheBox + speech.said.mapNotNull { inf.message(it) })
                 .filter { it.isNotBlank() }
                 .joinToString("\n") { it.spokenBy(whoeverSpeaks()) }
 
@@ -952,9 +966,11 @@ class ViewConeDebugViewModel(
     /**
      * A script stopped to ask something. The speech comes from TEXT.DAT and
      * the button words from the level's own messages.
+     *
+     * @return whether the script waits for this to be clicked.
      */
-    private suspend fun showDialog(question: ScriptQuestion) {
-        val inf = _state.value.inf ?: return
+    private suspend fun showDialog(question: ScriptQuestion): Boolean {
+        val inf = _state.value.inf ?: return false
 
         val speech = dialogueTextRepository.text(question.textId)
             .onFailure { Logger.e(it) { "No dialogue text ${question.textId}" } }
@@ -964,10 +980,15 @@ class ViewConeDebugViewModel(
         val labels = question.buttons.mapNotNull { inf.message(it) }
         val unread = speech.pages.drop(1)
 
+        val clickable = question.hasSomethingToClick(labels)
+
         // the party's own line goes in the box above what it answers
-        val spoken = (question.said.mapNotNull { inf.message(it) } + speech.first)
+        val spoken = (standingInTheBox + question.said.mapNotNull { inf.message(it) } + speech.first)
             .filter { it.isNotBlank() }
             .joinToString("\n") { it.spokenBy(whoeverSpeaks()) }
+
+        // and what is being said now stands in the box after it has been read
+        standingInTheBox = standingInTheBox + speech.first
 
         _state.update {
             it.copy(
@@ -975,7 +996,11 @@ class ViewConeDebugViewModel(
                     scene = sceneFor(
                         scene = question.scene,
                         text = spoken,
-                        buttonLabels = if (unread.isEmpty()) labels else listOf(MORE),
+                        buttonLabels = when {
+                            unread.isNotEmpty() -> listOf(MORE)
+                            clickable -> labels
+                            else -> emptyList()
+                        },
                         waitsToBeRead = unread.isNotEmpty() || question.waitsToBeRead,
                     ),
                     unread = unread,
@@ -985,6 +1010,8 @@ class ViewConeDebugViewModel(
             )
         }
         drawWords()
+
+        return unread.isNotEmpty() || clickable
     }
 
     /**
@@ -1035,6 +1062,10 @@ class ViewConeDebugViewModel(
     /** Puts the next part of a speech up, without letting the script move on. */
     private fun turnThePage(dialog: DialogPrompt) {
         val unread = dialog.unread.drop(1)
+
+        // turning a page empties the box and writes on from there, so the page
+        // being read is the whole of what stands in it
+        standingInTheBox = listOf(dialog.unread.first())
 
         viewModelScope.launch {
             _state.update {

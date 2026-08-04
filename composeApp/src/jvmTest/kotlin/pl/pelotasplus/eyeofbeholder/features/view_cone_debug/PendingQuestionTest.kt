@@ -19,8 +19,8 @@ class PendingQuestionTest {
         // dispatcher does — so the second question is asked from inside the
         // call answering the first.
         val script = launch(Dispatchers.Unconfined) {
-            given += pending.ask { }.number
-            given += pending.ask { }.number
+            given += pending.ask { true }.number
+            given += pending.ask { true }.number
         }
 
         pending.answer(DialogAnswer(2))
@@ -28,6 +28,33 @@ class PendingQuestionTest {
 
         withTimeout(SHOULD_BE_INSTANT) { script.join() }
         assertEquals(listOf(2, 3), given)
+    }
+
+    /**
+     * A speech with no button to click is not waited for, and the script goes
+     * on without anything having been answered.
+     */
+    @Test
+    fun `nothing to click is not waited for`() = runBlocking {
+        val pending = PendingQuestion()
+
+        val answer = withTimeout(SHOULD_BE_INSTANT) { pending.ask { false } }
+
+        assertEquals(DialogAnswer.UNASKED, answer)
+    }
+
+    /** And nothing is left waiting behind it for the next click to answer. */
+    @Test
+    fun `a click after it answers whatever is asked next`() = runBlocking {
+        val pending = PendingQuestion()
+        pending.ask { false }
+
+        val given = mutableListOf<Int>()
+        val script = launch(Dispatchers.Unconfined) { given += pending.ask { true }.number }
+        pending.answer(DialogAnswer(1))
+
+        withTimeout(SHOULD_BE_INSTANT) { script.join() }
+        assertEquals(listOf(1), given)
     }
 
     @Test

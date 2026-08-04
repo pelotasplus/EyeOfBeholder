@@ -13,5 +13,11 @@ import kotlin.jvm.JvmInline
 value class DialogAnswer(val number: Int) {
     companion object {
         fun forButton(index: Int) = DialogAnswer(index + 1)
+
+        /**
+         * What comes back from something nobody had to click. Zero is no
+         * button, and no script tests for it.
+         */
+        val UNASKED = DialogAnswer(0)
     }
 }

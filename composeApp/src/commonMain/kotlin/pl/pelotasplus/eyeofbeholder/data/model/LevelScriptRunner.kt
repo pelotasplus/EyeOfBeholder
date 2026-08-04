@@ -61,6 +61,11 @@ data class ScriptSpeech(
      * instruction — the ink and the shade behind it — of which this is the ink.
      */
     val colour: PaletteIndex = DEFAULT_INK,
+    /**
+     * True when the box has this moment been drawn, which empties it. What was
+     * written into it is gone; the speaker in the frame above it stays.
+     */
+    val boxJustDrawn: Boolean = false,
 ) {
     val isEmpty: Boolean get() = scene.isEmpty() && said.isEmpty()
 
@@ -97,7 +102,20 @@ data class ScriptQuestion(
      * of answers under the text.
      */
     val waitsToBeRead: Boolean = false,
-)
+) {
+    /**
+     * Whether there is anything to click on, [labels] being what the buttons
+     * say once the level's messages have been looked up.
+     *
+     * A speech whose button has no word on it is not clicked and not waited
+     * for: the words go up and the script carries straight on, so a speaker
+     * can say its piece and then move while what it said stays on screen. A
+     * question is a different thing — its answers are what it is asking, and
+     * one is always waited for.
+     */
+    fun hasSomethingToClick(labels: List<String>): Boolean =
+        if (waitsToBeRead) labels.any { it.isNotBlank() } else labels.isNotEmpty()
+}
 
 /**
  * Where a script shows its work: the screen, from the interpreter's side.
@@ -446,7 +464,7 @@ class LevelScriptRunner(
                 Dialog.DrawDialogBox -> {
                     said.clear()
                     scene += Dialog.DrawDialogBox
-                    stage.say(ScriptSpeech(scene.toList(), said.toList()))
+                    stage.say(ScriptSpeech(scene.toList(), said.toList(), boxJustDrawn = true))
                 }
 
                 Dialog.CloseDialog -> {
