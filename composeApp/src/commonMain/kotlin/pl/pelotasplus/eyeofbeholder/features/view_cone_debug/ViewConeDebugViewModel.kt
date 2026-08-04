@@ -113,6 +113,8 @@ class ViewConeDebugViewModel(
     private var scriptRunner: LevelScriptRunner? = null
     private var speaker: DialogueScene.Picture? = null
 
+    private var drawnFrom: Pair<String, Cps>? = null
+
     /**
      * The speeches standing in the dialogue box, which stay in it until the
      * script draws the box again.
@@ -1035,9 +1037,7 @@ class ViewConeDebugViewModel(
             // a reply draws no one: whoever is speaking stays up while they talk
             speaker
         } else {
-            cpsRepository.loadCps("${instruction.pictureName.uppercase()}.CPS")
-                .onFailure { error -> Logger.e(error) { "No picture ${instruction.pictureName}" } }
-                .getOrNull()
+            pictureCalled("${instruction.pictureName.uppercase()}.CPS")
                 ?.let { cps ->
                     DialogueScene.Picture(
                         cps = cps,
@@ -1057,6 +1057,24 @@ class ViewConeDebugViewModel(
             font = font,
             waitsToBeRead = waitsToBeRead,
         )
+    }
+
+    /**
+     * The file a script draws its pictures from, kept from one to the next.
+     *
+     * An animation is a run of frames cut from a single sheet, a fifth of a
+     * second apart, and unpacking that sheet again for every frame is most of
+     * the time between them.
+     */
+    private suspend fun pictureCalled(name: String): Cps? {
+        drawnFrom?.let { (called, cps) -> if (called == name) return cps }
+
+        val cps = cpsRepository.loadCps(name)
+            .onFailure { error -> Logger.e(error) { "No picture $name" } }
+            .getOrNull()
+
+        drawnFrom = cps?.let { name to it }
+        return cps
     }
 
     /** Puts the next part of a speech up, without letting the script move on. */

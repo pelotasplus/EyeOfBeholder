@@ -484,6 +484,16 @@ class LevelScriptRunner(
                     )
                 }
 
+                // A picture goes up as it is asked for rather than whenever the
+                // next thing is said. A script that draws several of them with
+                // a pause between is animating one thing, not choosing between
+                // several: a mouth that moves only once its speech is over is
+                // not moving at all.
+                is Dialog.DisplayPicture -> {
+                    scene += token
+                    stage.say(ScriptSpeech(scene.toList(), said.toList()))
+                }
+
                 // anything else the script draws while setting up its question
                 is Dialog -> scene += token
 
