@@ -99,8 +99,20 @@ data class Maz(
             /** Only a door all the way out of its frame lets anything past. */
             val isOpen: Boolean get() = state == FULLY_OPEN
 
-            private companion object {
-                const val FULLY_OPEN = 4
+            /**
+             * The same door a step further along, which is how a door moves:
+             * it slides rather than jumps, and stops at either end of its
+             * travel however often it is pushed.
+             */
+            fun stepped(opening: Boolean) =
+                copy(state = (state + if (opening) 1 else -1).coerceIn(SHUT, FULLY_OPEN))
+
+            companion object {
+                /** How many steps a door takes to slide from shut to open. */
+                const val TRAVEL = 4
+
+                private const val FULLY_OPEN = TRAVEL
+                private const val SHUT = 0
             }
         }
 

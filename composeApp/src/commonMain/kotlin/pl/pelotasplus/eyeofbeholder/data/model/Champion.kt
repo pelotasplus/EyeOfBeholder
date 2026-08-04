@@ -80,6 +80,14 @@ data class Champion(
      */
     val canSpeak: Boolean get() = inTheParty && !deadForGood && !flags.petrified
 
+    /**
+     * Whether this one can put a shoulder to something: in the party, still
+     * standing, and free to move. More is asked here than of a speaker —
+     * being knocked out does not stop a champion talking, but it does stop
+     * them forcing a door.
+     */
+    val canAct: Boolean get() = inTheParty && !dead && !heldFast
+
     companion object {
         /** How many champions the party has room for, filled or not. */
         const val PARTY_SLOTS = 6

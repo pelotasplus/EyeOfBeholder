@@ -25,12 +25,15 @@ import pl.pelotasplus.eyeofbeholder.data.model.Naming
 import pl.pelotasplus.eyeofbeholder.data.model.Typing
 import pl.pelotasplus.eyeofbeholder.data.model.canTypeIntoTheGame
 import pl.pelotasplus.eyeofbeholder.data.model.Cps
+import pl.pelotasplus.eyeofbeholder.data.model.Dice
 import pl.pelotasplus.eyeofbeholder.data.model.DialogAnswer
 import pl.pelotasplus.eyeofbeholder.data.model.DialogueScene
 import pl.pelotasplus.eyeofbeholder.data.model.DialogueScene.Companion.MORE
 import pl.pelotasplus.eyeofbeholder.data.model.DialogueText
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
+import pl.pelotasplus.eyeofbeholder.data.model.DoorMessages
 import pl.pelotasplus.eyeofbeholder.data.model.FloorReach
+import pl.pelotasplus.eyeofbeholder.data.model.ForcingADoor
 import pl.pelotasplus.eyeofbeholder.data.model.Font
 import pl.pelotasplus.eyeofbeholder.data.model.GameState
 import pl.pelotasplus.eyeofbeholder.data.model.Inf
@@ -776,9 +779,31 @@ class ViewConeDebugViewModel(
         val ahead = Location(party.position.x + dx, party.position.y + dy)
         val facingUs = party.facing.transformWallSide(WallSide.SOUTH)
 
+        val level = levelNumber(inf.name)
+
         // the world's wall, not the file's: a wall a script has already opened
         // is no longer the one with the button on it
-        val wall = _state.value.game.wall(levelNumber(inf.name), ahead, facingUs)
+        val wall = _state.value.game.wall(level, ahead, facingUs)
+
+        // A door is worked by the button beside it and by nothing else. One
+        // with no button, or a click that misses the button it has, gets the
+        // line the game gives a door that will not be opened by hand — but
+        // only while it is shut, an open doorway having nothing to say.
+        if (wall is Maz.WallType.Door) {
+            val door = sublevel.doors.getOrNull(wall.doorIndex.value) ?: return
+
+            when {
+                wall.hasButton && ClickedWall.hitsDoorButton(door, x, y) ->
+                    swingsTheDoor(level, ahead, facingUs, opening = !wall.isOpen)
+
+                !wall.isOpen -> {
+                    say(DoorMessages.NO_ONE_CAN_PRY)
+                    drawWords()
+                }
+            }
+            return
+        }
+
         if (wall !is Maz.WallType.Decoration) return
 
         val decoration = sublevel.decorations
@@ -791,21 +816,80 @@ class ViewConeDebugViewModel(
         val does = decoration.doesWhenClicked
 
         // Some walls have nothing to aim at and answer a click anywhere on
-        // them; the rest want the thing hanging there hit.
-        val hit = does.answersAnyClick ||
-            (hanging != null && ClickedWall.hits(hanging, decoration.dec.rectangles, x, y))
+        // them, a door is shoved by its doorway, and the rest want the thing
+        // hanging there hit.
+        val hit = when {
+            does.answersAnyClick -> true
+            does.isShoved -> ClickedWall.hitsTheDoorway(x, y)
+            else -> hanging != null && ClickedWall.hits(hanging, decoration.dec.rectangles, x, y)
+        }
 
         Logger.d(TAG) { "Clicked $ahead $facingUs is a $does, hit=$hit" }
         if (!hit) return
 
-        // A niche is worked rather than merely triggered: what is shelved in
-        // it is taken, or what is held is put on it.
-        if (does == WallAction.NICHE) {
-            reachedIntoNiche(levelNumber(inf.name), ahead)
-            return
-        }
+        // Most walls answer with their script and nothing else. These few are
+        // worked as well: something on them moves, or something is taken from
+        // them, and only then does the script have its say.
+        when (does) {
+            // what is shelved in a niche is taken, or what is held is put on it
+            WallAction.NICHE -> reachedIntoNiche(level, ahead)
 
-        runTriggersAt(ahead, ScriptEvent.WALL_CLICKED)
+            WallAction.LEVER_ON, WallAction.LEVER_OFF ->
+                threwTheLever(level, ahead, facingUs, up = does == WallAction.LEVER_ON)
+
+            WallAction.STUCK_DOOR -> forcedTheDoor(level, ahead, facingUs)
+
+            WallAction.JAMMED_DOOR -> {
+                say(DoorMessages.NO_ONE_CAN_PRY)
+                drawWords()
+            }
+
+            else -> runTriggersAt(ahead, ScriptEvent.WALL_CLICKED)
+        }
+    }
+
+    /**
+     * A door sliding open or shut, drawn at each of the positions it passes
+     * through rather than arriving at the far end at once.
+     */
+    private fun swingsTheDoor(level: Int, at: Location, side: WallSide, opening: Boolean) {
+        viewModelScope.launch {
+            repeat(Maz.WallType.Door.TRAVEL) {
+                _state.update {
+                    it.copy(game = it.game.doorStepped(level, at, side, opening))
+                }
+                renderViewPort()
+                delay(DOOR_STEP.inMilliseconds)
+            }
+        }
+    }
+
+    /**
+     * A lever, which flips to its other position and then lets the wall's
+     * script say what that did.
+     */
+    private fun threwTheLever(level: Int, at: Location, side: WallSide, up: Boolean) {
+        _state.update { it.copy(game = it.game.leverThrown(level, at, side, up)) }
+
+        // the script draws for itself when it has anything to say
+        if (!runTriggersAt(at, ScriptEvent.WALL_CLICKED)) renderViewPort()
+    }
+
+    /**
+     * A door stuck in its frame, which the strongest of the party puts a
+     * shoulder to. One that gives becomes a doorway like any other.
+     */
+    private fun forcedTheDoor(level: Int, at: Location, side: WallSide) {
+        val outcome = ForcingADoor.tried(_state.value.game.champions, Dice.random)
+
+        say(outcome.says)
+        drawWords()
+
+        if (outcome != ForcingADoor.Outcome.Gives) return
+
+        // a doorway takes the wall's place still shut, and then swings
+        _state.update { it.copy(game = it.game.forcedOutOfItsFrame(level, at, side)) }
+        swingsTheDoor(level, at, side, opening = true)
     }
 
     /**
@@ -1434,6 +1518,9 @@ class ViewConeDebugViewModel(
 
         /** More than the bar can show, so a long line still has its history. */
         private const val MESSAGES_KEPT = 8
+
+        /** How long a door rests at each of the positions it slides through. */
+        private val DOOR_STEP = Ticks(5)
 
         private const val PLAY_FIELD_CPS = "PLAYFLD.CPS"
         private const val DECORATIONS_CPS = "DECORATE.CPS"

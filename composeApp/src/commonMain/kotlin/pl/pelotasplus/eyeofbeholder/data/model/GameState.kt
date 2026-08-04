@@ -341,6 +341,51 @@ data class GameState(
         copy(changedWalls = changedWalls + WallSide.entries.associate { WallAt(level, at, it) to to })
 
     /**
+     * The same world with a doorway one step further open, or further shut.
+     *
+     * Both faces of the doorway move together, and each keeps its own kind —
+     * the side with the button on it does not hand its button to the side
+     * without one. A wall that is no door is left alone.
+     */
+    fun doorStepped(level: Int, at: Location, side: WallSide, opening: Boolean): GameState =
+        listOf(side, side.opposite).fold(this) { world, face ->
+            val door = world.wall(level, at, face) as? Maz.WallType.Door ?: return@fold world
+            world.wallChanged(level, at, face, door.stepped(opening).asByte())
+        }
+
+    /**
+     * The same world with a door forced out of its frame.
+     *
+     * A door stuck fast is not a door in the maze at all: it is a wall with a
+     * picture of one on it, which is why nothing opens it and why forcing it
+     * is what it takes. What it becomes is a real doorway on both faces of the
+     * square — one without a button, since the door it replaces never had one
+     * to press — and it is still shut, so that it can be seen to swing.
+     */
+    fun forcedOutOfItsFrame(level: Int, at: Location, side: WallSide): GameState {
+        val door = Maz.WallType.Door(
+            doorIndex = DoorIndex(if (wallByte(level, at, side) == FIRST_KIND) 0 else 1),
+            hasButton = false,
+            state = 0,
+        )
+
+        return listOf(side, side.opposite).fold(this) { world, face ->
+            world.wallChanged(level, at, face, door.asByte())
+        }
+    }
+
+    /**
+     * The same world with a lever thrown. A lever is two wall shapes kept side
+     * by side, one for each way it points, so throwing it is a step from the
+     * one to the other and back again.
+     */
+    fun leverThrown(level: Int, at: Location, side: WallSide, up: Boolean): GameState =
+        wallChanged(
+            level, at, side,
+            WallByte(wallByte(level, at, side).value + if (up) 1 else -1),
+        )
+
+    /**
      * How many monsters stand on [location], at most seven.
      *
      * The engine keeps this count in the low three bits of the square's flag
@@ -448,6 +493,12 @@ data class GameState(
                 WallAt(it.level, it.at, it.side) to it.to
             },
         )
+
+        /**
+         * The one wall a forced door leaves behind as a doorway of the level's
+         * first kind. Every other stuck door becomes one of the second.
+         */
+        private val FIRST_KIND = WallByte(51)
 
         private const val MAX_MONSTERS_PER_SQUARE = 7
 

@@ -6,7 +6,14 @@ import kotlinx.serialization.Serializable
  */
 @Serializable
 enum class WallSide {
-    NORTH, EAST, SOUTH, WEST
+    NORTH, EAST, SOUTH, WEST;
+
+    /**
+     * The face across the square from this one. A doorway is one square with
+     * the same door on both of its faces, and working it moves both: a door
+     * opened from one side stands open from the other.
+     */
+    val opposite: WallSide get() = entries[(ordinal + 2) % entries.size]
 }
 
 /**

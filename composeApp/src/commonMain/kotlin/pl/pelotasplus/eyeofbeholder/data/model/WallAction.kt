@@ -37,6 +37,13 @@ enum class WallAction {
     /** Whether a click anywhere on the wall counts, rather than only on the shape. */
     val answersAnyClick: Boolean get() = this == SCRIPT_ONLY
 
+    /**
+     * Whether this is a door to be shoved rather than a shape to be hit. What
+     * answers is the doorway — the middle of the view — since the party push
+     * the door itself and not the picture of one hanging on it.
+     */
+    val isShoved: Boolean get() = this == STUCK_DOOR || this == JAMMED_DOOR
+
     companion object {
         fun of(specialType: Int): WallAction = when (specialType) {
             1 -> DOOR_SWITCH
