@@ -116,6 +116,13 @@ val visibleBlocks: List<BlockOffset> =
 /**
  * What is left of the square at [blockIndex] once every wall in the view has
  * taken its bite, given what each of the 18 squares turns towards the party.
+ *
+ * Four squares are left with nothing by any wall at all: the outer two of the
+ * back row and the outer two of the row in front of it. However open the way
+ * to them looks, nothing standing on them is drawn — only the walls that face
+ * them are. It reads like a fault and is not: those corners are slivers, and
+ * the game does not draw into them. As soon as no wall in sight is solid the
+ * rule lapses with every other, and they show like anywhere else.
  */
 fun viewWindow(blockIndex: Int, sight: (Int) -> WallSight): ViewWindow {
     var from = 0
