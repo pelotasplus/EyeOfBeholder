@@ -1,6 +1,7 @@
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import org.jetbrains.kotlin.gradle.targets.js.webpack.KotlinWebpackConfig
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
@@ -45,14 +46,25 @@ kotlin {
     
     jvm()
     
+    // The dev server leaves the browser alone: the page reloads itself on
+    // every rebuild, so a tab is opened once and kept, and one more of them
+    // each time the server restarts is not help.
     js {
-        browser()
+        browser {
+            commonWebpackConfig {
+                devServer = (devServer ?: KotlinWebpackConfig.DevServer()).copy(open = false)
+            }
+        }
         binaries.executable()
     }
-    
+
     @OptIn(ExperimentalWasmDsl::class)
     wasmJs {
-        browser()
+        browser {
+            commonWebpackConfig {
+                devServer = (devServer ?: KotlinWebpackConfig.DevServer()).copy(open = false)
+            }
+        }
         binaries.executable()
     }
     
