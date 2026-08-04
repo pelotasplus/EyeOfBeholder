@@ -42,6 +42,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.Location
 import pl.pelotasplus.eyeofbeholder.data.model.Palette
 import pl.pelotasplus.eyeofbeholder.data.model.PartyState
 import pl.pelotasplus.eyeofbeholder.data.model.PlayField
+import pl.pelotasplus.eyeofbeholder.data.model.Preferences
 import pl.pelotasplus.eyeofbeholder.data.model.SavedGame
 import pl.pelotasplus.eyeofbeholder.data.model.rightNow
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptEvent
@@ -378,6 +379,15 @@ class ViewConeDebugViewModel(
             MenuChoice.Close -> showMenu(null)
             MenuChoice.OpenCamp -> showMenu(CampMenu.camp())
             MenuChoice.OpenGameOptions -> showMenu(CampMenu.gameOptions())
+            MenuChoice.OpenPreferences -> showMenu(CampMenu.preferences(_state.value.preferences))
+
+            // the line that was clicked is the setting, so the menu is put up
+            // again for it to say the other thing
+            is MenuChoice.Toggle -> {
+                _state.update { it.copy(preferences = it.preferences.toggling(choice.setting)) }
+                showMenu(CampMenu.preferences(_state.value.preferences))
+            }
+
             is MenuChoice.OpenSlots -> showSlots(choice.saving)
             is MenuChoice.UseSlot ->
                 if (!choice.saving) loadFrom(choice.slot)
@@ -923,6 +933,7 @@ class ViewConeDebugViewModel(
                 menuFont = menuFont,
                 invent = invent,
                 itemIcons = carriedItemIcons,
+                preferences = _state.value.preferences,
             )
                 .render(
                     viewPort = viewPort,
@@ -1081,6 +1092,9 @@ class ViewConeDebugViewModel(
          * about with a champion's things on show.
          */
         val sheet: CharacterSheet? = null,
+
+        /** What the player has chosen under Camp, which no save carries. */
+        val preferences: Preferences = Preferences(),
 
         /**
          * The bar along the bottom, oldest first. A script writes here when it

@@ -6,6 +6,7 @@ import kotlinx.coroutines.runBlocking
 import pl.pelotasplus.eyeofbeholder.data.model.CampMenu
 import pl.pelotasplus.eyeofbeholder.data.model.CharacterSheet
 import pl.pelotasplus.eyeofbeholder.data.model.OpenSheet
+import pl.pelotasplus.eyeofbeholder.data.model.Preferences
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.GameState
 import pl.pelotasplus.eyeofbeholder.data.model.Inf
@@ -714,6 +715,24 @@ class ViewPortGoldenTest {
         checkGolden("character-sheet", sheetOver("LEVEL4.INF", x = 15, y = 11, slot = 0))
 
     /**
+     * The same page with bar graphs turned off. Only the hit points change:
+     * how full a champion is has no numbers to be written as, so the food bar
+     * stays a bar.
+     */
+    @Test
+    fun `a champion's belongings with hit points written out`() =
+        checkGolden(
+            "character-sheet-written",
+            sheetOver(
+                "LEVEL4.INF",
+                x = 15,
+                y = 11,
+                slot = 0,
+                preferences = Preferences(barGraphs = false),
+            ),
+        )
+
+    /**
      * The other side of the same page: what the champion is. The party's
      * dwarf is a fighter and a thief at once, so his two careers are listed
      * one under the other with a level and an experience each.
@@ -723,6 +742,35 @@ class ViewPortGoldenTest {
         checkGolden(
             "character-sheet-stats",
             sheetOver("LEVEL4.INF", x = 15, y = 11, slot = 1, page = CharacterSheet.Page.STATS),
+        )
+
+    /**
+     * Camp → Preferences, each line saying which way its setting stands.
+     * Sounds is on and bar graphs off, so both readings show at once.
+     */
+    @Test
+    fun `the preferences menu`() =
+        checkGolden(
+            "camp-preferences",
+            menuOver(CampMenu.preferences(Preferences(sounds = true, barGraphs = false))),
+        )
+
+    /**
+     * The same party with bar graphs turned off: the boxes write out what each
+     * champion has left instead of drawing it, and the word HP goes with the
+     * bar it was there to name.
+     */
+    @Test
+    fun `hit points written out rather than drawn`() =
+        checkGolden(
+            "party-panel-written",
+            partyOver(
+                level = "LEVEL4.INF",
+                x = 15,
+                y = 11,
+                hurtTo = listOf(78, 20, 1, -6),
+                preferences = Preferences(barGraphs = false),
+            ),
         )
 
     /** Camp → the menu the original opens, over the view. */
@@ -792,6 +840,7 @@ class ViewPortGoldenTest {
         x: Int,
         y: Int,
         hurtTo: List<Int> = emptyList(),
+        preferences: Preferences = Preferences(),
     ): BufferedImage = runBlocking {
         val resources = ResourceRepositoryImpl()
         val cps = CpsRepositoryImpl(resources)
@@ -825,6 +874,7 @@ class ViewPortGoldenTest {
             decorations = cps.loadCps("DECORATE.CPS").getOrThrow(),
             palette = sublevel.palette,
             font = FontRepositoryImpl(resources).loadFont("FONT6.FNT").getOrThrow(),
+            preferences = preferences,
         ).render(
             viewPort = viewPort,
             direction = Direction.NORTH,
@@ -840,6 +890,7 @@ class ViewPortGoldenTest {
         y: Int,
         slot: Int,
         page: CharacterSheet.Page = CharacterSheet.Page.BELONGINGS,
+        preferences: Preferences = Preferences(),
     ): BufferedImage = runBlocking {
         val resources = ResourceRepositoryImpl()
         val cps = CpsRepositoryImpl(resources)
@@ -869,6 +920,7 @@ class ViewPortGoldenTest {
             font = FontRepositoryImpl(resources).loadFont("FONT6.FNT").getOrThrow(),
             invent = cps.loadCps("INVENT.CPS").getOrThrow(),
             itemIcons = cps.loadCps("ITEMICN.CPS").getOrThrow(),
+            preferences = preferences,
         ).render(
             viewPort = viewPort,
             direction = Direction.NORTH,

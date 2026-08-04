@@ -40,9 +40,25 @@ data class CampMenu(
                 MenuChoice.NotYet("Memorize Spells"),
                 MenuChoice.NotYet("Pray for Spells"),
                 MenuChoice.NotYet("Scribe Scrolls"),
-                MenuChoice.NotYet("Preferences"),
+                MenuChoice.OpenPreferences,
                 MenuChoice.OpenGameOptions,
                 leaving = MenuChoice.Close,
+            ),
+        )
+
+        /**
+         * The two things the player may choose, each line saying which way it
+         * stands. The original titles this menu the same as the camp menu it
+         * is opened from.
+         */
+        fun preferences(preferences: Preferences) = CampMenu(
+            title = "Camp:",
+            titleLeft = MENU_TITLE_LEFT,
+            entries = menuLines(
+                choices = Preferences.Setting.entries.map {
+                    MenuChoice.Toggle(it, preferences.isOn(it))
+                },
+                leaving = MenuChoice.OpenCamp,
             ),
         )
 
@@ -90,6 +106,9 @@ data class CampMenu(
         )
 
         private fun menuLines(vararg choices: MenuChoice, leaving: MenuChoice) =
+            menuLines(choices.toList(), leaving)
+
+        private fun menuLines(choices: List<MenuChoice>, leaving: MenuChoice) =
             choices.mapIndexed { line, choice ->
                 MenuEntry(
                     label = choice.label,
@@ -154,6 +173,12 @@ sealed class MenuChoice(val label: String) {
     data object Close : MenuChoice("Exit")
     data object OpenCamp : MenuChoice("Exit")
     data object OpenGameOptions : MenuChoice("Game Options")
+    data object OpenPreferences : MenuChoice("Preferences")
+
+    /** @param on which way the setting stands now, which is what the line says. */
+    data class Toggle(val setting: Preferences.Setting, val on: Boolean) :
+        MenuChoice(setting.saying(on))
+
     data class OpenSlots(val saving: Boolean) : MenuChoice(if (saving) "Save Game" else "Load Game")
     data class UseSlot(val slot: Int, val saving: Boolean) : MenuChoice("")
 

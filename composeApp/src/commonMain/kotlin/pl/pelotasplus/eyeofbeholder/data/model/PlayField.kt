@@ -19,6 +19,7 @@ class PlayField(
     private val invent: Cps? = null,
     /** ITEMICN.CPS, where an item being carried is drawn from. */
     private val itemIcons: Cps? = null,
+    private val preferences: Preferences = Preferences(),
 ) {
     private val pixels = MutableList(WIDTH * HEIGHT) { RGB(0, 0, 0, true) }
 
@@ -193,10 +194,28 @@ class PlayField(
         colour = StatsPage.VALUE_COLOUR,
     )
 
-    /** How hurt they are and how hungry, as two bars of the same shape. */
+    /**
+     * How hurt they are and how hungry. Only the first of the two answers to
+     * the bar graphs setting — how full a champion is has no numbers to be
+     * written as, so it is a bar either way.
+     */
     private fun drawSheetBars(champion: Champion) {
         val width = CharacterSheet.BAR_WIDTH
-        drawSheetBar(CharacterSheet.HIT_POINT_BAR_TOP, hitPointBar(champion.hitPoints, width))
+
+        if (preferences.barGraphs) {
+            drawSheetBar(CharacterSheet.HIT_POINT_BAR_TOP, hitPointBar(champion.hitPoints, width))
+        } else {
+            font?.let { font ->
+                write(
+                    text = hitPointsWritten(champion.hitPoints),
+                    font = font,
+                    left = CharacterSheet.BAR_LEFT,
+                    top = CharacterSheet.HIT_POINT_BAR_TOP,
+                    colour = NAME_COLOUR,
+                )
+            }
+        }
+
         drawSheetBar(CharacterSheet.FOOD_BAR_TOP, foodBar(champion.food, width))
     }
 
@@ -370,6 +389,24 @@ class PlayField(
 
     /** The hit point bar, sunk into the strip it sits on, with HP written beside it. */
     private fun drawHitPointBar(champion: Champion, box: ChampionBox) {
+        val font = font
+
+        // The numbers stand where the label would, because they say the same
+        // thing at greater length: with the bar there it needs naming, and
+        // without it there is nothing left to name.
+        if (!preferences.barGraphs) {
+            if (font != null) {
+                write(
+                    text = hitPointsWritten(champion.hitPoints),
+                    font = font,
+                    left = box.barLabelLeft,
+                    top = box.barLabelTop,
+                    colour = NAME_COLOUR,
+                )
+            }
+            return
+        }
+
         val bar = hitPointBar(champion.hitPoints, ChampionBox.BAR_WIDTH)
 
         drawBox(
@@ -399,6 +436,15 @@ class PlayField(
             )
         }
     }
+
+    /**
+     * Hit points as the original writes them when it is not drawing bars: what
+     * is left of them ranged right, out of what there is ranged left, so a
+     * column of them lines up on the word between.
+     */
+    private fun hitPointsWritten(hitPoints: HitPoints) =
+        "${hitPoints.current.toString().padStart(HIT_POINT_FIGURES)} of " +
+            hitPoints.max.toString().padEnd(HIT_POINT_FIGURES)
 
     /**
      * The bar along the bottom, beside the camp button, where a script writes
@@ -640,6 +686,9 @@ class PlayField(
         private val NAME_COLOUR = PaletteIndex(12)
         private val NAME_IN_TROUBLE = PaletteIndex(8)
         private val BAR_EMPTY = PaletteIndex(184)
+
+        /** Room for three figures either side of the word between them. */
+        private const val HIT_POINT_FIGURES = 3
 
         private val TALLY_BACKING = PaletteIndex(12)
         private val TALLY_COLOUR = PaletteIndex(15)
