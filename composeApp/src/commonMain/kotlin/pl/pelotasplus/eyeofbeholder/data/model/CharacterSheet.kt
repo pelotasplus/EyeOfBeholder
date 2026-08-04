@@ -17,8 +17,8 @@ import pl.pelotasplus.eyeofbeholder.data.model.CharacterClass.THIEF
  * other, and the arrows above walk along the party without closing the page.
  */
 data class CharacterSheet(
-    /** Which of the six party slots is being looked at. */
-    val slot: Int,
+    /** Which of the six is being looked at. */
+    val slot: PartySlot,
     val page: Page = Page.BELONGINGS,
 ) {
     enum class Page { BELONGINGS, STATS }
@@ -36,10 +36,10 @@ data class CharacterSheet(
      * to walk to and stays put.
      */
     fun walked(step: Int, party: List<Champion>): CharacterSheet {
-        var next = slot
+        var next = slot.index
         repeat(Champion.PARTY_SLOTS) {
             next = (next + step).mod(Champion.PARTY_SLOTS)
-            if (party.getOrNull(next)?.inTheParty == true) return copy(slot = next)
+            if (party.getOrNull(next)?.inTheParty == true) return copy(slot = PartySlot(next))
         }
         return this
     }
@@ -154,15 +154,11 @@ val abilityNames: List<String> = listOf(
     "STRENGTH", "INTELLIGENCE", "WISDOM", "DEXTERITY", "CONSTITUTION", "CHARISMA",
 )
 
-/**
- * What a champion's class byte says they are. The last six repeat the single
- * classes, and are what each half of a multi-class is called on its own line.
- */
+/** What each class is called, in the order [CharacterClass] lists them. */
 val classNames: List<String> = listOf(
     "FIGHTER", "RANGER", "PALADIN", "MAGE", "CLERIC", "THIEF",
     "FIGHTER/CLERIC", "FIGHTER/THIEF", "FIGHTER/MAGE", "FIGHTER/MAGE/THIEF",
     "THIEF/MAGE", "CLERIC/THIEF", "FIGHTER/CLERIC/MAGE", "RANGER/CLERIC", "CLERIC/MAGE",
-    "FIGHTER", "MAGE", "CLERIC", "THIEF", "PALADIN", "RANGER",
 )
 
 val alignmentNames: List<String> = listOf(
@@ -185,35 +181,30 @@ val raceAndSexNames: List<String> = listOf(
  * What a champion is, in the words the second page puts it in. A number the
  * save holds that no table covers reads as nothing rather than as a guess.
  */
-val Champion.className: String get() = classNames.getOrNull(characterClass).orEmpty()
+val Champion.className: String get() = characterClass?.title.orEmpty()
 
-/**
- * Which classes a champion's own class is made of, in the order their levels
- * and experience are kept in — one for most, two or three for a multi-class.
- *
- * This is not the same list as the one that says what they may hold; see
- * [Champion.countsAs] for why the two differ.
- */
-private val levelledClasses: List<List<CharacterClass>> = listOf(
-    listOf(FIGHTER), listOf(RANGER), listOf(PALADIN),
-    listOf(MAGE), listOf(CLERIC), listOf(THIEF),
-    listOf(FIGHTER, CLERIC), listOf(FIGHTER, THIEF), listOf(FIGHTER, MAGE),
-    listOf(FIGHTER, MAGE, THIEF), listOf(THIEF, MAGE), listOf(CLERIC, THIEF),
-    listOf(FIGHTER, CLERIC, MAGE), listOf(RANGER, CLERIC), listOf(CLERIC, MAGE),
-)
+/** What a class is called, single or combined alike. */
+val CharacterClass.title: String get() = classNames.getOrNull(ordinal).orEmpty()
 
 /**
  * What each of the classes a champion is levelled in is called on its own,
- * which is what goes beside its level and experience. The single-class names
- * sit after the combined ones in [classNames].
+ * which is what goes beside its level and experience.
  */
 val Champion.levelledClassNames: List<String>
-    get() = levelledClasses.getOrElse(characterClass) { emptyList() }
-        .map { classNames.getOrNull(COMBINED_CLASS_NAMES + it.ordinal).orEmpty() }
+    get() = characterClass?.levelledIn.orEmpty().map { it.title }
 
-private const val COMBINED_CLASS_NAMES = 15
-val Champion.alignmentName: String get() = alignmentNames.getOrNull(alignment).orEmpty()
-val Champion.raceAndSexName: String get() = raceAndSexNames.getOrNull(raceAndSex).orEmpty()
+val Champion.alignmentName: String get() = alignment?.let { alignmentNames[it.ordinal] }.orEmpty()
+
+/**
+ * Race and sex are named together, the sexes alternating, so the pair is what
+ * the table is indexed by.
+ */
+val Champion.raceAndSexName: String
+    get() {
+        val race = race ?: return ""
+        val sex = sex ?: return ""
+        return raceAndSexNames.getOrNull(race.ordinal * Sex.entries.size + sex.ordinal).orEmpty()
+    }
 
 /**
  * The six scores in the order the page lists them, as they stand now rather
@@ -296,13 +287,13 @@ val inventorySlotPositions: List<InventorySlot> = listOf(
     181 to 148, 199 to 148,
     225 to 56, 224 to 76, 225 to 96, 298 to 55, 287 to 75, 277 to 137,
     300 to 94, 300 to 112, 300 to 130, 228 to 136, 240 to 136,
-).mapIndexed { slot, (left, top) -> InventorySlot(slot, left, top) }
+).mapIndexed { slot, (left, top) -> InventorySlot(CarrySlot(slot), left, top) }
 
 /**
  * @property left where the icon is drawn, before the two undersized boxes pull
  *   theirs back to cover them
  */
-data class InventorySlot(val slot: Int, private val left: Int, private val top: Int) {
+data class InventorySlot(val slot: CarrySlot, private val left: Int, private val top: Int) {
     val iconLeft: Int get() = if (undersized) left - ICON_OVERHANG else left
     val iconTop: Int get() = if (undersized) top - ICON_OVERHANG else top
 
@@ -312,13 +303,13 @@ data class InventorySlot(val slot: Int, private val left: Int, private val top: 
      * of showing one of them, and taking from it or adding to it works the
      * stack rather than swapping what is there.
      */
-    val isQuiver: Boolean get() = slot == QUIVER
+    val isQuiver: Boolean get() = slot == CarrySlot.QUIVER
 
     /**
      * What this slot will take. The pack takes anything; the rest take one
      * kind each, which is what keeps a helmet off a foot.
      */
-    val takes: SlotTakes get() = slotTakes.getOrElse(slot) { SlotTakes.Anything }
+    val takes: SlotTakes get() = slotTakes.getOrElse(slot.index) { SlotTakes.Anything }
 
     /** Whether a click landed on this slot's box. */
     fun holdsAt(x: Int, y: Int): Boolean {
@@ -335,14 +326,11 @@ data class InventorySlot(val slot: Int, private val left: Int, private val top: 
      */
     fun tallyStart(figures: Int): Int = left + if (figures > 1) WIDE_TALLY_X else TALLY_FIGURE_X
 
-    private val undersized: Boolean get() = slot >= FIRST_UNDERSIZED
+    private val undersized: Boolean get() = slot.index >= FIRST_UNDERSIZED
 
     companion object {
         const val TALLY_WIDTH = 12
         const val TALLY_HEIGHT = 5
-
-        /** Which of a champion's slots the arrows go in. */
-        const val QUIVER = 16
 
         /** The two slots at the bottom have smaller boxes than the rest. */
         private const val BOX = 16

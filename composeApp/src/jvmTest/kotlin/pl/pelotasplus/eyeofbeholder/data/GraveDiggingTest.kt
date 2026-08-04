@@ -2,6 +2,7 @@ package pl.pelotasplus.eyeofbeholder.data
 
 import kotlinx.coroutines.runBlocking
 import pl.pelotasplus.eyeofbeholder.data.model.DialogAnswer
+import pl.pelotasplus.eyeofbeholder.data.model.CharacterClass
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.FloorReach
 import pl.pelotasplus.eyeofbeholder.data.model.GameState
@@ -58,6 +59,7 @@ class GraveDiggingTest {
 
     private val world = GameState(
         party = PartyState(Location(19, 5), Direction.NORTH),
+        champions = save.party,
         items = save.items,
     )
 
@@ -113,6 +115,41 @@ class GraveDiggingTest {
     @Test
     fun `refusing to dig turns up nothing`() {
         assertEquals(emptyList(), dig(answering = NO).state.onTheGrave())
+    }
+
+    /**
+     * Whether anybody objects at all depends on who the party are. The game
+     * ships with a paladin and a cleric, so the second question is put; a
+     * party of neither is asked once and digs.
+     */
+    @Test
+    fun `only a cleric or a paladin objects to digging`() {
+        val asked = mutableListOf<Int>()
+        val counting = object : ScriptStage by ScriptStage.silent() {
+            override suspend fun ask(question: ScriptQuestion): DialogAnswer {
+                asked += 1
+                return DialogAnswer(YES)
+            }
+        }
+
+        fun timesAsked(party: List<pl.pelotasplus.eyeofbeholder.data.model.Champion>): Int {
+            asked.clear()
+            runBlocking {
+                LevelScriptRunner(level.script, level = LEVEL).onEvent(
+                    triggers = level.triggers,
+                    event = ScriptEvent.WALL_CLICKED,
+                    state = world.copy(champions = party),
+                    stage = counting,
+                    at = grave,
+                )
+            }
+            return asked.size
+        }
+
+        assertEquals(2, timesAsked(save.party), "nobody objected to a paladin and a cleric present")
+
+        val nobodyPious = save.party.map { it.copy(characterClass = CharacterClass.FIGHTER) }
+        assertEquals(1, timesAsked(nobodyPious), "somebody objected who should not have")
     }
 
     /**

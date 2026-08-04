@@ -2,6 +2,7 @@ package pl.pelotasplus.eyeofbeholder.data
 
 import kotlinx.coroutines.runBlocking
 import pl.pelotasplus.eyeofbeholder.data.model.Champion
+import pl.pelotasplus.eyeofbeholder.data.model.CarrySlot
 import pl.pelotasplus.eyeofbeholder.data.model.InventorySlot
 import pl.pelotasplus.eyeofbeholder.data.model.Item
 import pl.pelotasplus.eyeofbeholder.data.model.ItemTypes
@@ -103,14 +104,14 @@ class InventorySlotTest {
      */
     @Test
     fun `the quiver is no ordinary slot`() {
-        assertTrue(slot(InventorySlot.QUIVER).isQuiver)
-        assertFalse(types.willSwap(paladin, slot(InventorySlot.QUIVER), null, null))
+        assertTrue(slot(CarrySlot.QUIVER.index).isQuiver)
+        assertFalse(types.willSwap(paladin, slot(CarrySlot.QUIVER.index), null, null))
     }
 
     /** An arrow is the one thing a quiver holds, and it holds nothing else. */
     @Test
     fun `an arrow goes in a quiver and a dagger does not`() {
-        val quiver = slot(InventorySlot.QUIVER)
+        val quiver = slot(CarrySlot.QUIVER.index)
         val arrow = dungeonNamed("Arrow")
         val dagger = dungeonNamed("Dagger")
 
@@ -140,16 +141,16 @@ class InventorySlotTest {
 
     @Test
     fun `a click finds the pocket it landed in`() {
-        assertEquals(2, inventorySlotAt(185, 45)?.slot)
-        assertEquals(3, inventorySlotAt(203, 45)?.slot)
+        assertEquals(CarrySlot(2), inventorySlotAt(185, 45)?.slot)
+        assertEquals(CarrySlot(3), inventorySlotAt(203, 45)?.slot)
     }
 
     /** The last two boxes are smaller, so the gap between them is nobody's. */
     @Test
     fun `the small boxes at the bottom are only ten across`() {
-        assertEquals(25, inventorySlotAt(230, 140)?.slot)
+        assertEquals(CarrySlot(25), inventorySlotAt(230, 140)?.slot)
         assertNull(inventorySlotAt(238, 140)?.slot)
-        assertEquals(26, inventorySlotAt(242, 140)?.slot)
+        assertEquals(CarrySlot(26), inventorySlotAt(242, 140)?.slot)
     }
 
     @Test

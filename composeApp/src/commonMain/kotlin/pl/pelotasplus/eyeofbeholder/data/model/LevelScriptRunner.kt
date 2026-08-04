@@ -548,6 +548,15 @@ class LevelScriptRunner(
 
                 is Conditional.DialogResult -> push(ConditionValue.of(dialogAnswer?.number ?: 0))
 
+                // Whether the party hold anybody of a class, or of a race. A
+                // script asks before putting a question that only such a
+                // person would raise: the graves on level 4 ask whether there
+                // is a cleric or a paladin to object to being dug.
+                is Conditional.HasClass -> push(state.anybodyOfClass(token.classes))
+
+                is Conditional.HasRace ->
+                    push(token.race?.let(state::anybodyOfRace) == true)
+
                 is Conditional.IsMonsterAtLocation.BlockFlags ->
                     push(ConditionValue.of(state.monstersOn(token.location)))
 

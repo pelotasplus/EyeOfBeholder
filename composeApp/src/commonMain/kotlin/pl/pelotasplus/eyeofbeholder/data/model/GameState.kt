@@ -15,6 +15,16 @@ import pl.pelotasplus.eyeofbeholder.data.model.script.CreateMonster
  */
 data class GameState(
     val party: PartyState,
+    /**
+     * Who the party are, as against [party], which is where they stand.
+     *
+     * Scripts ask about them: level 4's graves put a second question only to a
+     * party holding a cleric or a paladin, so a script handed the world
+     * without the champions in it cannot answer what the world is asked.
+     *
+     * Always six long, a slot nobody fills being [Champion.NOBODY].
+     */
+    val champions: List<Champion> = emptyList(),
     val monsters: List<MonsterInstance> = emptyList(),
     val flags: GameFlags = GameFlags(),
     /**
@@ -83,6 +93,40 @@ data class GameState(
 
     /** What is being held, if anything. */
     val held: Item? get() = item(inHand)
+
+    /**
+     * The same world with one of a champion's slots holding something else.
+     *
+     * Who the party are is part of the world now, so moving a thing between a
+     * hand and a slot is one change to it rather than two — done as two, one
+     * of them overwrites the other.
+     */
+    fun carrying(champion: PartySlot, slot: CarrySlot, item: ItemIndex): GameState {
+        val who = champions.getOrNull(champion.index) ?: return this
+
+        return copy(
+            champions = champions.toMutableList().also {
+                it[champion.index] = who.copy(
+                    carrying = who.carrying.toMutableList()
+                        .also { held -> held[slot.index] = item },
+                )
+            },
+        )
+    }
+
+    /** Who is in one of the six places, or null where nobody is. */
+    fun championIn(slot: PartySlot): Champion? =
+        champions.getOrNull(slot.index)?.takeIf { it.inTheParty }
+
+    /**
+     * Whether anybody in the party is of one of [classes]. One will do — a
+     * script asks whether the party hold such a person at all, not how many.
+     */
+    fun anybodyOfClass(classes: Set<CharacterClass>): Boolean =
+        champions.any { it.inTheParty && it.countsAs.any { of -> of in classes } }
+
+    fun anybodyOfRace(race: Race): Boolean =
+        champions.any { it.inTheParty && it.race == race }
 
     /** The same world with [slot] in the hand instead of whatever was. */
     fun holding(slot: ItemIndex) = copy(inHand = slot)

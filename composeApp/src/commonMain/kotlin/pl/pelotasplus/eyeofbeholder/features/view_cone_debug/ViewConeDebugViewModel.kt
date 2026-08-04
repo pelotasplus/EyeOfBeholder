@@ -13,7 +13,9 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlin.random.Random
 import pl.pelotasplus.eyeofbeholder.data.model.CampMenu
+import pl.pelotasplus.eyeofbeholder.data.model.CarrySlot
 import pl.pelotasplus.eyeofbeholder.data.model.Champion
+import pl.pelotasplus.eyeofbeholder.data.model.PartySlot
 import pl.pelotasplus.eyeofbeholder.data.model.CharacterSheet
 import pl.pelotasplus.eyeofbeholder.data.model.OpenSheet
 import pl.pelotasplus.eyeofbeholder.data.model.SheetChoice
@@ -106,8 +108,6 @@ class ViewConeDebugViewModel(
     /** What every item in the game is called, which no save carries. */
     private var itemNames: ItemNames? = null
 
-    /** Who the party are, as against [party], which is where they stand. */
-    private var roster: List<Champion> = emptyList()
     private var font: Font? = null
     private var menuFont: Font? = null
     private var scriptRunner: LevelScriptRunner? = null
@@ -245,10 +245,10 @@ class ViewConeDebugViewModel(
     /** Picks the game up where the autosave left it. */
     private suspend fun resume(saved: SavedGame) {
         Logger.i(TAG) { "Resuming ${saved.description} on level ${saved.level}" }
-        roster = saved.champions
         _state.update {
             it.copy(
-                game = GameState.restoredFrom(saved.world, on = saved.level),
+                game = GameState.restoredFrom(saved.world, on = saved.level)
+                    .copy(champions = saved.champions),
                 messages = saved.messages,
             )
         }
@@ -266,7 +266,7 @@ class ViewConeDebugViewModel(
      */
     private suspend fun resumeNothing() {
         val save = quickStart() ?: return
-        roster = save.party
+        _state.update { it.copy(game = it.game.copy(champions = save.party)) }
         carry(save)
     }
 
@@ -383,6 +383,10 @@ class ViewConeDebugViewModel(
     }
 
     private val party get() = _state.value.game.party
+
+    /** Who the party are, as against [party], which is where they stand. */
+    private val roster get() = _state.value.game.champions
+
 
     /**
      * Whichever champion answers this time. Rolled per line, the way the
@@ -518,15 +522,17 @@ class ViewConeDebugViewModel(
         val sheet = sheetOnShow
 
         if (sheet == null) {
-            val hand = handAt(x, y)
-            if (hand != null) {
-                swapHandWith(hand.first, inventorySlotPositions[hand.second])
+            handAt(x, y)?.let { hand ->
+                swapHandWith(hand.champion, hand.holds)
                 return
             }
 
             val face = championBoxes.indexOfFirst { it.showsFaceAt(x, y) }
             if (face >= 0) {
-                if (roster.getOrNull(face)?.inTheParty == true) showSheet(CharacterSheet(face))
+                val whose = PartySlot(face)
+                if (_state.value.game.championIn(whose) != null) {
+                    showSheet(CharacterSheet(whose))
+                }
                 return
             }
         } else {
@@ -558,16 +564,22 @@ class ViewConeDebugViewModel(
     }
 
     /** Which champion's which hand a click landed on, if it landed on one. */
-    private fun handAt(x: Int, y: Int): Pair<Int, Int>? {
+    private fun handAt(x: Int, y: Int): HandOnThePanel? {
         championBoxes.forEachIndexed { slot, box ->
-            if (roster.getOrNull(slot)?.inTheParty != true) return@forEachIndexed
+            val whose = PartySlot(slot)
+            if (_state.value.game.championIn(whose) == null) return@forEachIndexed
 
             repeat(Champion.HANDS) { hand ->
-                if (box.holdsHandAt(x, y, hand)) return slot to hand
+                if (box.holdsHandAt(x, y, hand)) {
+                    return HandOnThePanel(whose, inventorySlotPositions[hand])
+                }
             }
         }
         return null
     }
+
+    /** One of the two slots beside a face on the party panel. */
+    private data class HandOnThePanel(val champion: PartySlot, val holds: InventorySlot)
 
     /**
      * Swaps what is being held with what is in one of a champion's slots.
@@ -576,10 +588,10 @@ class ViewConeDebugViewModel(
      * it is putting something down; the original does not tell the three cases
      * apart, and neither does this.
      */
-    private fun swapHandWith(champion: Int, slot: InventorySlot) {
-        val who = roster.getOrNull(champion) ?: return
+    private fun swapHandWith(champion: PartySlot, slot: InventorySlot) {
         val world = _state.value.game
-        val inSlot = who.carrying.getOrNull(slot.slot) ?: return
+        val who = world.championIn(champion) ?: return
+        val inSlot = who.holding(slot.slot)
 
         if (slot.isQuiver) {
             useQuiver(champion, slot, inSlot)
@@ -601,8 +613,9 @@ class ViewConeDebugViewModel(
             return
         }
 
-        carried(champion, slot.slot, world.inHand)
-        _state.update { it.copy(game = world.holding(inSlot)) }
+        _state.update {
+            it.copy(game = world.holding(inSlot).carrying(champion, slot.slot, world.inHand))
+        }
         announceTaking(world.item(inSlot))
         renderViewPort()
     }
@@ -612,7 +625,7 @@ class ViewConeDebugViewModel(
      * hand joins the ones already in it and the tally goes up; an empty hand
      * takes one back out and the tally goes down.
      */
-    private fun useQuiver(champion: Int, slot: InventorySlot, head: ItemIndex) {
+    private fun useQuiver(champion: PartySlot, slot: InventorySlot, head: ItemIndex) {
         val world = _state.value.game
 
         val stacked = if (world.inHand.isSomething) {
@@ -628,20 +641,10 @@ class ViewConeDebugViewModel(
             world.unstacking(head)
         }
 
-        carried(champion, slot.slot, stacked.head)
-        _state.update { it.copy(game = stacked.world) }
-        renderViewPort()
-    }
-
-    /** The same roster with one of a champion's slots holding something else. */
-    private fun carried(champion: Int, slot: Int, item: ItemIndex) {
-        val who = roster.getOrNull(champion) ?: return
-
-        roster = roster.toMutableList().also {
-            it[champion] = who.copy(
-                carrying = who.carrying.toMutableList().also { carrying -> carrying[slot] = item },
-            )
+        _state.update {
+            it.copy(game = stacked.world.carrying(champion, slot.slot, stacked.head))
         }
+        renderViewPort()
     }
 
     /** Whatever comes into the hand says what it is, the way the original does. */
@@ -731,21 +734,19 @@ class ViewConeDebugViewModel(
      * there would be no way back to a champion.
      */
     private val sheetOnShow: CharacterSheet?
-        get() = _state.value.sheet?.takeIf { roster.getOrNull(it.slot)?.inTheParty == true }
+        get() = _state.value.sheet?.takeIf { _state.value.game.championIn(it.slot) != null }
 
     /** The champion's page as it is to be drawn, or null with none on show. */
     private fun openSheet(): OpenSheet? {
         val sheet = sheetOnShow ?: return null
-        val champion = roster[sheet.slot]
-
         val world = _state.value.game
+        val champion = world.championIn(sheet.slot) ?: return null
 
         return OpenSheet(
             page = sheet.page,
             champion = champion,
             carrying = champion.carrying.map { world.item(it) },
-            arrows = champion.carrying.getOrNull(InventorySlot.QUIVER)
-                ?.let { world.stackedIn(it) } ?: 0,
+            arrows = world.stackedIn(champion.holding(CarrySlot.QUIVER)),
         )
     }
 

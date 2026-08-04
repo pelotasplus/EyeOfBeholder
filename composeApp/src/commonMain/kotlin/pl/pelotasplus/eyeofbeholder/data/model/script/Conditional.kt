@@ -1,7 +1,9 @@
 package pl.pelotasplus.eyeofbeholder.data.model.script
 
 import pl.pelotasplus.eyeofbeholder.data.ByteReader
+import pl.pelotasplus.eyeofbeholder.data.model.CharacterClass
 import pl.pelotasplus.eyeofbeholder.data.model.FlagBit
+import pl.pelotasplus.eyeofbeholder.data.model.Race
 import pl.pelotasplus.eyeofbeholder.data.model.Location
 
 /**
@@ -251,19 +253,27 @@ sealed interface Conditional {
         override fun read(reader: ByteReader) = this
     }
 
-    data class HasRace(val race: Int) : Conditional {           // 0xDD
+    /** Whether the party hold anybody of this race. */
+    data class HasRace(val race: Race?) : Conditional {         // 0xDD
         override fun read(reader: ByteReader) = this
 
         companion object : Conditional {
-            override fun read(reader: ByteReader) = HasRace(race = reader.readU8())
+            override fun read(reader: ByteReader) =
+                HasRace(race = Race.entries.getOrNull(reader.readU8()))
         }
     }
 
-    data class HasClass(val classFlags: Int) : Conditional {    // 0xDC
+    /**
+     * Whether the party hold anybody of any of these classes. The file names
+     * them as one number of bits, which is turned into the classes it means
+     * here rather than carried on as a number.
+     */
+    data class HasClass(val classes: Set<CharacterClass>) : Conditional {   // 0xDC
         override fun read(reader: ByteReader) = this
 
         companion object : Conditional {
-            override fun read(reader: ByteReader) = HasClass(classFlags = reader.readU8())
+            override fun read(reader: ByteReader) =
+                HasClass(classes = CharacterClass.setOf(reader.readU8()))
         }
     }
 

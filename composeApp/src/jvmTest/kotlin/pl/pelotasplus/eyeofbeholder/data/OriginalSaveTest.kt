@@ -2,6 +2,7 @@ package pl.pelotasplus.eyeofbeholder.data
 
 import kotlinx.coroutines.runBlocking
 import pl.pelotasplus.eyeofbeholder.data.model.Champion
+import pl.pelotasplus.eyeofbeholder.data.model.CharacterClass
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.HitPoints
 import pl.pelotasplus.eyeofbeholder.data.model.Location
@@ -70,7 +71,15 @@ class OriginalSaveTest {
     fun `portraits, food and classes land where they should`() {
         assertEquals(listOf(2, 24, 0, 29), quickStart.champions.map { it.portrait.value })
         assertTrue(quickStart.champions.all { it.food.value == 99 }, "nobody has eaten yet")
-        assertEquals(listOf(2, 7, 4, 3), quickStart.champions.map { it.characterClass })
+        assertEquals(
+            listOf(
+                CharacterClass.PALADIN,
+                CharacterClass.FIGHTER_THIEF,
+                CharacterClass.CLERIC,
+                CharacterClass.MAGE,
+            ),
+            quickStart.champions.map { it.characterClass },
+        )
     }
 
     @Test

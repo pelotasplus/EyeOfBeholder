@@ -132,9 +132,10 @@ data class OriginalSave(
                 hitPoints = hitPoints,
                 armorClass = armorClass,
                 food = food,
-                raceAndSex = raceAndSex,
-                characterClass = characterClass,
-                alignment = alignment,
+                race = Race.of(raceAndSex),
+                sex = Sex.of(raceAndSex),
+                characterClass = CharacterClass.of(characterClass),
+                alignment = Alignment.of(alignment),
                 // a class the champion has no levels in is not a class they have
                 levels = levels.zip(experience) { level, earned -> ClassLevel(level, earned) }
                     .filter { it.level > 0 },

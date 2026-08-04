@@ -201,8 +201,8 @@ data class ItemTypes(private val types: List<ItemType>) {
         inSlot: Item?,
     ): Boolean = when {
         slot.isQuiver -> false
-        slot.slot < Champion.HANDS && inSlot?.stuckToItsSlot == true -> false
-        slot.slot == WORN_ARMOUR && !usableBy(champion, held) -> false
+        slot.slot.isAHand && inSlot?.stuckToItsSlot == true -> false
+        slot.slot == CarrySlot.WORN_ARMOUR && !usableBy(champion, held) -> false
         else -> mayGoIn(slot.takes, held)
     }
 
@@ -225,15 +225,12 @@ data class ItemTypes(private val types: List<ItemType>) {
     private fun allows(champion: Champion, item: Item?): Boolean {
         if (item == null) return true
         val allowed = this[item.type]?.allowedClasses ?: return false
-        return champion.countsAs.anyAllowedBy(allowed)
+        return champion.countsAs.any { it in CharacterClass.setOf(allowed) }
     }
 
     private companion object {
         const val FIRST_HAND = 0
         const val BOTH_HANDS = 2
-
-        /** The slot armour is worn in, and the only one that asks about class. */
-        const val WORN_ARMOUR = 17
 
         /** The low seven bits of an item's extra properties say what kind it is. */
         const val KIND = 0x7F

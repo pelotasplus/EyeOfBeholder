@@ -249,7 +249,7 @@ class PlayField(
             }
 
             val icons = itemIcons ?: return@forEach
-            val item = carrying.getOrNull(slot.slot) ?: return@forEach
+            val item = carrying.getOrNull(slot.slot.index) ?: return@forEach
 
             drawIcon(
                 icon = icons.itemIcon(item.icon),

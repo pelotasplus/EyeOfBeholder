@@ -108,7 +108,7 @@ class LevelTransitionTest {
         val run = LevelScriptRunner(level.script, level = 4).onEvent(
             level.triggers,
             ScriptEvent.PARTY_ENTERED,
-            GameState(PartyState(Location(12, 11), Direction.NORTH), level.monsterInstances),
+            GameState(PartyState(Location(12, 11), Direction.NORTH), monsters = level.monsterInstances),
             stage,
         )
 
@@ -144,7 +144,7 @@ class LevelTransitionTest {
         suspend fun step(facing: Direction) = LevelScriptRunner(level.script, level = 6).onEvent(
             level.triggers,
             ScriptEvent.PARTY_ENTERED,
-            GameState(PartyState(onTheStairs, facing), level.monsterInstances),
+            GameState(PartyState(onTheStairs, facing), monsters = level.monsterInstances),
         )
 
         val down = step(Direction.SOUTH)
@@ -192,7 +192,7 @@ class LevelTransitionTest {
         LevelScriptRunner(level.script).onEvent(
             level.triggers,
             ScriptEvent.PARTY_ENTERED,
-            GameState(party, level.monsterInstances),
+            GameState(party, monsters = level.monsterInstances),
             alive,
         )
         assertTrue(alive.questions.isNotEmpty(), "expected a question")
@@ -219,7 +219,7 @@ class LevelTransitionTest {
 
         var state = GameState(
             PartyState(Location(13, 9), Direction.NORTH),
-            level.monsterInstances,
+            monsters = level.monsterInstances,
         )
 
         suspend fun stepOnto(x: Int, y: Int): Boolean {
@@ -248,7 +248,7 @@ class LevelTransitionTest {
             LevelScriptRunner(level.script, level = 5).onEvent(
                 level.triggers,
                 ScriptEvent.PARTY_ENTERED,
-                GameState(PartyState(Location(x, y), Direction.NORTH), level.monsterInstances),
+                GameState(PartyState(Location(x, y), Direction.NORTH), monsters = level.monsterInstances),
                 stage,
             )
             assertTrue(
@@ -283,7 +283,7 @@ class LevelTransitionTest {
         val level = load("LEVEL5.INF")
         val state = GameState(
             PartyState(Location(13, 9), Direction.NORTH),
-            level.monsterInstances,
+            monsters = level.monsterInstances,
         )
         val stage = RecordingStage(answers = listOf(1))
 
@@ -315,7 +315,7 @@ class LevelTransitionTest {
     fun `taking leave of the level 5 clerics prints the party's line first`() = runBlocking {
         val level = load("LEVEL5.INF")
         val party = PartyState(Location(13, 9), Direction.NORTH)
-        val state = GameState(party, level.monsterInstances)
+        val state = GameState(party, monsters = level.monsterInstances)
         val stage = RecordingStage(answers = listOf(3))
 
         LevelScriptRunner(level.script)

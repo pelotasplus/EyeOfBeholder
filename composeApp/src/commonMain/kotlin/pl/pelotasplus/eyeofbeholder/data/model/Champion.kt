@@ -29,9 +29,10 @@ data class Champion(
     val hitPoints: HitPoints,
     val armorClass: ArmorClass,
     val food: Food,
-    val raceAndSex: Int,
-    val characterClass: Int,
-    val alignment: Int,
+    val race: Race?,
+    val sex: Sex?,
+    val characterClass: CharacterClass?,
+    val alignment: Alignment?,
     /** One per class the champion has levels in, so a multi-class has several. */
     val levels: List<ClassLevel>,
     val carrying: List<ItemIndex>,
@@ -56,8 +57,11 @@ data class Champion(
      * it — a fighter/thief counts as both, and may hold whatever either of
      * them may.
      */
-    val countsAs: Set<CharacterClass>
-        get() = classAllowances.getOrElse(characterClass) { emptySet() }
+    val countsAs: Set<CharacterClass> get() = characterClass?.countsAs.orEmpty()
+
+    /** What is in one of this champion's slots. */
+    fun holding(slot: CarrySlot): ItemIndex =
+        carrying.getOrElse(slot.index) { ItemIndex(ItemIndex.NOTHING) }
 
     /** Past the point a cleric can bring them back. */
     val deadForGood: Boolean get() = hitPoints.current <= BEYOND_RAISING
@@ -74,7 +78,7 @@ data class Champion(
         const val PARTY_SLOTS = 6
 
         /** The first two of [carrying] are the hands, in the order they are drawn. */
-        const val HANDS = 2
+        const val HANDS = CarrySlot.HANDS
 
         /** Hit points at which nothing short of a resurrection will do. */
         const val BEYOND_RAISING = -10
@@ -87,9 +91,10 @@ data class Champion(
             hitPoints = HitPoints(0, 0),
             armorClass = ArmorClass(0),
             food = Food(0),
-            raceAndSex = 0,
-            characterClass = 0,
-            alignment = 0,
+            race = null,
+            sex = null,
+            characterClass = null,
+            alignment = null,
             levels = emptyList(),
             carrying = emptyList(),
             flags = ChampionFlags(0),
@@ -125,34 +130,147 @@ value class ChampionFlags(val value: Int) {
 }
 
 /**
- * One of the six classes there are. A champion's own class is one of these or
- * a combination of them, and an item says who may hold it as a set of them —
- * in these bits, one to a class, in this order.
+ * What a champion is. The first six are the classes there are; the rest are
+ * the ways of being more than one at once, which is why a class is not simply
+ * a set of them.
+ *
+ * @property bit which bit names this class where the game writes a set of
+ *   them as one number. Only a single class has one; a combination is named
+ *   by the classes it [countsAs].
  */
-enum class CharacterClass {
-    FIGHTER, MAGE, CLERIC, THIEF, PALADIN, RANGER;
+enum class CharacterClass(val bit: Int = NOT_A_SINGLE_CLASS) {
+    FIGHTER(0x01),
+    RANGER(0x20),
+    PALADIN(0x10),
+    MAGE(0x02),
+    CLERIC(0x04),
+    THIEF(0x08),
+    FIGHTER_CLERIC,
+    FIGHTER_THIEF,
+    FIGHTER_MAGE,
+    FIGHTER_MAGE_THIEF,
+    THIEF_MAGE,
+    CLERIC_THIEF,
+    FIGHTER_CLERIC_MAGE,
+    RANGER_CLERIC,
+    CLERIC_MAGE;
 
-    val bit: Int get() = 1 shl ordinal
+    /**
+     * Which classes this counts as when an item asks who may hold it.
+     *
+     * Not the same as which it is [levelledIn], and the game's own tables keep
+     * the two apart: a ranger/cleric may hold whatever a fighter may, though
+     * neither of the classes they are levelled in is a fighter's.
+     */
+    val countsAs: Set<CharacterClass> get() = allowances.getValue(this)
+
+    /**
+     * Which classes this is levelled in, in the order the levels and the
+     * experience are kept — one for most, two or three for a multi-class.
+     */
+    val levelledIn: List<CharacterClass> get() = levelled.getValue(this)
+
+    companion object {
+        fun of(index: Int): CharacterClass? = entries.getOrNull(index)
+
+        /** The classes a number names, one bit each. */
+        fun setOf(bits: Int): Set<CharacterClass> =
+            entries.filter { it.bit != NOT_A_SINGLE_CLASS && bits and it.bit != 0 }.toSet()
+
+        private const val NOT_A_SINGLE_CLASS = 0
+    }
 }
 
-/** Whether an item allowed to [classes], as the file gives them, may be held. */
-fun Set<CharacterClass>.anyAllowedBy(classes: Int) = any { classes and it.bit != 0 }
+private val allowances: Map<CharacterClass, Set<CharacterClass>> = mapOf(
+    CharacterClass.FIGHTER to setOf(FIGHTER),
+    CharacterClass.RANGER to setOf(RANGER),
+    CharacterClass.PALADIN to setOf(PALADIN),
+    CharacterClass.MAGE to setOf(MAGE),
+    CharacterClass.CLERIC to setOf(CLERIC),
+    CharacterClass.THIEF to setOf(THIEF),
+    CharacterClass.FIGHTER_CLERIC to setOf(FIGHTER, CLERIC),
+    CharacterClass.FIGHTER_THIEF to setOf(FIGHTER, THIEF),
+    CharacterClass.FIGHTER_MAGE to setOf(FIGHTER, MAGE),
+    CharacterClass.FIGHTER_MAGE_THIEF to setOf(FIGHTER, MAGE, THIEF),
+    CharacterClass.THIEF_MAGE to setOf(THIEF, MAGE),
+    CharacterClass.CLERIC_THIEF to setOf(CLERIC, THIEF),
+    CharacterClass.FIGHTER_CLERIC_MAGE to setOf(FIGHTER, CLERIC, MAGE),
+    CharacterClass.RANGER_CLERIC to setOf(FIGHTER, CLERIC),
+    CharacterClass.CLERIC_MAGE to setOf(CLERIC, MAGE),
+)
+
+private val levelled: Map<CharacterClass, List<CharacterClass>> = mapOf(
+    CharacterClass.FIGHTER to listOf(FIGHTER),
+    CharacterClass.RANGER to listOf(RANGER),
+    CharacterClass.PALADIN to listOf(PALADIN),
+    CharacterClass.MAGE to listOf(MAGE),
+    CharacterClass.CLERIC to listOf(CLERIC),
+    CharacterClass.THIEF to listOf(THIEF),
+    CharacterClass.FIGHTER_CLERIC to listOf(FIGHTER, CLERIC),
+    CharacterClass.FIGHTER_THIEF to listOf(FIGHTER, THIEF),
+    CharacterClass.FIGHTER_MAGE to listOf(FIGHTER, MAGE),
+    CharacterClass.FIGHTER_MAGE_THIEF to listOf(FIGHTER, MAGE, THIEF),
+    CharacterClass.THIEF_MAGE to listOf(THIEF, MAGE),
+    CharacterClass.CLERIC_THIEF to listOf(CLERIC, THIEF),
+    CharacterClass.FIGHTER_CLERIC_MAGE to listOf(FIGHTER, CLERIC, MAGE),
+    CharacterClass.RANGER_CLERIC to listOf(RANGER, CLERIC),
+    CharacterClass.CLERIC_MAGE to listOf(CLERIC, MAGE),
+)
+
+/** One of the six races a champion can be. */
+enum class Race {
+    HUMAN, ELF, HALF_ELF, DWARF, GNOME, HALFLING;
+
+    companion object {
+        /**
+         * Race and sex are one number with the sex in its lowest bit, so the
+         * race is what is left when that is taken off.
+         */
+        fun of(raceAndSex: Int): Race? = entries.getOrNull(raceAndSex shr 1)
+    }
+}
+
+enum class Sex {
+    MALE, FEMALE;
+
+    companion object {
+        fun of(raceAndSex: Int): Sex? = entries.getOrNull(raceAndSex and 1)
+    }
+}
+
+/** Where a champion stands on the two axes, as one of the nine. */
+enum class Alignment {
+    LAWFUL_GOOD, NEUTRAL_GOOD, CHAOTIC_GOOD,
+    LAWFUL_NEUTRAL, TRUE_NEUTRAL, CHAOTIC_NEUTRAL,
+    LAWFUL_EVIL, NEUTRAL_EVIL, CHAOTIC_EVIL;
+
+    companion object {
+        fun of(index: Int): Alignment? = entries.getOrNull(index)
+    }
+}
+
+/** Which of the six places in the party, filled or not. */
+@JvmInline
+@Serializable
+value class PartySlot(val index: Int)
 
 /**
- * Which classes each of the fifteen a champion can be counts as when an item
- * asks who may hold it.
- *
- * This is not the same as which classes they have levels in, and the game's
- * own tables keep the two apart: a ranger/cleric may hold whatever a fighter
- * may, though neither of the classes they are levelled in is a fighter's.
+ * Which of a champion's twenty-seven slots: the two hands, the fourteen
+ * pockets of the pack, and what is worn.
  */
-private val classAllowances: List<Set<CharacterClass>> = listOf(
-    setOf(FIGHTER), setOf(RANGER), setOf(PALADIN),
-    setOf(MAGE), setOf(CLERIC), setOf(THIEF),
-    setOf(FIGHTER, CLERIC), setOf(FIGHTER, THIEF), setOf(FIGHTER, MAGE),
-    setOf(FIGHTER, MAGE, THIEF), setOf(THIEF, MAGE), setOf(CLERIC, THIEF),
-    setOf(FIGHTER, CLERIC, MAGE), setOf(FIGHTER, CLERIC), setOf(CLERIC, MAGE),
-)
+@JvmInline
+@Serializable
+value class CarrySlot(val index: Int) {
+    /** The hands are the first two, and are the only ones a curse sticks to. */
+    val isAHand: Boolean get() = index < HANDS
+
+    companion object {
+        const val HANDS = 2
+
+        val WORN_ARMOUR = CarrySlot(17)
+        val QUIVER = CarrySlot(16)
+    }
+}
 
 /** Which of the 44 faces in CHARGENA.CPS a champion wears. */
 @JvmInline
