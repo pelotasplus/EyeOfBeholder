@@ -1012,9 +1012,14 @@ class ViewConeDebugViewModel(
         /** How long the party must stand still before where they are is written. */
         private val AUTOSAVE_SETTLES = Ticks(9)
 
-        private const val DEFAULT_LEVEL = "LEVEL5.INF"
-        private const val DEFAULT_PLAYER_X = 10
-        private const val DEFAULT_PLAYER_Y = 8
-        private val DEFAULT_DIRECTION = Direction.WEST
+        /**
+         * Where a new party begin, from the original: the fourth level, at the
+         * square it counts as block 171 — 171 across a 32-wide maze — facing
+         * south.
+         */
+        private const val DEFAULT_LEVEL = "LEVEL4.INF"
+        private const val DEFAULT_PLAYER_X = 11
+        private const val DEFAULT_PLAYER_Y = 5
+        private val DEFAULT_DIRECTION = Direction.SOUTH
     }
 }
