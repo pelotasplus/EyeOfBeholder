@@ -117,7 +117,6 @@ class SubLevelShowingTest {
                 cpsRepository = cpsRepository,
                 decRepository = DecRepositoryImpl(resources),
             ),
-            itemsRepository = ItemsRepositoryImpl(resources),
             cpsRepository = cpsRepository,
             dcrRepository = DcrRepositoryImpl(resources),
         )

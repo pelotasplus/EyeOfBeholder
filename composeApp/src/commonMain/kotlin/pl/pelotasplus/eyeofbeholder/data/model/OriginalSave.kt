@@ -11,9 +11,9 @@ import pl.pelotasplus.eyeofbeholder.data.ByteReader
  * That is the same ground [GameState] covers, which is why reading one is
  * worth doing even though our own saves will be written differently.
  *
- * What is parsed here is the party, the position and the flags. The item list
- * and the per-level data are left where they are for now: wiring them in
- * changes what a level is loaded from, which is a change of its own.
+ * What is parsed here is the party, the position, the flags and the items. The
+ * per-level data is left where it is for now: wiring it in changes what a
+ * level is loaded from, which is a change of its own.
  *
  * ## Layout
  * ```
@@ -29,8 +29,8 @@ import pl.pelotasplus.eyeofbeholder.data.ByteReader
  * 2108    1   padding
  * 2109    1   whether resting is prevented
  * 2110   72   18 flag words: [0] global, [1..17] one per level
- * 2182 7200   600 item records of 12 bytes
- * 9382   ...  18 blocks of 2130 bytes, one per level
+ * 2182 8400   600 item records of 14 bytes
+ * 10582  ...  one block per level, of what a script has changed on it
  * ```
  */
 data class OriginalSave(
@@ -41,6 +41,17 @@ data class OriginalSave(
     val subLevel: Int,
     val standing: PartyState,
     val flags: GameFlags,
+    /**
+     * Every item in the game as this save has it — the dungeon's and the
+     * party's in one table, which is what a champion's [Champion.carrying] and
+     * a square's floor both name a slot of.
+     *
+     * It supersedes ITEM.DAT rather than adding to it: the file says where a
+     * game begins, and the six hundred slots here say where this one is. The
+     * quick start party's own gear lives past the end of ITEM.DAT, so a party
+     * read without this table carries nothing that can be looked up.
+     */
+    val items: List<Item>,
 ) {
     val champions: List<Champion> get() = party.filter { it.inTheParty }
 
@@ -71,6 +82,7 @@ data class OriginalSave(
                     facing = Direction.entries[facing % Direction.entries.size],
                 ),
                 flags = readFlags(reader),
+                items = List(ITEM_SLOTS) { Item.read(reader) },
             )
         }
 
@@ -155,6 +167,9 @@ data class OriginalSave(
         private const val CLASSES_PER_CHAMPION = 3
         private const val INVENTORY_SLOTS = 27
         private const val FLAG_WORDS = 18
+
+        /** Room for every item in the game at once, most of it spare. */
+        private const val ITEM_SLOTS = 600
         private const val MAZE_WIDTH = 32
 
         private const val MAGE_SPELLS = 80

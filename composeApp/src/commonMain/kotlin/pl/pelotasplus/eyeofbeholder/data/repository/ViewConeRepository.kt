@@ -40,8 +40,8 @@ import pl.pelotasplus.eyeofbeholder.data.model.viewSlots
  * repositories to produce the final rendered viewport image.
  *
  * ## Level loading flow
- * [loadLevel] → loads items from ITEM.DAT, then delegates to [InfRepository]
- * which cascades to MAZ, VMP, VCN, PAL, DEC, CPS repositories.
+ * [loadLevel] delegates to [InfRepository], which cascades to MAZ, VMP, VCN,
+ * PAL, DEC, CPS repositories.
  *
  * ## Rendering flow ([renderPosition])
  * Given a player position (x, y), facing direction, and sublevel:
@@ -85,7 +85,6 @@ interface ViewConeRepository {
 
 class ViewConeRepositoryImpl(
     private val infRepository: InfRepository,
-    private val itemsRepository: ItemsRepository,
     private val cpsRepository: CpsRepository,
     private val dcrRepository: DcrRepository,
 ) : ViewConeRepository {
@@ -276,10 +275,7 @@ class ViewConeRepositoryImpl(
 
     override suspend fun loadLevel(
         name: String,
-    ): Result<Inf> {
-        val items = itemsRepository.loadItems().getOrThrow()
-        return infRepository.loadInf(name.replace(".MAZ", ".INF"), items)
-    }
+    ): Result<Inf> = infRepository.loadInf(name.replace(".MAZ", ".INF"))
 
     /** Loads and caches the near-size poses for each of the sublevel's sprite sheets. */
     private suspend fun loadMonsterSheets(sublevel: SubLevel): List<MonsterSheet> {
@@ -423,7 +419,7 @@ class ViewConeRepositoryImpl(
         }
 
         for (item in itemsHere) {
-            Logger.d(TAG) { "drawItem ${item.nameUnidentified} icon=${item.icon} at ($mazX, $mazY) pos=${item.pos} block=$blockIndex" }
+            Logger.d(TAG) { "drawItem icon=${item.icon} at ($mazX, $mazY) pos=${item.pos} block=$blockIndex" }
 
             when {
                 item.pos == 8 -> {

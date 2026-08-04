@@ -179,14 +179,10 @@ private fun ViewConeDebugContent(
                                 onViewClick(x, y)
                             }
                         } else {
+                            // whatever no button claims is the world's: the
+                            // view, the party's faces, or an open page
                             val control = PlayFieldControl.at(screenX = x, screenY = y)
-                            when {
-                                control != null -> onControlClick(control)
-
-                                // the view itself: a click means the wall ahead
-                                x < ViewPort.COLS && y < ViewPort.ROWS ->
-                                    onViewClick(x, y)
-                            }
+                            if (control != null) onControlClick(control) else onViewClick(x, y)
                         }
                     }
                 }

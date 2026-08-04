@@ -33,7 +33,7 @@ class LevelEntryPointTest {
     @Test
     fun `script-only load reads the same script as a full level load`() = runBlocking {
         listOf("LEVEL1.INF", "LEVEL7.INF", "LEVEL16.INF").forEach { name ->
-            val full = infRepository.loadInf(name, items = emptyList()).getOrThrow().script
+            val full = infRepository.loadInf(name).getOrThrow().script
             val scriptOnly = infRepository.loadScript(name).getOrThrow()
 
             assertEquals(full, scriptOnly, "$name script differs between the two loads")

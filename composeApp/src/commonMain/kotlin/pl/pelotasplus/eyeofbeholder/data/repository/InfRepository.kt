@@ -89,7 +89,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.script.Wait
  * ```
  */
 interface InfRepository {
-    suspend fun loadInf(name: String, items: List<Item>): Result<Inf>
+    suspend fun loadInf(name: String): Result<Inf>
 
     /**
      * Only the level's script. Block B does not refer back to Block A, so this
@@ -113,10 +113,10 @@ class InfRepositoryImpl(
 
     private val TAG = "InfRepository"
 
-    override suspend fun loadInf(name: String, items: List<Item>): Result<Inf> {
+    override suspend fun loadInf(name: String): Result<Inf> {
         return runCatching {
             val decompressed = resourceRepository.decompressResource("files/$name").bytes
-            decodeInf(name, decompressed, items)
+            decodeInf(name, decompressed)
         }
     }
 
@@ -133,7 +133,7 @@ class InfRepositoryImpl(
         }
     }
 
-    private suspend fun decodeInf(name: String, bytes: UByteArray, items: List<Item>): Inf {
+    private suspend fun decodeInf(name: String, bytes: UByteArray): Inf {
         val levelNumber = name.replace("LEVEL", "").replace(".INF", "").toInt()
 
         val reader = ByteReader(bytes)
@@ -359,16 +359,11 @@ class InfRepositoryImpl(
             }
         }
 
-        items.filter { it.level == levelNumber }.forEachIndexed { index, item ->
-            Logger.d(TAG) { "XXX Got item: $index -> $item" }
-        }
-
         return Inf(
             name = name,
             subLevels = subLevels.inheriting(),
             script = script,
             messages = messages,
-            items = items,
             monsterInstances = monsterInstances,
             triggers = triggers
         )

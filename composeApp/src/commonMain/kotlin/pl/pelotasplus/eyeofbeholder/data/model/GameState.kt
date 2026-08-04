@@ -10,13 +10,20 @@ import pl.pelotasplus.eyeofbeholder.data.model.script.CreateMonster
  * they are dead — so the answer changes as the game is played, and the state
  * arrives with each call rather than being fixed when the runner is built.
  *
- * Only what is modelled lives here. Items lying on a square are the next to
- * arrive, along with anything else the still unanswered conditions need.
+ * Only what is modelled lives here, along with anything else the still
+ * unanswered conditions need.
  */
 data class GameState(
     val party: PartyState,
     val monsters: List<MonsterInstance> = emptyList(),
     val flags: GameFlags = GameFlags(),
+    /**
+     * Every item in the game in one table, the dungeon's and the party's
+     * alike, because everything that can hold one names it by its slot here:
+     * a champion's [Champion.carrying], and in time a square's floor and the
+     * hand. A game begins with ITEM.DAT's table and a save carries its own.
+     */
+    val items: List<Item> = emptyList(),
     /**
      * How each level stood when the party walked out of it, which is not how
      * its file describes it: monsters a script conjured are there, and in time
@@ -38,6 +45,34 @@ data class GameState(
     /** Each level's maze as its file describes it, for everything unchanged. */
     private val mazes: Map<Int, Maz> = emptyMap(),
 ) {
+
+    /** What is in [slot], or null for an empty hand or pack slot. */
+    fun item(slot: ItemIndex): Item? =
+        if (!slot.isSomething) null else items.getOrNull(slot.value)
+
+    /**
+     * How many items are stacked in [slot].
+     *
+     * A dozen arrows are a dozen items in one place, not one item that knows
+     * it is a dozen, and things in one place are strung into a ring — the last
+     * points back at the one the slot names. So counting them is walking round
+     * until it comes back, and a chain that leads nowhere stops the count
+     * rather than running away with it.
+     */
+    fun stackedIn(slot: ItemIndex): Int {
+        if (!slot.isSomething) return 0
+
+        var at = slot.value
+        var counted = 0
+
+        while (counted <= items.size) {
+            val item = items.getOrNull(at) ?: return counted
+            counted++
+            at = item.prev
+            if (at == slot.value) return counted
+        }
+        return counted
+    }
 
     /** Remembers [level] as it stands, for whenever the party comes back. */
     fun leaving(level: Int) = copy(asTheyWereLeft = asTheyWereLeft + (level to monsters))
@@ -147,6 +182,7 @@ data class GameState(
         party = party,
         monsters = monsters,
         flags = flags,
+        items = items,
         leftBehind = asTheyWereLeft,
         changedWalls = changedWalls.map { (where, to) ->
             ChangedWall(where.level, where.at, where.side, to)
@@ -167,6 +203,7 @@ data class GameState(
             party = saved.party,
             monsters = saved.monsters,
             flags = saved.flags,
+            items = saved.items,
             asTheyWereLeft = saved.leftBehind + (on to saved.monsters),
             changedWalls = saved.changedWalls.associate {
                 WallAt(it.level, it.at, it.side) to it.to

@@ -17,11 +17,21 @@ import kotlin.jvm.JvmInline
  * position in the sheet itself, and not an [ItemTypeId].
  */
 @JvmInline
+@Serializable
 value class ItemIconId(val value: Int)
 
 /** An index into the item type table parsed from ITEM.DAT. */
 @JvmInline
+@Serializable
 value class ItemTypeId(val value: Int)
+
+/**
+ * An index into ITEM.DAT's table of item names. An item has two — what the
+ * party call it before they know what it is, and what it really is.
+ */
+@JvmInline
+@Serializable
+value class ItemNameId(val value: Int)
 
 /**
  * Which of a sublevel's two door definitions a wall uses (0 or 1 → SubLevel.doors).

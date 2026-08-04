@@ -60,6 +60,12 @@ data class SavedWorld(
     /** Each level as the party left it, so going back finds it that way. */
     val leftBehind: Map<Int, List<MonsterInstance>>,
     val changedWalls: List<ChangedWall>,
+    /**
+     * Every item in the game. Unlike the mazes this is not the file's to give
+     * back: the party carry things about, and a champion's pack is a list of
+     * slots in here.
+     */
+    val items: List<Item> = emptyList(),
 )
 
 /**

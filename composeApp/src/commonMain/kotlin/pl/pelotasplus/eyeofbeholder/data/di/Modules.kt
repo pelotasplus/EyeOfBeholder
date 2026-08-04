@@ -79,6 +79,6 @@ val sharedDataModule = module {
         VmpRepositoryImpl(get())
     }
     factory<ViewConeRepository> {
-        ViewConeRepositoryImpl(get(), get(), get(), get())
+        ViewConeRepositoryImpl(get(), get(), get())
     }
 }

@@ -14,6 +14,10 @@ import kotlinx.coroutines.launch
 import kotlin.random.Random
 import pl.pelotasplus.eyeofbeholder.data.model.CampMenu
 import pl.pelotasplus.eyeofbeholder.data.model.Champion
+import pl.pelotasplus.eyeofbeholder.data.model.CharacterSheet
+import pl.pelotasplus.eyeofbeholder.data.model.OpenSheet
+import pl.pelotasplus.eyeofbeholder.data.model.SheetChoice
+import pl.pelotasplus.eyeofbeholder.data.model.championBoxes
 import pl.pelotasplus.eyeofbeholder.data.model.MenuChoice
 import pl.pelotasplus.eyeofbeholder.data.model.Naming
 import pl.pelotasplus.eyeofbeholder.data.model.Typing
@@ -27,6 +31,9 @@ import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.Font
 import pl.pelotasplus.eyeofbeholder.data.model.GameState
 import pl.pelotasplus.eyeofbeholder.data.model.Inf
+import pl.pelotasplus.eyeofbeholder.data.model.InventorySlot
+import pl.pelotasplus.eyeofbeholder.data.model.Item
+import pl.pelotasplus.eyeofbeholder.data.model.OriginalSave
 import pl.pelotasplus.eyeofbeholder.data.model.ClickedWall
 import pl.pelotasplus.eyeofbeholder.data.model.LevelScriptRunner
 import pl.pelotasplus.eyeofbeholder.data.model.Maz
@@ -75,6 +82,8 @@ class ViewConeDebugViewModel(
     private var decorations: Cps? = null
     private var dialogueFrame: Cps? = null
     private var portraits: Cps? = null
+    private var invent: Cps? = null
+    private var carriedItemIcons: Cps? = null
 
     /** Who the party are, as against [party], which is where they stand. */
     private var roster: List<Champion> = emptyList()
@@ -181,6 +190,12 @@ class ViewConeDebugViewModel(
             cpsRepository.loadCps(PORTRAITS_CPS)
                 .onSuccess { portraits = it }
                 .onFailure { Logger.e(it) { "Error while loading $PORTRAITS_CPS" } }
+            cpsRepository.loadCps(INVENTORY_CPS)
+                .onSuccess { invent = it }
+                .onFailure { Logger.e(it) { "Error while loading $INVENTORY_CPS" } }
+            cpsRepository.loadCps(CARRIED_ITEM_ICONS_CPS)
+                .onSuccess { carriedItemIcons = it }
+                .onFailure { Logger.e(it) { "Error while loading $CARRIED_ITEM_ICONS_CPS" } }
             // a level picked from the Levels screen is an instruction, so it
             // wins over wherever the party were last left
             val resumed = if (level != null || !AUTOSAVES) {
@@ -201,7 +216,7 @@ class ViewConeDebugViewModel(
     }
 
     /** Picks the game up where the autosave left it. */
-    private fun resume(saved: SavedGame) {
+    private suspend fun resume(saved: SavedGame) {
         Logger.i(TAG) { "Resuming ${saved.description} on level ${saved.level}" }
         roster = saved.champions
         _state.update {
@@ -210,13 +225,35 @@ class ViewConeDebugViewModel(
                 messages = saved.messages,
             )
         }
+
+        // a save written before the items were part of the world has none, and
+        // its champions would be carrying nothing they could be asked about
+        if (saved.world.items.isEmpty()) itemsFromTheQuickStart()
     }
 
-    /** No autosave to pick up, so the party are the ones the game ships with. */
+    /**
+     * No autosave to pick up, so the party are the ones the game ships with —
+     * and so are their belongings. The quick start party's own gear lives past
+     * the end of ITEM.DAT, in the save's table, which is why the items come
+     * from there too and not from the file.
+     */
     private suspend fun resumeNothing() {
+        val save = quickStart() ?: return
+        roster = save.party
+        carry(save.items)
+    }
+
+    private suspend fun itemsFromTheQuickStart() {
+        quickStart()?.let { carry(it.items) }
+    }
+
+    private suspend fun quickStart(): OriginalSave? =
         originalSaveRepository.loadOriginalSave(OriginalSaveRepositoryImpl.QUICK_START)
-            .onSuccess { roster = it.party }
             .onFailure { Logger.e(it) { "Error while loading the quick start party" } }
+            .getOrNull()
+
+    private fun carry(items: List<Item>) {
+        _state.update { it.copy(game = it.game.copy(items = items)) }
     }
 
     /**
@@ -430,11 +467,75 @@ class ViewConeDebugViewModel(
     }
 
     /**
+     * A click anywhere on the play field that no button claimed.
+     *
+     * An open page has first refusal, then the six faces — clicking one opens
+     * its owner's page — and what is left is the 3D view.
+     */
+    private fun onClickedTheView(x: Int, y: Int) {
+        val sheet = sheetOnShow
+
+        if (sheet == null) {
+            val face = championBoxes.indexOfFirst { it.showsFaceAt(x, y) }
+            if (face >= 0) {
+                if (roster.getOrNull(face)?.inTheParty == true) showSheet(CharacterSheet(face))
+                return
+            }
+        } else {
+            sheet.clicked(x, y)?.let { choice ->
+                onSheetChoice(sheet, choice)
+                return
+            }
+        }
+
+        if (x < ViewPort.COLS && y < ViewPort.ROWS) onClickedTheWorld(x, y)
+    }
+
+    private fun onSheetChoice(sheet: CharacterSheet, choice: SheetChoice) {
+        showSheet(
+            when (choice) {
+                SheetChoice.Close -> null
+                SheetChoice.TurnPage -> sheet.turnedOver
+                is SheetChoice.Walk -> sheet.walked(choice.step, roster)
+            }
+        )
+    }
+
+    private fun showSheet(sheet: CharacterSheet?) {
+        _state.update { it.copy(sheet = sheet) }
+        drawWords()
+    }
+
+    /**
+     * Whose page is on show. A page of a slot nobody fills is no page at all —
+     * it would draw as the party panel while still swallowing every click, and
+     * there would be no way back to a champion.
+     */
+    private val sheetOnShow: CharacterSheet?
+        get() = _state.value.sheet?.takeIf { roster.getOrNull(it.slot)?.inTheParty == true }
+
+    /** The champion's page as it is to be drawn, or null with none on show. */
+    private fun openSheet(): OpenSheet? {
+        val sheet = sheetOnShow ?: return null
+        val champion = roster[sheet.slot]
+
+        val world = _state.value.game
+
+        return OpenSheet(
+            page = sheet.page,
+            champion = champion,
+            carrying = champion.carrying.map { world.item(it) },
+            arrows = champion.carrying.getOrNull(InventorySlot.QUIVER)
+                ?.let { world.stackedIn(it) } ?: 0,
+        )
+    }
+
+    /**
      * A click in the view means the wall of the square ahead that faces the
      * party, whatever part of the view it landed on. Where it landed decides
      * only whether it hit what hangs there.
      */
-    private fun onClickedTheView(x: Int, y: Int) {
+    private fun onClickedTheWorld(x: Int, y: Int) {
         val inf = _state.value.inf ?: return
         val sublevel = inf.subLevels[_state.value.subLevel]
 
@@ -724,7 +825,7 @@ class ViewConeDebugViewModel(
         val sublevel = inf.subLevels[followTheWalls(inf, wallAt)]
 
         viewConeRepository.renderPosition(
-            items = inf.items,
+            items = _state.value.game.items,
             monsters = _state.value.game.monsters,
             sublevel = sublevel,
             playerX = party.position.x,
@@ -810,7 +911,15 @@ class ViewConeDebugViewModel(
         val decorations = decorations
 
         val image = if (background != null && decorations != null) {
-            PlayField(background, decorations, palette, font, menuFont)
+            PlayField(
+                background = background,
+                decorations = decorations,
+                palette = palette,
+                font = font,
+                menuFont = menuFont,
+                invent = invent,
+                itemIcons = carriedItemIcons,
+            )
                 .render(
                     viewPort = viewPort,
                     direction = party.facing,
@@ -819,6 +928,7 @@ class ViewConeDebugViewModel(
                     party = roster,
                     portraits = portraits,
                     menu = _state.value.menu,
+                    sheet = openSheet(),
                 )
                 .toImageBitmap()
         } else {
@@ -962,6 +1072,13 @@ class ViewConeDebugViewModel(
         val menu: CampMenu? = null,
 
         /**
+         * Whose page is open, if anyone's. It stands where the party boxes go
+         * and leaves the rest of the screen alone, so the party can be walked
+         * about with a champion's things on show.
+         */
+        val sheet: CharacterSheet? = null,
+
+        /**
          * The bar along the bottom, oldest first. A script writes here when it
          * has no box open, and nothing takes a line off again — the bar scrolls
          * as more arrive.
@@ -998,6 +1115,10 @@ class ViewConeDebugViewModel(
         /** The bigger one the interface is set in. */
         private const val MENU_FONT = "FONT8.FNT"
         private const val PORTRAITS_CPS = "CHARGENA.CPS"
+        private const val INVENTORY_CPS = "INVENT.CPS"
+
+        /** Carried items are drawn from a sheet of their own, not the floor's. */
+        private const val CARRIED_ITEM_ICONS_CPS = "ITEMICN.CPS"
 
         /**
          * Whether the game writes where the party got to and picks it up again

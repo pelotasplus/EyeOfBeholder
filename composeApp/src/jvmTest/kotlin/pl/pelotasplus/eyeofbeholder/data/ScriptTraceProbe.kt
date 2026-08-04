@@ -47,8 +47,7 @@ class ScriptTraceProbe {
             cpsRepository = cpsRepository,
             decRepository = DecRepositoryImpl(resources),
         )
-        val items = ItemsRepositoryImpl(resources).loadItems().getOrThrow()
-        val inf = infRepository.loadInf("LEVEL5.INF", items).getOrThrow()
+        val inf = infRepository.loadInf("LEVEL5.INF").getOrThrow()
 
         println("=== triggers on LEVEL5 around 13x9")
         inf.triggers
@@ -100,7 +99,7 @@ class ScriptTraceProbe {
         }
 
         println("=== what level 1 is doing where it sets global flag 30")
-        val one = infRepository.loadInf("LEVEL1.INF", items).getOrThrow()
+        val one = infRepository.loadInf("LEVEL1.INF").getOrThrow()
         one.triggers.filter { it.script.offset.value in 0..70 }
             .forEach { println("  trigger at ${it.location} -> ${it.script.offset}") }
         one.script.filter { it.offset.value in 30..100 }.forEach { step ->

@@ -15,6 +15,10 @@ class PlayField(
     private val palette: Palette,
     private val font: Font? = null,
     private val menuFont: Font? = null,
+    /** INVENT.CPS, which the panel of an open [CharacterSheet] is cut from. */
+    private val invent: Cps? = null,
+    /** ITEMICN.CPS, where an item being carried is drawn from. */
+    private val itemIcons: Cps? = null,
 ) {
     private val pixels = MutableList(WIDTH * HEIGHT) { RGB(0, 0, 0, true) }
 
@@ -26,15 +30,238 @@ class PlayField(
         party: List<Champion> = emptyList(),
         portraits: Cps? = null,
         menu: CampMenu? = null,
+        sheet: OpenSheet? = null,
     ): PlayField {
         drawBackground()
-        drawParty(party, portraits)
+        // a champion's own page takes the six boxes' side of the screen
+        if (sheet == null) drawParty(party, portraits) else drawSheet(sheet, portraits)
         drawViewPort(viewPort)
         drawCompass(direction)
         drawMessages(messages)
         dialogue?.let(::drawDialogue)
         menu?.let(::drawMenu)
         return this
+    }
+
+    /**
+     * A champion's page, over the side of the screen the party boxes are on.
+     *
+     * The panel's boxes are drawn into INVENT.CPS already, so what is put on
+     * top of it is only what changes: who this is, how they are, and what they
+     * have in each of their slots.
+     */
+    private fun drawSheet(sheet: OpenSheet, portraits: Cps?) {
+        val invent = invent ?: return
+
+        copy(
+            from = invent,
+            sourceLeft = CharacterSheet.LEFT,
+            sourceTop = CharacterSheet.TOP,
+            width = CharacterSheet.WIDTH,
+            height = CharacterSheet.HEIGHT,
+            left = CharacterSheet.LEFT,
+            top = CharacterSheet.TOP,
+        )
+
+        portraits?.let { faces ->
+            val face = faces.portrait(sheet.champion.portrait)
+            val colours = faces.palette ?: palette
+            for (y in 0 until face.h) {
+                for (x in 0 until face.w) {
+                    val index = face.pixels[y * face.w + x]
+                    draw(
+                        CharacterSheet.PORTRAIT_LEFT + x,
+                        CharacterSheet.PORTRAIT_TOP + y,
+                        colours.colors[index.value],
+                    )
+                }
+            }
+        }
+
+        font?.let { font ->
+            write(
+                text = sheet.champion.name,
+                font = font,
+                left = CharacterSheet.NAME_LEFT,
+                top = CharacterSheet.NAME_TOP,
+                colour = if (sheet.champion.inTrouble) NAME_IN_TROUBLE else NAME_COLOUR,
+            )
+        }
+
+        drawSheetBars(sheet.champion)
+
+        when (sheet.page) {
+            CharacterSheet.Page.BELONGINGS -> drawCarried(sheet.carrying, sheet.arrows)
+            CharacterSheet.Page.STATS -> drawStats(sheet.champion)
+        }
+    }
+
+    /**
+     * The second page: what the champion is, written over the figure and the
+     * slots of the first, which are painted out to make room.
+     */
+    private fun drawStats(champion: Champion) {
+        val font = font ?: return
+
+        StatsPage.BLANKED.forEach { blanked ->
+            for (y in blanked.top..blanked.bottom) {
+                for (x in blanked.left..blanked.right) {
+                    draw(x, y, palette.colors[StatsPage.BLANK_COLOUR.value])
+                }
+            }
+        }
+
+        write(
+            text = StatsPage.HEADLINE,
+            font = font,
+            left = StatsPage.HEADLINE_LEFT,
+            top = StatsPage.HEADLINE_TOP,
+            colour = StatsPage.HEADLINE_COLOUR,
+        )
+
+        listOf(champion.className, champion.alignmentName, champion.raceAndSexName)
+            .forEachIndexed { line, description ->
+                write(
+                    text = description,
+                    font = font,
+                    left = StatsPage.DESCRIPTION_LEFT,
+                    top = StatsPage.DESCRIPTION_TOP + line * StatsPage.DESCRIPTION_LINE,
+                    colour = StatsPage.LABEL_COLOUR,
+                )
+            }
+
+        abilityNames.zip(champion.abilities.asListed())
+            .forEachIndexed { line, (name, score) ->
+                val top = StatsPage.ABILITY_TOP + line * StatsPage.ABILITY_LINE
+                write(name, font, StatsPage.ABILITY_LEFT, top, StatsPage.LABEL_COLOUR)
+                write(score, font, StatsPage.ABILITY_VALUE_LEFT, top, StatsPage.VALUE_COLOUR)
+            }
+
+        write(
+            text = StatsPage.ARMOUR_CLASS,
+            font = font,
+            left = StatsPage.ARMOUR_CLASS_LEFT,
+            top = StatsPage.ARMOUR_CLASS_TOP,
+            colour = StatsPage.LABEL_COLOUR,
+        )
+        write(
+            text = "${champion.armorClass.value}",
+            font = font,
+            left = StatsPage.ARMOUR_CLASS_VALUE_LEFT,
+            top = StatsPage.ARMOUR_CLASS_TOP,
+            colour = StatsPage.VALUE_COLOUR,
+        )
+
+        write(
+            text = StatsPage.EXPERIENCE,
+            font = font,
+            left = StatsPage.EXPERIENCE_LEFT,
+            top = StatsPage.EXPERIENCE_TOP,
+            colour = StatsPage.LABEL_COLOUR,
+        )
+        write(
+            text = StatsPage.LEVEL,
+            font = font,
+            left = StatsPage.LEVEL_LEFT,
+            top = StatsPage.LEVEL_TOP,
+            colour = StatsPage.LABEL_COLOUR,
+        )
+
+        // one line per career, so a multi-class has its two one under the other
+        val careers = champion.careerNames
+        champion.levels.forEachIndexed { line, career ->
+            val top = StatsPage.CAREER_TOP + line * StatsPage.CAREER_LINE
+
+            write(
+                text = careers.getOrElse(line) { "" },
+                font = font,
+                left = StatsPage.CAREER_LEFT,
+                top = top,
+                colour = StatsPage.LABEL_COLOUR,
+            )
+            writeCentred("${career.experience}", font, StatsPage.EXPERIENCE_MIDDLE, top)
+            writeCentred("${career.level}", font, StatsPage.LEVEL_MIDDLE, top)
+        }
+    }
+
+    /** Both numbers on a career's line are written about their column, not from it. */
+    private fun writeCentred(text: String, font: Font, middle: Int, top: Int) = write(
+        text = text,
+        font = font,
+        left = middle - text.length * font.width / 2,
+        top = top,
+        colour = StatsPage.VALUE_COLOUR,
+    )
+
+    /** How hurt they are and how hungry, as two bars of the same shape. */
+    private fun drawSheetBars(champion: Champion) {
+        val width = CharacterSheet.BAR_WIDTH
+        drawSheetBar(CharacterSheet.HIT_POINT_BAR_TOP, hitPointBar(champion.hitPoints, width))
+        drawSheetBar(CharacterSheet.FOOD_BAR_TOP, foodBar(champion.food, width))
+    }
+
+    private fun drawSheetBar(top: Int, bar: BarFill) {
+        drawBox(
+            left = CharacterSheet.BAR_LEFT - 1,
+            top = top - 1,
+            width = CharacterSheet.BAR_WIDTH + 2,
+            height = CharacterSheet.BAR_HEIGHT + 2,
+            topRight = EDGE_SHADED,
+            bottomLeft = EDGE_LIT,
+            fill = null,
+        )
+
+        for (y in 0 until CharacterSheet.BAR_HEIGHT) {
+            for (x in 0 until CharacterSheet.BAR_WIDTH) {
+                val ink = if (x < bar.filled) bar.colour else BAR_EMPTY
+                draw(CharacterSheet.BAR_LEFT + x, top + y, palette.colors[ink.value])
+            }
+        }
+    }
+
+    private fun drawCarried(carrying: List<Item?>, arrows: Int) {
+        inventorySlotPositions.forEach { slot ->
+            if (slot.countsRatherThanShows) {
+                drawTally(slot, arrows)
+                return@forEach
+            }
+
+            val icons = itemIcons ?: return@forEach
+            val item = carrying.getOrNull(slot.slot) ?: return@forEach
+
+            val icon = icons.itemIcon(item.icon)
+            val colours = icons.palette ?: palette
+            for (y in 0 until icon.h) {
+                for (x in 0 until icon.w) {
+                    val index = icon.pixels[y * icon.w + x]
+                    if (index.isTransparent) continue
+                    draw(slot.iconLeft + x, slot.iconTop + y, colours.colors[index.value])
+                }
+            }
+        }
+    }
+
+    /**
+     * How many arrows the quiver holds, over a strip wiped clean first so that
+     * one figure never leaves the tail of two behind it.
+     */
+    private fun drawTally(slot: InventorySlot, count: Int) {
+        val font = font ?: return
+
+        for (y in 0 until InventorySlot.TALLY_HEIGHT) {
+            for (x in 0 until InventorySlot.TALLY_WIDTH) {
+                draw(slot.tallyLeft + x, slot.tallyTop + y, palette.colors[TALLY_BACKING.value])
+            }
+        }
+
+        val figures = count.toString()
+        write(
+            text = figures,
+            font = font,
+            left = slot.tallyStart(figures.length),
+            top = slot.tallyTop,
+            colour = TALLY_COLOUR,
+        )
     }
 
     /**
@@ -143,7 +370,7 @@ class PlayField(
 
     /** The hit point bar, sunk into the strip it sits on, with HP written beside it. */
     private fun drawHitPointBar(champion: Champion, box: ChampionBox) {
-        val bar = hitPointBar(champion.hitPoints)
+        val bar = hitPointBar(champion.hitPoints, ChampionBox.BAR_WIDTH)
 
         drawBox(
             left = box.barLeft - 1,
@@ -413,6 +640,9 @@ class PlayField(
         private val NAME_COLOUR = PaletteIndex(12)
         private val NAME_IN_TROUBLE = PaletteIndex(8)
         private val BAR_EMPTY = PaletteIndex(184)
+
+        private val TALLY_BACKING = PaletteIndex(12)
+        private val TALLY_COLOUR = PaletteIndex(15)
 
         /** Camp menu colours. */
         private val MENU_TITLE = PaletteIndex(9)

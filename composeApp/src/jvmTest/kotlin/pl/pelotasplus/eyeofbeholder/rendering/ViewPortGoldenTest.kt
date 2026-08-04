@@ -4,9 +4,12 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.toPixelMap
 import kotlinx.coroutines.runBlocking
 import pl.pelotasplus.eyeofbeholder.data.model.CampMenu
+import pl.pelotasplus.eyeofbeholder.data.model.CharacterSheet
+import pl.pelotasplus.eyeofbeholder.data.model.OpenSheet
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.GameState
 import pl.pelotasplus.eyeofbeholder.data.model.Inf
+import pl.pelotasplus.eyeofbeholder.data.model.Item
 import pl.pelotasplus.eyeofbeholder.data.model.Maz
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterInstance
 import pl.pelotasplus.eyeofbeholder.data.model.WallByte
@@ -59,6 +62,15 @@ import kotlin.test.fail
  *   UPDATE_GOLDENS=1 ./gradlew :composeApp:jvmTest
  */
 class ViewPortGoldenTest {
+
+    /**
+     * The items the dungeon is laid out with. A played game keeps its own
+     * table of them, the party having moved things about; these scenes are of
+     * levels as their files describe them, so the file is what they render.
+     */
+    private val dungeonItems: List<Item> by lazy {
+        runBlocking { ItemsRepositoryImpl(ResourceRepositoryImpl()).loadItems().getOrThrow() }
+    }
 
     @Test
     fun `level7 start position`() =
@@ -693,6 +705,26 @@ class ViewPortGoldenTest {
             ),
         )
 
+    /**
+     * A champion's own page, which stands where the party boxes were: the
+     * quick start party's cleric, with what the save says he is carrying.
+     */
+    @Test
+    fun `a champion's belongings`() =
+        checkGolden("character-sheet", sheetOver("LEVEL4.INF", x = 15, y = 11, slot = 0))
+
+    /**
+     * The other side of the same page: what the champion is. The party's
+     * dwarf is a fighter and a thief at once, so his two careers are listed
+     * one under the other with a level and an experience each.
+     */
+    @Test
+    fun `a champion's stats`() =
+        checkGolden(
+            "character-sheet-stats",
+            sheetOver("LEVEL4.INF", x = 15, y = 11, slot = 1, page = CharacterSheet.Page.STATS),
+        )
+
     /** Camp → the menu the original opens, over the view. */
     @Test
     fun `the camp menu`() = checkGolden("camp-menu", menuOver(CampMenu.camp()))
@@ -733,7 +765,7 @@ class ViewPortGoldenTest {
         val sublevel = inf.subLevels[0]
 
         val viewPort = repository.renderPosition(
-            items = inf.items,
+            items = dungeonItems,
             monsters = inf.monsterInstances,
             sublevel = sublevel,
             playerX = 15,
@@ -780,7 +812,7 @@ class ViewPortGoldenTest {
         }
 
         val viewPort = repository.renderPosition(
-            items = inf.items,
+            items = dungeonItems,
             monsters = inf.monsterInstances,
             sublevel = sublevel,
             playerX = x,
@@ -801,6 +833,55 @@ class ViewPortGoldenTest {
         ).toImage()
     }
 
+    /** @param slot which of the six the page belongs to. */
+    private fun sheetOver(
+        level: String,
+        x: Int,
+        y: Int,
+        slot: Int,
+        page: CharacterSheet.Page = CharacterSheet.Page.BELONGINGS,
+    ): BufferedImage = runBlocking {
+        val resources = ResourceRepositoryImpl()
+        val cps = CpsRepositoryImpl(resources)
+        val repository = repository()
+        val inf = repository.loadLevel(level).getOrThrow()
+        val sublevel = inf.subLevels[0]
+
+        val saved = OriginalSaveRepositoryImpl(resources)
+            .loadOriginalSave(OriginalSaveRepositoryImpl.QUICK_START)
+            .getOrThrow()
+        val world = GameState(party = saved.standing, items = saved.items)
+        val champion = saved.party[slot]
+
+        val viewPort = repository.renderPosition(
+            items = dungeonItems,
+            monsters = inf.monsterInstances,
+            sublevel = sublevel,
+            playerX = x,
+            playerY = y,
+            direction = Direction.NORTH,
+        ).getOrThrow()
+
+        PlayField(
+            background = cps.loadCps("PLAYFLD.CPS").getOrThrow(),
+            decorations = cps.loadCps("DECORATE.CPS").getOrThrow(),
+            palette = sublevel.palette,
+            font = FontRepositoryImpl(resources).loadFont("FONT6.FNT").getOrThrow(),
+            invent = cps.loadCps("INVENT.CPS").getOrThrow(),
+            itemIcons = cps.loadCps("ITEMICN.CPS").getOrThrow(),
+        ).render(
+            viewPort = viewPort,
+            direction = Direction.NORTH,
+            party = saved.party,
+            portraits = cps.loadCps("CHARGENA.CPS").getOrThrow(),
+            sheet = OpenSheet(
+                page = page,
+                champion = champion,
+                carrying = champion.carrying.map { world.item(it) },
+            ),
+        ).toImage()
+    }
+
     /** @param messages the level's own message ids, each with the ink to write it in. */
     private fun messagesOver(
         level: String,
@@ -816,7 +897,7 @@ class ViewPortGoldenTest {
             val sublevel = inf.subLevels[0]
 
             val viewPort = repository.renderPosition(
-                items = inf.items,
+                items = dungeonItems,
                 monsters = inf.monsterInstances,
                 sublevel = sublevel,
                 playerX = x,
@@ -858,7 +939,7 @@ class ViewPortGoldenTest {
         val sublevel = inf.subLevels[0]
 
         val viewPort = repository.renderPosition(
-            items = inf.items,
+            items = dungeonItems,
             monsters = inf.monsterInstances,
             sublevel = sublevel,
             playerX = x,
@@ -1006,7 +1087,7 @@ class ViewPortGoldenTest {
         }
 
         repository.renderPosition(
-            items = inf.items,
+            items = dungeonItems,
             monsters = world.monsters,
             sublevel = sublevel,
             playerX = x,
@@ -1031,7 +1112,6 @@ class ViewPortGoldenTest {
                 cpsRepository = cpsRepository,
                 decRepository = DecRepositoryImpl(resources),
             ),
-            itemsRepository = ItemsRepositoryImpl(resources),
             cpsRepository = cpsRepository,
             dcrRepository = DcrRepositoryImpl(resources),
         )
@@ -1074,7 +1154,7 @@ class ViewPortGoldenTest {
         val world = stage.shown.getOrNull(wanted) ?: stepped.state
 
         repository.renderPosition(
-            items = inf.items,
+            items = dungeonItems,
             monsters = world.monsters,
             sublevel = inf.subLevels[0],
             playerX = world.party.position.x,
@@ -1101,7 +1181,7 @@ class ViewPortGoldenTest {
         val sublevel = inf.subLevels[inf.subLevelAt(0, x, y, direction)]
 
         repository.renderPosition(
-            items = inf.items,
+            items = dungeonItems,
             monsters = inf.monsterInstances.arrivingIn(sublevel.index),
             sublevel = sublevel,
             playerX = x,
@@ -1130,7 +1210,7 @@ class ViewPortGoldenTest {
             val inf = repository.loadLevel(level).getOrThrow()
             val sublevel = inf.subLevels[inf.subLevelAt(arrivedIn, x, y, direction)]
             repository.renderPosition(
-                items = inf.items,
+                items = dungeonItems,
                 monsters = inf.monsterInstances.arrivingIn(sublevel.index),
                 sublevel = sublevel,
                 playerX = x,

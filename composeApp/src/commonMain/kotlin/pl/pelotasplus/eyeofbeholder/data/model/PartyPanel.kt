@@ -24,6 +24,11 @@ data class ChampionBox(val left: Int, val top: Int) {
     val barLabelLeft: Int get() = left + BAR_LABEL_X
     val barLabelTop: Int get() = top + BAR_LABEL_Y
 
+    /** Whether a click landed on the face, which is what opens a champion's page. */
+    fun showsFaceAt(x: Int, y: Int): Boolean =
+        x in portraitLeft until portraitLeft + PORTRAIT_SIZE &&
+            y in portraitTop until portraitTop + PORTRAIT_SIZE
+
     companion object {
         const val WIDTH = 64
         const val HEIGHT = 50
@@ -66,27 +71,24 @@ fun Cps.portrait(id: PortraitId): Cps.ItemIcon = cut(
 private const val PORTRAITS_PER_ROW = 10
 private const val PORTRAIT_SIZE = 32
 
-data class HitPointBar(val filled: Int, val colour: PaletteIndex)
+/** How much of a bar is coloured in, and in which of the three colours. */
+data class BarFill(val filled: Int, val colour: PaletteIndex)
 
 /**
- * The bar in a champion's box: green while they are well, yellow once they are
- * down to a third, red when they are down.
+ * The bar that says how hurt a champion is: green while they are well, yellow
+ * once they are down to a third, red when they are down.
  *
  * Both the length and the colour count from -10 rather than from 0, because
  * -10 is as dead as a champion gets and 0 is merely unconscious. Anyone with
  * anything left over keeps a pixel of bar however little it is, so being
  * knocked out reads differently from being dead.
  */
-fun hitPointBar(hitPoints: HitPoints): HitPointBar {
+fun hitPointBar(hitPoints: HitPoints, width: Int): BarFill {
     val room = hitPoints.max + DEAD_FOR_GOOD
     val left = (hitPoints.current + DEAD_FOR_GOOD).coerceIn(0, room)
 
-    val filled = if (room < 1) 0 else (left * ChampionBox.BAR_WIDTH / room).coerceAtLeast(
-        if (left > 0) 1 else 0
-    )
-
-    return HitPointBar(
-        filled = filled,
+    return BarFill(
+        filled = if (room < 1) 0 else (left * width / room).coerceAtLeast(if (left > 0) 1 else 0),
         colour = when {
             left <= DEAD_FOR_GOOD -> BAR_DOWN
             room / 3 > left -> BAR_HURT
@@ -95,8 +97,26 @@ fun hitPointBar(hitPoints: HitPoints): HitPointBar {
     )
 }
 
+/** The same bar for how hungry a champion is, which is counted out of a hundred. */
+fun foodBar(food: Food, width: Int): BarFill {
+    val left = food.value.coerceIn(0, FULL)
+
+    return BarFill(
+        filled = left * width / FULL,
+        colour = when {
+            left < STARVING -> BAR_DOWN
+            left < PECKISH -> BAR_HURT
+            else -> BAR_WELL
+        },
+    )
+}
+
 /** How far below zero a champion's hit points can go before it is permanent. */
 private const val DEAD_FOR_GOOD = 10
+
+private const val FULL = 100
+private const val PECKISH = 33
+private const val STARVING = 20
 
 private val BAR_WELL = PaletteIndex(3)
 private val BAR_HURT = PaletteIndex(5)

@@ -358,7 +358,6 @@ class LevelTransitionTest {
 
     private fun load(name: String): Inf = runBlocking {
         val pal = PalRepositoryImpl(resources)
-        val items = ItemsRepositoryImpl(resources).loadItems().getOrThrow()
         InfRepositoryImpl(
             resourceRepository = resources,
             mazRepository = MazRepositoryImpl(resources),
@@ -367,6 +366,6 @@ class LevelTransitionTest {
             palRepository = pal,
             cpsRepository = CpsRepositoryImpl(resources),
             decRepository = DecRepositoryImpl(resources),
-        ).loadInf(name, items).getOrThrow()
+        ).loadInf(name).getOrThrow()
     }
 }

@@ -31,7 +31,6 @@ import pl.pelotasplus.eyeofbeholder.data.model.script.Script
  * @property subLevels All sublevels (floors/areas) within this level
  * @property script Complete list of parsed script instructions for this level
  * @property messages Text strings referenced by script Message tokens
- * @property items All game items that belong to this level (filtered from global ITEM.DAT)
  * @property monsterInstances Live monsters placed on this level (up to 30)
  */
 data class Inf(
@@ -39,7 +38,6 @@ data class Inf(
     val subLevels: List<SubLevel>,
     val script: List<Script>,
     val messages: List<String>,
-    val items: List<Item>,
     val monsterInstances: List<MonsterInstance> = emptyList(),
     val triggers: List<Trigger> = emptyList(),
 ) {
