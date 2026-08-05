@@ -87,6 +87,7 @@ import pl.pelotasplus.eyeofbeholder.data.repository.DialogueTextRepository
 import pl.pelotasplus.eyeofbeholder.data.repository.FontRepository
 import pl.pelotasplus.eyeofbeholder.data.repository.AudioSink
 import pl.pelotasplus.eyeofbeholder.data.repository.ItemsRepository
+import pl.pelotasplus.eyeofbeholder.data.repository.PlayingSound
 import pl.pelotasplus.eyeofbeholder.data.repository.ItemTypesRepository
 import pl.pelotasplus.eyeofbeholder.data.repository.SaveSlot
 import pl.pelotasplus.eyeofbeholder.data.repository.SavedGameRepository
@@ -151,6 +152,9 @@ class ViewConeDebugViewModel(
 
     /** The view as last drawn, which a script's words are written over. */
     private var drawn: ViewPort? = null
+
+    /** Whatever is being heard, so that the next thing can take its place. */
+    private var sounding: PlayingSound? = null
 
     /** What a script asked, waiting on the click that answers it. */
     private val awaiting = PendingQuestion()
@@ -445,6 +449,20 @@ class ViewConeDebugViewModel(
         viewModelScope.launch { playTrack(WALL_BUMP) }
     }
 
+    /**
+     * Cuts whatever a dialogue was saying when the dialogue goes.
+     *
+     * The original does this at both ends: it stops the sound before putting a
+     * dialogue up, and on taking one down it plays the track its banks keep
+     * empty — a program that makes no noise, whose whole purpose is to end the
+     * one already playing. A speech is worth hearing while its speaker is on
+     * screen and not after the player has dismissed them.
+     */
+    private fun silenceEffects() {
+        sounding?.stop()
+        sounding = null
+    }
+
     private fun onPlayerPositionChanged(x: Int? = null, y: Int? = null) {
         check(x != null || y != null) {
             "Either x or y must be non-null"
@@ -499,7 +517,10 @@ class ViewConeDebugViewModel(
             // again for it to say the other thing
             is MenuChoice.Toggle -> {
                 _state.update { it.copy(preferences = it.preferences.toggling(choice.setting)) }
-                if (!_state.value.preferences.sounds) audioSink.stopAll()
+                if (!_state.value.preferences.sounds) {
+                    audioSink.stopAll()
+                    sounding = null
+                }
                 showMenu(CampMenu.preferences(_state.value.preferences))
             }
 
@@ -921,6 +942,11 @@ class ViewConeDebugViewModel(
      */
     private fun swingsTheDoor(level: Int, at: Location, side: WallSide, opening: Boolean) {
         viewModelScope.launch {
+            // The button is what is heard, not the door: in the original a
+            // door slides in silence and the click is the whole of the noise,
+            // which is why this plays once here rather than once a step.
+            playTrack(DOOR_BUTTON)
+
             repeat(Maz.WallType.Door.TRAVEL) {
                 _state.update {
                     it.copy(game = it.game.doorStepped(level, at, side, opening))
@@ -1018,6 +1044,7 @@ class ViewConeDebugViewModel(
             // the party downstairs says so and changes level on the next
             // instruction — and a box with nothing to click cannot be got rid
             // of by the player.
+            if (_state.value.dialog != null) silenceEffects()
             _state.update { it.copy(game = run.state, dialog = null) }
             speaker = null
 
@@ -1033,6 +1060,7 @@ class ViewConeDebugViewModel(
                 // The bank goes with the level, so whatever is still sounding
                 // belongs to a floor the party has left.
                 audioSink.stopAll()
+                sounding = null
                 onVmpSelected(
                     name = "LEVEL${change.level}.INF",
                     subLevel = change.subLevel,
@@ -1060,9 +1088,14 @@ class ViewConeDebugViewModel(
         val inf = _state.value.inf ?: return
         val bank = inf.subLevels.getOrNull(_state.value.subLevel)?.sound ?: return
 
-        soundRepository.clip(SoundBank(bank), track)
-            .getOrNull()
-            ?.let { audioSink.play(it, volume) }
+        val clip = soundRepository.clip(SoundBank(bank), track).getOrNull() ?: return
+
+        // One effect at a time. The chip the banks were written for had nine
+        // voices and a new program took them over, so nothing could pile up on
+        // it; here nothing stops it, and a level whose scripts hand out
+        // seventeen second drones turns a walk into one long chord.
+        sounding?.stop()
+        sounding = audioSink.play(clip, volume)
     }
 
     /**
@@ -1090,6 +1123,7 @@ class ViewConeDebugViewModel(
             if (speech.boxJustDrawn) standingInTheBox = emptyList()
 
             if (speech.isEmpty) {
+                silenceEffects()
                 _state.update { it.copy(dialog = null) }
                 speaker = null
                 standingInTheBox = emptyList()
@@ -1586,6 +1620,9 @@ class ViewConeDebugViewModel(
 
         /** What a level's bank keeps under 29: the party walking into something. */
         private val WALL_BUMP = TrackIndex(29)
+
+        /** And under 6: the button beside a door being pressed. */
+        private val DOOR_BUTTON = TrackIndex(6)
 
         private const val PLAY_FIELD_CPS = "PLAYFLD.CPS"
         private const val DECORATIONS_CPS = "DECORATE.CPS"
