@@ -2,6 +2,7 @@ package pl.pelotasplus.eyeofbeholder.data.di
 
 import org.jetbrains.compose.resources.ExperimentalResourceApi
 import org.koin.dsl.module
+import pl.pelotasplus.eyeofbeholder.data.model.Debugging
 import pl.pelotasplus.eyeofbeholder.data.repository.CpsRepository
 import pl.pelotasplus.eyeofbeholder.data.repository.CpsRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.DialogueTextRepository
@@ -28,6 +29,8 @@ import pl.pelotasplus.eyeofbeholder.data.repository.PalRepository
 import pl.pelotasplus.eyeofbeholder.data.repository.PalRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.ResourceRepository
 import pl.pelotasplus.eyeofbeholder.data.repository.ResourceRepositoryImpl
+import pl.pelotasplus.eyeofbeholder.data.repository.SoundRepository
+import pl.pelotasplus.eyeofbeholder.data.repository.SoundRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.VcnRepository
 import pl.pelotasplus.eyeofbeholder.data.repository.VcnRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.ViewConeRepository
@@ -86,4 +89,14 @@ val sharedDataModule = module {
     factory<ViewConeRepository> {
         ViewConeRepositoryImpl(get(), get(), get())
     }
+
+    // One of these, not one per caller: what it holds is a cache of clips that
+    // the same level asks for over and over.
+    single<SoundRepository> {
+        SoundRepositoryImpl(get())
+    }
+
+    // The Debug menu sets these and the play field reads them, so there has to
+    // be one of it.
+    single { Debugging() }
 }

@@ -18,14 +18,28 @@ each.
   becomes durable when the player links a real sign-in to the *same* uid, and
   signing in fresh on a second device instead leaves two piles to reconcile.
 
-- **Audio.** The game ships ten AdLib banks (`.ADL`, already in the manifest)
-  with a `.SND` beside each, and they are not samples: a bank is a score for a
-  Yamaha OPL2 chip, so playing one means both a synthesiser to emulate the chip
-  and the driver that reads the bank and drives it. That is the expensive part
-  — roughly four thousand lines in the reference implementation — and it is why
-  this is parked rather than half started. On top of it goes a platform seam
-  for pushing samples out, the same `expect`/`actual` shape as `SaveStore`:
-  Web Audio, `AudioTrack`, `javax.sound.sampled`, `AVAudioEngine`. The cheap
-  alternative worth weighing first is rendering the ten tracks to ordinary
-  audio files offline and playing those, which buys the music for almost
-  nothing and buys none of the effects.
+- **The rest of the audio.** Sound is in: the ten AdLib banks were rendered
+  track by track ahead of time, `AudioSink` puts sample buffers out on all five
+  targets, and a script's Sound instruction is heard. What is left is the part
+  the rendering cannot do.
+
+  Nothing but a script makes a noise yet. The engine plays effects from a dozen
+  other places — a blow landing, a door being forced, a body going down, a
+  spell going off — and each is its own wiring rather than a thing to be
+  switched on once. Monsters carry their own two track numbers and no monster
+  is heard at all.
+
+  Nothing plays the music, either. The long tunes are rendered and sitting
+  there, but they belong to the intro and the finale, which is screen work
+  before it is sound work. When a browser is what plays them, note that nothing
+  sounds until the player has touched the page: the first key that moves the
+  party has to be what wakes the context, and `WebAudioSink.wake` is there for
+  it and is not called from anywhere.
+
+  What is given up by rendering rather than synthesising is per-effect volume
+  ramps and anything the driver triggers on its own. Taking that back means the
+  expensive route — a synthesiser and the driver that drives it, roughly four
+  thousand lines in the reference implementation — and it costs nothing
+  architecturally to change one's mind later, because it would replace what
+  fills a buffer and `AudioSink` would not notice. The rendered clips are what
+  it would be proved right against.

@@ -57,7 +57,11 @@ import pl.pelotasplus.eyeofbeholder.data.model.Location
 import pl.pelotasplus.eyeofbeholder.data.model.Palette
 import pl.pelotasplus.eyeofbeholder.data.model.PartyState
 import pl.pelotasplus.eyeofbeholder.data.model.PlayField
+import pl.pelotasplus.eyeofbeholder.data.model.Debugging
 import pl.pelotasplus.eyeofbeholder.data.model.Preferences
+import pl.pelotasplus.eyeofbeholder.data.model.SoundBank
+import pl.pelotasplus.eyeofbeholder.data.model.TrackIndex
+import pl.pelotasplus.eyeofbeholder.data.model.Volume
 import pl.pelotasplus.eyeofbeholder.data.model.SavedGame
 import pl.pelotasplus.eyeofbeholder.data.model.rightNow
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptEvent
@@ -70,6 +74,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.Ticks
 import pl.pelotasplus.eyeofbeholder.data.model.ViewPort
 import pl.pelotasplus.eyeofbeholder.data.model.levelNumber
 import pl.pelotasplus.eyeofbeholder.data.model.canBeReachedOnto
+import pl.pelotasplus.eyeofbeholder.data.model.canBeWalkedOnto
 import pl.pelotasplus.eyeofbeholder.data.model.speakerFrom
 import pl.pelotasplus.eyeofbeholder.data.model.spokenBy
 import pl.pelotasplus.eyeofbeholder.data.model.teleportersInView
@@ -80,10 +85,12 @@ import pl.pelotasplus.eyeofbeholder.data.model.toImageBitmap
 import pl.pelotasplus.eyeofbeholder.data.repository.CpsRepository
 import pl.pelotasplus.eyeofbeholder.data.repository.DialogueTextRepository
 import pl.pelotasplus.eyeofbeholder.data.repository.FontRepository
+import pl.pelotasplus.eyeofbeholder.data.repository.AudioSink
 import pl.pelotasplus.eyeofbeholder.data.repository.ItemsRepository
 import pl.pelotasplus.eyeofbeholder.data.repository.ItemTypesRepository
 import pl.pelotasplus.eyeofbeholder.data.repository.SaveSlot
 import pl.pelotasplus.eyeofbeholder.data.repository.SavedGameRepository
+import pl.pelotasplus.eyeofbeholder.data.repository.SoundRepository
 import pl.pelotasplus.eyeofbeholder.data.repository.OriginalSaveRepository
 import pl.pelotasplus.eyeofbeholder.data.repository.OriginalSaveRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.ViewConeRepository
@@ -98,6 +105,9 @@ class ViewConeDebugViewModel(
     private val savedGames: SavedGameRepository,
     private val itemTypesRepository: ItemTypesRepository,
     private val itemsRepository: ItemsRepository,
+    private val soundRepository: SoundRepository,
+    private val audioSink: AudioSink,
+    private val debugging: Debugging,
 ) : ViewModel() {
 
     private var playFieldBackground: Cps? = null
@@ -379,6 +389,62 @@ class ViewConeDebugViewModel(
         }
     }
 
+    /**
+     * A step the party take themselves, which a wall may refuse.
+     *
+     * Only their own steps are asked: a script that moves them is not walking
+     * and is not stopped by anything, which is how a teleporter puts a party
+     * inside a sealed room.
+     */
+    private fun onWalked(x: Int? = null, y: Int? = null) {
+        if (debugging.wallsArePassable.value) {
+            onPlayerPositionChanged(x, y)
+            return
+        }
+
+        val to = Location(
+            x = (x ?: party.position.x).coerceAtLeast(0),
+            y = (y ?: party.position.y).coerceAtLeast(0),
+        )
+
+        if (wallBetweenPartyAnd(to)) {
+            bumpedIntoAWall()
+            return
+        }
+
+        onPlayerPositionChanged(x, y)
+    }
+
+    /**
+     * Whether something stands between the party and where they are stepping.
+     *
+     * It is the wall on the far square turning back towards them that decides,
+     * not the one on the square they are leaving — the original asks the same
+     * way round, and a doorway carries its door on the side it is entered
+     * from.
+     */
+    private fun wallBetweenPartyAnd(to: Location): Boolean {
+        val inf = _state.value.inf ?: return false
+        val sublevel = inf.subLevels.getOrNull(_state.value.subLevel) ?: return false
+        val from = party.position
+
+        val facingUs = when {
+            to.y < from.y -> WallSide.SOUTH
+            to.y > from.y -> WallSide.NORTH
+            to.x > from.x -> WallSide.WEST
+            to.x < from.x -> WallSide.EAST
+            else -> return false
+        }
+
+        val wall = _state.value.game.wall(levelNumber(inf.name), to, facingUs)
+        return !sublevel.canBeWalkedOnto(wall)
+    }
+
+    /** What the original does when a step is refused: says so, and thuds. */
+    private fun bumpedIntoAWall() {
+        viewModelScope.launch { playTrack(WALL_BUMP) }
+    }
+
     private fun onPlayerPositionChanged(x: Int? = null, y: Int? = null) {
         check(x != null || y != null) {
             "Either x or y must be non-null"
@@ -433,6 +499,7 @@ class ViewConeDebugViewModel(
             // again for it to say the other thing
             is MenuChoice.Toggle -> {
                 _state.update { it.copy(preferences = it.preferences.toggling(choice.setting)) }
+                if (!_state.value.preferences.sounds) audioSink.stopAll()
                 showMenu(CampMenu.preferences(_state.value.preferences))
             }
 
@@ -963,6 +1030,9 @@ class ViewConeDebugViewModel(
                     "Changing to level ${change.level} sublevel ${change.subLevel} " +
                         "at ${change.location}"
                 }
+                // The bank goes with the level, so whatever is still sounding
+                // belongs to a floor the party has left.
+                audioSink.stopAll()
                 onVmpSelected(
                     name = "LEVEL${change.level}.INF",
                     subLevel = change.subLevel,
@@ -973,6 +1043,26 @@ class ViewConeDebugViewModel(
             }
         }
         return true
+    }
+
+    /**
+     * Plays a numbered track out of whichever bank the sublevel the party is
+     * standing in names.
+     *
+     * The number alone does not say what will be heard: each level names its
+     * own bank, and the same number is a different recording from one floor to
+     * the next. A bank that has nothing under that number is not a fault —
+     * the forest has no voice for someone who is not out there.
+     */
+    private suspend fun playTrack(track: TrackIndex, volume: Volume = Volume.FULL) {
+        if (!_state.value.preferences.sounds) return
+
+        val inf = _state.value.inf ?: return
+        val bank = inf.subLevels.getOrNull(_state.value.subLevel)?.sound ?: return
+
+        soundRepository.clip(SoundBank(bank), track)
+            .getOrNull()
+            ?.let { audioSink.play(it, volume) }
     }
 
     /**
@@ -987,6 +1077,8 @@ class ViewConeDebugViewModel(
             _state.update { it.copy(game = world) }
             drawViewPort()
         }
+
+        override suspend fun play(track: TrackIndex) = playTrack(track)
 
         /**
          * The box a question would be asked in, with no question in it: the
@@ -1354,58 +1446,28 @@ class ViewConeDebugViewModel(
             Direction.entries[(direction.ordinal + 1) % Direction.entries.size]
         }
         when (sideways) {
-            Direction.NORTH -> onPlayerPositionChanged(y = party.position.y - 1)
-            Direction.EAST -> onPlayerPositionChanged(x = party.position.x + 1)
-            Direction.SOUTH -> onPlayerPositionChanged(y = party.position.y + 1)
-            Direction.WEST -> onPlayerPositionChanged(x = party.position.x - 1)
+            Direction.NORTH -> onWalked(y = party.position.y - 1)
+            Direction.EAST -> onWalked(x = party.position.x + 1)
+            Direction.SOUTH -> onWalked(y = party.position.y + 1)
+            Direction.WEST -> onWalked(x = party.position.x - 1)
         }
     }
 
     private fun onMoveForward() {
         when (party.facing) {
-            Direction.NORTH -> {
-                val newY = party.position.y - 1
-                onPlayerPositionChanged(y = newY)
-            }
-
-            Direction.EAST -> {
-                val newX = party.position.x + 1
-                onPlayerPositionChanged(x = newX)
-            }
-
-            Direction.SOUTH -> {
-                val newY = party.position.y + 1
-                onPlayerPositionChanged(y = newY)
-            }
-
-            Direction.WEST -> {
-                val newX = party.position.x - 1
-                onPlayerPositionChanged(x = newX)
-            }
+            Direction.NORTH -> onWalked(y = party.position.y - 1)
+            Direction.EAST -> onWalked(x = party.position.x + 1)
+            Direction.SOUTH -> onWalked(y = party.position.y + 1)
+            Direction.WEST -> onWalked(x = party.position.x - 1)
         }
     }
 
     private fun onMoveBackwards() {
         when (party.facing) {
-            Direction.NORTH -> {
-                val newY = party.position.y + 1
-                onPlayerPositionChanged(y = newY)
-            }
-
-            Direction.EAST -> {
-                val newX = party.position.x - 1
-                onPlayerPositionChanged(x = newX)
-            }
-
-            Direction.SOUTH -> {
-                val newY = party.position.y - 1
-                onPlayerPositionChanged(y = newY)
-            }
-
-            Direction.WEST -> {
-                val newX = party.position.x + 1
-                onPlayerPositionChanged(x = newX)
-            }
+            Direction.NORTH -> onWalked(y = party.position.y + 1)
+            Direction.EAST -> onWalked(x = party.position.x - 1)
+            Direction.SOUTH -> onWalked(y = party.position.y - 1)
+            Direction.WEST -> onWalked(x = party.position.x + 1)
         }
     }
 
@@ -1521,6 +1583,9 @@ class ViewConeDebugViewModel(
 
         /** How long a door rests at each of the positions it slides through. */
         private val DOOR_STEP = Ticks(5)
+
+        /** What a level's bank keeps under 29: the party walking into something. */
+        private val WALL_BUMP = TrackIndex(29)
 
         private const val PLAY_FIELD_CPS = "PLAYFLD.CPS"
         private const val DECORATIONS_CPS = "DECORATE.CPS"

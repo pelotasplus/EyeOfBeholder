@@ -2,12 +2,15 @@ package pl.pelotasplus.eyeofbeholder.di
 
 import org.koin.core.module.Module
 import org.koin.dsl.module
+import pl.pelotasplus.eyeofbeholder.data.repository.AudioSink
 import pl.pelotasplus.eyeofbeholder.data.repository.FileSaveStore
+import pl.pelotasplus.eyeofbeholder.data.repository.JavaSoundAudioSink
 import pl.pelotasplus.eyeofbeholder.data.repository.SaveStore
 import java.io.File
 
 actual fun platformModule(): Module = module {
     single<SaveStore> { FileSaveStore(File(saveDirectory())) }
+    single<AudioSink> { JavaSoundAudioSink() }
 }
 
 /** Where the desktop keeps its saves, following whatever each system expects. */

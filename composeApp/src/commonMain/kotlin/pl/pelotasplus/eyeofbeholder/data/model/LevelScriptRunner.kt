@@ -11,6 +11,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.script.Eval
 import pl.pelotasplus.eyeofbeholder.data.model.script.GoSub
 import pl.pelotasplus.eyeofbeholder.data.model.script.Goto
 import pl.pelotasplus.eyeofbeholder.data.model.script.Message
+import pl.pelotasplus.eyeofbeholder.data.model.script.Sound
 import pl.pelotasplus.eyeofbeholder.data.model.script.ItemDestination
 import pl.pelotasplus.eyeofbeholder.data.model.script.NewItem
 import pl.pelotasplus.eyeofbeholder.data.model.script.NewLevelOrMonster
@@ -147,6 +148,13 @@ interface ScriptStage {
     /** Hold what is on screen. Nothing else moves while a script waits. */
     suspend fun hold(ticks: Ticks)
 
+    /**
+     * Start a sound and carry on without waiting for it. A script that means
+     * a sound to be over before the next thing happens says so itself, with a
+     * wait of its own.
+     */
+    suspend fun play(track: TrackIndex)
+
     /** Put a question up, and wait for it to be answered. */
     suspend fun ask(question: ScriptQuestion): DialogAnswer
 
@@ -159,6 +167,7 @@ interface ScriptStage {
             override suspend fun show(world: GameState) = Unit
             override suspend fun say(speech: ScriptSpeech) = Unit
             override suspend fun hold(ticks: Ticks) = Unit
+            override suspend fun play(track: TrackIndex) = Unit
             override suspend fun ask(question: ScriptQuestion) = answer
         }
     }
@@ -457,6 +466,8 @@ class LevelScriptRunner(
                 )
 
                 is Wait -> stage.hold(Ticks(token.delay))
+
+                is Sound -> stage.play(TrackIndex(token.soundId))
 
                 UpdateScreen -> stage.show(state)
 

@@ -103,6 +103,28 @@ fun SubLevel.canBeReachedOnto(wall: Maz.WallType): Boolean = when (wall) {
 }
 
 /**
+ * Whether the party may walk onto a square, given the wall it turns towards
+ * them.
+ *
+ * Reaching and walking are asked separately because the original asks them
+ * separately: a wall carries one mark for what the party may step through and
+ * another for what may be put or thrown through it, and a level is free to
+ * set either without the other. They happen to agree on every wall the game
+ * ships, which is why this reads like [canBeReachedOnto] — but they are two
+ * questions and answering one with the other would be luck rather than
+ * correctness.
+ */
+fun SubLevel.canBeWalkedOnto(wall: Maz.WallType): Boolean = when (wall) {
+    Maz.WallType.NoWall -> true
+    is Maz.WallType.Door -> wall.isOpen
+    is Maz.WallType.FixedWall, Maz.WallType.StairUp, Maz.WallType.StairDown -> false
+    is Maz.WallType.Decoration -> {
+        val mapped = decorations.firstOrNull { it.decorationWallIndex == wall.decorationWallIndex }
+        mapped == null || mapped.wallType == NO_WALL_BEHIND
+    }
+}
+
+/**
  * The mark a wall carries when what is on its square can be seen. A level
  * writes it inverted in the low bits but not in this one, so it is read
  * straight off what the file says.

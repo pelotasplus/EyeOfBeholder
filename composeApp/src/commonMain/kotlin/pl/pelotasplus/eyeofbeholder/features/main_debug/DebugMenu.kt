@@ -13,10 +13,14 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
+import org.koin.compose.koinInject
+import pl.pelotasplus.eyeofbeholder.data.model.Debugging
 import pl.pelotasplus.eyeofbeholder.navigation.Route
 
 private data class DebugDestination(val label: String, val route: Route)
@@ -69,7 +73,10 @@ private fun DebugMenuPanel(
     onDestinationClick: (Route) -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
+    debugging: Debugging = koinInject(),
 ) {
+    val wallsArePassable by debugging.wallsArePassable.collectAsState()
+
     Column(
         modifier = modifier
             .padding(8.dp)
@@ -81,6 +88,13 @@ private fun DebugMenuPanel(
     ) {
         Button(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) {
             Text("Close")
+        }
+
+        Button(
+            onClick = { debugging.passWalls(!wallsArePassable) },
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text(if (wallsArePassable) "Walls: pass" else "Walls: solid")
         }
 
         debugDestinations.forEach { destination ->
