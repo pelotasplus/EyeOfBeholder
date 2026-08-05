@@ -3,6 +3,8 @@ package pl.pelotasplus.eyeofbeholder.data.model.script
 import pl.pelotasplus.eyeofbeholder.data.ByteReader
 import pl.pelotasplus.eyeofbeholder.data.model.CharacterClass
 import pl.pelotasplus.eyeofbeholder.data.model.FlagBit
+import pl.pelotasplus.eyeofbeholder.data.model.ItemIndex
+import pl.pelotasplus.eyeofbeholder.data.model.ItemTypeId
 import pl.pelotasplus.eyeofbeholder.data.model.Race
 import pl.pelotasplus.eyeofbeholder.data.model.Location
 
@@ -78,19 +80,37 @@ sealed interface Conditional {
         }
     }
 
+    /**
+     * How many things lie on a square, which is how a plate set into the floor
+     * knows what has been set on it.
+     *
+     * @property type the one kind being counted, or null for anything at all —
+     *   which is what every plate in the dungeon asks for, none of them caring
+     *   what it is weighted down with
+     * @property countingWhatIsInTheAir whether a thing passing over the square
+     *   counts as being on it, which it does not unless the script says so
+     */
     data class ItemCountAtLocation(                              // 0xF5
-        val a: Int,
-        val b: Int,
-        val location: Location
+        val type: ItemTypeId?,
+        val countingWhatIsInTheAir: Boolean,
+        val location: Location,
     ) : Conditional {
         override fun read(reader: ByteReader) = this
 
         companion object : Conditional {
-            override fun read(reader: ByteReader) = ItemCountAtLocation(
-                a = reader.readU8(),
-                b = reader.readU8(),
-                location = Location.read(reader)
-            )
+            override fun read(reader: ByteReader): ItemCountAtLocation {
+                val inTheAir = reader.readU8()
+                val type = reader.readI8()
+
+                return ItemCountAtLocation(
+                    countingWhatIsInTheAir = inTheAir != 0,
+                    type = if (type == ANYTHING) null else ItemTypeId(type),
+                    location = Location.read(reader),
+                )
+            }
+
+            /** What is written where a kind would be when any kind will do. */
+            private const val ANYTHING = -1
         }
     }
 
@@ -130,8 +150,24 @@ sealed interface Conditional {
         }
     }
 
-    data object IsItemAtLocation : Conditional {                // 0xF2
+    /**
+     * Whether one particular thing is lying on a square — the thing itself,
+     * named by its place in the world's table, rather than anything of its
+     * kind. A script that put something somewhere asks this to find out
+     * whether it is still there.
+     */
+    data class IsItemAtLocation(                                // 0xF2
+        val item: ItemIndex,
+        val location: Location,
+    ) : Conditional {
         override fun read(reader: ByteReader) = this
+
+        companion object : Conditional {
+            override fun read(reader: ByteReader) = IsItemAtLocation(
+                item = ItemIndex(reader.readU16LE()),
+                location = Location.read(reader),
+            )
+        }
     }
 
     sealed class IsPartyAtLocation : Conditional {               // 0xF1
@@ -375,7 +411,7 @@ sealed interface Conditional {
             0xF7 to GetWallNumber.Companion,
             0xF5 to ItemCountAtLocation.Companion,
             0xF3 to IsMonsterAtLocation,
-//            0xF2 to IsItemAtLocation,
+            0xF2 to IsItemAtLocation.Companion,
             0xF1 to IsPartyAtLocation.Companion,
             0xF0 to GetGlobalFlag.Companion,
             0xEF to GetLevelFlag.Companion,

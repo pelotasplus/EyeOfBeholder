@@ -142,6 +142,33 @@ data class GameState(
         }?.let(::ItemIndex)
 
     /**
+     * How many things of one kind lie on a square, which is what a plate set
+     * into the floor weighs.
+     *
+     * A thing in the air over the square is passing across it rather than
+     * resting on it, and does not count unless the asking script says it
+     * should.
+     */
+    fun itemsLyingOn(
+        level: Int,
+        at: Location,
+        ofType: ItemTypeId?,
+        countingWhatIsInTheAir: Boolean,
+    ): Int = items.count {
+        it.level == level && it.location == at &&
+            (ofType == null || it.type == ofType) &&
+            (countingWhatIsInTheAir || it.place != SquarePlace.MIDDLE)
+    }
+
+    /**
+     * Whether one particular thing lies on a square, and which slot of the
+     * table it is — the number the original hands back, so that a script may
+     * do more with it than ask whether it was there at all.
+     */
+    fun theOneLyingOn(level: Int, at: Location, item: ItemIndex): ItemIndex? =
+        item.takeIf { this.item(it)?.let { on -> on.level == level && on.location == at } == true }
+
+    /**
      * Puts what is in the hand down at one place on a square, and leaves the
      * hand empty. Putting nothing down changes nothing.
      */
@@ -339,6 +366,14 @@ data class GameState(
     /** The same square with all four of its sides changed to [to]. */
     fun wallsChanged(level: Int, at: Location, to: WallByte) =
         copy(changedWalls = changedWalls + WallSide.entries.associate { WallAt(level, at, it) to to })
+
+    /**
+     * Which face of a square its doorway hangs in, or null where there is no
+     * door. A doorway takes two opposite faces, so either of them will do and
+     * the first found is the answer.
+     */
+    fun doorFacing(level: Int, at: Location): WallSide? =
+        WallSide.entries.firstOrNull { wall(level, at, it) is Maz.WallType.Door }
 
     /**
      * The same world with a doorway one step further open, or further shut.

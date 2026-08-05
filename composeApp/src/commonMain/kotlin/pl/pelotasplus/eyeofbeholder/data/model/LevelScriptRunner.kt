@@ -10,7 +10,9 @@ import pl.pelotasplus.eyeofbeholder.data.model.script.End
 import pl.pelotasplus.eyeofbeholder.data.model.script.Eval
 import pl.pelotasplus.eyeofbeholder.data.model.script.GoSub
 import pl.pelotasplus.eyeofbeholder.data.model.script.Goto
+import pl.pelotasplus.eyeofbeholder.data.model.script.CloseDoor
 import pl.pelotasplus.eyeofbeholder.data.model.script.Message
+import pl.pelotasplus.eyeofbeholder.data.model.script.OpenDoor
 import pl.pelotasplus.eyeofbeholder.data.model.script.Sound
 import pl.pelotasplus.eyeofbeholder.data.model.script.ItemDestination
 import pl.pelotasplus.eyeofbeholder.data.model.script.NewItem
@@ -432,6 +434,13 @@ class LevelScriptRunner(
                     }
                 }
 
+                // A plate set into the floor is weighed and then works a door
+                // somewhere else, which is most of what the levels do with
+                // doors that have no button on them.
+                is OpenDoor -> state = doorSwinging(state, token.location, opening = true, stage)
+
+                is CloseDoor -> state = doorSwinging(state, token.location, opening = false, stage)
+
                 is SetWall.ChangePartyDirection -> state = state.partyTurnedTo(token.direction)
 
                 is SetWall.OneSide ->
@@ -525,6 +534,35 @@ class LevelScriptRunner(
     }
 
     /**
+     * A door the script works, drawn at each of the positions it slides
+     * through.
+     *
+     * The script waits for it the way it waits for anything else it puts on
+     * screen. The original lets the script run on while a timer swings the
+     * door, but a door takes about a second and what follows one in these
+     * scripts is the end of them.
+     */
+    private suspend fun doorSwinging(
+        state: GameState,
+        at: Location,
+        opening: Boolean,
+        stage: ScriptStage,
+    ): GameState {
+        val side = state.doorFacing(level, at) ?: run {
+            Logger.w(TAG) { "No door at $at to ${if (opening) "open" else "close"}" }
+            return state
+        }
+
+        var world = state
+        repeat(Maz.WallType.Door.TRAVEL) {
+            world = world.doorStepped(level, at, side, opening)
+            stage.show(world)
+            stage.hold(DOOR_STEP)
+        }
+        return world
+    }
+
+    /**
      * One of the two corners nearest the party as they are looking, which is
      * where a thing dropped at their feet lands.
      */
@@ -599,6 +637,32 @@ class LevelScriptRunner(
                 is Conditional.IsMonsterAtLocation.BlockFlags ->
                     push(ConditionValue.of(state.monstersOn(token.location)))
 
+                // What is lying about on a square, which is how a plate set
+                // into the floor knows it has been weighted down — and how the
+                // script that opened something knows to close it again.
+                is Conditional.ItemCountAtLocation -> push(
+                    ConditionValue.of(
+                        state.itemsLyingOn(
+                            level = level,
+                            at = token.location,
+                            ofType = token.type,
+                            countingWhatIsInTheAir = token.countingWhatIsInTheAir,
+                        )
+                    )
+                )
+
+                // Whether the party themselves are standing on a square. A
+                // plate asks about the square it is set into: a thing left on
+                // it only counts while nobody is stood there too.
+                is Conditional.IsPartyAtLocation.CheckCurrentBlock ->
+                    push(state.party.position == token.location)
+
+                is Conditional.IsItemAtLocation -> push(
+                    ConditionValue.of(
+                        state.theOneLyingOn(level, token.location, token.item)?.value ?: 0
+                    )
+                )
+
                 // What a script leaves to luck: whether searching a wall turns
                 // anything up, which of two things a bed has to say. The roll
                 // goes on the stack as a number like any other, and what is
@@ -612,8 +676,29 @@ class LevelScriptRunner(
                 is Conditional.MoreEqualsThan -> compare { left, right -> left >= right }
                 is Conditional.LessThan -> compare { left, right -> left < right }
                 is Conditional.LessEqualsThan -> compare { left, right -> left <= right }
-                is Conditional.And -> push(pop().isTrue && pop().isTrue)
-                is Conditional.Or -> push(pop().isTrue || pop().isTrue)
+                // Both operands come off the stack whatever the answer is.
+                // Written as one expression, Kotlin stops at the first false
+                // and leaves the second where it was, and everything the
+                // condition does after that reads one value along.
+                // Both operands come off the stack whatever the answer is.
+                // Written as one expression, Kotlin stops at the first false
+                // and leaves the second where it was, and everything the
+                // condition does after that reads one value along.
+                // Both operands come off the stack whatever the answer is.
+                // Written as one expression, Kotlin stops at the first false
+                // and leaves the second where it was, and everything the
+                // condition does after that reads one value along.
+                is Conditional.And -> {
+                    val left = pop().isTrue
+                    val right = pop().isTrue
+                    push(left && right)
+                }
+
+                is Conditional.Or -> {
+                    val left = pop().isTrue
+                    val right = pop().isTrue
+                    push(left || right)
+                }
                 else -> {
                     Logger.d(TAG) { "    condition $token not modelled yet, assuming true" }
                     push(ConditionValue.TRUE)
@@ -626,6 +711,9 @@ class LevelScriptRunner(
     private companion object {
         const val TAG = "LevelScriptRunner"
         const val MAX_STEPS = 200
+
+        /** How long a door rests at each of the positions it slides through. */
+        val DOOR_STEP = Ticks(5)
         const val MAX_SUBROUTINE_DEPTH = 10
 
         /** A script moving the party onto a square that moves them back again. */

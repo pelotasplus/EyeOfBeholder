@@ -467,16 +467,22 @@ class ViewConeDebugViewModel(
         check(x != null || y != null) {
             "Either x or y must be non-null"
         }
+        val steppedOff = party.position
         val steppedTo = Location(
             x = (x ?: party.position.x).coerceAtLeast(0),
             y = (y ?: party.position.y).coerceAtLeast(0),
         )
         _state.update { it.copy(game = it.game.partyMovedTo(steppedTo)) }
 
+        // The square being left is told after the party have gone, not before:
+        // it is what holds a plate open while it is stood on, and what it does
+        // about being stepped off is decided with the party already elsewhere.
+        val toldLeaving = runTriggersAt(steppedOff, ScriptEvent.PARTY_LEFT)
+
         // A square with something to say draws for itself, and may draw
         // something other than the view — putting the new position up first
         // shows the party standing where the script is about to explain.
-        if (!runTriggers()) {
+        if (!runTriggers() && !toldLeaving) {
             renderViewPort()
             autosave()
         }
