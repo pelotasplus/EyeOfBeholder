@@ -20,14 +20,24 @@ each.
 
 - **The rest of the audio.** Sound is in: the ten AdLib banks were rendered
   track by track ahead of time, `AudioSink` puts sample buffers out on all five
-  targets, and a script's Sound instruction is heard. What is left is the part
-  the rendering cannot do.
+  targets, and a script's Sound instruction, a step into a wall and a door's
+  button are all heard. What is left is the part the rendering cannot do.
 
-  Nothing but a script makes a noise yet. The engine plays effects from a dozen
-  other places — a blow landing, a door being forced, a body going down, a
-  spell going off — and each is its own wiring rather than a thing to be
-  switched on once. Monsters carry their own two track numbers and no monster
-  is heard at all.
+  What is still silent is silent because the thing that would make the noise
+  does not exist yet, not because the sound is missing. Blows landing and
+  missing, a champion taking damage or going down, gaining a level, turning
+  undead, eating, and anything thrown or fired all have their track numbers
+  waiting in every bank; each becomes one line at the site that finally
+  implements it. Monsters carry their own two track numbers and no monster is
+  heard at all.
+
+  Two of those numbers are easy to read wrong, so: 11 and 26 are what a thrown
+  or fired object sounds like — both come from launching one, 26 when it is of
+  the type darts are — and neither is an item being set down. Nothing sounds
+  when an item is put on the floor, because the game has no such sound. Doors
+  are the same kind of trap: one slides open in silence and forcing one only
+  prints a line, so the click of the button beside it is the whole of what a
+  door has to say.
 
   Nothing plays the music, either. The long tunes are rendered and sitting
   there, but they belong to the intro and the finale, which is screen work
