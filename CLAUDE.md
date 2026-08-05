@@ -20,7 +20,7 @@ The detail lives in `.claude/rules/`, loaded automatically every session:
 | `architecture-features.md` | MVVM pattern, package layout, feature modules, navigation, Koin DI, adding a feature |
 | `architecture-data.md` | Repositories, domain models, binary parsing, LCW, common Kotlin patterns |
 | `rendering.md` | Vcn/Vmp/ViewPort/ViewSlot, Direction and WallSide |
-| `build-platform.md` | Platform targets, build settings, logging, resources, web dev loop |
+| `build-platform.md` | Platform targets, build settings, logging, resources, rendering the sounds, web dev loop |
 
 ## Common Commands
 
