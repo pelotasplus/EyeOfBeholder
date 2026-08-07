@@ -19,11 +19,20 @@ kotlin {
 
     // Android and the desktop both have java.io, and both keep saves as files;
     // without this they are unrelated source sets and would need two copies.
+    //
+    // Everything that is not Android draws through Skia and can be handed a
+    // buffer of pixels the same way, which is one source set rather than four.
     applyDefaultHierarchyTemplate {
         common {
             group("jvmShared") {
                 withJvm()
                 withAndroidTarget()
+            }
+            group("skia") {
+                withJvm()
+                withIos()
+                withJs()
+                withWasmJs()
             }
         }
     }

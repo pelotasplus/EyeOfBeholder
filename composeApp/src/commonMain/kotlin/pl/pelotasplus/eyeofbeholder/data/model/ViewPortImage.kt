@@ -32,4 +32,4 @@ fun Cps.ItemIcon.toImageBitmap(palette: Palette): ImageBitmap {
  * scaled with `FilterQuality.None` to keep the crisp retro pixels.
  */
 fun ViewPort.toImageBitmap(): ImageBitmap =
-    rasterize(getRows(), ViewPort.COLS, ViewPort.ROWS)
+    imageOf(getRows(), ViewPort.COLS, ViewPort.ROWS)
