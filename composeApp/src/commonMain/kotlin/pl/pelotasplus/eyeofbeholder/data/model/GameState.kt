@@ -1,6 +1,7 @@
 package pl.pelotasplus.eyeofbeholder.data.model
 
 import pl.pelotasplus.eyeofbeholder.data.model.script.CreateMonster
+import pl.pelotasplus.eyeofbeholder.data.model.script.ItemOverrides
 
 /**
  * What a trigger script is allowed to ask about the world it runs in.
@@ -214,8 +215,11 @@ data class GameState(
         level: Int,
         at: Location,
         place: SquarePlace,
+        overrides: ItemOverrides = ItemOverrides(),
     ): GameState {
-        val made = copyOf(copyOf) { it.copy(location = at, level = level, place = place) }
+        val made = copyOf(copyOf) {
+            overrides.applyTo(it).copy(location = at, level = level, place = place)
+        }
         return made?.world ?: this
     }
 
@@ -249,11 +253,16 @@ data class GameState(
      * the player to be holding. A hand that is already full has the thing put
      * on the floor at their feet instead, since it has to go somewhere.
      */
-    fun itemCopiedIntoTheHand(copyOf: ItemIndex, level: Int, place: SquarePlace): GameState {
-        if (inHand.isSomething) return itemCopied(copyOf, level, party.position, place)
+    fun itemCopiedIntoTheHand(
+        copyOf: ItemIndex,
+        level: Int,
+        place: SquarePlace,
+        overrides: ItemOverrides = ItemOverrides(),
+    ): GameState {
+        if (inHand.isSomething) return itemCopied(copyOf, level, party.position, place, overrides)
 
         val made = copyOf(copyOf) {
-            it.copy(location = Item.CARRIED, level = Item.CARRIED_LEVEL)
+            overrides.applyTo(it).copy(location = Item.CARRIED, level = Item.CARRIED_LEVEL)
         } ?: return this
 
         return made.world.copy(inHand = made.slot)

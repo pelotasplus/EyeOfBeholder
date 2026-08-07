@@ -372,17 +372,27 @@ class LevelScriptRunner(
                 // rolling for it, so two things made at once do not land in
                 // the same one.
                 is NewItem -> state = when (val goes = token.goes) {
-                    is ItemDestination.OnASquare ->
-                        state.itemCopied(token.copyOf, level, goes.at, goes.place)
+                    is ItemDestination.OnASquare -> state.itemCopied(
+                        copyOf = token.copyOf,
+                        level = level,
+                        at = goes.at,
+                        place = goes.place,
+                        overrides = token.overrides,
+                    )
 
-                    ItemDestination.IntoTheHand ->
-                        state.itemCopiedIntoTheHand(token.copyOf, level, cornerOfTwo())
+                    ItemDestination.IntoTheHand -> state.itemCopiedIntoTheHand(
+                        copyOf = token.copyOf,
+                        level = level,
+                        place = cornerOfTwo(),
+                        overrides = token.overrides,
+                    )
 
                     ItemDestination.Underfoot -> state.itemCopied(
                         copyOf = token.copyOf,
                         level = level,
                         at = state.party.position,
                         place = cornerInFront(state.party.facing),
+                        overrides = token.overrides,
                     )
                 }
 

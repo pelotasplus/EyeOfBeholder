@@ -1,6 +1,8 @@
 package pl.pelotasplus.eyeofbeholder.data.model.script
 
 import pl.pelotasplus.eyeofbeholder.data.ByteReader
+import pl.pelotasplus.eyeofbeholder.data.model.Item
+import pl.pelotasplus.eyeofbeholder.data.model.ItemIconId
 import pl.pelotasplus.eyeofbeholder.data.model.ItemIndex
 import pl.pelotasplus.eyeofbeholder.data.model.Location
 import pl.pelotasplus.eyeofbeholder.data.model.SquarePlace
@@ -45,25 +47,37 @@ sealed interface ItemDestination {
 }
 
 /**
+ * What a script says about the thing it makes that the thing it copied does
+ * not already say. Each is sent only when the script has something to say
+ * about it, and an absent one leaves what was copied standing.
+ *
+ * This is how one entry in the world's table serves as several things: every
+ * key in the game is the same key until a script says which door it opens.
+ */
+data class ItemOverrides(
+    val value: Int? = null,
+    val flags: Int? = null,
+    val icon: ItemIconId? = null,
+) {
+    fun applyTo(item: Item): Item = item.copy(
+        value = value ?: item.value,
+        flags = flags ?: item.flags,
+        icon = icon ?: item.icon,
+    )
+}
+
+/**
  * Makes a new thing and puts it somewhere. Opcode 0xEA.
  *
  * What is made is a copy of one of the things already in the world's table,
  * named by [copyOf] — a script does not describe a thing, it points at one
- * that already exists and asks for another like it.
- *
- * [flags] says which of the optional bytes follow, each overriding what the
- * copy inherited:
- * - bit 0: [itemValue], a magical bonus, a number of charges, which door a key opens
- * - bit 1: [itemFlag]
- * - bit 2: [itemIcon]
+ * that already exists and asks for another like it, then says in [overrides]
+ * how the copy differs.
  */
 data class NewItem(
     val copyOf: ItemIndex,
     val goes: ItemDestination,
-    val flags: Int,
-    val itemValue: Int?,
-    val itemFlag: Int?,
-    val itemIcon: Int?
+    val overrides: ItemOverrides,
 ) : ScriptToken {
 
     companion object {
@@ -71,16 +85,23 @@ data class NewItem(
             val copyOf = ItemIndex(reader.readU16LE())
             val block = reader.readU16LE()
             val place = SquarePlace.of(reader.readU8())
-            val flags = reader.readU8()
+            val sends = reader.readU8()
 
             return NewItem(
                 copyOf = copyOf,
                 goes = ItemDestination.of(block, place),
-                flags = flags,
-                itemValue = if (flags and 1 == 1) reader.readU8() else null,
-                itemFlag = if (flags and 2 == 2) reader.readU8() else null,
-                itemIcon = if (flags and 4 == 4) reader.readU8() else null,
+                // read in the order they are written, so each byte is the one
+                // its bit claims
+                overrides = ItemOverrides(
+                    value = if (sends and SENDS_VALUE != 0) reader.readU8() else null,
+                    flags = if (sends and SENDS_FLAGS != 0) reader.readU8() else null,
+                    icon = if (sends and SENDS_ICON != 0) ItemIconId(reader.readU8()) else null,
+                ),
             )
         }
+
+        private const val SENDS_VALUE = 1
+        private const val SENDS_FLAGS = 2
+        private const val SENDS_ICON = 4
     }
 }
