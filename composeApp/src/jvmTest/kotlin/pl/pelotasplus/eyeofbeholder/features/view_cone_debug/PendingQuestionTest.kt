@@ -7,6 +7,8 @@ import kotlinx.coroutines.withTimeout
 import pl.pelotasplus.eyeofbeholder.data.model.DialogAnswer
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 class PendingQuestionTest {
 
@@ -60,6 +62,23 @@ class PendingQuestionTest {
     @Test
     fun `answering when nothing was asked is ignored`() {
         PendingQuestion().answer(DialogAnswer(1))
+    }
+
+    /**
+     * Whether anything was waiting is the answer to a question of its own: a
+     * box nobody is waiting on has to be taken down by whoever answered it,
+     * because nothing else is going to draw.
+     */
+    @Test
+    fun `answering says whether anything was waiting`() = runBlocking {
+        val pending = PendingQuestion()
+
+        assertFalse(pending.answer(DialogAnswer(1)), "nothing was asked")
+
+        launch(Dispatchers.Unconfined) { pending.ask { true } }
+        assertTrue(pending.answer(DialogAnswer(1)), "a question was waiting")
+
+        assertFalse(pending.answer(DialogAnswer(1)), "and is not waiting twice")
     }
 
     private companion object {

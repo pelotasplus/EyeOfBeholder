@@ -663,6 +663,22 @@ class ViewPortGoldenTest {
         )
 
     /**
+     * A page read off something that was picked up rather than said by anyone:
+     * the orders the old woman on level 4 was carrying. Nobody is drawn, and
+     * the word that closes it sits in the corner a speech is read on instead of
+     * among the answers.
+     */
+    @Test
+    fun `a parchment being read`() =
+        checkGolden(
+            "parchment-read",
+            dialogueOver(
+                level = "LEVEL4.INF", x = 12, y = 11,
+                textId = 15, buttons = listOf(DialogueScene.OK), waitsToBeRead = true,
+            ),
+        )
+
+    /**
      * A question asked with nobody drawn: the grave on level 4, which the
      * party stand in front of and click. The dungeon stays up and the box that
      * would have framed a speaker is not drawn at all.
@@ -1104,6 +1120,7 @@ class ViewPortGoldenTest {
         message: Int? = null,
         buttons: List<String> = emptyList(),
         direction: Direction = Direction.NORTH,
+        waitsToBeRead: Boolean = false,
     ): BufferedImage = runBlocking {
         val resources = ResourceRepositoryImpl()
         val cps = CpsRepositoryImpl(resources)
@@ -1150,6 +1167,7 @@ class ViewPortGoldenTest {
                 text = text,
                 buttonLabels = buttons,
                 font = font,
+                waitsToBeRead = waitsToBeRead,
             ),
         ).toImage()
     }

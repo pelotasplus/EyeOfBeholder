@@ -155,6 +155,24 @@ data class ItemTypes(private val types: List<ItemType>) {
     operator fun get(id: ItemTypeId): ItemType? = types.getOrNull(id.value)
 
     /**
+     * The page written on [item] — a letter, a note, the orders somebody was
+     * carrying. This is the one kind of thing whose value says what is on it
+     * rather than what it does, which is why the same parchment serves for
+     * every note in the game.
+     *
+     * The value counts from zero and the texts are numbered from one.
+     *
+     * A negative value is a map: a picture rather than a text, and not read
+     * this way. Nothing here draws one yet, so it comes back as nothing.
+     */
+    fun writtenOn(item: Item): DialogueTextId? {
+        if (kindOf(item) != SOMETHING_TO_READ) return null
+        return item.value.takeIf { it >= 0 }?.let { DialogueTextId(it + 1) }
+    }
+
+    private fun kindOf(item: Item): Int = (this[item.type]?.extraProperties ?: 0) and KIND
+
+    /**
      * Whether a champion may strike with what is in [hand], the other hand
      * being part of the answer.
      *
@@ -177,7 +195,7 @@ data class ItemTypes(private val types: List<ItemType>) {
 
         val second = champion.carrying.getOrNull(1)?.let(held) ?: return true
 
-        val kind = (this[second.type]?.extraProperties ?: 0) and KIND
+        val kind = kindOf(second)
         val hands = this[second.type]?.requiredHands ?: 0
 
         // a weapon in the shield hand must be one that asks for no hand in
@@ -239,6 +257,9 @@ data class ItemTypes(private val types: List<ItemType>) {
 
         /** The kinds that count as being wielded rather than merely carried. */
         val WIELDED = 1..3
+
+        /** Letters, notes and maps. */
+        const val SOMETHING_TO_READ = 11
     }
 }
 

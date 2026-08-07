@@ -36,10 +36,14 @@ class PendingQuestion {
         return question.await()
     }
 
-    /** Answers whatever is waiting, if anything is. */
-    fun answer(answer: DialogAnswer) {
+    /**
+     * Answers whatever is waiting, if anything is, and says whether anything
+     * was — which is how the caller knows whether something else is about to
+     * carry on, or whether answering was the end of it.
+     */
+    fun answer(answer: DialogAnswer): Boolean {
         val question = waiting
         waiting = null
-        question?.complete(answer)
+        return question?.complete(answer) == true
     }
 }

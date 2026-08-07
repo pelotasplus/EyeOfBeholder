@@ -29,6 +29,8 @@ import pl.pelotasplus.eyeofbeholder.data.model.Dice
 import pl.pelotasplus.eyeofbeholder.data.model.DialogAnswer
 import pl.pelotasplus.eyeofbeholder.data.model.DialogueScene
 import pl.pelotasplus.eyeofbeholder.data.model.DialogueScene.Companion.MORE
+import pl.pelotasplus.eyeofbeholder.data.model.DialogueScene.Companion.OK
+import pl.pelotasplus.eyeofbeholder.data.model.DialogueTextId
 import pl.pelotasplus.eyeofbeholder.data.model.DialogueText
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.DoorMessages
@@ -198,6 +200,7 @@ class ViewConeDebugViewModel(
             is Event.DialogAnswered -> onDialogAnswered(event.answer)
             is Event.OnLevelSelected -> onVmpSelected(event.name)
             is Event.ClickedTheView -> onClickedTheView(event.x, event.y)
+            is Event.UsedWhatIsAt -> onUsedWhatIsAt(event.x, event.y)
             Event.Camp -> onCamped()
             Event.MoveForward -> onMoveForward()
             Event.MoveBackwards -> onMoveBackwards()
@@ -690,6 +693,71 @@ class ViewConeDebugViewModel(
 
     /** One of the two slots beside a face on the party panel. */
     private data class HandOnThePanel(val champion: PartySlot, val holds: InventorySlot)
+
+    /**
+     * The other click, which uses what a slot holds where it lies instead of
+     * taking it out.
+     *
+     * Reading is the only use there is so far. Everything else a thing can be
+     * — drunk, aimed, eaten — is left alone rather than answered with the
+     * original's line about using it wrongly, which would say the wrong thing
+     * about a potion that simply is not modelled yet.
+     */
+    private fun onUsedWhatIsAt(x: Int, y: Int) {
+        val sheet = sheetOnShow
+
+        val used = when {
+            sheet == null -> handAt(x, y)?.let { it.champion to it.holds }
+            sheet.page == CharacterSheet.Page.BELONGINGS ->
+                inventorySlotAt(x, y)?.let { sheet.slot to it }
+
+            else -> null
+        } ?: return
+
+        val (whose, slot) = used
+        val world = _state.value.game
+        val champion = world.championIn(whose) ?: return
+        val held = champion.holding(slot.slot).takeIf { it.isSomething } ?: return
+        val written = world.item(held)?.let { itemTypes?.writtenOn(it) } ?: return
+
+        viewModelScope.launch { read(written) }
+    }
+
+    /**
+     * Puts a page up to be read, with a word in the corner to close it.
+     *
+     * Nothing waits on it being closed — this is not a script's question — and
+     * a page part way through is the dialogue box's own business, so all this
+     * has to do is put the first one up.
+     */
+    private suspend fun read(page: DialogueTextId) {
+        val text = dialogueTextRepository.text(page)
+            .onFailure { Logger.e(it) { "No dialogue text $page" } }
+            .getOrNull() ?: return
+
+        // nobody is speaking, and nothing said before stands in the box behind
+        speaker = null
+        standingInTheBox = emptyList()
+
+        val unread = text.pages.drop(1)
+
+        _state.update {
+            it.copy(
+                dialog = DialogPrompt(
+                    scene = sceneFor(
+                        scene = emptyList(),
+                        text = text.first,
+                        buttonLabels = listOf(if (unread.isEmpty()) OK else MORE),
+                        waitsToBeRead = true,
+                    ),
+                    unread = unread,
+                    buttons = listOf(OK),
+                    waitsToBeRead = true,
+                )
+            )
+        }
+        drawWords()
+    }
 
     /**
      * Swaps what is being held with what is in one of a champion's slots.
@@ -1328,7 +1396,11 @@ class ViewConeDebugViewModel(
         }
 
         _state.update { it.copy(dialog = null) }
-        awaiting.answer(answer)
+
+        // A script draws whatever follows its own question. Nothing follows a
+        // page read off a thing that was picked up, so without this the box
+        // would stay on screen until something else happened to draw.
+        if (!awaiting.answer(answer)) drawWords()
     }
 
     private fun onDirectionChanged(direction: Direction) {
@@ -1540,6 +1612,12 @@ class ViewConeDebugViewModel(
 
         /** A click in the view, in its own 176 by 120 coordinates. */
         data class ClickedTheView(val x: Int, val y: Int) : Event()
+
+        /**
+         * The other click, which uses what a slot holds rather than picking it
+         * up: reading what is written on a thing, drinking it, aiming it.
+         */
+        data class UsedWhatIsAt(val x: Int, val y: Int) : Event()
         data object MoveForward : Event()
         data object MoveBackwards : Event()
         data object StrafeLeft : Event()

@@ -31,6 +31,8 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.key.utf16CodePoint
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.isSecondaryPressed
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
@@ -94,6 +96,9 @@ fun ViewConeDebugScreen(
         onViewClick = { x, y ->
             viewModel.onEvent(ViewConeDebugViewModel.Event.ClickedTheView(x, y))
         },
+        onUseClick = { x, y ->
+            viewModel.onEvent(ViewConeDebugViewModel.Event.UsedWhatIsAt(x, y))
+        },
         onTyping = { viewModel.onEvent(ViewConeDebugViewModel.Event.Typed(it)) },
     )
 }
@@ -105,6 +110,7 @@ private fun ViewConeDebugContent(
     onControlClick: (PlayFieldControl) -> Unit = {},
     onDialogAnswer: (DialogAnswer) -> Unit = {},
     onViewClick: (x: Int, y: Int) -> Unit = { _, _ -> },
+    onUseClick: (x: Int, y: Int) -> Unit = { _, _ -> },
     onTyping: (Typing) -> Unit = {},
 ) {
     val keyboard = remember { FocusRequester() }
@@ -169,8 +175,30 @@ private fun ViewConeDebugContent(
                         }
                     }
                 }
+                // The second mouse button uses what a slot holds rather than
+                // picking it up. It is taken on the initial pass and consumed,
+                // so the tap detector below never sees it and a page being read
+                // is not also an item being taken out of a hand.
                 .pointerInput(scaleFactor, state.dialog, state.menu) {
-                    detectTapGestures { offset ->
+                    awaitPointerEventScope {
+                        while (true) {
+                            val event = awaitPointerEvent(PointerEventPass.Initial)
+                            if (event.type != PointerEventType.Press) continue
+                            if (!event.buttons.isSecondaryPressed) continue
+
+                            val at = event.changes.firstOrNull()?.position ?: continue
+                            event.changes.forEach { it.consume() }
+
+                            use(at, scaleFactor, state, onUseClick)
+                        }
+                    }
+                }
+                .pointerInput(scaleFactor, state.dialog, state.menu) {
+                    // a touch has no second button, so holding is what uses
+                    // what a slot holds there
+                    detectTapGestures(
+                        onLongPress = { offset -> use(offset, scaleFactor, state, onUseClick) },
+                    ) { offset ->
                         // the Debug menu takes focus and does not give it back,
                         // so touching the play field claims the keys again
                         keyboard.requestFocus()
@@ -247,4 +275,21 @@ private fun ViewConeDebugContent(
             )
         }
     }
+}
+
+/**
+ * Using what a slot holds, from whichever gesture asked for it.
+ *
+ * A box waiting to be answered owns the screen, and so does an open menu;
+ * neither is a moment to be reading something else.
+ */
+private fun use(
+    at: Offset,
+    scaleFactor: Int,
+    state: ViewConeDebugViewModel.State,
+    onUseClick: (x: Int, y: Int) -> Unit,
+) {
+    if (state.dialog != null || state.menu != null) return
+
+    onUseClick((at.x / scaleFactor).toInt(), (at.y / scaleFactor).toInt())
 }

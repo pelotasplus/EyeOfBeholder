@@ -129,6 +129,10 @@ data class DialogueScene(
          * speech happens to end.
          */
         const val MORE = "more"
+
+        /** And the word that closes one there is no more of. */
+        const val OK = "ok"
+
         private const val READ_ON_LEFT = 221
         private const val READ_ON_TOP = 189
     }
