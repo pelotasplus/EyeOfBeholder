@@ -1,5 +1,6 @@
 package pl.pelotasplus.eyeofbeholder.rendering
 
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.toPixelMap
 import kotlinx.coroutines.runBlocking
@@ -535,21 +536,47 @@ class ViewPortGoldenTest {
     @Test
     fun `toImageBitmap matches the raw pixel buffer`() {
         val viewPort = renderFrame("LEVEL7.INF", x = 29, y = 15, direction = Direction.SOUTH)
-        val fromBuffer = viewPort.toImage()
-        val fromBitmap = viewPort.toImageBitmap().toPixelMap()
+        sameAsTheBuffer(
+            fromBuffer = viewPort.toImage(),
+            fromBitmap = viewPort.toImageBitmap(),
+            what = "the view",
+        )
+    }
+
+    /**
+     * The whole screen the same way. This is the one the app puts up, and the
+     * goldens do not go through it — they rasterize the buffer themselves — so
+     * without this nothing would notice the rasterizer losing a pixel.
+     */
+    @Test
+    fun `the screen's toImageBitmap matches the raw pixel buffer`() {
+        val screen = screenOver(menu = null)
+        sameAsTheBuffer(
+            fromBuffer = screen.toImage(),
+            fromBitmap = screen.toImageBitmap(),
+            what = "the screen",
+        )
+    }
+
+    private fun sameAsTheBuffer(
+        fromBuffer: BufferedImage,
+        fromBitmap: ImageBitmap,
+        what: String,
+    ) {
+        val pixels = fromBitmap.toPixelMap()
 
         var differing = 0
-        for (y in 0 until ViewPort.ROWS) {
-            for (x in 0 until ViewPort.COLS) {
+        for (y in 0 until fromBuffer.height) {
+            for (x in 0 until fromBuffer.width) {
                 val expected = fromBuffer.getRGB(x, y)
-                val actual = fromBitmap[x, y].toArgb()
+                val actual = pixels[x, y].toArgb()
                 // compare only visible pixels; both encode transparent as alpha 0
                 val same = if ((expected ushr 24) == 0) (actual ushr 24) == 0 else expected == actual
                 if (!same) differing++
             }
         }
         if (differing > 0) {
-            fail("toImageBitmap differs from the pixel buffer at $differing pixels")
+            fail("toImageBitmap differs from $what's pixel buffer at $differing pixels")
         }
     }
 
@@ -848,7 +875,9 @@ class ViewPortGoldenTest {
             ),
         )
 
-    private fun menuOver(menu: CampMenu): BufferedImage = runBlocking {
+    private fun menuOver(menu: CampMenu): BufferedImage = screenOver(menu).toImage()
+
+    private fun screenOver(menu: CampMenu?): PlayField = runBlocking {
         val resources = ResourceRepositoryImpl()
         val cps = CpsRepositoryImpl(resources)
         val repository = repository()
@@ -874,7 +903,7 @@ class ViewPortGoldenTest {
             viewPort = viewPort,
             direction = Direction.NORTH,
             menu = menu,
-        ).toImage()
+        )
     }
 
     /**
