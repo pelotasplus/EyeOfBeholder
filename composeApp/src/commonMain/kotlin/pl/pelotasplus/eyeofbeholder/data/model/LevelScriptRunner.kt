@@ -413,14 +413,20 @@ class LevelScriptRunner(
 
                 is SetFlag.GlobalFlag -> state = state.globalFlagSet(token.bit)
 
-                // Rousing a monster is read and named and does nothing, and
-                // saying so is the point: without this it falls through the
-                // same branch as everything uninteresting, and the next
-                // question about a monster that ignored a script gets asked
-                // from scratch.
-                is SetFlag.MonsterFlag -> Logger.w(TAG) {
-                    "Nothing marks monster ${token.monsterId} with ${token.bit}"
-                }
+                // The first bit is the one that means a monster has been
+                // roused, and setting it is how a script starts a fight —
+                // level 5's clerics are turned hostile by their own scene when
+                // the party choose to attack, rather than by the first blow.
+                // The other bits are still nobody's business, and say so.
+                is SetFlag.MonsterFlag -> state =
+                    if (token.bit == SetFlag.MonsterFlag.ROUSED) {
+                        state.rousedBy(token.monsterId)
+                    } else {
+                        Logger.w(TAG) {
+                            "Nothing marks monster ${token.monsterId} with ${token.bit}"
+                        }
+                        state
+                    }
 
                 // Clearing a flag is how a script takes something back. The
                 // grave on level 4 sets the flag that says to dig, then clears

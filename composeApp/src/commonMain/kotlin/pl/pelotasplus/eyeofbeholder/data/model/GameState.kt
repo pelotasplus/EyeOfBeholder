@@ -91,6 +91,7 @@ data class GameState(
 
     /** The hands still coming back to rest from a swing, on the same footing. */
     val recovering: List<HandRecovering> = emptyList(),
+
 ) {
 
     /** What is in [slot], or null for an empty hand or pack slot. */
@@ -676,10 +677,34 @@ data class GameState(
         monsters = monsters.map { if (it.index in slots) it.swingingOn() else it },
     )
 
+    /** The world with those monsters turned to face where they are told. */
+    fun monstersTurnedToFace(ways: List<Pair<Int, Direction>>): GameState {
+        if (ways.isEmpty()) return this
+        val turning = ways.toMap()
+
+        return copy(
+            monsters = monsters.map { monster ->
+                turning[monster.index]
+                    ?.let { monster.copy(direction = it, justTurned = true) }
+                    ?: monster
+            },
+        )
+    }
+
     /** The world with every swing carried on to its next frame. */
     fun swingsCarriedOn() = copy(
         monsters = monsters.map { if (it.striking == null) it else it.swingingOn() },
     )
+
+    /**
+     * Whether anything the screen shows has changed since [was] — which is
+     * what says whether a tick of the clock is worth redrawing for.
+     *
+     * The party's own step is not on the list: nothing on screen says how far
+     * through it they are, only whether the next one is refused.
+     */
+    fun somethingMoved(was: GameState): Boolean =
+        monsters != was.monsters || champions != was.champions
 
     /** Whether any monster is part way through its own swing. */
     val anythingSwinging: Boolean get() = monsters.any { it.striking != null }
@@ -768,6 +793,21 @@ data class GameState(
 
     companion object {
         private const val TAG = "GameState"
+
+        /**
+         * How long the party take over a step or a turn. From the original,
+         * where a monster's turn is twenty — so the party get five actions to
+         * a monster's one, which is exactly the room the dance round a monster
+         * needs and no more.
+         *
+         * It is not part of the world: a script hands back the world it was
+         * given, so anything the party's own clock had written into it would
+         * be undone every time one ran.
+         */
+        val A_STEP = Ticks(4)
+
+        /** And how often that clock, and the monsters', are wound on. */
+        val CLOCK_STEP = Ticks(2)
 
         /**
          * The world a save describes. The mazes arrive afterwards, with

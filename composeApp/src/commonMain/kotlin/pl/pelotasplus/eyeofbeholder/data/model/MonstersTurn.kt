@@ -20,23 +20,73 @@ class MonstersTurn(
     data class Struck(val monster: Int, val at: PartySlot, val damage: Int, val heard: TrackIndex?)
 
     /**
-     * Every monster that can reach the party takes its turn.
+     * Every monster that can reach the party starts its swing.
      *
-     * Only one that has been roused: the pair on level 5 stand talking until
-     * somebody hits one of them, and a monster that has not been provoked is
-     * scenery.
+     * Starting it is all this does. The arm goes back, and only when it has
+     * come down again — [landed] — does anybody get hurt: the wind-up is the
+     * warning a player reads, and a blow resolved at the moment it begins is
+     * no warning at all.
+     *
+     * Only a monster that has been roused: the pair on level 5 stand talking
+     * until somebody hits one of them, and one nobody has provoked is scenery.
      */
-    fun taken(world: GameState): Taken {
+    fun begun(world: GameState): GameState {
+        // Only half of a monster's turns are turns it swings on, and only one
+        // that can reach counts them: the count belongs to the attack itself,
+        // so walking up to the party does not leave a monster a beat out when
+        // it arrives.
+        val after = world.copy(
+            monsters = world.monsters.map {
+                when {
+                    !it.provoked || it.striking != null -> it
+                    it.justTurned -> it.copy(justTurned = false)
+                    it.canReach(world.party) -> it.turnCameRound()
+                    else -> it
+                }
+            },
+        )
+
+        // A monster that turned last time spends this turn doing nothing at
+        // all, which is what stops one spinning to face the party and swinging
+        // in the same breath.
+        val taking = after.monsters.filter {
+            it.provoked && it.striking == null && !it.justTurned
+        }
+
+        val swinging = taking
+            .filter { it.readyToStrike && it.canReach(after.party) }
+            .map { it.index }
+
+        // One that cannot reach turns towards them instead, and pays a turn
+        // for it. A monster reaches only the square it faces, so without this
+        // it is dangerous from one side and harmless from the other three —
+        // and the party would simply walk round it.
+        val turning = taking
+            .filterNot { it.canReach(after.party) }
+            .mapNotNull { monster ->
+                monster.facingThe(after.party)?.let { monster.index to it }
+            }
+
+        return after.monstersStriking(swinging).monstersTurnedToFace(turning)
+    }
+
+    /**
+     * What the monsters whose arms have just come down do to the party.
+     *
+     * Whom each reaches is worked out now rather than when the arm went back,
+     * so a party who have turned on the spot are hit as they now stand.
+     */
+    fun landed(world: GameState, byWhom: List<Int>): Taken {
         var after = world
         val struck = mutableListOf<Struck>()
 
-        world.monsters.filter { it.provoked }.forEach { monster ->
+        world.monsters.filter { it.index in byWhom }.forEach { monster ->
             val blow = strike(after, monster) ?: return@forEach
             struck += blow
             after = after.championHurt(blow.at, blow.damage)
         }
 
-        return Taken(struck, after.monstersStriking(struck.map { it.monster }))
+        return Taken(struck, after)
     }
 
     private fun strike(world: GameState, monster: MonsterInstance): Struck? {

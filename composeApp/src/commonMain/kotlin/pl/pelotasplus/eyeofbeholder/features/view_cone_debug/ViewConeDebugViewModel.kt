@@ -38,6 +38,8 @@ import pl.pelotasplus.eyeofbeholder.data.model.Blow
 import pl.pelotasplus.eyeofbeholder.data.model.Fighting
 import pl.pelotasplus.eyeofbeholder.data.model.THROWN_CPS
 import pl.pelotasplus.eyeofbeholder.data.model.HandRecovering
+import pl.pelotasplus.eyeofbeholder.data.model.MonsterInstance
+import pl.pelotasplus.eyeofbeholder.data.model.MonsterPose
 import pl.pelotasplus.eyeofbeholder.data.model.MonstersTurn
 import pl.pelotasplus.eyeofbeholder.data.model.DoorMessages
 import pl.pelotasplus.eyeofbeholder.data.model.DoorSounds
@@ -179,8 +181,18 @@ class ViewConeDebugViewModel(
     /** Taking the silhouette off whatever was struck. */
     private var fading: Job? = null
 
-    /** Letting whatever has been roused take its turns. */
-    private var monstersFighting: Job? = null
+    /** The clock the party's step and the monsters' turns are wound by. */
+    private var fighting: Job? = null
+
+    /**
+     * How much of the party's own step is still to run.
+     *
+     * Not in the world, for all that it is the world it holds up: a script is
+     * handed the world and hands one back, so a number the party's clock wrote
+     * into it would be restored to whatever it was when the script began — and
+     * a step that never finishes is a party that can never move again.
+     */
+    private var stepStillRunning = 0
     private var pulse = TeleporterPulse.AS_LAID_OUT
 
     /** The view as last drawn, which a script's words are written over. */
@@ -221,6 +233,15 @@ class ViewConeDebugViewModel(
                 event is Event.Camp && menu.naming == null -> showMenu(null)
             }
             return
+        }
+
+        // A party do not move as fast as a key repeats. Four ticks a step is
+        // the original's, and it is what makes stepping round a monster a
+        // matter of timing rather than of holding a key down.
+        if (event.isAStep && stepStillRunning > 0) return
+        if (event.isAStep) {
+            stepStillRunning = GameState.A_STEP.value
+            keepTheFightGoing()
         }
 
         when (event) {
@@ -793,6 +814,7 @@ class ViewConeDebugViewModel(
         if (struck.blow == Blow.StillRecovering) return
 
         _state.update { it.copy(game = struck.world) }
+        Logger.d(TAG) { "Roused: ${struck.world.monsters.filter { m -> m.provoked }.map { m -> m.index }}" }
 
         // The blow is heard whether or not it lands. What a landed one looks
         // like, and what a monster sounds like, are still to come.
@@ -800,47 +822,107 @@ class ViewConeDebugViewModel(
         renderViewPort()
         keepHandsRecovering()
         letTheFlashFade()
-        keepMonstersFighting()
+        keepTheFightGoing()
     }
 
     /**
-     * Lets whatever has been roused take its turn, over and over, until
-     * nothing is left that will fight.
+     * The clock the fight runs on.
      *
-     * A monster's swing is two frames and the turn is far longer than they
-     * are, so the clock runs at the speed of the animation and a turn comes
-     * round every so many of its ticks.
+     * Three things are wound by it and they are deliberately separate, as they
+     * are in the original: the party's own step, the frames of a monster's
+     * swing, and the turn that starts one. A monster's turn comes round every
+     * twenty ticks whatever the party do — stepping does not hurry it and
+     * being hit does not delay it, so a party who dance well are not slowing
+     * anything down, only standing somewhere else when the blow falls.
      */
-    private fun keepMonstersFighting() {
-        if (monstersFighting?.isActive == true) return
+    private fun keepTheFightGoing() {
+        if (fighting?.isActive == true) return
 
-        monstersFighting = viewModelScope.launch {
-            var untilTheirTurn = 0
+        fighting = viewModelScope.launch {
+            // A monster roused this instant has its whole turn ahead of it,
+            // not the tail of one it never took.
+            var untilTheirTurn = A_MONSTER_TURN.value
+            var untilTheNextFrame = A_SWING_FRAME.value
 
-            while (_state.value.game.monsters.any { it.provoked }) {
-                delay(MONSTER_FRAME.inMilliseconds)
+            while (stillFighting()) {
+                delay(GameState.CLOCK_STEP.inMilliseconds)
 
-                if (untilTheirTurn-- <= 0) {
-                    untilTheirTurn = FRAMES_PER_MONSTER_TURN
-                    val taken = MonstersTurn(
-                        kinds = _state.value.inf
-                            ?.subLevels?.getOrNull(_state.value.subLevel)
-                            ?.monsters.orEmpty(),
-                    ).taken(_state.value.game)
+                untilTheNextFrame -= GameState.CLOCK_STEP.value
+                untilTheirTurn -= GameState.CLOCK_STEP.value
 
-                    _state.update { it.copy(game = taken.world) }
-                    taken.struck.forEach { blow ->
-                        Logger.d(TAG) { "Monster ${blow.monster} strikes ${blow.at} for ${blow.damage}" }
-                        blow.heard?.let { playTrack(it) }
+                val aFrame = untilTheNextFrame <= 0
+                val theirTurn = untilTheirTurn <= 0
+                if (aFrame) untilTheNextFrame = A_SWING_FRAME.value
+                if (theirTurn) untilTheirTurn = A_MONSTER_TURN.value
+
+                // Everything the clock does to the world happens in one go.
+                // Read it, change it and write it back separately and whatever
+                // a swing landing in between did is thrown away.
+                stepStillRunning = (stepStillRunning - GameState.CLOCK_STEP.value)
+                    .coerceAtLeast(0)
+
+                var landed = emptyList<MonstersTurn.Struck>()
+                var roused = emptyList<MonsterInstance>()
+                var moved = false
+
+                _state.update { state ->
+                    var world = state.game
+
+                    if (aFrame) {
+                        val landing = world.monsters
+                            .filter { it.striking == MonsterPose.ATTACK_B }
+                            .map { it.index }
+
+                        world = world.swingsCarriedOn()
+
+                        if (landing.isNotEmpty()) {
+                            val taken = monstersTurn().landed(world, landing)
+                            landed = taken.struck
+                            world = taken.world
+                        }
                     }
-                } else if (_state.value.game.anythingSwinging) {
-                    _state.update { it.copy(game = it.game.swingsCarriedOn()) }
+
+                    if (theirTurn) {
+                        val already = world.monsters.filter { it.striking != null }.map { it.index }
+                        world = monstersTurn().begun(world)
+                        roused = world.monsters.filter {
+                            it.striking != null && it.index !in already
+                        }
+                    }
+
+                    moved = world.somethingMoved(state.game)
+                    state.copy(game = world)
                 }
 
-                drawViewPort()
+                landed.forEach {
+                    Logger.d(TAG) { "Monster ${it.monster} hits ${it.at} for ${it.damage}" }
+                }
+                roused.forEach { monster ->
+                    Logger.d(TAG) { "Monster ${monster.index} swings at the party" }
+                    monsterSound(monster)?.let { playTrack(it) }
+                }
+                if (moved) drawViewPort()
             }
+
+            Logger.d(TAG) { "The fight is over" }
         }
     }
+
+    /** Whether anything is still going that the clock has to keep winding. */
+    private fun stillFighting(): Boolean =
+        _state.value.game.monsters.any { it.provoked } || stepStillRunning > 0
+
+    private fun monstersTurn() = MonstersTurn(
+        kinds = _state.value.inf?.subLevels?.getOrNull(_state.value.subLevel)?.monsters.orEmpty(),
+    )
+
+    /** What a monster sounds like swinging, which is the only sound it has. */
+    private fun monsterSound(monster: MonsterInstance): TrackIndex? =
+        _state.value.inf?.subLevels?.getOrNull(_state.value.subLevel)?.monsters
+            ?.firstOrNull { it.id == monster.type.value }
+            ?.sound1
+            ?.takeIf { it > 0 }
+            ?.let(::TrackIndex)
 
     /**
      * Takes the silhouette off whatever was struck, a moment after it was.
@@ -1673,6 +1755,12 @@ class ViewConeDebugViewModel(
 
         keepFlickering(teleportersInView(party.position, party.facing, wallAt).isNotEmpty())
         keepDoorsGoing(_state.value.game.swinging.isNotEmpty())
+
+        // A fight can start without the party doing anything: level 5's scene
+        // rouses the pair itself once they choose to attack. Asking here means
+        // every way of starting one winds the clock, rather than each having
+        // to remember to.
+        keepTheFightGoing()
     }
 
     /**
@@ -1866,6 +1954,17 @@ class ViewConeDebugViewModel(
 
         /** A key press, while a save is being named. */
         data class Typed(val typing: Typing) : Event()
+
+        /**
+         * Whether this is the party moving themselves, which is the one thing
+         * they are made to take their time over. Turning counts: it is a step
+         * of the same length in the original, and a fight is danced as much
+         * with turns as with steps.
+         */
+        val isAStep: Boolean
+            get() = this is MoveForward || this is MoveBackwards ||
+                this is StrafeLeft || this is StrafeRight ||
+                this is RotateLeft || this is RotateRight
     }
 
     /** A question a script is waiting on, drawn as [scene] over the play field. */
@@ -1954,11 +2053,11 @@ class ViewConeDebugViewModel(
         /** How long a struck monster is drawn as a silhouette. */
         private val FLASH = Ticks(2)
 
-        /** How long one frame of a monster's swing is held. */
-        private val MONSTER_FRAME = Ticks(4)
+        /** How long one frame of a monster's swing is held. From the original. */
+        private val A_SWING_FRAME = Ticks(8)
 
-        /** And how many of those go by between one monster's turn and the next. */
-        private const val FRAMES_PER_MONSTER_TURN = 5
+        /** And how often a monster's unit takes a turn. Also the original's. */
+        private val A_MONSTER_TURN = Ticks(20)
 
         private const val PLAY_FIELD_CPS = "PLAYFLD.CPS"
         private const val DECORATIONS_CPS = "DECORATE.CPS"

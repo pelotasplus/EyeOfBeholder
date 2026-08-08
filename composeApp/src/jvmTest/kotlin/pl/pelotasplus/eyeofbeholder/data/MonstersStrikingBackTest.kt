@@ -33,6 +33,9 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
+/** The original's monster turn, which the party's step is measured against. */
+private val A_MONSTER_TURN = pl.pelotasplus.eyeofbeholder.data.model.Ticks(20)
+
 /**
  * Level 5's clerics hitting back once they have been roused.
  *
@@ -88,19 +91,33 @@ class MonstersStrikingBackTest {
 
     private fun turn(dice: Dice) = MonstersTurn(kinds, dice)
 
+    /**
+     * A whole swing, as the clock plays one: the arms go back, come down, and
+     * only then does anybody get hurt.
+     */
+    private fun swungThrough(from: GameState, dice: Dice = everyDieHighest): MonstersTurn.Taken {
+        val turn = turn(dice)
+
+        var world = turn.begun(from)
+        world = world.swingsCarriedOn()
+
+        val landing = world.monsters.filter { it.striking == MonsterPose.ATTACK_B }.map { it.index }
+        return turn.landed(world.swingsCarriedOn(), landing)
+    }
+
     @Test
     fun `nothing that has not been roused takes a turn`() {
         val talking = world().copy(
             monsters = world().monsters.map { it.copy(provoked = false) },
         )
 
-        assertEquals(emptyList(), turn(everyDieHighest).taken(talking).struck)
+        assertEquals(emptyList(), swungThrough(talking).struck)
     }
 
     /** Both of them reach, so both strike. */
     @Test
     fun `each roused monster in reach strikes once`() {
-        val taken = turn(everyDieHighest).taken(world())
+        val taken = swungThrough(world())
 
         assertEquals(listOf(16, 17), taken.struck.map { it.monster }.sorted())
     }
@@ -112,7 +129,7 @@ class MonstersStrikingBackTest {
     @Test
     fun `a landed blow takes its damage off the champion it lands on`() {
         val before = world()
-        val taken = turn(everyDieHighest).taken(before)
+        val taken = swungThrough(before)
 
         taken.struck.forEach { assertEquals(16, it.damage, "2d8 at its worst is 16") }
 
@@ -134,38 +151,85 @@ class MonstersStrikingBackTest {
     fun `a natural twenty lands however good the armour`() {
         val armoured = world(List(6) { champion(armour = -8) })
 
-        assertTrue(turn(everyDieHighest).taken(armoured).struck.all { it.damage > 0 })
-        assertTrue(turn(everyDieLowest).taken(armoured).struck.all { it.damage == 0 })
+        assertTrue(swungThrough(armoured).struck.all { it.damage > 0 })
+        assertTrue(swungThrough(armoured, everyDieLowest).struck.all { it.damage == 0 })
     }
 
     /** A blow that misses is still a blow, and still swung and heard. */
     @Test
     fun `a miss is still a turn taken`() {
-        val taken = turn(everyDieLowest).taken(world(List(6) { champion(armour = -8) }))
+        val taken = swungThrough(world(List(6) { champion(armour = -8) }), everyDieLowest)
 
         assertEquals(2, taken.struck.size)
         assertTrue(taken.struck.all { it.damage == 0 })
-        assertTrue(taken.world.anythingSwinging, "nothing swung at all")
     }
 
-    /** Whatever swung is drawn mid-swing, and the arm goes back before it comes down. */
+    /**
+     * The arm goes back, comes down, and comes to rest — and nobody is hurt
+     * until it has. A blow settled the moment it began would make the wind-up
+     * decoration; it is meant to be the warning a player reads.
+     */
     @Test
-    fun `a monster that strikes leans back and then comes down`() {
-        var world = turn(everyDieHighest).taken(world()).world
+    fun `the arm goes back before the blow lands`() {
+        val before = world()
+        var world = turn(everyDieHighest).begun(before)
 
         assertTrue(world.monsters.all { it.striking == MonsterPose.ATTACK_A })
+        assertEquals(
+            before.champions.map { it.hitPoints },
+            world.champions.map { it.hitPoints },
+            "somebody was hurt before the arm had moved",
+        )
 
         world = world.swingsCarriedOn()
         assertTrue(world.monsters.all { it.striking == MonsterPose.ATTACK_B })
+        assertEquals(
+            before.champions.map { it.hitPoints },
+            world.champions.map { it.hitPoints },
+            "somebody was hurt on the way down",
+        )
 
         world = world.swingsCarriedOn()
         assertTrue(world.monsters.all { it.striking == null }, "the arm never came to rest")
     }
 
+    /** An arm already swinging does not start over on the next turn. */
+    @Test
+    fun `a swing already going is not begun again`() {
+        val turn = turn(everyDieHighest)
+        val going = turn.begun(world()).swingsCarriedOn()
+
+        assertTrue(turn.begun(going).monsters.all { it.striking == MonsterPose.ATTACK_B })
+    }
+
+    /**
+     * A monster in reach swings every other turn, not every one. It is the
+     * single biggest thing between a fight and a mauling: two of these do 2d8
+     * apiece, so at every turn they take a champion down in about two seconds.
+     */
+    @Test
+    fun `a monster swings every other turn`() {
+        val turn = turn(everyDieHighest)
+
+        // It swings the first time its turn comes round, and the arm is back
+        // at rest well before the turn after that.
+        val first = turn.begun(world())
+        assertTrue(first.monsters.all { it.striking == MonsterPose.ATTACK_A })
+
+        val resting = first.swingsCarriedOn().swingsCarriedOn()
+        assertTrue(resting.monsters.none { it.striking != null })
+
+        val second = turn.begun(resting)
+        assertTrue(second.monsters.none { it.striking != null }, "swung on both turns")
+
+        val third = turn.begun(second)
+        assertTrue(third.monsters.all { it.striking == MonsterPose.ATTACK_A })
+    }
+
     /** And it is heard doing it — the one sound a monster has. */
     @Test
     fun `a monster is heard striking`() {
-        val heard = turn(everyDieHighest).taken(world()).struck.mapNotNull { it.heard }
+        val heard = swungThrough(world()).struck.mapNotNull { it.heard }
 
         assertEquals(2, heard.size)
         assertEquals(setOf(37), heard.map { it.value }.toSet())
@@ -182,7 +246,31 @@ class MonstersStrikingBackTest {
             world.copy(monsters = world.monsters.map { it.copy(direction = Direction.NORTH) })
         }
 
-        assertEquals(emptyList(), turn(everyDieHighest).taken(turnedAround).struck)
+        assertEquals(emptyList(), swungThrough(turnedAround).struck)
+    }
+
+    /**
+     * Turning costs a monster the turn after it too, so it cannot spin to face
+     * the party and swing in one breath. Round a corner from them, a monster
+     * spends one turn turning, one doing nothing, and only then swings — which
+     * is the room a party have to keep stepping round it.
+     */
+    @Test
+    fun `turning costs a monster the turn after it`() {
+        val turn = turn(everyDieHighest)
+        val fromTheSide = world().let { world ->
+            world.copy(monsters = world.monsters.map { it.copy(direction = Direction.NORTH) })
+        }
+
+        val turned = turn.begun(fromTheSide)
+        assertTrue(turned.monsters.all { it.direction == Direction.SOUTH }, "never turned")
+        assertTrue(turned.monsters.none { it.striking != null }, "turned and swung at once")
+
+        val paying = turn.begun(turned)
+        assertTrue(paying.monsters.none { it.striking != null }, "the turn cost nothing")
+
+        val swinging = turn.begun(paying)
+        assertTrue(swinging.monsters.all { it.striking == MonsterPose.ATTACK_A })
     }
 
     /** Nor does one that is nowhere near. */
@@ -190,7 +278,32 @@ class MonstersStrikingBackTest {
     fun `a monster a square away strikes nothing`() {
         val backedOff = world().partyMovedTo(Location(13, 10))
 
-        assertEquals(emptyList(), turn(everyDieHighest).taken(backedOff).struck)
+        assertEquals(emptyList(), swungThrough(backedOff).struck)
+    }
+
+    // --- the clock the dance is danced on -----------------------------------
+
+    /**
+     * The party get five actions to a monster's one. That ratio is the whole
+     * of the dance: step aside, turn, step back and swing all fit inside one
+     * turn of something standing next to you, with one to spare.
+     *
+     * Both numbers are the original's, and neither is generous. If either ever
+     * moves, the fight stops being the fight the game was designed around.
+     */
+    @Test
+    fun `a party get five steps to a monster's turn`() {
+        assertEquals(5, A_MONSTER_TURN.value / GameState.A_STEP.value)
+    }
+
+    /**
+     * A step is counted in whole numbers of the clock's own ticks, so it ends
+     * exactly when it should rather than a tick late.
+     */
+    @Test
+    fun `a step is a whole number of clock ticks`() {
+        assertEquals(0, GameState.A_STEP.value % GameState.CLOCK_STEP.value)
+        assertEquals(0, A_MONSTER_TURN.value % GameState.CLOCK_STEP.value)
     }
 
     /** A champion already down is passed over for one still standing. */
@@ -200,7 +313,7 @@ class MonstersStrikingBackTest {
             List(6) { if (it == 5) champion() else champion(hitPoints = -10) },
         )
 
-        val taken = turn(everyDieHighest).taken(mostlyDown)
+        val taken = swungThrough(mostlyDown)
 
         assertTrue(taken.struck.isNotEmpty())
         assertTrue(taken.struck.all { it.at == PartySlot(5) }, "a corpse was hit")

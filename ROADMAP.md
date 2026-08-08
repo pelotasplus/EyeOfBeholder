@@ -3,9 +3,9 @@
 Things worth doing that are not being done yet, and what stands in the way of
 each.
 
-- **Combat.** A monster can be killed now — it is rolled for as it is placed
-  and leaves the world when its hit points run out — but nothing the party do
-  takes any off. What is missing is the blow.
+- **Combat.** A monster can be killed now, and the party can do it: a hand
+  swings, rolls against armour, takes hit points off, and the thing flashes and
+  leaves the world when they run out.
 
   Two of the six things a slot can report are unreachable: `HACK` and `BASH`,
   which are what it says when a weapon is worked against a wall that gives.
@@ -36,9 +36,9 @@ each.
   yet — and so is a monster casting a spell, which is the other half of what
   the clerics ought to be able to do.
 
-  One thing still unwired: `SetFlag.MonsterFlag` has no branch in the runner,
-  so a script rousing a monster does nothing. It warns now rather than falling
-  through the same `else` as everything uninteresting.
+  `SetFlag.MonsterFlag` carries one bit anybody has found a meaning for, the
+  one that rouses. The rest still warn rather than falling through the same
+  `else` as everything uninteresting, and each wants whatever names it.
 
 - **What a script can ask about a thing by name.** A lock is answered now — it
   can be shown what kind of thing the hand holds, what it is worth, and which
@@ -78,6 +78,14 @@ each.
   started. Every script in the game that asks is one that also moves them, and
   moving them takes them over, so nothing shipped can currently notice. Fixing
   it means the runner reading the party live rather than out of its own copy.
+
+  The other half of the same shape is worse and easy to walk into: the runner
+  writes its whole copy back when it ends, so anything else that changed in
+  between is quietly undone. Anything that ticks while a script runs therefore
+  cannot live in the world the runner holds — the party's step counter had to
+  be moved out for exactly this, having been restored to mid-step every time a
+  script finished, which left the party unable to walk. Reading live would fix
+  both.
 
 - **The screen is composed a boxed pixel at a time.** Handing the finished
   pixels to the platform took rasterizing a frame from 23ms to under half a

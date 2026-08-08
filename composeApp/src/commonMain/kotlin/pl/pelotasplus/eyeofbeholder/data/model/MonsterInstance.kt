@@ -58,6 +58,21 @@ data class MonsterInstance(
      * back and then comes down, and the sprites for both are cut already.
      */
     val striking: MonsterPose? = null,
+    /**
+     * Whether this turn is one it swings on. A monster in reach of the party
+     * strikes every other turn rather than every one — the original flips a
+     * bit each time it comes round and does nothing on the turns the bit lands
+     * clear, which halves how hard a fight comes at the party and is most of
+     * what makes one survivable.
+     */
+    val readyToStrike: Boolean = false,
+    /**
+     * Whether it spent its last turn turning round. Turning costs a monster
+     * the turn after it as well, so it cannot spin to face the party and swing
+     * in the same breath — which is what gives a party who step round one the
+     * time to do it.
+     */
+    val justTurned: Boolean = false,
 ) {
     val x: Int get() = block and 0x1F
     val y: Int get() = block shr 5
@@ -111,6 +126,19 @@ data class MonsterInstance(
 
         return !place.onTheFloor || WhoTheMonsterReaches.armIsLongEnough(direction, place)
     }
+
+    /**
+     * Which way it would have to turn to face the party, or null if they are
+     * not on one of the four squares around it — a monster turns towards
+     * something it can reach next turn, and nothing else.
+     */
+    fun facingThe(party: PartyState): Direction? = Direction.entries.firstOrNull { way ->
+        val (dx, dy) = way.transformCoordinates(0, -1)
+        x + dx == party.position.x && y + dy == party.position.y
+    }
+
+    /** The same monster with its turn come round, ready or not. */
+    fun turnCameRound() = copy(readyToStrike = !readyToStrike)
 
     /** The next frame of its swing, or none once the arm has come down. */
     fun swingingOn() = copy(

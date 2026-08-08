@@ -25,7 +25,19 @@ sealed class SetFlag : ScriptToken {
     data class MonsterFlag(
         val monsterId: Int,
         val bit: FlagBit
-    ) : SetFlag()                                              // type = -13 (0xF3)
+    ) : SetFlag() {                                            // type = -13 (0xF3)
+        companion object {
+            /**
+             * The bit that means a monster has been roused and will fight.
+             *
+             * A blow sets it too, which is why swinging at something friendly
+             * ends the conversation — but a scene can set it first, and level
+             * 5's clerics are turned hostile this way by the answer the party
+             * give rather than by being hit.
+             */
+            val ROUSED = FlagBit(0)
+        }
+    }
     data object DialogResult : SetFlag()                       // type = -28 (0xE4)
     data object PreventRest : SetFlag()                        // type = -47 (0xD1)
     data class Unknown(val type: Int) : SetFlag()
