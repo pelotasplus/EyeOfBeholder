@@ -4,6 +4,7 @@ import co.touchlab.kermit.Logger
 import eyeofbeholder.composeapp.generated.resources.Res
 import pl.pelotasplus.eyeofbeholder.data.ByteReader
 import pl.pelotasplus.eyeofbeholder.data.LCWHelper
+import pl.pelotasplus.eyeofbeholder.data.RleHelper
 import pl.pelotasplus.eyeofbeholder.data.model.Palette
 
 /**
@@ -303,10 +304,10 @@ class ResourceRepositoryImpl() : ResourceRepository {
 
         val compressionType = reader.readU16LE()
 //        Logger.d(TAG) { "Compression Type $compressionType" }
-        // 0 = uncompressed, 1 = LZW, 3 = RLE, 4 = LCW. Only LCW is implemented;
-        // SKELWAR.CPS is the one type 3 file in the game data.
-        check(compressionType == COMPRESSION_LCW) {
-            "$path uses compression type $compressionType, only LCW ($COMPRESSION_LCW) is supported"
+        // 0 = uncompressed, 1 = LZW, 3 = run-length, 4 = LCW. LZW is the one
+        // nothing in the game data uses.
+        check(compressionType in DECOMPRESSED_BY) {
+            "$path uses compression type $compressionType, which nothing here decompresses"
         }
 
         val uncompressedSize = reader.readU32LE()
@@ -330,7 +331,15 @@ class ResourceRepositoryImpl() : ResourceRepository {
         val compressed = reader.readRemaining()
         val decompressed = UByteArray(uncompressedSize)
 
-        LCWHelper.decompress(compressed, decompressed)
+        when (compressionType) {
+            COMPRESSION_NONE -> compressed.copyInto(
+                destination = decompressed,
+                endIndex = minOf(compressed.size, decompressed.size),
+            )
+
+            COMPRESSION_RLE -> RleHelper.decompress(compressed, decompressed)
+            else -> LCWHelper.decompress(compressed, decompressed)
+        }
 
         return DecompressedResource(bytes = decompressed, palette = palette)
     }
@@ -344,6 +353,12 @@ class ResourceRepositoryImpl() : ResourceRepository {
 
     companion object {
         private const val HEADER_SIZE = 10
+
+        private const val COMPRESSION_NONE = 0
+        private const val COMPRESSION_RLE = 3
         private const val COMPRESSION_LCW = 4
+
+        private val DECOMPRESSED_BY =
+            setOf(COMPRESSION_NONE, COMPRESSION_RLE, COMPRESSION_LCW)
     }
 }

@@ -117,11 +117,6 @@ class CpsDecodeTest {
             reasons.getValue("KHELBAN2.CPS")?.contains("too short") == true,
             "KHELBAN2.CPS should be rejected as too short, got: ${reasons["KHELBAN2.CPS"]}"
         )
-        // the one RLE-compressed file; decodeFrame3 is not implemented
-        assertTrue(
-            reasons.getValue("SKELWAR.CPS")?.contains("compression type 3") == true,
-            "SKELWAR.CPS should be rejected for its compression type, got: ${reasons["SKELWAR.CPS"]}"
-        )
     }
 
     private suspend fun describeDecode(name: String): String =
@@ -141,7 +136,8 @@ class CpsDecodeTest {
     }
 
     private companion object {
-        val UNUSABLE = listOf("COIN.CPS", "KHELBAN2.CPS", "SKELWAR.CPS")
+        /** The two the retail data ships as 0-byte files. */
+        val UNUSABLE = listOf("COIN.CPS", "KHELBAN2.CPS")
         val updateGoldens = System.getenv("UPDATE_GOLDENS") != null
     }
 }

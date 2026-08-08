@@ -95,7 +95,7 @@ SALAMNDR.CPS ok sha256=3f95ffc1c47b62985ac4c4d06a98f8c555e3c4e6508e3ad225a9e7c86
 SHRUNKEN.CPS ok sha256=ea2177dc4c4dc4f394f84f59e840cf98ca6c249bcfddc1d00286b2d949864573 painted=30560/64000 palette=external
 SILVER1.CPS ok sha256=bc2fba24aec53d416d518f793a97e1c3e04ef1257192a324d6773c5b0c974e30 painted=63978/64000 palette=external
 SILVER2.CPS ok sha256=6bdedaf1c4f6cd36b6ace0b368511b61b185a93cb4b5e76f5426f1b9c55e3096 painted=63970/64000 palette=external
-SKELWAR.CPS rejected: files/SKELWAR.CPS uses compression type 3, only LCW (4) is supported
+SKELWAR.CPS ok sha256=81c608fd325ce0890bfbf82271efb3253a04440427ceedf26c6a611e80ca3db5 painted=64000/64000 palette=external
 SOUT1.CPS ok sha256=a06425eeb8d0d92f9604ecc0a5b8550815d894008fa72270eeb41b800435d1ce painted=61440/64000 palette=external
 SOUT2.CPS ok sha256=7c07cddcb962ccf259fcc7ac37af37e94b7baca2e9c08b4af98418fa917c045c painted=61440/64000 palette=external
 SOUT3.CPS ok sha256=9b62c291f93e73615e2ed8faf338718a1fa8b8a300205cf14bc847b7476953ea painted=61440/64000 palette=external
