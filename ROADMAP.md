@@ -7,21 +7,25 @@ each.
   and leaves the world when its hit points run out — but nothing the party do
   takes any off. What is missing is the blow.
 
-  In order: a right click on a weapon hand strikes, and only the two front
-  champions reach in melee. The square ahead is searched for the closest
-  monster. Whether the blow lands is `20 - ((level - 1) / t1[class]) *
-  t2[class] - monsterAc` against a d20 plus a strength or dexterity modifier,
-  all of them small tables to transcribe rather than derive. Damage is the
-  weapon's own dice, of which each weapon has two sets — one for a small target
-  and one for a large. Then the feedback: the original draws a struck monster
-  through a colour overlay that is white everywhere except its transparent
-  entry, for one tick, which wants a golden frozen at that phase; track 32 is a
-  swing; and every monster carries two track numbers of its own that have never
-  been played. Last, the hand goes dead for a while after a swing, which is
-  what stops a machine-gun click.
+  What is left is what a blow looks and sounds like, and what it costs.
 
-  Monsters striking back is a piece of its own and nothing in the game is
-  waiting for it.
+  A struck monster should flash: the original draws it through a colour
+  overlay that is white everywhere except its transparent entry, for one tick.
+  That wants a golden frozen at the flashed phase and rendered from an explicit
+  one rather than from a clock. Every monster also carries two track numbers of
+  its own — what it sounds like attacking and moving — and neither has ever
+  been played; the tracks for a blow landing, a champion hurt and a monster
+  dying are rendered and waiting too.
+
+  A hand goes dead for a while after a swing now, and is drawn over with the
+  grid while it does. What is not done is the number: the original spends the
+  first 18 of those 54 ticks showing what the blow came to in place of the
+  weapon's icon, which is the only report a player gets of how hard they hit.
+  The two waits are one here because nothing writes that number.
+
+  Thrown and fired weapons are a piece of their own — nothing launches anything
+  yet — and so is a monster striking back, which nothing in the game is waiting
+  for.
 
   One thing still unwired: `SetFlag.MonsterFlag` has no branch in the runner,
   so a script rousing a monster does nothing. It warns now rather than falling

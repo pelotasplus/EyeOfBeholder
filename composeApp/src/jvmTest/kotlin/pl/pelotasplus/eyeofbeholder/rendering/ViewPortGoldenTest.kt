@@ -832,6 +832,22 @@ class ViewPortGoldenTest {
         )
 
     /**
+     * A hand that has just swung, drawn over with the same grid as a hand
+     * holding something its champion cannot use. The original does not tell
+     * the two apart, and neither does this — the weapon is still shown under
+     * it, and shown to be no use for the moment.
+     *
+     * The first champion's weapon hand here; the shield hand beside it and
+     * everybody else's are untouched, which is the half worth seeing.
+     */
+    @Test
+    fun `a hand that has just swung`() =
+        checkGolden(
+            "party-panel-swung",
+            partyOver(level = "LEVEL4.INF", x = 15, y = 11, swung = listOf(0 to 0)),
+        )
+
+    /**
      * The same panel with the party hurt, so the bars show all three of their
      * colours at once: well, down to a third, and out cold.
      */
@@ -988,6 +1004,8 @@ class ViewPortGoldenTest {
         hurtTo: List<Int> = emptyList(),
         preferences: Preferences = Preferences(),
         lendingTo: Pair<Int, ItemIndex>? = null,
+        /** Whose hands have just swung, and so are drawn over with the grid. */
+        swung: List<Pair<Int, Int>> = emptyList(),
     ): BufferedImage = runBlocking {
         val resources = ResourceRepositoryImpl()
         val cps = CpsRepositoryImpl(resources)
@@ -1038,6 +1056,7 @@ class ViewPortGoldenTest {
             party = party,
             portraits = cps.loadCps("CHARGENA.CPS").getOrThrow(),
             carrying = { slot -> world.item(slot) },
+            recovering = { whose, hand -> (whose.index to hand.index) in swung },
         ).toImage()
     }
 

@@ -173,6 +173,12 @@ data class ItemTypes(private val types: List<ItemType>) {
         }
     }
 
+    /**
+     * Whether this is swung rather than thrown or fired. A thrown or fired one
+     * leaves the hand and is a piece of its own; nothing launches anything yet.
+     */
+    fun isSwungByHand(item: Item): Boolean = kindOf(item) == SWUNG_BY_HAND
+
     private fun kindOf(item: Item): Int = (this[item.type]?.extraProperties ?: 0) and KIND
 
     /**
@@ -263,6 +269,9 @@ data class ItemTypes(private val types: List<ItemType>) {
 
         /** Letters, notes and maps. */
         const val SOMETHING_TO_READ = 11
+
+        /** A weapon that stays in the hand, as against a thrown or fired one. */
+        const val SWUNG_BY_HAND = 1
     }
 }
 

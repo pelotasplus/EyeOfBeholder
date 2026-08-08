@@ -61,4 +61,15 @@ data class MonsterProperty(
     val tuResist: Int, // turn undead resist
     val dmgModifierEvade: Int,
     val decorations: List<MonsterDecorationSetId>,
-)
+) {
+    /**
+     * Bigger than a champion, which is what says which of a weapon's two sets
+     * of damage dice it is struck with — a spear does more to a giant than to
+     * a man.
+     */
+    val isLarge: Boolean get() = capsFlags and LARGE != 0
+
+    private companion object {
+        const val LARGE = 0x01
+    }
+}

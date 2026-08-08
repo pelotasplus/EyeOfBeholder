@@ -35,6 +35,8 @@ class PlayField(
         menu: CampMenu? = null,
         sheet: OpenSheet? = null,
         carrying: (ItemIndex) -> Item? = { null },
+        /** Whether that hand has yet to come back to rest from a swing. */
+        recovering: (PartySlot, CarrySlot) -> Boolean = { _, _ -> false },
     ): PlayField {
         // Something held up over the view is read off a champion's own page,
         // that being the one place a thing being carried can be clicked, so the
@@ -47,7 +49,7 @@ class PlayField(
 
         drawBackground()
         // a champion's own page takes the six boxes' side of the screen
-        if (sheet == null) drawParty(party, portraits, carrying)
+        if (sheet == null) drawParty(party, portraits, carrying, recovering)
         else if (!underThePage) drawSheet(sheet, portraits)
 
         drawViewPort(viewPort)
@@ -368,7 +370,12 @@ class PlayField(
      * somebody is in it, so a party of four leaves the bottom of the panel as
      * bare wall.
      */
-    private fun drawParty(party: List<Champion>, portraits: Cps?, carrying: (ItemIndex) -> Item?) {
+    private fun drawParty(
+        party: List<Champion>,
+        portraits: Cps?,
+        carrying: (ItemIndex) -> Item?,
+        recovering: (PartySlot, CarrySlot) -> Boolean,
+    ) {
         championBoxes.forEachIndexed { slot, box ->
             val champion = party.getOrNull(slot)?.takeIf { it.inTheParty } ?: return@forEachIndexed
 
@@ -381,7 +388,9 @@ class PlayField(
                 left = box.left,
                 top = box.top,
             )
-            drawChampion(champion, box, portraits, carrying)
+            drawChampion(champion, box, portraits, carrying) { hand ->
+                recovering(PartySlot(slot), CarrySlot(hand))
+            }
         }
     }
 
@@ -390,6 +399,7 @@ class PlayField(
         box: ChampionBox,
         portraits: Cps?,
         carrying: (ItemIndex) -> Item?,
+        recovering: (Int) -> Boolean,
     ) {
         portraits?.let { sheet ->
             val face = sheet.portrait(champion.portrait)
@@ -412,7 +422,7 @@ class PlayField(
             )
         }
 
-        drawHands(champion, box, carrying)
+        drawHands(champion, box, carrying, recovering)
         drawHitPointBar(champion, box)
     }
 
@@ -421,9 +431,16 @@ class PlayField(
      * An empty hand is not left blank — the hand itself is drawn there.
      *
      * A hand its champion cannot strike with is drawn over with a grid: the
-     * item is still shown, and shown to be no use.
+     * item is still shown, and shown to be no use. A hand that has just swung
+     * gets the same grid — the original does not tell the two apart, so a hand
+     * recovering looks exactly like one holding the wrong thing.
      */
-    private fun drawHands(champion: Champion, box: ChampionBox, carrying: (ItemIndex) -> Item?) {
+    private fun drawHands(
+        champion: Champion,
+        box: ChampionBox,
+        carrying: (ItemIndex) -> Item?,
+        recovering: (Int) -> Boolean,
+    ) {
         val icons = itemIcons ?: return
 
         repeat(Champion.HANDS) { hand ->
@@ -435,7 +452,7 @@ class PlayField(
                 top = box.handTop(hand),
             )
 
-            if (!canStrikeWith(champion, hand, carrying)) {
+            if (recovering(hand) || !canStrikeWith(champion, hand, carrying)) {
                 drawIcon(
                     icon = decorations.weaponSlotGrid(),
                     colours = decorations.palette ?: palette,

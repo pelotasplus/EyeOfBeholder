@@ -34,6 +34,9 @@ import pl.pelotasplus.eyeofbeholder.data.model.OnAParchment
 import pl.pelotasplus.eyeofbeholder.data.model.DialogueTextId
 import pl.pelotasplus.eyeofbeholder.data.model.DialogueText
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
+import pl.pelotasplus.eyeofbeholder.data.model.Blow
+import pl.pelotasplus.eyeofbeholder.data.model.Fighting
+import pl.pelotasplus.eyeofbeholder.data.model.HandRecovering
 import pl.pelotasplus.eyeofbeholder.data.model.DoorMessages
 import pl.pelotasplus.eyeofbeholder.data.model.DoorSounds
 import pl.pelotasplus.eyeofbeholder.data.model.FloorReach
@@ -164,6 +167,9 @@ class ViewConeDebugViewModel(
 
     /** Moving whatever doors are on their way somewhere. */
     private var swingingDoors: Job? = null
+
+    /** Counting whatever hands have swung back to rest. */
+    private var recoveringHands: Job? = null
     private var pulse = TeleporterPulse.AS_LAID_OUT
 
     /** The view as last drawn, which a script's words are written over. */
@@ -721,10 +727,10 @@ class ViewConeDebugViewModel(
      * The other click, which uses what a slot holds where it lies instead of
      * taking it out.
      *
-     * Reading is the only use there is so far. Everything else a thing can be
-     * — drunk, aimed, eaten — is left alone rather than answered with the
-     * original's line about using it wrongly, which would say the wrong thing
-     * about a potion that simply is not modelled yet.
+     * Reading and striking are the uses there are so far. Everything else a
+     * thing can be — drunk, aimed, eaten — is left alone rather than answered
+     * with the original's line about using it wrongly, which would say the
+     * wrong thing about a potion that simply is not modelled yet.
      */
     private fun onUsedWhatIsAt(x: Int, y: Int) {
         val sheet = sheetOnShow
@@ -740,13 +746,64 @@ class ViewConeDebugViewModel(
         val (whose, slot) = used
         val world = _state.value.game
         val champion = world.championIn(whose) ?: return
-        val held = champion.holding(slot.slot).takeIf { it.isSomething } ?: return
-        val parchment = world.item(held)?.let { itemTypes?.whatIsOn(it) } ?: return
+        val held = world.item(champion.holding(slot.slot))
+        val parchment = held?.let { itemTypes?.whatIsOn(it) }
 
-        viewModelScope.launch {
-            when (parchment) {
-                is OnAParchment.Writing -> read(parchment.page)
-                is OnAParchment.Map -> lookAt(parchment)
+        when {
+            parchment != null -> viewModelScope.launch {
+                when (parchment) {
+                    is OnAParchment.Writing -> read(parchment.page)
+                    is OnAParchment.Map -> lookAt(parchment)
+                }
+            }
+
+            // An empty hand is a fist, which the original lets a champion
+            // swing like anything else — so the hand is what decides this,
+            // not what is in it.
+            slot.slot.isAHand && (held == null || itemTypes?.isSwungByHand(held) == true) ->
+                strike(whose, slot.slot)
+        }
+    }
+
+    /** [whose] swings what is in [hand] at whatever stands in front of the party. */
+    private fun strike(whose: PartySlot, hand: CarrySlot) {
+        val inf = _state.value.inf ?: return
+        val types = itemTypes ?: return
+
+        val struck = Fighting(
+            itemTypes = types,
+            kinds = inf.subLevels[_state.value.subLevel].monsters,
+        ).strike(_state.value.game, whose, hand)
+
+        Logger.d(TAG) { "$whose swings with $hand: ${struck.blow}" }
+        if (struck.blow == Blow.StillRecovering) return
+
+        _state.update { it.copy(game = struck.world) }
+
+        // The blow is heard whether or not it lands. What a landed one looks
+        // like, and what a monster sounds like, are still to come.
+        viewModelScope.launch { playTrack(SWING) }
+        renderViewPort()
+        keepHandsRecovering()
+    }
+
+    /**
+     * Counts the swung hands back to rest, and redraws as each comes back so
+     * the grid over it lifts.
+     *
+     * The same shape as the door clock, and for the same reason: the party are
+     * free while it runs.
+     */
+    private fun keepHandsRecovering() {
+        if (recoveringHands?.isActive == true) return
+
+        recoveringHands = viewModelScope.launch {
+            while (_state.value.game.recovering.isNotEmpty()) {
+                delay(HandRecovering.STEP.inMilliseconds)
+
+                val before = _state.value.game.recovering.size
+                _state.update { it.copy(game = it.game.recoveryStepped()) }
+                if (_state.value.game.recovering.size != before) drawWords()
             }
         }
     }
@@ -1632,6 +1689,7 @@ class ViewConeDebugViewModel(
                     menu = _state.value.menu,
                     sheet = openSheet(),
                     carrying = { _state.value.game.item(it) },
+                    recovering = { whose, hand -> _state.value.game.isRecovering(whose, hand) },
                 )
                 .toImageBitmap()
         } else {
@@ -1812,6 +1870,9 @@ class ViewConeDebugViewModel(
 
         /** And under 6: the button beside a door being pressed. */
         private val DOOR_BUTTON = TrackIndex(6)
+
+        /** And under 32: a weapon swung, whether or not it finds anything. */
+        private val SWING = TrackIndex(32)
 
         private const val PLAY_FIELD_CPS = "PLAYFLD.CPS"
         private const val DECORATIONS_CPS = "DECORATE.CPS"

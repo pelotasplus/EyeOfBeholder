@@ -88,6 +88,9 @@ data class GameState(
      * the game is holding still until it has finished.
      */
     val swinging: List<Swinging> = emptyList(),
+
+    /** The hands still coming back to rest from a swing, on the same footing. */
+    val recovering: List<HandRecovering> = emptyList(),
 ) {
 
     /** What is in [slot], or null for an empty hand or pack slot. */
@@ -621,6 +624,26 @@ data class GameState(
 
     private fun MonsterInstance.rolledIfKnown(kinds: List<MonsterProperty>, dice: Dice) =
         kinds.firstOrNull { it.id == type.value }?.let { rolledFor(it, dice) } ?: this
+
+    /** Whether that hand is still coming back to rest from its last swing. */
+    fun isRecovering(whose: PartySlot, hand: CarrySlot): Boolean =
+        recovering.any { it.whose == whose && it.hand == hand }
+
+    /** The world with that hand put out of use for as long as a swing costs. */
+    fun handSwung(whose: PartySlot, hand: CarrySlot) = copy(
+        recovering = recovering.filterNot { it.whose == whose && it.hand == hand } +
+            HandRecovering(whose, hand, HandRecovering.AFTER_A_SWING.value),
+    )
+
+    /**
+     * The world one tick of the recovery clock later. A hand whose wait has run
+     * out is dropped, which is what puts it back to use.
+     */
+    fun recoveryStepped(by: Ticks = HandRecovering.STEP) = copy(
+        recovering = recovering
+            .map { it.copy(ticksLeft = it.ticksLeft - by.value) }
+            .filter { it.ticksLeft > 0 },
+    )
 
     fun partyMovedTo(destination: Location) =
         copy(party = party.copy(position = destination))
