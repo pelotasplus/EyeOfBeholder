@@ -27,41 +27,12 @@ each.
   or the next question about a monster that ignored a script gets asked from
   scratch.
 
-- **Opening a door with a key.** A keyhole is a decoration like any other and
-  is already clicked correctly; what fails is everything the script asks next.
-  `Conditional.GetPointerItem` — what kind of thing is in the hand, what it is
-  worth, whether the hand holds anything at all — is read and named and has no
-  branch in the runner, and neither does `ConsumeItem`, which is how the key is
-  used up. So the lock is asked what the player is holding and cannot be told.
-
-  Level 2 at **16x19** is the place to try it, and it exercises every branch.
-  Stand at 17x19 facing west: the keyhole is decoration 48 on the east face of
-  16x19, and clicking it runs the square's script, which works the door at
-  18x19. The script asks, in order, for a key of type 38 whose value is 99 —
-  sound, door, and the key deleted out of the hand; then for any other key of
-  type 38 — *"the key doesn't fit this lock."* and a different sound; then for
-  lock picks, type 28, which want a thief in the party and then one throw in
-  three, and on success open the door with *"you pick the lock!"*.
-
-  Two keys are within reach on level 2 for the wrong-key path — the Skull Key
-  at 9x4 and the Dark Moon Key at 14x3 — so it can be seen refusing before
-  anything can make it open.
-
-  Nothing opens it with a key. No item in ITEM.DAT is worth the 99 this lock
-  asks for; the keys run from 1 to 13. Eight scripts across the game make a
-  key and every one of them is a plain copy that keeps the number it copied,
-  so no script mints one either. The lock is picked or it stays shut, and 99
-  reads as a way of writing that down rather than as a key nobody has found.
-  Worth confirming against the original before anyone builds to it, since a
-  key handed over some way that is not a script would not show up in that
-  count.
-
-  What the hand is asked is settled, though: the original reads the item the
-  hand holds and takes its type, its slot number, or — for anything else asked
-  — its value, which is what the three named conditions already mean. Note
-  that an empty hand is slot zero rather than nothing at all, so a script
-  asking an empty hand what it holds is answered with whatever the table keeps
-  in its first slot; that decides what "the hand is empty" has to mean here.
+- **What a script can ask about a thing by name.** A lock is answered now — it
+  can be shown what kind of thing the hand holds, what it is worth, and which
+  slot it is — but `GetPointerItem` has two more questions in it, whether the
+  held thing's name contains a word, identified or not. Nothing answers those,
+  because names live in ITEM.DAT and the world a script is handed does not
+  carry them. Whatever needs them will need the names threading through.
 
 - **The party's own square.** Nothing is drawn on the square the party stand
   on. `viewBlockRows` stops one row ahead and `blockScreenCoords` carries the

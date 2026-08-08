@@ -4,6 +4,7 @@ import co.touchlab.kermit.Logger
 import kotlin.random.Random
 import pl.pelotasplus.eyeofbeholder.data.model.script.ClearFlag
 import pl.pelotasplus.eyeofbeholder.data.model.script.Conditional
+import pl.pelotasplus.eyeofbeholder.data.model.script.ConsumeItem
 import pl.pelotasplus.eyeofbeholder.data.model.script.CreateMonster
 import pl.pelotasplus.eyeofbeholder.data.model.script.Dialog
 import pl.pelotasplus.eyeofbeholder.data.model.script.End
@@ -458,6 +459,14 @@ class LevelScriptRunner(
                 // A plate set into the floor is weighed and then works a door
                 // somewhere else, which is most of what the levels do with
                 // doors that have no button on them.
+                is ConsumeItem.DeleteHandItem -> state = state.handEmptied()
+
+                is ConsumeItem.DeleteBlockItem -> state = state.itemsSweptFrom(
+                    level = level,
+                    at = token.location,
+                    ofType = token.itemType.takeIf { it >= 0 }?.let(::ItemTypeId),
+                )
+
                 is OpenDoor -> state = doorSent(state, token.location, opening = true)
 
                 is CloseDoor -> state = doorSent(state, token.location, opening = false)
@@ -646,6 +655,16 @@ class LevelScriptRunner(
 
                 is Conditional.HasRace ->
                     push(token.race?.let(state::anybodyOfRace) == true)
+
+                is Conditional.GetPointerItem.ItemType ->
+                    push(ConditionValue.of(state.heldAsAScriptReadsIt?.type?.value ?: 0))
+
+                is Conditional.GetPointerItem.ItemValue ->
+                    push(ConditionValue.of(state.heldAsAScriptReadsIt?.value ?: 0))
+
+                // the slot, not what is in it
+                is Conditional.GetPointerItem.ItemInHand ->
+                    push(ConditionValue.of(state.inHand.value))
 
                 is Conditional.IsMonsterAtLocation.BlockFlags ->
                     push(ConditionValue.of(state.monstersOn(token.location)))

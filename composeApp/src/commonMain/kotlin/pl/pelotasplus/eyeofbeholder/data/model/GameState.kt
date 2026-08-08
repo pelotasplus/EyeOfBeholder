@@ -107,6 +107,40 @@ data class GameState(
     val held: Item? get() = item(inHand)
 
     /**
+     * The same, as a script reads it: an empty hand is slot zero, and slot
+     * zero holds a record like any other, so it is answered rather than
+     * refused. [held] is the question the interface asks and says null.
+     */
+    val heldAsAScriptReadsIt: Item? get() = items.getOrNull(inHand.value)
+
+    /** The world with what the hand held put nowhere and the hand emptied. */
+    fun handEmptied(): GameState {
+        if (!inHand.isSomething) return this
+
+        return copy(
+            items = items.mapIndexed { at, item ->
+                if (at == inHand.value) item.copy(location = Item.NOWHERE) else item
+            },
+            inHand = ItemIndex(ItemIndex.NOTHING),
+        )
+    }
+
+    /**
+     * The world with what lies on a square put nowhere — everything on it, or
+     * only the things of one kind.
+     */
+    fun itemsSweptFrom(level: Int, at: Location, ofType: ItemTypeId?): GameState = copy(
+        items = items.map { item ->
+            val swept = item.exists &&
+                    item.level == level &&
+                    item.location == at &&
+                    (ofType == null || item.type == ofType)
+
+            if (swept) item.copy(location = Item.NOWHERE) else item
+        },
+    )
+
+    /**
      * The same world with one of a champion's slots holding something else.
      *
      * Who the party are is part of the world now, so moving a thing between a
