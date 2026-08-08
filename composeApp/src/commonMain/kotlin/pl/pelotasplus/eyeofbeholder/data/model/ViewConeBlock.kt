@@ -20,7 +20,13 @@ data class ViewBlock(
     val scaleSteps: ScaleSteps,
 )
 
-/** Visible blocks by depth row (party's own row not yet rendered). */
+/**
+ * Visible blocks by depth row, nearest last.
+ *
+ * The party's own row is not one of them: the square they stand on is drawn
+ * on its own, at [ViewPort.OWN_BLOCK_INDEX], and the two beside it are not
+ * drawn at all.
+ */
 val viewBlockRows: Map<Int, List<ViewBlock>> = mapOf(
     -3 to (-3..3).mapIndexed { i, vx -> ViewBlock(vx, -3, i, scaleSteps = ScaleSteps(2)) },
     -2 to (-2..2).mapIndexed { i, vx -> ViewBlock(vx, -2, 7 + i, scaleSteps = ScaleSteps(1)) },
@@ -66,7 +72,9 @@ val blockScreenCoords: List<Int> = listOf(
     -110, -35, -67, -35, -140, -22, -83, -22, -98, -30,
     -22, -35, 22, -35, -27, -22, 27, -22, 0, -30,
     67, -35, 110, -35, 83, -22, 140, -22, 98, -30,
-    // blocks 15-17: party's own row (unused for now)
+    // blocks 15-17: the party's own row. Only 16, the square underfoot, is
+    // drawn; the two beside it are 128 either way from a viewport 176 wide,
+    // so what stands on them is a strip at the very edge of the screen.
     -128, -4, 128, -4, -128, -66, 128, -66, 128, 0,
     -38, -4, 38, -4, -38, -66, 38, -66, 0, 0,
     -128, -4, 128, -4, -128, -66, 128, -66, 128, 0,

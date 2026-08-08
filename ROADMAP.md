@@ -34,17 +34,18 @@ each.
   because names live in ITEM.DAT and the world a script is handed does not
   carry them. Whatever needs them will need the names threading through.
 
-- **The party's own square.** Nothing is drawn on the square the party stand
-  on. `viewBlockRows` stops one row ahead and `blockScreenCoords` carries the
-  three blocks of the near row marked unused, so anything lying at their feet
-  is invisible until they step off it and it becomes the square in front.
+- **What lies on the squares beside the party.** The party's own row is three
+  squares: the one they stand on and one to either side. Their walls are drawn
+  and so is what lies underfoot, but the two beside them hold nothing —
+  `viewBlockRows` stops one row ahead and the own square is drawn by a call of
+  its own, so no item on either side is ever reached.
 
-  A script is the ordinary way to meet this: `NewItem`'s second special
-  destination puts a thing down underfoot, which is how the old woman on level
-  4 leaves her parchment, and the player sees an empty floor until they walk
-  away and turn round. The screen coordinates for the row are already in the
-  table, taken from the original; what is missing is drawing it, and it wants
-  goldens of its own because everything at that distance is drawn largest.
+  The original draws them, last of all and after everything in front. It is a
+  narrow thing to see: their screen x is 128 either way from a viewport 176
+  wide, so an icon there is a strip at the very edge, and the original works
+  out the strip first and skips the square when nothing of it is left. What
+  they never draw is a monster or a door — both are guarded on the square not
+  being one of the party's own row — so only items are missing.
 
 - **Reading a parchment where the original reads it.** A letter or a note goes
   up in the box a script speaks from, along the bottom of the screen. The
