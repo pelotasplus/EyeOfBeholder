@@ -377,7 +377,12 @@ class ViewConeDebugViewModel(
                 .onSuccess { inf ->
                     val arrivingAt = levelNumber(inf.name)
                     val showing = subLevel.coerceIn(inf.subLevels.indices)
-                    scriptRunner = LevelScriptRunner(inf.script, arrivingAt, showing)
+                    scriptRunner = LevelScriptRunner(
+                        script = inf.script,
+                        level = arrivingAt,
+                        subLevel = showing,
+                        kinds = inf.subLevels[showing].monsters,
+                    )
                     _state.update {
                         val was = it.game.party
                         val leftBehind =
@@ -392,6 +397,7 @@ class ViewConeDebugViewModel(
                                     places = inf.monsterInstances,
                                     maz = inf.subLevels[showing].maz,
                                     subLevel = showing,
+                                    kinds = inf.subLevels[showing].monsters,
                                 )
                                 .copy(
                                     party = was.copy(

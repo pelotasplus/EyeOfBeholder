@@ -1,5 +1,6 @@
 package pl.pelotasplus.eyeofbeholder.data.model
 
+import co.touchlab.kermit.Logger
 import pl.pelotasplus.eyeofbeholder.data.model.script.CreateMonster
 import pl.pelotasplus.eyeofbeholder.data.model.script.ItemOverrides
 
@@ -414,14 +415,22 @@ data class GameState(
      * @param subLevel the one being entered, which the monsters the file lists
      *   take as their own — they are read by whichever sublevel's tables the
      *   party arrive under, and are a different creature under each.
+     * @param kinds that sublevel's species, which say what each of them can
+     *   take. Rolled for here rather than where the file is read, so that
+     *   coming back to a level the party have already been on finds the
+     *   monsters as hurt as they were left and does not roll again.
      */
     fun arrivingAt(
         level: Int,
         places: List<MonsterInstance>,
         maz: Maz? = null,
         subLevel: Int = 0,
+        kinds: List<MonsterProperty> = emptyList(),
+        dice: Dice = Dice.random,
     ) = copy(
-        monsters = asTheyWereLeft[level] ?: places.map { it.copy(subLevel = subLevel) },
+        monsters = asTheyWereLeft[level] ?: places.map {
+            it.copy(subLevel = subLevel).rolledIfKnown(kinds, dice)
+        },
         mazes = if (maz == null) mazes else mazes + (level to maz),
     )
 
@@ -566,7 +575,12 @@ data class GameState(
      * spawn instead.
      */
     /** @param subLevel the one the party are in, which a new monster joins. */
-    fun monsterCreated(spawn: CreateMonster, subLevel: Int = 0): GameState {
+    fun monsterCreated(
+        spawn: CreateMonster,
+        subLevel: Int = 0,
+        kinds: List<MonsterProperty> = emptyList(),
+        dice: Dice = Dice.random,
+    ): GameState {
         val taken = monsters.map { it.index }.toSet()
         val slot = (0 until MONSTER_SLOTS).firstOrNull { it !in taken }
 
@@ -574,9 +588,39 @@ data class GameState(
             spawn.location == party.position -> this
             monstersOn(spawn.location) >= MAX_MONSTERS_PER_SQUARE -> this
             slot == null -> this
-            else -> copy(monsters = monsters + MonsterInstance.spawnedBy(spawn, slot, subLevel))
+            else -> copy(
+                monsters = monsters + MonsterInstance
+                    .spawnedBy(spawn, slot, subLevel)
+                    .rolledIfKnown(kinds, dice),
+            )
         }
     }
+
+    /**
+     * The world with one monster hurt, and without it if that killed it.
+     *
+     * A dead one leaves the list rather than lying there: the engine empties
+     * its record and puts it on no square, which is the same thing said the
+     * long way — nothing left in it is ever read, and the slot it frees is the
+     * next slot a script's conjuring takes.
+     */
+    fun monsterHurt(slot: Int, by: Int): GameState {
+        val hit = monsters.firstOrNull { it.index == slot } ?: return this
+
+        if (!hit.couldBeHurt) {
+            Logger.w(TAG) { "Monster $slot was never rolled for, so nothing can hurt it" }
+            return this
+        }
+
+        val after = hit.hurt(by)
+        return copy(
+            monsters = if (after.hitPoints.current <= 0) monsters - hit
+            else monsters.map { if (it.index == slot) after else it },
+        )
+    }
+
+    private fun MonsterInstance.rolledIfKnown(kinds: List<MonsterProperty>, dice: Dice) =
+        kinds.firstOrNull { it.id == type.value }?.let { rolledFor(it, dice) } ?: this
 
     fun partyMovedTo(destination: Location) =
         copy(party = party.copy(position = destination))
@@ -629,6 +673,8 @@ data class GameState(
     )
 
     companion object {
+        private const val TAG = "GameState"
+
         /**
          * The world a save describes. The mazes arrive afterwards, with
          * [arrivingAt], because they come from the level files.

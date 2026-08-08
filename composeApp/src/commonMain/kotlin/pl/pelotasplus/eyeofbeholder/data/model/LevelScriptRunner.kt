@@ -242,6 +242,8 @@ class LevelScriptRunner(
     private val level: Int = 0,
     /** Which sublevel the party are in, which a monster it conjures joins. */
     private val subLevel: Int = 0,
+    /** That sublevel's species, which say what a conjured monster can take. */
+    private val kinds: List<MonsterProperty> = emptyList(),
     private val dice: Dice = Dice.random,
 ) {
 
@@ -375,7 +377,7 @@ class LevelScriptRunner(
                     }
                 }
 
-                is CreateMonster -> state = state.monsterCreated(token, subLevel)
+                is CreateMonster -> state = state.monsterCreated(token, subLevel, kinds, dice)
 
                 // A script makes a thing by pointing at another like it. Where
                 // it lands can be a square outright, or the hand, or the floor
@@ -410,6 +412,15 @@ class LevelScriptRunner(
                 is SetFlag.LevelFlag -> state = state.levelFlagSet(level, token.bit)
 
                 is SetFlag.GlobalFlag -> state = state.globalFlagSet(token.bit)
+
+                // Rousing a monster is read and named and does nothing, and
+                // saying so is the point: without this it falls through the
+                // same branch as everything uninteresting, and the next
+                // question about a monster that ignored a script gets asked
+                // from scratch.
+                is SetFlag.MonsterFlag -> Logger.w(TAG) {
+                    "Nothing marks monster ${token.monsterId} with ${token.bit}"
+                }
 
                 // Clearing a flag is how a script takes something back. The
                 // grave on level 4 sets the flag that says to dig, then clears

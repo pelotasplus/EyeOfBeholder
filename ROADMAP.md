@@ -3,29 +3,29 @@
 Things worth doing that are not being done yet, and what stands in the way of
 each.
 
-- **Combat, or at least a monster that can die.** Monsters are read from a
-  level, placed, drawn at their block and conjured by scripts, but nothing can
-  touch them: `MonsterInstance` carries no hit points, and the only thing that
-  ever happens to the world's monster list is another one being added to it.
+- **Combat.** A monster can be killed now — it is rolled for as it is placed
+  and leaves the world when its hit points run out — but nothing the party do
+  takes any off. What is missing is the blow.
 
-  It is already being asked for. Level 5's clerics guard both of their scenes
-  on whether anybody still stands on 13x8 — the approach at 13x9 and the
-  doorway at 11x9, each also behind a level flag of its own — and both go quiet
-  by themselves the moment the pair can be killed. Until then the party may
-  choose to attack, and the two of them go on greeting and turning them away as
-  though nothing had happened. The guards are right and the scripts need no
-  changing; what they ask about is missing.
+  In order: a right click on a weapon hand strikes, and only the two front
+  champions reach in melee. The square ahead is searched for the closest
+  monster. Whether the blow lands is `20 - ((level - 1) / t1[class]) *
+  t2[class] - monsterAc` against a d20 plus a strength or dexterity modifier,
+  all of them small tables to transcribe rather than derive. Damage is the
+  weapon's own dice, of which each weapon has two sets — one for a small target
+  and one for a large. Then the feedback: the original draws a struck monster
+  through a colour overlay that is white everywhere except its transparent
+  entry, for one tick, which wants a golden frozen at that phase; track 32 is a
+  swing; and every monster carries two track numbers of its own that have never
+  been played. Last, the hand goes dead for a while after a swing, which is
+  what stops a machine-gun click.
 
-  Enough to satisfy them is less than a combat system: hit points on a monster,
-  something that takes them off, and dropping a monster out of the list at
-  zero. `BlockFlags` already counts the list, so the scripts need nothing.
+  Monsters striking back is a piece of its own and nothing in the game is
+  waiting for it.
 
-  One thing to wire while passing: `SetFlag.MonsterFlag` is read and named and
-  the runner has no branch for it, so a script rousing a monster does nothing
-  and says nothing either — it falls through the same `else` as everything
-  uninteresting. `SpecialEvent` warns when it is skipped, and this should too,
-  or the next question about a monster that ignored a script gets asked from
-  scratch.
+  One thing still unwired: `SetFlag.MonsterFlag` has no branch in the runner,
+  so a script rousing a monster does nothing. It warns now rather than falling
+  through the same `else` as everything uninteresting.
 
 - **What a script can ask about a thing by name.** A lock is answered now — it
   can be shown what kind of thing the hand holds, what it is worth, and which

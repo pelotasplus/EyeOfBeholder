@@ -25,6 +25,9 @@ import pl.pelotasplus.eyeofbeholder.data.model.script.CreateMonster
  * @property pause Movement pause counter
  * @property weapon Item type id of the held weapon (0 = none)
  * @property pocketItem Item type id carried as loot (0 = none)
+ * @property hitPoints What it can take before it dies, rolled from its kind's
+ *   dice when it is placed — so two of the same creature are not equally hard
+ *   to kill. Zero for one nobody has rolled for; see [rolledFor].
  */
 @Serializable
 data class MonsterInstance(
@@ -42,6 +45,7 @@ data class MonsterInstance(
     val weapon: Int,
     val pocketItem: Int,
     val subLevel: Int = 0,
+    val hitPoints: HitPoints = UNROLLED,
 ) {
     val x: Int get() = block and 0x1F
     val y: Int get() = block shr 5
@@ -49,7 +53,32 @@ data class MonsterInstance(
     /** Which of its sheet's color schemes this monster is painted in. */
     val colors: MonsterColors get() = MonsterColors.forSlot(index)
 
+    /**
+     * Whether anybody has said how much this one can take. One that has not
+     * been rolled for cannot be hurt at all, rather than dying to the first
+     * blow because its hit points happen to read as none.
+     */
+    val couldBeHurt: Boolean get() = hitPoints != UNROLLED
+
+    /**
+     * The same monster with what it can take rolled from its kind's dice.
+     *
+     * Every monster is rolled for as it is placed, whether the level's file
+     * listed it or a script conjured it, so a pair of the same creature take
+     * different numbers of blows.
+     */
+    fun rolledFor(kind: MonsterProperty, dice: Dice): MonsterInstance {
+        val rolled = dice.roll(kind.hpDcTimes, kind.hpDcPips, kind.hpDcBase)
+        return copy(hitPoints = HitPoints(current = rolled, max = rolled))
+    }
+
+    /** The same monster [by] hit points worse off. */
+    fun hurt(by: Int) = copy(hitPoints = hitPoints.copy(current = hitPoints.current - by))
+
     companion object {
+        /** What a monster nobody has rolled for carries instead of hit points. */
+        val UNROLLED = HitPoints(current = 0, max = 0)
+
         /**
          * The monster a script's [CreateMonster] asks for, in a free [slot],
          * belonging to the sublevel it was conjured in.
