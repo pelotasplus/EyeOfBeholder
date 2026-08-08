@@ -295,4 +295,50 @@ class StrikingAMonsterTest {
 
         assertEquals(emptyList(), struck.world.recovering)
     }
+
+    // --- showing that it landed ----------------------------------------------
+
+    /**
+     * What is hit shows it, and only what is hit: the other cleric standing
+     * beside it is drawn as itself.
+     */
+    @Test
+    fun `only what was hit flashes`() {
+        val after = fighting(alwaysTwenty).strike(world(), PartySlot(0), CarrySlot(0)).world
+
+        assertTrue(after.anythingFlashing)
+        assertTrue(after.monsters.single { it.index == onTheLeft }.struck)
+        assertTrue(!after.monsters.single { it.index == onTheRight }.struck)
+    }
+
+    /** A miss shows nothing, there being nothing to show. */
+    @Test
+    fun `a miss flashes nothing`() {
+        val after = fighting(alwaysOne).strike(world(), PartySlot(0), CarrySlot(0)).world
+
+        assertTrue(!after.anythingFlashing)
+    }
+
+    /** And the moment passes. */
+    @Test
+    fun `the flash fades`() {
+        val after = fighting(alwaysTwenty).strike(world(), PartySlot(0), CarrySlot(0)).world
+
+        assertTrue(!after.flashesFaded().anythingFlashing)
+    }
+
+    /**
+     * A blow that kills leaves nothing to flash. The monster is gone from the
+     * world, so nothing is left holding a silhouette that would never fade.
+     */
+    @Test
+    fun `a killing blow flashes nothing`() {
+        var world = world()
+        while (world.monsters.any { it.index == onTheLeft }) {
+            world = fighting(alwaysTwenty)
+                .strike(world.copy(recovering = emptyList()), PartySlot(0), CarrySlot(0)).world
+        }
+
+        assertTrue(!world.anythingFlashing, "something dead is still flashing")
+    }
 }

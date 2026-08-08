@@ -170,6 +170,9 @@ class ViewConeDebugViewModel(
 
     /** Counting whatever hands have swung back to rest. */
     private var recoveringHands: Job? = null
+
+    /** Taking the silhouette off whatever was struck. */
+    private var fading: Job? = null
     private var pulse = TeleporterPulse.AS_LAID_OUT
 
     /** The view as last drawn, which a script's words are written over. */
@@ -785,6 +788,25 @@ class ViewConeDebugViewModel(
         viewModelScope.launch { playTrack(SWING) }
         renderViewPort()
         keepHandsRecovering()
+        letTheFlashFade()
+    }
+
+    /**
+     * Takes the silhouette off whatever was struck, a moment after it was.
+     *
+     * The flash is not an animation with steps to it — the shape is drawn in
+     * one colour and then drawn properly again — so this is one wait and one
+     * redraw rather than a clock.
+     */
+    private fun letTheFlashFade() {
+        if (!_state.value.game.anythingFlashing) return
+
+        fading?.cancel()
+        fading = viewModelScope.launch {
+            delay(FLASH.inMilliseconds)
+            _state.update { it.copy(game = it.game.flashesFaded()) }
+            renderViewPort()
+        }
     }
 
     /**
@@ -1873,6 +1895,9 @@ class ViewConeDebugViewModel(
 
         /** And under 32: a weapon swung, whether or not it finds anything. */
         private val SWING = TrackIndex(32)
+
+        /** How long a struck monster is drawn as a silhouette. */
+        private val FLASH = Ticks(2)
 
         private const val PLAY_FIELD_CPS = "PLAYFLD.CPS"
         private const val DECORATIONS_CPS = "DECORATE.CPS"

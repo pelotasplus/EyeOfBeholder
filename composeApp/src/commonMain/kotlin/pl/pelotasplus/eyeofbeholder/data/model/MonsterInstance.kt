@@ -46,6 +46,8 @@ data class MonsterInstance(
     val pocketItem: Int,
     val subLevel: Int = 0,
     val hitPoints: HitPoints = UNROLLED,
+    /** Hit this instant, and so drawn as a silhouette until the moment passes. */
+    val struck: Boolean = false,
 ) {
     val x: Int get() = block and 0x1F
     val y: Int get() = block shr 5
@@ -72,8 +74,9 @@ data class MonsterInstance(
         return copy(hitPoints = HitPoints(current = rolled, max = rolled))
     }
 
-    /** The same monster [by] hit points worse off. */
-    fun hurt(by: Int) = copy(hitPoints = hitPoints.copy(current = hitPoints.current - by))
+    /** The same monster [by] hit points worse off, and showing it. */
+    fun hurt(by: Int) =
+        copy(hitPoints = hitPoints.copy(current = hitPoints.current - by), struck = true)
 
     companion object {
         /** What a monster nobody has rolled for carries instead of hit points. */

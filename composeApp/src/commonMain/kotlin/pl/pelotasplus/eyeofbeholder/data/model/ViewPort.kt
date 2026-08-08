@@ -561,6 +561,10 @@ class ViewPort(
      * @param mirrored Draw horizontally flipped (for right-facing side poses)
      * @param scaleSteps Number of 2/3 shrink steps for distance
      */
+    /**
+     * @param struck whether it was hit this instant, which the original shows
+     *   by drawing the whole shape in one colour for a moment.
+     */
     fun drawMonster(
         frame: Cps.ItemIcon,
         decorations: List<MonsterDecoration>,
@@ -568,6 +572,7 @@ class ViewPort(
         place: ViewPlace,
         mirrored: Boolean,
         scaleSteps: ScaleSteps,
+        struck: Boolean = false,
     ) {
         Logger.d(TAG) { "drawMonster block=$blockIndex at=$place mirrored=$mirrored scale=$scaleSteps" }
 
@@ -577,7 +582,7 @@ class ViewPort(
         val startX = ScreenX(spot.x + 88 - icon.w / 2)
         val startY = ScreenY(spot.y + 127 - icon.h)
 
-        blit(icon, startX, startY, mirrored, scaleSteps)
+        blit(icon, startX, startY, mirrored, scaleSteps, struck)
 
         for (decoration in decorations) {
             val overlay = decoration.frame.shrunk(scaleSteps)
@@ -585,7 +590,7 @@ class ViewPort(
             val offsetY = decoration.offsetY.shrunk(scaleSteps)
             // the offset is measured from whichever edge the sprite starts at
             val left = if (mirrored) icon.w - offsetX - overlay.w else offsetX
-            blit(overlay, startX + left, startY + offsetY, mirrored, scaleSteps)
+            blit(overlay, startX + left, startY + offsetY, mirrored, scaleSteps, struck)
         }
     }
 
@@ -595,11 +600,21 @@ class ViewPort(
         startY: ScreenY,
         mirrored: Boolean,
         scaleSteps: ScaleSteps,
+        struck: Boolean = false,
     ) {
         for (y in 0 until icon.h) {
             for (x in 0 until icon.w) {
                 val srcX = if (mirrored) icon.w - 1 - x else x
-                val pixel = palette.fadedIndex(icon.pixels[y * icon.w + srcX], scaleSteps)
+                val was = icon.pixels[y * icon.w + srcX]
+
+                // A struck monster is drawn as its own silhouette: every colour
+                // of it becomes one, and only the colour that is no colour at
+                // all is left alone, so the shape is still its own shape. It
+                // does not fade with distance either, being no longer painted
+                // in the colours that fade.
+                val pixel = if (struck && !was.isTransparent) STRUCK
+                else palette.fadedIndex(was, scaleSteps)
+
                 draw(startX + x, startY + y, palette.colorOrTransparent(pixel))
             }
         }
@@ -683,6 +698,9 @@ class ViewPort(
          * of them is reachable after all, which is a real gap worth chasing.
          */
         private const val SHOW_UNDRAWABLE_WALLS = true
+
+        /** The one colour a monster is drawn in for the moment after it is hit. */
+        private val STRUCK = PaletteIndex(15)
 
         private val UNDRAWABLE = RGB(255, 0, 0, false)
 

@@ -625,6 +625,17 @@ data class GameState(
     private fun MonsterInstance.rolledIfKnown(kinds: List<MonsterProperty>, dice: Dice) =
         kinds.firstOrNull { it.id == type.value }?.let { rolledFor(it, dice) } ?: this
 
+    /**
+     * The world a moment later, with whatever was struck no longer showing it.
+     *
+     * The flash is a single moment rather than a fading thing, so this puts
+     * every one of them back at once.
+     */
+    fun flashesFaded() = copy(monsters = monsters.map { it.copy(struck = false) })
+
+    /** Whether anything is showing a blow this instant. */
+    val anythingFlashing: Boolean get() = monsters.any { it.struck }
+
     /** Whether that hand is still coming back to rest from its last swing. */
     fun isRecovering(whose: PartySlot, hand: CarrySlot): Boolean =
         recovering.any { it.whose == whose && it.hand == hand }

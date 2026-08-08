@@ -527,6 +527,7 @@ class ViewConeRepositoryImpl(
                         place = seenAt,
                         mirrored = facing.mirrored,
                         scaleSteps = block.scaleSteps,
+                        struck = monster.struck,
                     )
                 }
             }

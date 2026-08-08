@@ -28,6 +28,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.OnAParchment
 import pl.pelotasplus.eyeofbeholder.data.model.Naming
 import pl.pelotasplus.eyeofbeholder.data.model.PaletteIndex
 import pl.pelotasplus.eyeofbeholder.data.model.PartyState
+import pl.pelotasplus.eyeofbeholder.data.model.SquarePlace
 import pl.pelotasplus.eyeofbeholder.data.RecordingStage
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptEvent
 import pl.pelotasplus.eyeofbeholder.data.model.TeleporterPulse
@@ -128,6 +129,22 @@ class ViewPortGoldenTest {
     @Test
     fun `level5 a wall the level maps nothing for`() =
         checkGolden("level5-unmapped-wall", "LEVEL5.INF", x = 16, y = 7, direction = Direction.NORTH)
+
+    /**
+     * The nearer cleric the moment it is hit, drawn as its own silhouette in
+     * one colour while the other stands beside it in its own.
+     *
+     * A flash is a thing that passes, so it is frozen at the phase that shows
+     * it and rendered from that rather than from a clock.
+     */
+    @Test
+    fun `level5 a monster the moment it is struck`() =
+        checkGolden(
+            "level5-monster-struck",
+            renderFrame("LEVEL5.INF", x = 13, y = 9, direction = Direction.NORTH) { monsters ->
+                monsters.map { it.copy(struck = it.place == SquarePlace.SOUTH_WEST) }
+            },
+        )
 
     /** The same pair on the diagonal square, walking away to the left. */
     @Test
@@ -1530,6 +1547,28 @@ class ViewPortGoldenTest {
     /** What the party entering a sublevel does to the monsters the file lists. */
     private fun List<MonsterInstance>.arrivingIn(subLevel: Int) =
         map { it.copy(subLevel = subLevel) }
+
+    /** @param monsters the level's own, put into whatever state is being shown. */
+    private fun renderFrame(
+        level: String,
+        x: Int,
+        y: Int,
+        direction: Direction,
+        monsters: (List<MonsterInstance>) -> List<MonsterInstance>,
+    ): ViewPort = runBlocking {
+        val repository = repository()
+        val inf = repository.loadLevel(level).getOrThrow()
+        val sublevel = inf.subLevels[inf.subLevelAt(0, x, y, direction)]
+
+        repository.renderPosition(
+            items = dungeonItems,
+            monsters = monsters(inf.monsterInstances.arrivingIn(sublevel.index)),
+            sublevel = sublevel,
+            playerX = x,
+            playerY = y,
+            direction = direction,
+        ).getOrThrow()
+    }
 
     private fun renderFrame(
         level: String,
