@@ -389,7 +389,7 @@ class InfRepositoryImpl(
         val gfx = mutableMapOf<Int, MonsterGfx>()
         val kinds = mutableMapOf<Int, MonsterProperty>()
 
-        val handedDown = map { sub ->
+        return map { sub ->
             sub.decorations.forEach { decorations[it.decorationWallIndex] = it }
             sub.doors.forEachIndexed { index, door -> doors[index] = door }
             sub.monsterGfx.forEach { gfx[it.slot] = it }
@@ -400,16 +400,6 @@ class InfRepositoryImpl(
                 doors = doors.entries.sortedBy { it.key }.map { it.value },
                 monsterGfx = gfx.entries.sortedBy { it.key }.map { it.value },
                 monsters = kinds.entries.sortedBy { it.key }.map { it.value },
-            )
-        }
-
-        return handedDown.map { sub ->
-            val mine = sub.decorations.mapTo(mutableSetOf()) { it.decorationWallIndex }
-            sub.copy(
-                mappedNextDoor = handedDown
-                    .flatMapTo(mutableSetOf()) { other ->
-                        other.decorations.map { it.decorationWallIndex }
-                    } - mine,
             )
         }
     }

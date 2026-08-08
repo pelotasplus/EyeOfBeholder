@@ -191,25 +191,13 @@ class ViewConeRepositoryImpl(
                         val levelDecoration = sublevel.decorations
                             .find { it.decorationWallIndex == wallType.decorationWallIndex }
 //                        Logger.d(TAG) { "Wall wallPosition $wallPosition matching decoration $levelDecoration" }
-                        if (levelDecoration == null) {
-                            // A level maps only the wall indices it uses, and a
-                            // maze is a fixed 32x32 whose unreachable corners
-                            // keep whatever bytes were left there, so an
-                            // unmapped index is expected — as long as it stays
-                            // out of sight. Painting it red says otherwise.
-                            //
-                            // Except a face of a sublevel the party are not in,
-                            // which is in sight all the time and is meant to be
-                            // left blank.
-                            if (wallType.decorationWallIndex !in sublevel.mappedNextDoor) {
-                                Logger.w(TAG) {
-                                    "Wall index ${wallType.decorationWallIndex} at ($mazX,$mazY) " +
-                                            "is not mapped by this level"
-                                }
-                                viewPort.drawUndrawableWall(wallPosition)
-                            }
-                            return@at
-                        }
+                        // A level names a wall set only for the indices it uses,
+                        // and one it says nothing about is drawn as nothing —
+                        // which is a wall all the same, and one the party
+                        // cannot walk through. Level 5 has four faces like this
+                        // and they are ordinary parts of the level, not a hole
+                        // in what was read.
+                        if (levelDecoration == null) return@at
 
                         if (levelDecoration.doesWhenClicked == WallAction.STUCK_DOOR) {
                             sublevel.door(DoorIndex(0), mazX, mazY)?.let { door ->

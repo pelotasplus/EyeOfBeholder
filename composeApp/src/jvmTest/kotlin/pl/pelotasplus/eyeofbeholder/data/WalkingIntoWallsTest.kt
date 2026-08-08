@@ -5,9 +5,12 @@ import pl.pelotasplus.eyeofbeholder.data.model.Location
 import pl.pelotasplus.eyeofbeholder.data.model.Maz
 import pl.pelotasplus.eyeofbeholder.data.model.WallByte
 import pl.pelotasplus.eyeofbeholder.data.model.WallSide
+import pl.pelotasplus.eyeofbeholder.data.model.WallSight
 import pl.pelotasplus.eyeofbeholder.data.model.canBeReachedOnto
 import pl.pelotasplus.eyeofbeholder.data.model.canBeWalkedOnto
 import pl.pelotasplus.eyeofbeholder.data.model.getWall
+import pl.pelotasplus.eyeofbeholder.data.model.showsWhatIsOnIt
+import pl.pelotasplus.eyeofbeholder.data.model.sightThrough
 import pl.pelotasplus.eyeofbeholder.data.repository.CpsRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.DecRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.InfRepositoryImpl
@@ -107,6 +110,47 @@ class WalkingIntoWallsTest {
             "wall 74 is the one drawn as nothing at all",
         )
         assertFalse(forest.canBeWalkedOnto(nothingToSee))
+    }
+
+    /**
+     * A wall index the level names nothing for is an invisible wall, not an
+     * opening. A level leaves every index it does not use at nothing at all —
+     * no wall set to draw it by, and none of the marks that let anything past —
+     * so it is drawn as thin air and stops the party dead.
+     *
+     * Level 5 uses index 55 on four faces and names no wall set for it. The
+     * one at 16x6 is the face the party meet walking north up the corridor at
+     * x=16; letting them through it puts them inside the rock.
+     */
+    @Test
+    fun `a wall index the level maps nothing for stops the party`() {
+        val temple = groundFloorOf("LEVEL5.INF")
+        val invisible = temple.maz.square(Location(16, 6)).getWall(WallSide.SOUTH)
+
+        assertEquals(Maz.WallType.Decoration(55), invisible)
+        assertTrue(
+            temple.decorations.none { it.decorationWallIndex == 55 },
+            "level 5 maps 55 after all, so this is no longer the case being tested",
+        )
+
+        assertFalse(temple.canBeWalkedOnto(invisible), "the party walk into the rock")
+        assertFalse(temple.canBeReachedOnto(invisible), "and can put things in it")
+    }
+
+    /**
+     * The same wall is not solid for the other two questions, and the four must
+     * not be made to agree. Without a wall set there is nothing to take a bite
+     * out of the view and nothing to hide what lies on the square, so the
+     * original asks those two of the wall set and only passability of the
+     * marks. Blocking sight here would draw a hole in the corridor.
+     */
+    @Test
+    fun `a wall the level maps nothing for is still seen through`() {
+        val temple = groundFloorOf("LEVEL5.INF")
+        val invisible = temple.maz.square(Location(16, 6)).getWall(WallSide.SOUTH)
+
+        assertEquals(WallSight.CLEAR, temple.sightThrough(invisible))
+        assertTrue(temple.showsWhatIsOnIt(invisible))
     }
 
     /**

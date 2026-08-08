@@ -120,6 +120,15 @@ class ViewPortGoldenTest {
     fun `level5 encounter one square ahead`() =
         checkGolden("level5-encounter", "LEVEL5.INF", x = 13, y = 9, direction = Direction.NORTH)
 
+    /**
+     * A wall index the level maps nothing for, which is a wall all the same:
+     * 16x6's south face is index 55 and level 5 names no wall set for it, so
+     * nothing is drawn there and the party cannot walk through it either.
+     */
+    @Test
+    fun `level5 a wall the level maps nothing for`() =
+        checkGolden("level5-unmapped-wall", "LEVEL5.INF", x = 16, y = 7, direction = Direction.NORTH)
+
     /** The same pair on the diagonal square, walking away to the left. */
     @Test
     fun `level5 encounter on the left diagonal`() =

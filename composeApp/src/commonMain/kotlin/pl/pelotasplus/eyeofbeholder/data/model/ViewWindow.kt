@@ -41,6 +41,12 @@ enum class WallSight {
  * The plain wall bytes answer for themselves; a decoration's answer is the
  * level's own, since a level decides both whether its decoration has a wall
  * behind it at all and whether that wall can be seen through.
+ *
+ * An index the level names nothing for is a case of its own, and the four
+ * questions below do not answer it the same way. A level leaves such an index
+ * at nothing at all: no wall set, so nothing is drawn and nothing is taken out
+ * of the view, and none of the marks, so nothing may pass. It is an invisible
+ * wall, and level 5 has four faces of one.
  */
 fun SubLevel.sightThrough(wall: Maz.WallType): WallSight = when (wall) {
     Maz.WallType.NoWall -> WallSight.CLEAR
@@ -98,7 +104,7 @@ fun SubLevel.canBeReachedOnto(wall: Maz.WallType): Boolean = when (wall) {
     is Maz.WallType.FixedWall, Maz.WallType.StairUp, Maz.WallType.StairDown -> false
     is Maz.WallType.Decoration -> {
         val mapped = decorations.firstOrNull { it.decorationWallIndex == wall.decorationWallIndex }
-        mapped == null || mapped.flags.letAThingThrough
+        mapped != null && mapped.flags.letAThingThrough
     }
 }
 
@@ -117,7 +123,7 @@ fun SubLevel.canBeWalkedOnto(wall: Maz.WallType): Boolean = when (wall) {
     is Maz.WallType.FixedWall, Maz.WallType.StairUp, Maz.WallType.StairDown -> false
     is Maz.WallType.Decoration -> {
         val mapped = decorations.firstOrNull { it.decorationWallIndex == wall.decorationWallIndex }
-        mapped == null || mapped.flags.letThePartyThrough
+        mapped != null && mapped.flags.letThePartyThrough
     }
 }
 

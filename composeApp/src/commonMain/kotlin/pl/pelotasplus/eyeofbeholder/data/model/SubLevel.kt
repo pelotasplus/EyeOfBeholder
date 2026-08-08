@@ -36,16 +36,5 @@ data class SubLevel(
     val sound: String,
     val doors: List<Door>,
     val decorations: List<Decoration>,
-
-    /**
-     * Wall indices this sublevel does not map but another of the same level
-     * does.
-     *
-     * A level's sublevels share one maze and sit next to each other, so the
-     * party routinely see a face belonging to one they are not in. That has no
-     * appearance and is drawn as nothing; telling it apart from an index no
-     * sublevel maps is what leaves the red for the second.
-     */
-    val mappedNextDoor: Set<Int> = emptySet(),
 )
 

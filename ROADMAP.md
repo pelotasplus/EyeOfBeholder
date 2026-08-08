@@ -59,13 +59,6 @@ each.
   finding the table in it; there is no cheap version, and the two words are the
   smallest part of what is in there.
 
-- **Walls a level does not map.** Rendering level 5 near 16x6 logs `Wall index
-  55 at (16,6) is not mapped by this level` and draws nothing there. Either
-  the sublevel being shown is not the one that square belongs to, or the wall
-  is a kind we are not reading. It is one warning from one square, which is
-  either a rendering hole or a hint that `subLevelShowing` picks wrongly in
-  that corner; nobody has looked.
-
 - **A script reads the party where it left them.** The party can walk away
   while a script runs, and the script goes on holding the world it was handed —
   so one that asks where they are, mid-run, is told where they were when it
