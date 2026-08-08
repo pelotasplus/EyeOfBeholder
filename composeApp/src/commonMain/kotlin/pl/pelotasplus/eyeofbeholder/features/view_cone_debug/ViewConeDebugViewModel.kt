@@ -1488,6 +1488,7 @@ class ViewConeDebugViewModel(
             direction = party.facing,
             wallAt = wallAt,
             pulse = pulse,
+            fromTheBottomUp = _state.value.game.fromTheBottomUp,
         ).onSuccess { viewPort ->
             drawn = viewPort
             paint(viewPort, sublevel.palette)

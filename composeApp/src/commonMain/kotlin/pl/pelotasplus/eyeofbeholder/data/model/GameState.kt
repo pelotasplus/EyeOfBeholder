@@ -64,6 +64,20 @@ data class GameState(
     private val mazes: Map<Int, Maz> = emptyMap(),
 
     /**
+     * The things that have been put somewhere since the game began, oldest
+     * first — which is what says who lies on top of whom.
+     *
+     * A slot in the table names a thing; it does not say where in a pile it
+     * sits, and a thing put down keeps the slot it always had. So the order
+     * has to be kept rather than read off the table, or dropping a dagger on
+     * a robe would bury it whenever the dagger's slot happened to be lower.
+     *
+     * A file's own items are in none of this and lie in table order, beneath
+     * anything the party have moved.
+     */
+    private val putDownSince: List<ItemIndex> = emptyList(),
+
+    /**
      * The doors on their way somewhere.
      *
      * A door is started and then left to finish on its own, so whatever
@@ -178,14 +192,21 @@ data class GameState(
     fun holding(slot: ItemIndex) = copy(inHand = slot)
 
     /**
-     * Which item lies at one place on a square, if any. A square can hold
-     * several, and the original takes them one at a time from where they were
-     * put rather than off a pile.
+     * Every thing in the world, bottom of its pile first.
+     *
+     * One order, read by the hand and by the screen alike: whoever is drawn
+     * last is on top, and whoever is on top is what a hand closes on. Reading
+     * the two from separate rules is how the party come away holding something
+     * that is not the thing they can see.
      */
+    val fromTheBottomUp: List<ItemIndex>
+        get() = items.indices.map(::ItemIndex).sortedBy { putDownSince.indexOf(it) }
+
+    /** Which item lies at one place on a square, if any — the one on top. */
     fun lyingAt(level: Int, at: Location, place: SquarePlace): ItemIndex? =
-        items.indices.firstOrNull { slot ->
-            items[slot].let { it.level == level && it.location == at && it.place == place }
-        }?.let(::ItemIndex)
+        fromTheBottomUp.lastOrNull { slot ->
+            item(slot)?.let { it.level == level && it.location == at && it.place == place } == true
+        }
 
     /**
      * How many things of one kind lie on a square, which is what a plate set
@@ -227,6 +248,7 @@ data class GameState(
                 else item.copy(level = level, location = at, place = place)
             },
             inHand = ItemIndex(ItemIndex.NOTHING),
+            putDownSince = putDownSince.filterNot { it == inHand } + inHand,
         )
     }
 

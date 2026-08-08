@@ -100,13 +100,15 @@ class ItemInHandTest {
 
     /**
      * Two things in one corner come up one at a time, so a pile does not
-     * vanish into a single click.
+     * vanish into a single click — and the one on top comes up first, which is
+     * the last of the table.
      */
     @Test
     fun `only one of two in a corner comes up at a time`() {
         val two = world.copy(items = world.items + lying(here, SquarePlace.NORTH_WEST))
-        val taken = two.takingUp(two.lyingAt(level, here, SquarePlace.NORTH_WEST)!!)
+        val onTop = two.lyingAt(level, here, SquarePlace.NORTH_WEST)
 
-        assertEquals(ItemIndex(2), taken.lyingAt(level, here, SquarePlace.NORTH_WEST))
+        assertEquals(ItemIndex(2), onTop, "the one under it was taken")
+        assertEquals(dagger, two.takingUp(onTop!!).lyingAt(level, here, SquarePlace.NORTH_WEST))
     }
 }

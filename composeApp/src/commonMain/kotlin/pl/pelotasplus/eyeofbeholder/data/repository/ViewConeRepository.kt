@@ -72,6 +72,10 @@ interface ViewConeRepository {
      * @param wallAt what a square's side is now, which is not what the file
      *   says once a script has changed it. Defaults to the file.
      * @param pulse which half of their flicker any teleporters in view show
+     * @param fromTheBottomUp which of two things in one corner is under the
+     *   other, drawn in that order so the top of a pile is the one on screen.
+     *   Defaults to the order of the table, which is how a file lays a level
+     *   out before anything has been moved.
      */
     suspend fun renderPosition(
         items: List<Item>,
@@ -84,6 +88,7 @@ interface ViewConeRepository {
             sublevel.maz.square(at).getWall(side)
         },
         pulse: TeleporterPulse = TeleporterPulse.AS_LAID_OUT,
+        fromTheBottomUp: List<ItemIndex> = items.indices.map(::ItemIndex),
     ): Result<ViewPort>
 }
 
@@ -126,6 +131,7 @@ class ViewConeRepositoryImpl(
         direction: Direction,
         wallAt: (Location, WallSide) -> Maz.WallType,
         pulse: TeleporterPulse,
+        fromTheBottomUp: List<ItemIndex>,
     ): Result<ViewPort> {
         Logger.d(TAG) { "Render position $playerX x $playerY level ${sublevel.level}"}
 
@@ -152,7 +158,7 @@ class ViewConeRepositoryImpl(
             when (wallPosition) {
                 11, 18, 23 -> {
                     val relY = if (wallPosition == 11) -3 else if (wallPosition == 18) -2 else -1
-                    drawItemsAtRow(relY, viewPort, items, smallIcons, largeIcons, sublevel, playerX, playerY, direction, windows, wallAt)
+                    drawItemsAtRow(relY, viewPort, items, fromTheBottomUp, smallIcons, largeIcons, sublevel, playerX, playerY, direction, windows, wallAt)
                     drawMonstersAtRow(relY, viewPort, monsters, monsterSheets, sublevel, playerX, playerY, direction, windows)
                     drawTeleportersAtRow(relY, viewPort, teleporters, decorations, pulse, windows)
                 }
@@ -267,7 +273,7 @@ class ViewConeRepositoryImpl(
         // two quadrants ahead of the party are visible; rear quadrants are
         // behind the camera and niche items beside it are never drawn.
         drawItemsAtBlock(
-            viewPort, items, smallIcons, largeIcons, sublevel,
+            viewPort, items, fromTheBottomUp, smallIcons, largeIcons, sublevel,
             mazX = playerX, mazY = playerY,
             blockIndex = ViewPort.OWN_BLOCK_INDEX, dim = 3,
             partyFacing = direction,
@@ -360,6 +366,7 @@ class ViewConeRepositoryImpl(
         relativeY: Int,
         viewPort: ViewPort,
         items: List<Item>,
+        fromTheBottomUp: List<ItemIndex>,
         smallIcons: Cps,
         largeIcons: Cps,
         sublevel: SubLevel,
@@ -396,7 +403,7 @@ class ViewConeRepositoryImpl(
                 within = window,
             ) {
                 drawItemsAtBlock(
-                    viewPort, items, smallIcons, largeIcons, sublevel,
+                    viewPort, items, fromTheBottomUp, smallIcons, largeIcons, sublevel,
                     mazX = playerX + dx, mazY = playerY + dy,
                     blockIndex = block.blockIndex, dim = dim,
                     partyFacing = direction,
@@ -408,6 +415,7 @@ class ViewConeRepositoryImpl(
     private fun drawItemsAtBlock(
         viewPort: ViewPort,
         items: List<Item>,
+        fromTheBottomUp: List<ItemIndex>,
         smallIcons: Cps,
         largeIcons: Cps,
         sublevel: SubLevel,
@@ -417,16 +425,22 @@ class ViewConeRepositoryImpl(
         dim: Int,
         partyFacing: Direction,
     ) {
-        // the index is the item's place in the world's table, which is what
-        // its nudge is taken from, so it is carried along with it
-        val itemsHere = items.withIndex().filter { (_, item) ->
-            item.level == sublevel.level && item.location.x == mazX && item.location.y == mazY
+        // the slot is the item's place in the world's table, which is what its
+        // nudge is taken from, so it is carried along with it
+        val itemsHere = fromTheBottomUp.mapNotNull { slot ->
+            items.getOrNull(slot.value)
+                ?.takeIf {
+                    it.level == sublevel.level &&
+                        it.location.x == mazX &&
+                        it.location.y == mazY
+                }
+                ?.let { slot to it }
         }
 
-        for ((index, item) in itemsHere) {
+        for ((slot, item) in itemsHere) {
             Logger.d(TAG) { "drawItem icon=${item.icon} at ($mazX, $mazY) ${item.place} block=$blockIndex" }
 
-            val nudge = nudgeOf(ItemIndex(index))
+            val nudge = nudgeOf(slot)
 
             when {
                 item.place == SquarePlace.IN_A_NICHE -> {
