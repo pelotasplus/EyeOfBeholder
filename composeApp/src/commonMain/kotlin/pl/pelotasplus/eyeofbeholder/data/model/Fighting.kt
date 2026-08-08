@@ -41,7 +41,14 @@ class Fighting(
         // the slot spends saying so.
         var after = world
         if (came != null) after = after.handSwung(whose, hand, came)
-        if (blow is Blow.Hit) after = after.monsterHurt(blow.monster, blow.damage)
+
+        // Swinging rouses whatever was swung at whether or not it connects,
+        // and a miss is as much an answer to a greeting as a hit.
+        when (blow) {
+            is Blow.Hit -> after = after.rousedBy(blow.monster).monsterHurt(blow.monster, blow.damage)
+            is Blow.Missed -> after = after.rousedBy(blow.monster)
+            else -> Unit
+        }
 
         return Struck(blow, after)
     }

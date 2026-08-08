@@ -48,6 +48,16 @@ data class MonsterInstance(
     val hitPoints: HitPoints = UNROLLED,
     /** Hit this instant, and so drawn as a silhouette until the moment passes. */
     val struck: Boolean = false,
+    /**
+     * Whether it has been roused. The pair on level 5 stand talking until
+     * somebody hits one of them; a monster nobody has provoked is scenery.
+     */
+    val provoked: Boolean = false,
+    /**
+     * How far through its own swing it is, if it is swinging: the arm goes
+     * back and then comes down, and the sprites for both are cut already.
+     */
+    val striking: MonsterPose? = null,
 ) {
     val x: Int get() = block and 0x1F
     val y: Int get() = block shr 5
@@ -74,11 +84,47 @@ data class MonsterInstance(
         return copy(hitPoints = HitPoints(current = rolled, max = rolled))
     }
 
-    /** The same monster [by] hit points worse off, and showing it. */
-    fun hurt(by: Int) =
-        copy(hitPoints = hitPoints.copy(current = hitPoints.current - by), struck = true)
+    /**
+     * The same monster [by] hit points worse off, showing it, and no longer
+     * willing to be talked to.
+     */
+    fun hurt(by: Int) = copy(
+        hitPoints = hitPoints.copy(current = hitPoints.current - by),
+        struck = true,
+        provoked = true,
+    )
+
+    /**
+     * Whether it is waiting to see what the party do rather than doing
+     * anything: the mode a level gives something that talks before it fights.
+     */
+    val standingBy: Boolean get() = mode == WAITING_TO_SEE
+
+    /**
+     * Whether its arm gets to the party from where it stands: it must face
+     * their square, and stand on the half of its own square that reaches.
+     * Something filling a square reaches from anywhere on it.
+     */
+    fun canReach(party: PartyState): Boolean {
+        val (dx, dy) = direction.transformCoordinates(0, -1)
+        if (x + dx != party.position.x || y + dy != party.position.y) return false
+
+        return !place.onTheFloor || WhoTheMonsterReaches.armIsLongEnough(direction, place)
+    }
+
+    /** The next frame of its swing, or none once the arm has come down. */
+    fun swingingOn() = copy(
+        striking = when (striking) {
+            null -> MonsterPose.ATTACK_A
+            MonsterPose.ATTACK_A -> MonsterPose.ATTACK_B
+            else -> null
+        },
+    )
 
     companion object {
+        /** The mode a level gives something that talks before it fights. */
+        const val WAITING_TO_SEE = 8
+
         /** What a monster nobody has rolled for carries instead of hit points. */
         val UNROLLED = HitPoints(current = 0, max = 0)
 

@@ -20,9 +20,21 @@ each.
   flashes for a moment rather than fading, so it is one wait and one redraw and
   not a clock.
 
+  Monsters hit back now, but only where they stand: nothing walks. A monster
+  already next to the party and facing them fights; one across the room waits
+  for ever. That is enough for level 5's pair, who are placed against the party
+  and roused where they stand, and it is not enough for anything else. What is
+  missing is the ten behaviour modes and the pathing under them — a monster
+  works out a square to make for, turns towards it and steps — and once it can
+  step, the same turn it already takes does the rest.
+
+  Riding on a landed blow there are the status attacks a kind can carry:
+  poison, paralysis, and having something taken out of a pocket. Each is a flag
+  on the kind and a branch nobody has written.
+
   Thrown and fired weapons are a piece of their own — nothing launches anything
-  yet — and so is a monster striking back, which nothing in the game is waiting
-  for.
+  yet — and so is a monster casting a spell, which is the other half of what
+  the clerics ought to be able to do.
 
   One thing still unwired: `SetFlag.MonsterFlag` has no branch in the runner,
   so a script rousing a monster does nothing. It warns now rather than falling

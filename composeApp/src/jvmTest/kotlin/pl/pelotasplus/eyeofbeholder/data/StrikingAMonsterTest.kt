@@ -184,7 +184,28 @@ class StrikingAMonsterTest {
         val struck = fighting(alwaysOne).strike(before, PartySlot(0), CarrySlot(0))
 
         assertIs<Blow.Missed>(struck.blow)
-        assertEquals(before.monsters, struck.world.monsters)
+        assertEquals(
+            before.monsters.map { it.hitPoints },
+            struck.world.monsters.map { it.hitPoints },
+        )
+    }
+
+    /**
+     * Swinging at one of a pair rouses both, and a miss rouses them as surely
+     * as a hit: the two on level 5 greet the party together and stop talking
+     * together the moment either is swung at.
+     */
+    @Test
+    fun `a swing rouses everything that was waiting to see`() {
+        val missed = fighting(alwaysOne).strike(world(), PartySlot(0), CarrySlot(0)).world
+
+        assertTrue(missed.monsters.all { it.provoked }, "the pair are still talking")
+    }
+
+    /** Until then they are scenery, however long the party stand there. */
+    @Test
+    fun `nothing is roused until it is swung at`() {
+        assertTrue(world().monsters.none { it.provoked })
     }
 
     /** And the highest lands, taking the damage off what it hit. */

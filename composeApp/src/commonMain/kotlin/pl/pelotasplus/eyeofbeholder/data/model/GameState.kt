@@ -636,6 +636,54 @@ data class GameState(
     /** Whether anything is showing a blow this instant. */
     val anythingFlashing: Boolean get() = monsters.any { it.struck }
 
+    /**
+     * The world with one champion [by] hit points worse off.
+     *
+     * Nothing else happens to them here: going down at nothing left and being
+     * past raising at ten below are what the panel already reads off the
+     * number, so taking it away is the whole of the change.
+     */
+    fun championHurt(whose: PartySlot, by: Int): GameState {
+        if (by <= 0) return this
+        val who = champions.getOrNull(whose.index) ?: return this
+
+        return copy(
+            champions = champions.toMutableList().also {
+                it[whose.index] = who.copy(
+                    hitPoints = who.hitPoints.copy(current = who.hitPoints.current - by),
+                )
+            },
+        )
+    }
+
+    /**
+     * The world with a monster roused, and with it everything standing by
+     * waiting to see whether the party were friendly.
+     *
+     * Swinging at one of a group is swinging at all of them: the pair on level
+     * 5 greet the party together and turn on them together, and hitting either
+     * ends the conversation for both. Anything already fighting, or minding
+     * its own business for a reason of its own, is not touched.
+     */
+    fun rousedBy(slot: Int) = copy(
+        monsters = monsters.map {
+            if (it.index == slot || it.standingBy) it.copy(provoked = true) else it
+        },
+    )
+
+    /** The world with those monsters a frame further through their swing. */
+    fun monstersStriking(slots: List<Int>) = copy(
+        monsters = monsters.map { if (it.index in slots) it.swingingOn() else it },
+    )
+
+    /** The world with every swing carried on to its next frame. */
+    fun swingsCarriedOn() = copy(
+        monsters = monsters.map { if (it.striking == null) it else it.swingingOn() },
+    )
+
+    /** Whether any monster is part way through its own swing. */
+    val anythingSwinging: Boolean get() = monsters.any { it.striking != null }
+
     /** Whether that hand is still coming back to rest from its last swing. */
     fun isRecovering(whose: PartySlot, hand: CarrySlot): Boolean =
         recovering.any { it.whose == whose && it.hand == hand }

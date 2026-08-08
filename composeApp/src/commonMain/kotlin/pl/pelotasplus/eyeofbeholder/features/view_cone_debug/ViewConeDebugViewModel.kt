@@ -38,6 +38,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.Blow
 import pl.pelotasplus.eyeofbeholder.data.model.Fighting
 import pl.pelotasplus.eyeofbeholder.data.model.THROWN_CPS
 import pl.pelotasplus.eyeofbeholder.data.model.HandRecovering
+import pl.pelotasplus.eyeofbeholder.data.model.MonstersTurn
 import pl.pelotasplus.eyeofbeholder.data.model.DoorMessages
 import pl.pelotasplus.eyeofbeholder.data.model.DoorSounds
 import pl.pelotasplus.eyeofbeholder.data.model.FloorReach
@@ -177,6 +178,9 @@ class ViewConeDebugViewModel(
 
     /** Taking the silhouette off whatever was struck. */
     private var fading: Job? = null
+
+    /** Letting whatever has been roused take its turns. */
+    private var monstersFighting: Job? = null
     private var pulse = TeleporterPulse.AS_LAID_OUT
 
     /** The view as last drawn, which a script's words are written over. */
@@ -796,6 +800,46 @@ class ViewConeDebugViewModel(
         renderViewPort()
         keepHandsRecovering()
         letTheFlashFade()
+        keepMonstersFighting()
+    }
+
+    /**
+     * Lets whatever has been roused take its turn, over and over, until
+     * nothing is left that will fight.
+     *
+     * A monster's swing is two frames and the turn is far longer than they
+     * are, so the clock runs at the speed of the animation and a turn comes
+     * round every so many of its ticks.
+     */
+    private fun keepMonstersFighting() {
+        if (monstersFighting?.isActive == true) return
+
+        monstersFighting = viewModelScope.launch {
+            var untilTheirTurn = 0
+
+            while (_state.value.game.monsters.any { it.provoked }) {
+                delay(MONSTER_FRAME.inMilliseconds)
+
+                if (untilTheirTurn-- <= 0) {
+                    untilTheirTurn = FRAMES_PER_MONSTER_TURN
+                    val taken = MonstersTurn(
+                        kinds = _state.value.inf
+                            ?.subLevels?.getOrNull(_state.value.subLevel)
+                            ?.monsters.orEmpty(),
+                    ).taken(_state.value.game)
+
+                    _state.update { it.copy(game = taken.world) }
+                    taken.struck.forEach { blow ->
+                        Logger.d(TAG) { "Monster ${blow.monster} strikes ${blow.at} for ${blow.damage}" }
+                        blow.heard?.let { playTrack(it) }
+                    }
+                } else if (_state.value.game.anythingSwinging) {
+                    _state.update { it.copy(game = it.game.swingsCarriedOn()) }
+                }
+
+                drawViewPort()
+            }
+        }
     }
 
     /**
@@ -1909,6 +1953,12 @@ class ViewConeDebugViewModel(
 
         /** How long a struck monster is drawn as a silhouette. */
         private val FLASH = Ticks(2)
+
+        /** How long one frame of a monster's swing is held. */
+        private val MONSTER_FRAME = Ticks(4)
+
+        /** And how many of those go by between one monster's turn and the next. */
+        private const val FRAMES_PER_MONSTER_TURN = 5
 
         private const val PLAY_FIELD_CPS = "PLAYFLD.CPS"
         private const val DECORATIONS_CPS = "DECORATE.CPS"

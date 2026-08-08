@@ -16,6 +16,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.ItemIndex
 import pl.pelotasplus.eyeofbeholder.data.repository.ItemTypesRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.model.Maz
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterInstance
+import pl.pelotasplus.eyeofbeholder.data.model.MonsterPose
 import pl.pelotasplus.eyeofbeholder.data.model.WallByte
 import pl.pelotasplus.eyeofbeholder.data.model.WallSide
 import pl.pelotasplus.eyeofbeholder.data.model.getWall
@@ -147,6 +148,36 @@ class ViewPortGoldenTest {
                 monsters.map { it.copy(struck = it.place == SquarePlace.SOUTH_WEST) }
             },
         )
+
+    /**
+     * The nearer cleric swinging at the party: the arm going back, and then
+     * coming down. Two frames, and a monster is only drawn in them from the
+     * square right in front — one further off and it stands as it stood.
+     *
+     * A swing is a thing that passes, so each phase is frozen and rendered
+     * from an explicit one rather than from a clock.
+     */
+    @Test
+    fun `level5 a monster winding up to strike`() =
+        checkGolden(
+            "level5-monster-winding-up",
+            renderFrame("LEVEL5.INF", x = 13, y = 9, direction = Direction.NORTH) { monsters ->
+                monsters.map { it.striking(MonsterPose.ATTACK_A) }
+            },
+        )
+
+    @Test
+    fun `level5 a monster bringing the blow down`() =
+        checkGolden(
+            "level5-monster-striking",
+            renderFrame("LEVEL5.INF", x = 13, y = 9, direction = Direction.NORTH) { monsters ->
+                monsters.map { it.striking(MonsterPose.ATTACK_B) }
+            },
+        )
+
+    /** Only the one in the near corner swings; the other keeps its own pose. */
+    private fun MonsterInstance.striking(pose: MonsterPose) =
+        if (place == SquarePlace.SOUTH_WEST) copy(striking = pose) else this
 
     /** The same pair on the diagonal square, walking away to the left. */
     @Test

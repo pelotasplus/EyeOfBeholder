@@ -507,13 +507,21 @@ class ViewConeRepositoryImpl(
                 val seenAt = monster.place.asSeenFacing(direction) ?: continue
                 val sheet = monsterSheets.getOrNull(monster.gfxIndex) ?: continue
                 val facing = monsterFacing(direction, monster.direction)
-                val frame = sheet.pose(facing.pose, monster.colors) ?: continue
+
+                // A monster swinging at the party is drawn mid-swing instead
+                // of in the pose it faces them in, and only from the square
+                // right in front — one further off and its arm is not in the
+                // fight, so it stands as it stood.
+                val pose = monster.striking
+                    ?.takeIf { relativeY == NEXT_TO_THE_PARTY }
+                    ?: facing.pose
+                val frame = sheet.pose(pose, monster.colors) ?: continue
 
                 // the overlays go with the species, not with the instance
                 val decorations = sublevel.monsters
                     .firstOrNull { it.id == monster.type.value }
                     ?.decorations.orEmpty()
-                    .mapNotNull { sheet.decoration(it, facing.pose) }
+                    .mapNotNull { sheet.decoration(it, pose) }
 
                 viewPort.at(
                     DistanceFromParty.standingOnSquare(block.relativeX, block.relativeY),
@@ -525,7 +533,7 @@ class ViewConeRepositoryImpl(
                         decorations = decorations,
                         blockIndex = block.blockIndex,
                         place = seenAt,
-                        mirrored = facing.mirrored,
+                        mirrored = facing.mirrored && monster.striking == null,
                         scaleSteps = block.scaleSteps,
                         struck = monster.struck,
                     )
@@ -554,5 +562,8 @@ class ViewConeRepositoryImpl(
 
     companion object {
         private const val TAG = "ViewConeRepository"
+
+        /** The row a monster has to be on for its arm to be in the fight. */
+        private const val NEXT_TO_THE_PARTY = -1
     }
 }
