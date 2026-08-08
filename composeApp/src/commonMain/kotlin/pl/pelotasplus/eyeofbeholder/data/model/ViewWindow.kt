@@ -50,7 +50,7 @@ fun SubLevel.sightThrough(wall: Maz.WallType): WallSight = when (wall) {
         val mapped = decorations.firstOrNull { it.decorationWallIndex == wall.decorationWallIndex }
         when {
             mapped == null -> WallSight.CLEAR
-            mapped.flags and SEEN_THROUGH != 0 -> WallSight.OPEN_FRAME
+            mapped.flags.seenThrough -> WallSight.OPEN_FRAME
             mapped.wallType == NO_WALL_BEHIND -> WallSight.CLEAR
             else -> WallSight.SOLID
         }
@@ -77,7 +77,7 @@ fun SubLevel.showsWhatIsOnIt(wall: Maz.WallType): Boolean = when (wall) {
         when {
             mapped == null -> true
             mapped.wallType == NO_WALL_BEHIND -> true
-            else -> mapped.flags and SHOWS_ITS_CONTENTS != 0
+            else -> mapped.flags.showsItsContents
         }
     }
 }
@@ -98,7 +98,7 @@ fun SubLevel.canBeReachedOnto(wall: Maz.WallType): Boolean = when (wall) {
     is Maz.WallType.FixedWall, Maz.WallType.StairUp, Maz.WallType.StairDown -> false
     is Maz.WallType.Decoration -> {
         val mapped = decorations.firstOrNull { it.decorationWallIndex == wall.decorationWallIndex }
-        mapped == null || mapped.wallType == NO_WALL_BEHIND
+        mapped == null || mapped.flags.letAThingThrough
     }
 }
 
@@ -108,11 +108,8 @@ fun SubLevel.canBeReachedOnto(wall: Maz.WallType): Boolean = when (wall) {
  *
  * Reaching and walking are asked separately because the original asks them
  * separately: a wall carries one mark for what the party may step through and
- * another for what may be put or thrown through it, and a level is free to
- * set either without the other. They happen to agree on every wall the game
- * ships, which is why this reads like [canBeReachedOnto] — but they are two
- * questions and answering one with the other would be luck rather than
- * correctness.
+ * more for what may be put or taken through it, and a level is free to set
+ * either without the other.
  */
 fun SubLevel.canBeWalkedOnto(wall: Maz.WallType): Boolean = when (wall) {
     Maz.WallType.NoWall -> true
@@ -120,7 +117,7 @@ fun SubLevel.canBeWalkedOnto(wall: Maz.WallType): Boolean = when (wall) {
     is Maz.WallType.FixedWall, Maz.WallType.StairUp, Maz.WallType.StairDown -> false
     is Maz.WallType.Decoration -> {
         val mapped = decorations.firstOrNull { it.decorationWallIndex == wall.decorationWallIndex }
-        mapped == null || mapped.wallType == NO_WALL_BEHIND
+        mapped == null || mapped.flags.letThePartyThrough
     }
 }
 

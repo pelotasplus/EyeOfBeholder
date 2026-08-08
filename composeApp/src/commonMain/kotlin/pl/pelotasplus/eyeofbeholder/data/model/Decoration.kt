@@ -32,7 +32,7 @@ data class Decoration(
                                   the DecorationData.decorations array in the
                                   [[eob.dat|.dat]] files. */
     val specialType: Int,
-    val flags: Int,
+    val flags: WallFlags,
     val dec: Dec,
     val cps: Cps
 ) {

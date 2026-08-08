@@ -21,6 +21,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.MonsterProperty
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptTimer
 import pl.pelotasplus.eyeofbeholder.data.model.SquarePlace
 import pl.pelotasplus.eyeofbeholder.data.model.SubLevel
+import pl.pelotasplus.eyeofbeholder.data.model.WallFlags
 import pl.pelotasplus.eyeofbeholder.data.model.script.ScriptOffset
 import pl.pelotasplus.eyeofbeholder.data.model.script.ClearFlag
 import pl.pelotasplus.eyeofbeholder.data.model.script.CloseDoor
@@ -239,7 +240,7 @@ class InfRepositoryImpl(
                     val wallType = reader.readU8() // vmpIndex
                     val decorationID = reader.readI8() // decIndex
                     val specialType = reader.readU8() // specialType
-                    val flags = reader.readU8() // flags
+                    val flags = WallFlags(reader.readU8())
 
                     Logger.d(TAG) { "Assigning decorations: decorationWallIndex: $decorationWallIndex wallType: $wallType decorationID: $decorationID specialType: $specialType flags: $flags" }
 

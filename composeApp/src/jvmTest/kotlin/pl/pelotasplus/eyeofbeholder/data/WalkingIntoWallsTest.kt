@@ -1,10 +1,13 @@
 package pl.pelotasplus.eyeofbeholder.data
 
 import kotlinx.coroutines.runBlocking
+import pl.pelotasplus.eyeofbeholder.data.model.Location
 import pl.pelotasplus.eyeofbeholder.data.model.Maz
 import pl.pelotasplus.eyeofbeholder.data.model.WallByte
+import pl.pelotasplus.eyeofbeholder.data.model.WallSide
 import pl.pelotasplus.eyeofbeholder.data.model.canBeReachedOnto
 import pl.pelotasplus.eyeofbeholder.data.model.canBeWalkedOnto
+import pl.pelotasplus.eyeofbeholder.data.model.getWall
 import pl.pelotasplus.eyeofbeholder.data.repository.CpsRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.DecRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.InfRepositoryImpl
@@ -30,7 +33,7 @@ class WalkingIntoWallsTest {
 
     private val resources = ResourceRepositoryImpl()
 
-    private val sublevel = runBlocking {
+    private fun groundFloorOf(level: String) = runBlocking {
         InfRepositoryImpl(
             resourceRepository = resources,
             mazRepository = MazRepositoryImpl(resources),
@@ -39,8 +42,13 @@ class WalkingIntoWallsTest {
             palRepository = PalRepositoryImpl(resources),
             cpsRepository = CpsRepositoryImpl(resources),
             decRepository = DecRepositoryImpl(resources),
-        ).loadInf("LEVEL1.INF").getOrThrow().subLevels[0]
+        ).loadInf(level).getOrThrow().subLevels[0]
     }
+
+    private val sublevel by lazy { groundFloorOf("LEVEL1.INF") }
+
+    /** The forest outside the temple, which is where the illusions are. */
+    private val forest by lazy { groundFloorOf("LEVEL4.INF") }
 
     @Test
     fun `an empty side is walked through and a solid one is not`() {
@@ -66,6 +74,39 @@ class WalkingIntoWallsTest {
     fun `stairs are a wall to walk into rather than a way through`() {
         assertFalse(sublevel.canBeWalkedOnto(Maz.WallType.StairUp))
         assertFalse(sublevel.canBeWalkedOnto(Maz.WallType.StairDown))
+    }
+
+    // --- what a decorated wall says for itself ----------------------------
+
+    /**
+     * What a wall looks like is not what it does. The party stand at 17x15 on
+     * level 4, are told the bushes to the south look strange, and walk through
+     * them into the way on — so the wall the square to the south turns towards
+     * them has to let them past, drawn as solid or not.
+     */
+    @Test
+    fun `the strange bushes on level 4 are walked through`() {
+        val bushes = forest.maz.square(Location(17, 16)).getWall(WallSide.NORTH)
+
+        assertTrue(forest.canBeWalkedOnto(bushes), "the bushes stop the party")
+        assertTrue(forest.canBeReachedOnto(bushes), "and nothing can be put past them")
+    }
+
+    /**
+     * And the other way about: a wall can have nothing drawn behind it and
+     * still stop the party, so what is drawn cannot answer this either.
+     */
+    @Test
+    fun `a wall with nothing behind it can still stop the party`() {
+        val nothingToSee = Maz.WallType.of(WallByte(74))
+
+        val noWallBehind = 0
+        assertEquals(
+            noWallBehind,
+            forest.decorations.first { it.decorationWallIndex == 74 }.wallType,
+            "wall 74 is the one drawn as nothing at all",
+        )
+        assertFalse(forest.canBeWalkedOnto(nothingToSee))
     }
 
     /**
