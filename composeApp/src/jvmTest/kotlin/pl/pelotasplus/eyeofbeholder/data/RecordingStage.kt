@@ -29,12 +29,26 @@ class RecordingStage(answers: List<Int> = emptyList()) : ScriptStage {
     val shown get() = beats.filterIsInstance<Beat.Shown>().map { it.world }
     val played get() = beats.filterIsInstance<Beat.Played>().map { it.track }
 
+    /**
+     * How many beats had gone by when the script first took the party over, or
+     * null if it never did. Taking them is not something the script does on
+     * screen, so it is counted rather than recorded as a beat of its own.
+     */
+    var tookThePartyAfter: Int? = null
+        private set
+
+    val tookTheParty get() = tookThePartyAfter != null
+
     sealed interface Beat {
         data class Shown(val world: GameState) : Beat
         data class Said(val speech: ScriptSpeech) : Beat
         data class Held(val ticks: Ticks) : Beat
         data class Played(val track: TrackIndex) : Beat
         data class Asked(val question: ScriptQuestion, val answered: DialogAnswer) : Beat
+    }
+
+    override fun takesTheParty() {
+        if (tookThePartyAfter == null) tookThePartyAfter = beats.size
     }
 
     override suspend fun show(world: GameState) {

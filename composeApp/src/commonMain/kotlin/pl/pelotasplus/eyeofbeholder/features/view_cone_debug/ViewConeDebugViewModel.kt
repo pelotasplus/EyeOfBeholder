@@ -145,6 +145,15 @@ class ViewConeDebugViewModel(
     /** The script holding the world, if one is running. */
     private var playing: Job? = null
 
+    /**
+     * Whether the script running has taken the party over.
+     *
+     * A script owns the world it is changing, but not the party standing in
+     * it — they can walk away from a door it is opening. Once it moves or
+     * turns them the two cannot both steer, and it wins until it ends.
+     */
+    private var scriptHasTheParty = false
+
     /** Waiting for the party to stand still before writing where they are. */
     private var autosaving: Job? = null
 
@@ -165,11 +174,14 @@ class ViewConeDebugViewModel(
     val state = _state.asStateFlow()
 
     fun onEvent(event: Event) {
-        // A script moves the party itself and holds the world while it does,
-        // so steering is ignored until it lets go. Answering is not steering —
-        // it is what a script asking a question is waiting for.
-        if (playing?.isActive == true && event !is Event.DialogAnswered) {
-            Logger.d(TAG) { "Ignoring $event while a script is playing" }
+        // A script running is not a reason to stand still: a door swinging
+        // somewhere can be watched, or turned away from, while it swings. Only
+        // a script that has taken the party — walked them somewhere, turned
+        // them to face something — steers them, and then they are its until it
+        // is done. Answering is never steering; it is what a script asking a
+        // question waits for.
+        if (scriptHasTheParty && event !is Event.DialogAnswered) {
+            Logger.d(TAG) { "Ignoring $event while a script is moving the party" }
             return
         }
 
@@ -1100,11 +1112,27 @@ class ViewConeDebugViewModel(
      */
     private fun runTriggers(): Boolean = runTriggersAt(party.position, ScriptEvent.PARTY_ENTERED)
 
+    /**
+     * The world as the script has it, with the party as they now stand.
+     *
+     * A script is handed the world when it starts and gives it back when it
+     * ends, so anything the player did meanwhile is in neither copy — and the
+     * party are the one thing the player can move while a script runs. Taking
+     * the script's walls and the player's party is what keeps a step made
+     * while a door swung from being undone when the door finishes.
+     *
+     * A script that has taken the party is the one steering them, and then its
+     * own copy is the true one.
+     */
+    private fun GameState.withWhoeverStandsThere(live: GameState): GameState =
+        if (scriptHasTheParty) this else copy(party = live.party)
+
     private fun runTriggersAt(at: Location, event: ScriptEvent): Boolean {
         val inf = _state.value.inf ?: return false
         val runner = scriptRunner ?: return false
 
         playing?.cancel()
+        scriptHasTheParty = false
         playing = viewModelScope.launch {
             val run = runner.onEvent(
                 triggers = inf.triggers,
@@ -1119,8 +1147,11 @@ class ViewConeDebugViewModel(
             // instruction — and a box with nothing to click cannot be got rid
             // of by the player.
             if (_state.value.dialog != null) silenceEffects()
-            _state.update { it.copy(game = run.state, dialog = null) }
+            _state.update {
+                it.copy(game = run.state.withWhoeverStandsThere(it.game), dialog = null)
+            }
             speaker = null
+            scriptHasTheParty = false
 
             val change = run.changeLevel
             if (change == null) {
@@ -1181,8 +1212,12 @@ class ViewConeDebugViewModel(
     private val stage = object : ScriptStage {
 
         override suspend fun show(world: GameState) {
-            _state.update { it.copy(game = world) }
+            _state.update { it.copy(game = world.withWhoeverStandsThere(it.game)) }
             drawViewPort()
+        }
+
+        override fun takesTheParty() {
+            scriptHasTheParty = true
         }
 
         override suspend fun play(track: TrackIndex) = playTrack(track)

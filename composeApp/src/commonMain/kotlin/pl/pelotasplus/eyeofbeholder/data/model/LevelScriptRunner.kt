@@ -138,6 +138,16 @@ interface ScriptStage {
     suspend fun show(world: GameState)
 
     /**
+     * The script has moved the party, or turned them, and from here on they
+     * are its to move.
+     *
+     * A script that only opens a door or writes a line leaves the party where
+     * they are and free to walk off while it runs; one that walks them
+     * somewhere cannot have them steered out from under it.
+     */
+    fun takesTheParty() = Unit
+
+    /**
      * Put up what the script has written into the dialogue box, with nothing
      * to click and nothing to wait for.
      *
@@ -426,6 +436,7 @@ class LevelScriptRunner(
                 // has its say before this script goes on — a scripted walk that
                 // ends on a door is how the door gets asked about.
                 is Teleport.MoveParty -> {
+                    stage.takesTheParty()
                     state = state.partyMovedTo(token.destination)
 
                     if (depth < MAX_NESTED_TRIGGERS) {
@@ -451,7 +462,10 @@ class LevelScriptRunner(
 
                 is CloseDoor -> state = doorSwinging(state, token.location, opening = false, stage)
 
-                is SetWall.ChangePartyDirection -> state = state.partyTurnedTo(token.direction)
+                is SetWall.ChangePartyDirection -> {
+                    stage.takesTheParty()
+                    state = state.partyTurnedTo(token.direction)
+                }
 
                 is SetWall.OneSide ->
                     state = state.wallChanged(level, token.location, token.side, token.to)

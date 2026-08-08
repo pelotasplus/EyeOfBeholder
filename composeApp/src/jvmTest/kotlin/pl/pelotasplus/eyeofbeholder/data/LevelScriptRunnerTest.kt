@@ -17,6 +17,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.ScriptRun
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptStage
 import pl.pelotasplus.eyeofbeholder.data.model.Ticks
 import pl.pelotasplus.eyeofbeholder.data.model.WallByte
+import pl.pelotasplus.eyeofbeholder.data.model.WallSide
 import pl.pelotasplus.eyeofbeholder.data.model.Trigger
 import pl.pelotasplus.eyeofbeholder.data.model.TriggerFlags
 import pl.pelotasplus.eyeofbeholder.data.model.script.Conditional
@@ -39,6 +40,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.script.Wait
 import kotlinx.coroutines.runBlocking
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /**
@@ -379,6 +381,71 @@ class LevelScriptRunnerTest {
             110 to Return,
         )
         assertEquals(changeToLevel(5), outcome)
+    }
+
+    // --- who is steering -----------------------------------------------------
+
+    /**
+     * A script and the player cannot both steer, but most scripts never try.
+     * One that opens a door leaves the party free to turn and watch it, or
+     * walk away from it; one that walks them somewhere has to have them.
+     */
+    @Test
+    fun `a script that only changes the world does not take the party`() {
+        val stage = RecordingStage()
+
+        runFully(
+            0 to SetWall.OneSide(here, WallSide.NORTH, WallByte(1)),
+            10 to Wait(15),
+            20 to End,
+            stage = stage,
+        )
+
+        assertFalse(stage.tookTheParty)
+    }
+
+    @Test
+    fun `a script that walks the party takes them`() {
+        val stage = RecordingStage()
+
+        runFully(
+            0 to Teleport.MoveParty(Location(0, 0), Location(7, 8)),
+            10 to End,
+            stage = stage,
+        )
+
+        assertTrue(stage.tookTheParty)
+    }
+
+    @Test
+    fun `a script that turns the party takes them`() {
+        val stage = RecordingStage()
+
+        runFully(
+            0 to SetWall.ChangePartyDirection(Direction.SOUTH),
+            10 to End,
+            stage = stage,
+        )
+
+        assertTrue(stage.tookTheParty)
+    }
+
+    /**
+     * And it says so before it moves them rather than after, or a step is
+     * drawn in the moment the player could still have steered out of it.
+     */
+    @Test
+    fun `the party are taken before the first step is drawn`() {
+        val stage = RecordingStage()
+
+        runFully(
+            0 to Teleport.MoveParty(Location(0, 0), Location(7, 8)),
+            10 to UpdateScreen,
+            20 to End,
+            stage = stage,
+        )
+
+        assertEquals(0, stage.tookThePartyAfter, "nothing had happened yet")
     }
 
     // --- showing the work ----------------------------------------------------
