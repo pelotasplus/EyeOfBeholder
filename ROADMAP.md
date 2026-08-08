@@ -47,19 +47,17 @@ each.
   they never draw is a monster or a door — both are guarded on the square not
   being one of the party's own row — so only items are missing.
 
-- **Reading a parchment where the original reads it.** A letter or a note goes
-  up in the box a script speaks from, along the bottom of the screen. The
-  original covers the view instead — a box 176 by 175 from the top left corner
-  — and prints the page into that. It reads correctly and it is in the wrong
-  place, which needs a drawing mode `PlayField` does not have and would replace
-  the `parchment-read` golden.
+- **The words on the buttons are English constants.** The word that turns a
+  page and the word that closes one are written into the source, where the
+  original reads them from a table in its own executable — so a copy of the
+  game in another language says something else and this would not.
 
-  Two smaller things sit with it. A parchment whose value is negative is a map,
-  a picture cut from the `MAP` sheet rather than a page of text, and nothing
-  here draws one: reading it does nothing at all, silently. And the words on
-  the button that turns a page and the one that closes it are English constants
-  in the source, where the original reads them from its own resources, so they
-  are wrong in any copy of the game that is not English.
+  That table is the catch. It is in `START.EXE` and in no data file, at an
+  offset that differs between releases, which is why the reference
+  implementation ships a tool that extracts it per version rather than reading
+  it at run time. Doing this properly means shipping the binary as an asset and
+  finding the table in it; there is no cheap version, and the two words are the
+  smallest part of what is in there.
 
 - **Walls a level does not map.** Rendering level 5 near 16x6 logs `Wall index
   55 at (16,6) is not mapped by this level` and draws nothing there. Either

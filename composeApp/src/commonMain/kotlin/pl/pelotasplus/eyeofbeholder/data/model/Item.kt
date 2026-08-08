@@ -155,19 +155,22 @@ data class ItemTypes(private val types: List<ItemType>) {
     operator fun get(id: ItemTypeId): ItemType? = types.getOrNull(id.value)
 
     /**
-     * The page written on [item] — a letter, a note, the orders somebody was
-     * carrying. This is the one kind of thing whose value says what is on it
-     * rather than what it does, which is why the same parchment serves for
-     * every note in the game.
+     * What is on [item] — a letter, a note, the orders somebody was carrying,
+     * one of the three maps. This is the one kind of thing whose value says
+     * what is on it rather than what it does, which is why the same parchment
+     * serves for every note in the game.
      *
-     * The value counts from zero and the texts are numbered from one.
-     *
-     * A negative value is a map: a picture rather than a text, and not read
-     * this way. Nothing here draws one yet, so it comes back as nothing.
+     * A value from zero up is a page, counting from zero where the texts are
+     * numbered from one. Below zero it is a map instead.
      */
-    fun writtenOn(item: Item): DialogueTextId? {
+    fun whatIsOn(item: Item): OnAParchment? {
         if (kindOf(item) != SOMETHING_TO_READ) return null
-        return item.value.takeIf { it >= 0 }?.let { DialogueTextId(it + 1) }
+
+        return if (item.value >= 0) {
+            OnAParchment.Writing(DialogueTextId(item.value + 1))
+        } else {
+            OnAParchment.Map.forValue(item.value)
+        }
     }
 
     private fun kindOf(item: Item): Int = (this[item.type]?.extraProperties ?: 0) and KIND

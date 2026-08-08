@@ -13,7 +13,73 @@ data class DialogueScene(
     val portrait: Picture?,
     val lines: List<String>,
     val buttons: List<Button>,
+    val readOff: ReadOff = ReadOff.TheStripBelow,
 ) {
+    /**
+     * What a scene is read off, which is where its words go and what is
+     * cleared behind them.
+     */
+    sealed interface ReadOff {
+
+        /**
+         * Somewhere words are written: a panel cleared to the interface's own
+         * colours, the corner the writing starts in, and the corner the button
+         * that reads it on sits in. All of the original's.
+         */
+        sealed class Written(
+            val panelLeft: Int,
+            val panelTop: Int,
+            val panelWidth: Int,
+            val panelHeight: Int,
+            val textLeft: Int,
+            val textTop: Int,
+            val textWidth: Int,
+            val readOnLeft: Int,
+            val readOnTop: Int,
+        ) : ReadOff
+
+        /**
+         * The strip along the bottom, under the frame a speaker is drawn in,
+         * which is where a script speaks and where it puts its answers.
+         */
+        data object TheStripBelow : Written(
+            panelLeft = 0,
+            panelTop = FRAME_HEIGHT,
+            panelWidth = 320,
+            panelHeight = 200 - FRAME_HEIGHT,
+            textLeft = 8,
+            textTop = 125,
+            textWidth = 304,
+            readOnLeft = 221,
+            readOnTop = 189,
+        )
+
+        /**
+         * A page held up over the view, which is how something carried is
+         * read. It covers the dungeon and leaves the party's side of the
+         * screen alone, so a note is read without losing sight of who is
+         * carrying it.
+         */
+        data object APageOverTheView : Written(
+            panelLeft = 0,
+            panelTop = 0,
+            panelWidth = 176,
+            panelHeight = 175,
+            textLeft = 8,
+            textTop = 4,
+            textWidth = 160,
+            readOnLeft = 76,
+            readOnTop = 162,
+        )
+
+        /**
+         * A picture in the frame a speaker would be in, with nothing written
+         * and nothing to press: a map is looked at rather than read, and any
+         * click puts it away.
+         */
+        data object APictureAlone : ReadOff
+    }
+
     /** Part of a .CPS put on screen, in the play field's own coordinates. */
     data class Picture(
         val cps: Cps,
@@ -68,11 +134,6 @@ data class DialogueScene(
         const val PORTRAIT_LEFT = 8
         const val PORTRAIT_TOP = 8
 
-        /** The strip the speech is written into. */
-        const val TEXT_LEFT = 8
-        const val TEXT_TOP = 125
-        const val TEXT_WIDTH = 304
-
         /**
          * Wraps the speech and puts the answers a line below the last one
          * written — except the single button a speech is read on, which has a
@@ -92,9 +153,10 @@ data class DialogueScene(
             buttonLabels: List<String>,
             font: Font,
             waitsToBeRead: Boolean = false,
+            readOff: ReadOff.Written = ReadOff.TheStripBelow,
         ): DialogueScene {
-            val lines = font.wrap(text, TEXT_WIDTH)
-            val buttonTop = (lines.size + 1) * font.height + TEXT_TOP + 4
+            val lines = font.wrap(text, readOff.textWidth)
+            val buttonTop = (lines.size + 1) * font.height + readOff.textTop + 4
             val buttonLeft =
                 if (buttonLabels.size > TWO_ACROSS.size) THREE_ACROSS else TWO_ACROSS
 
@@ -105,14 +167,24 @@ data class DialogueScene(
                 buttons = buttonLabels.mapIndexed { index, label ->
                     Button(
                         label = label.uppercase(),
-                        left = if (waitsToBeRead) READ_ON_LEFT else {
+                        left = if (waitsToBeRead) readOff.readOnLeft else {
                             buttonLeft.getOrElse(index) { buttonLeft.last() }
                         },
-                        top = if (waitsToBeRead) READ_ON_TOP else buttonTop,
+                        top = if (waitsToBeRead) readOff.readOnTop else buttonTop,
                     )
                 },
+                readOff = readOff,
             )
         }
+
+        /** A map, in the frame and with nothing written: it is only looked at. */
+        fun aPicture(frame: Cps?, picture: Picture) = DialogueScene(
+            frame = frame,
+            portrait = picture,
+            lines = emptyList(),
+            buttons = emptyList(),
+            readOff = ReadOff.APictureAlone,
+        )
 
         /**
          * Where the answers go, both rows from the original: a pair sits inset,
@@ -123,17 +195,16 @@ data class DialogueScene(
         private val THREE_ACROSS = listOf(4, 112, 220)
 
         /**
-         * The corner a speech is read on, and the word that turns a page part
-         * way through one. Both are the original's: the button that reads on
-         * sits apart from the answers, in the bottom right, wherever the
-         * speech happens to end.
+         * The word that turns a page part way through a speech. The button it
+         * is on sits apart from the answers, in a corner of its own, wherever
+         * the speech happens to end.
+         *
+         * The original reads both of these words from its own executable, so
+         * they are English here and would be the language of the copy there.
          */
         const val MORE = "more"
 
         /** And the word that closes one there is no more of. */
         const val OK = "ok"
-
-        private const val READ_ON_LEFT = 221
-        private const val READ_ON_TOP = 189
     }
 }

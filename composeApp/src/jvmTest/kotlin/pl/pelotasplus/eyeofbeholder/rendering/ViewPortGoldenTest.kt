@@ -24,6 +24,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.LevelScriptRunner
 import pl.pelotasplus.eyeofbeholder.data.model.FloorReach
 import pl.pelotasplus.eyeofbeholder.data.model.Location
 import pl.pelotasplus.eyeofbeholder.data.model.MessageId
+import pl.pelotasplus.eyeofbeholder.data.model.OnAParchment
 import pl.pelotasplus.eyeofbeholder.data.model.Naming
 import pl.pelotasplus.eyeofbeholder.data.model.PaletteIndex
 import pl.pelotasplus.eyeofbeholder.data.model.PartyState
@@ -664,9 +665,10 @@ class ViewPortGoldenTest {
 
     /**
      * A page read off something that was picked up rather than said by anyone:
-     * the orders the old woman on level 4 was carrying. Nobody is drawn, and
-     * the word that closes it sits in the corner a speech is read on instead of
-     * among the answers.
+     * the orders the old woman on level 4 was carrying. It goes up over the
+     * view rather than in the strip a script speaks from, so the party's side
+     * of the screen stays in sight and the word that closes it sits in the
+     * page's own corner.
      */
     @Test
     fun `a parchment being read`() =
@@ -675,7 +677,51 @@ class ViewPortGoldenTest {
             dialogueOver(
                 level = "LEVEL4.INF", x = 12, y = 11,
                 textId = 15, buttons = listOf(DialogueScene.OK), waitsToBeRead = true,
+                readOff = DialogueScene.ReadOff.APageOverTheView,
             ),
+        )
+
+    /**
+     * How a parchment is actually reached: off an open page, since that is
+     * where a thing being carried is clicked. The page stays in sight beside
+     * what is being read — it is the only way to put the parchment down again.
+     */
+    @Test
+    fun `a parchment read off an open page`() =
+        checkGolden(
+            "parchment-read-from-the-page",
+            sheetOver(
+                "LEVEL4.INF", x = 15, y = 11, slot = 0,
+                reading = OnAParchment.Writing(DialogueTextId(15)),
+            ),
+        )
+
+    /**
+     * And a map off the same page. A map is wider than the page it is read
+     * from is narrow — its frame reaches eight pixels past where the champion's
+     * panel starts — so this is what says the panel is drawn over it and not
+     * under it.
+     */
+    @Test
+    fun `a map looked at off an open page`() =
+        checkGolden(
+            "parchment-map-from-the-page",
+            sheetOver(
+                "LEVEL4.INF", x = 15, y = 11, slot = 0,
+                reading = OnAParchment.Map(0, 0),
+            ),
+        )
+
+    /**
+     * The other thing a parchment can be: the map lying on level 1 at 23x11.
+     * A picture is looked at rather than read — the frame a speaker would be
+     * in, nothing written under it, and nothing to press.
+     */
+    @Test
+    fun `a map being looked at`() =
+        checkGolden(
+            "parchment-map",
+            mapOver("LEVEL1.INF", x = 23, y = 12, map = OnAParchment.Map(0, 0)),
         )
 
     /**
@@ -1027,6 +1073,8 @@ class ViewPortGoldenTest {
         slot: Int,
         page: CharacterSheet.Page = CharacterSheet.Page.BELONGINGS,
         preferences: Preferences = Preferences(),
+        /** A parchment held up over the view, which is how one is read: off the open page. */
+        reading: OnAParchment? = null,
     ): BufferedImage = runBlocking {
         val resources = ResourceRepositoryImpl()
         val cps = CpsRepositoryImpl(resources)
@@ -1049,11 +1097,13 @@ class ViewPortGoldenTest {
             direction = Direction.NORTH,
         ).getOrThrow()
 
+        val font = FontRepositoryImpl(resources).loadFont("FONT6.FNT").getOrThrow()
+
         PlayField(
             background = cps.loadCps("PLAYFLD.CPS").getOrThrow(),
             decorations = cps.loadCps("DECORATE.CPS").getOrThrow(),
             palette = sublevel.palette,
-            font = FontRepositoryImpl(resources).loadFont("FONT6.FNT").getOrThrow(),
+            font = font,
             invent = cps.loadCps("INVENT.CPS").getOrThrow(),
             itemIcons = cps.loadCps("ITEMICN.CPS").getOrThrow(),
             itemTypes = ItemTypesRepositoryImpl(resources).loadItemTypes().getOrThrow(),
@@ -1068,6 +1118,30 @@ class ViewPortGoldenTest {
                 champion = champion,
                 carrying = champion.carrying.map { world.item(it) },
             ),
+            dialogue = when (reading) {
+                null -> null
+
+                is OnAParchment.Writing -> DialogueScene.layout(
+                    frame = null,
+                    portrait = null,
+                    text = DialogueTextRepositoryImpl(resources)
+                        .text(reading.page).getOrThrow().first,
+                    buttonLabels = listOf(DialogueScene.OK),
+                    font = font,
+                    waitsToBeRead = true,
+                    readOff = DialogueScene.ReadOff.APageOverTheView,
+                )
+
+                is OnAParchment.Map -> DialogueScene.aPicture(
+                    frame = cps.loadCps("BORDER.CPS").getOrThrow(),
+                    picture = DialogueScene.Picture(
+                        cps = cps.loadCps(OnAParchment.Map.SHEET).getOrThrow(),
+                        sourceLeft = reading.sourceLeft,
+                        sourceTop = reading.sourceTop,
+                        goes = DialogueScene.PictureFrame.SPEAKER,
+                    ),
+                )
+            },
         ).toImage()
     }
 
@@ -1121,6 +1195,7 @@ class ViewPortGoldenTest {
         buttons: List<String> = emptyList(),
         direction: Direction = Direction.NORTH,
         waitsToBeRead: Boolean = false,
+        readOff: DialogueScene.ReadOff.Written = DialogueScene.ReadOff.TheStripBelow,
     ): BufferedImage = runBlocking {
         val resources = ResourceRepositoryImpl()
         val cps = CpsRepositoryImpl(resources)
@@ -1168,9 +1243,48 @@ class ViewPortGoldenTest {
                 buttonLabels = buttons,
                 font = font,
                 waitsToBeRead = waitsToBeRead,
+                readOff = readOff,
             ),
         ).toImage()
     }
+
+    /** A map held up: the sheet's own corner, in the frame, with nothing written. */
+    private fun mapOver(level: String, x: Int, y: Int, map: OnAParchment.Map): BufferedImage =
+        runBlocking {
+            val resources = ResourceRepositoryImpl()
+            val cps = CpsRepositoryImpl(resources)
+            val repository = repository()
+            val inf = repository.loadLevel(level).getOrThrow()
+            val sublevel = inf.subLevels[0]
+
+            val viewPort = repository.renderPosition(
+                items = dungeonItems,
+                monsters = inf.monsterInstances,
+                sublevel = sublevel,
+                playerX = x,
+                playerY = y,
+                direction = Direction.NORTH,
+            ).getOrThrow()
+
+            PlayField(
+                background = cps.loadCps("PLAYFLD.CPS").getOrThrow(),
+                decorations = cps.loadCps("DECORATE.CPS").getOrThrow(),
+                palette = sublevel.palette,
+                font = FontRepositoryImpl(resources).loadFont("FONT6.FNT").getOrThrow(),
+            ).render(
+                viewPort = viewPort,
+                direction = Direction.NORTH,
+                dialogue = DialogueScene.aPicture(
+                    frame = cps.loadCps("BORDER.CPS").getOrThrow(),
+                    picture = DialogueScene.Picture(
+                        cps = cps.loadCps(OnAParchment.Map.SHEET).getOrThrow(),
+                        sourceLeft = map.sourceLeft,
+                        sourceTop = map.sourceTop,
+                        goes = DialogueScene.PictureFrame.SPEAKER,
+                    ),
+                ),
+            ).toImage()
+        }
 
     private fun PlayField.toImage(): BufferedImage {
         val image = BufferedImage(PlayField.WIDTH, PlayField.HEIGHT, BufferedImage.TYPE_INT_ARGB)

@@ -36,13 +36,26 @@ class PlayField(
         sheet: OpenSheet? = null,
         carrying: (ItemIndex) -> Item? = { null },
     ): PlayField {
+        // Something held up over the view is read off a champion's own page,
+        // that being the one place a thing being carried can be clicked, so the
+        // page is drawn last and stays in reach — a map's frame is eight pixels
+        // wider than the view and would otherwise bite into it. A script
+        // speaking in the strip below is the other way round: it takes the full
+        // width of the screen, that side included.
+        val underThePage = dialogue != null &&
+            dialogue.readOff != DialogueScene.ReadOff.TheStripBelow
+
         drawBackground()
         // a champion's own page takes the six boxes' side of the screen
-        if (sheet == null) drawParty(party, portraits, carrying) else drawSheet(sheet, portraits)
+        if (sheet == null) drawParty(party, portraits, carrying)
+        else if (!underThePage) drawSheet(sheet, portraits)
+
         drawViewPort(viewPort)
         drawCompass(direction)
         drawMessages(messages)
         dialogue?.let(::drawDialogue)
+
+        if (sheet != null && underThePage) drawSheet(sheet, portraits)
         menu?.let(::drawMenu)
         return this
     }
@@ -569,13 +582,17 @@ class PlayField(
             )
         }
 
-        // one box over everything below the frame, so the party's boxes and the
-        // compass do not show through the words
+        // a picture is the whole of what is shown, so nothing is cleared for
+        // words there are none of
+        val readOff = dialogue.readOff as? DialogueScene.ReadOff.Written ?: return
+
+        // one box over what the words go on, so what is behind them — the
+        // party's boxes and the compass, or the dungeon — does not show through
         drawBox(
-            left = 0,
-            top = DialogueScene.FRAME_HEIGHT,
-            width = WIDTH,
-            height = HEIGHT - DialogueScene.FRAME_HEIGHT,
+            left = readOff.panelLeft,
+            top = readOff.panelTop,
+            width = readOff.panelWidth,
+            height = readOff.panelHeight,
         )
 
         val font = font ?: return
@@ -584,8 +601,8 @@ class PlayField(
             write(
                 text = text,
                 font = font,
-                left = DialogueScene.TEXT_LEFT,
-                top = DialogueScene.TEXT_TOP + line * font.height,
+                left = readOff.textLeft,
+                top = readOff.textTop + line * font.height,
                 colour = TEXT_COLOUR,
             )
         }

@@ -30,6 +30,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.DialogAnswer
 import pl.pelotasplus.eyeofbeholder.data.model.DialogueScene
 import pl.pelotasplus.eyeofbeholder.data.model.DialogueScene.Companion.MORE
 import pl.pelotasplus.eyeofbeholder.data.model.DialogueScene.Companion.OK
+import pl.pelotasplus.eyeofbeholder.data.model.OnAParchment
 import pl.pelotasplus.eyeofbeholder.data.model.DialogueTextId
 import pl.pelotasplus.eyeofbeholder.data.model.DialogueText
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
@@ -734,9 +735,14 @@ class ViewConeDebugViewModel(
         val world = _state.value.game
         val champion = world.championIn(whose) ?: return
         val held = champion.holding(slot.slot).takeIf { it.isSomething } ?: return
-        val written = world.item(held)?.let { itemTypes?.writtenOn(it) } ?: return
+        val parchment = world.item(held)?.let { itemTypes?.whatIsOn(it) } ?: return
 
-        viewModelScope.launch { read(written) }
+        viewModelScope.launch {
+            when (parchment) {
+                is OnAParchment.Writing -> read(parchment.page)
+                is OnAParchment.Map -> lookAt(parchment)
+            }
+        }
     }
 
     /**
@@ -765,10 +771,38 @@ class ViewConeDebugViewModel(
                         text = text.first,
                         buttonLabels = listOf(if (unread.isEmpty()) OK else MORE),
                         waitsToBeRead = true,
+                        readOff = DialogueScene.ReadOff.APageOverTheView,
                     ),
                     unread = unread,
                     buttons = listOf(OK),
                     waitsToBeRead = true,
+                    readOff = DialogueScene.ReadOff.APageOverTheView,
+                )
+            )
+        }
+        drawWords()
+    }
+
+    /** Holds a map up. It is looked at rather than read, and any click ends that. */
+    private suspend fun lookAt(map: OnAParchment.Map) {
+        val sheet = pictureCalled(OnAParchment.Map.SHEET) ?: return
+        val frame = dialogueFrame ?: return
+
+        speaker = null
+        standingInTheBox = emptyList()
+
+        _state.update {
+            it.copy(
+                dialog = DialogPrompt(
+                    scene = DialogueScene.aPicture(
+                        frame = frame,
+                        picture = DialogueScene.Picture(
+                            cps = sheet,
+                            sourceLeft = map.sourceLeft,
+                            sourceTop = map.sourceTop,
+                            goes = DialogueScene.PictureFrame.SPEAKER,
+                        ),
+                    ),
                 )
             )
         }
@@ -1371,6 +1405,7 @@ class ViewConeDebugViewModel(
         text: String,
         buttonLabels: List<String>,
         waitsToBeRead: Boolean,
+        readOff: DialogueScene.ReadOff.Written = DialogueScene.ReadOff.TheStripBelow,
     ): DialogueScene {
         val font = font ?: return DialogueScene(null, null, emptyList(), emptyList())
 
@@ -1398,6 +1433,7 @@ class ViewConeDebugViewModel(
             buttonLabels = buttonLabels,
             font = font,
             waitsToBeRead = waitsToBeRead,
+            readOff = readOff,
         )
     }
 
@@ -1436,6 +1472,7 @@ class ViewConeDebugViewModel(
                             text = dialog.unread.first(),
                             buttonLabels = if (unread.isEmpty()) dialog.buttons else listOf(MORE),
                             waitsToBeRead = unread.isNotEmpty() || dialog.waitsToBeRead,
+                            readOff = dialog.readOff,
                         ),
                         unread = unread,
                     )
@@ -1702,6 +1739,8 @@ class ViewConeDebugViewModel(
         val buttons: List<String> = emptyList(),
         /** True while the speech is being read rather than answered. */
         val waitsToBeRead: Boolean = false,
+        /** Where the pages after the first go up, which is where the first did. */
+        val readOff: DialogueScene.ReadOff.Written = DialogueScene.ReadOff.TheStripBelow,
     )
 
     data class State(

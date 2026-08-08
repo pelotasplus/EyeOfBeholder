@@ -42,6 +42,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.koin.compose.viewmodel.koinViewModel
 import pl.pelotasplus.eyeofbeholder.LocalPlayFieldFocus
 import pl.pelotasplus.eyeofbeholder.data.model.DialogAnswer
+import pl.pelotasplus.eyeofbeholder.data.model.DialogueScene
 import pl.pelotasplus.eyeofbeholder.data.model.Typing
 import pl.pelotasplus.eyeofbeholder.data.model.ViewPort
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
@@ -207,13 +208,19 @@ private fun ViewConeDebugContent(
                         val y = (offset.y / scaleFactor).toInt()
 
                         // a question owns the screen until it is answered
-                        val buttons = state.dialog?.scene?.buttons
+                        val scene = state.dialog?.scene
                         val menu = state.menu
 
-                        if (buttons != null) {
-                            buttons.indexOfFirst { it.contains(x, y) }
-                                .takeIf { it >= 0 }
-                                ?.let { onDialogAnswer(DialogAnswer.forButton(it)) }
+                        if (scene != null) {
+                            // a picture has nothing to press and is put away by
+                            // a click anywhere
+                            if (scene.readOff == DialogueScene.ReadOff.APictureAlone) {
+                                onDialogAnswer(DialogAnswer.UNASKED)
+                            } else {
+                                scene.buttons.indexOfFirst { it.contains(x, y) }
+                                    .takeIf { it >= 0 }
+                                    ?.let { onDialogAnswer(DialogAnswer.forButton(it)) }
+                            }
                         } else if (menu != null) {
                             // the menu box reaches below the view window, so a
                             // click anywhere on it is the menu's, not the

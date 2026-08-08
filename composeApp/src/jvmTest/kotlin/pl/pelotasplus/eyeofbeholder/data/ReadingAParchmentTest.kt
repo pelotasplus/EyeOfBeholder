@@ -4,6 +4,8 @@ import kotlinx.coroutines.runBlocking
 import pl.pelotasplus.eyeofbeholder.data.model.DialogueTextId
 import pl.pelotasplus.eyeofbeholder.data.model.Item
 import pl.pelotasplus.eyeofbeholder.data.model.ItemTypes
+import pl.pelotasplus.eyeofbeholder.data.model.Location
+import pl.pelotasplus.eyeofbeholder.data.model.OnAParchment
 import pl.pelotasplus.eyeofbeholder.data.model.script.ItemOverrides
 import pl.pelotasplus.eyeofbeholder.data.repository.DialogueTextRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.ItemTypesRepositoryImpl
@@ -37,14 +39,51 @@ class ReadingAParchmentTest {
 
     @Test
     fun `the page written on a parchment is its value and one`() {
-        assertEquals(DialogueTextId(15), types.writtenOn(parchment.copy(value = 14)))
-        assertEquals(DialogueTextId(1), types.writtenOn(parchment.copy(value = 0)))
+        assertEquals(
+            OnAParchment.Writing(DialogueTextId(15)),
+            types.whatIsOn(parchment.copy(value = 14)),
+        )
+        assertEquals(
+            OnAParchment.Writing(DialogueTextId(1)),
+            types.whatIsOn(parchment.copy(value = 0)),
+        )
     }
 
-    /** A map is a picture, and is not a page of anything. */
+    /**
+     * Below zero the value counts the three maps instead, each cut from its own
+     * corner of the sheet the three of them share. The game holds one of each:
+     * on level 1 at 23x11, on level 8 at 27x2 and on level 12 at 8x27.
+     */
     @Test
-    fun `nothing is written on a map`() {
-        assertNull(types.writtenOn(parchment.copy(value = -1)))
+    fun `a value below zero is one of the three maps`() {
+        assertEquals(OnAParchment.Map(0, 0), types.whatIsOn(parchment.copy(value = -1)))
+        assertEquals(OnAParchment.Map(160, 0), types.whatIsOn(parchment.copy(value = -2)))
+        assertEquals(OnAParchment.Map(0, 96), types.whatIsOn(parchment.copy(value = -3)))
+    }
+
+    /** And there is no fourth, so nothing comes back rather than a corner off the sheet. */
+    @Test
+    fun `there is no fourth map`() {
+        assertNull(types.whatIsOn(parchment.copy(value = -4)))
+    }
+
+    /**
+     * Every map lying in the dungeon is one of the three, one per floor. The
+     * parchment above is on no floor at all and is not among them: it is the
+     * blank a script copies, and being a map is only what it is until one says
+     * otherwise.
+     */
+    @Test
+    fun `the maps lying in the dungeon are the three that exist`() {
+        val maps = dungeonItems
+            .filter { it.level > Item.CARRIED_LEVEL && it.value < 0 }
+            .filter { types.whatIsOn(it.copy(value = 0)) != null }
+            .map { it.level to it.location }
+
+        assertEquals(
+            listOf(1 to Location(23, 11), 8 to Location(27, 2), 12 to Location(8, 27)),
+            maps,
+        )
     }
 
     /**
@@ -58,7 +97,7 @@ class ReadingAParchmentTest {
         val scroll = dungeonItems[208]
 
         assertEquals(14, scroll.value, "item 208 is the scroll that shares the value")
-        assertNull(types.writtenOn(scroll))
+        assertNull(types.whatIsOn(scroll))
     }
 
     /**
@@ -71,8 +110,8 @@ class ReadingAParchmentTest {
     fun `the old woman's orders are what her parchment says`() = runBlocking {
         val hers = ItemOverrides(value = 14).applyTo(parchment)
 
-        val page = types.writtenOn(hers) ?: error("nothing written on it")
-        val text = DialogueTextRepositoryImpl(resources).text(page).getOrThrow()
+        val written = types.whatIsOn(hers) as? OnAParchment.Writing ?: error("nothing written on it")
+        val text = DialogueTextRepositoryImpl(resources).text(written.page).getOrThrow()
 
         assertTrue(
             text.first.startsWith("Direct all travelers to Darkmoon"),
