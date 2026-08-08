@@ -100,6 +100,12 @@ data class Maz(
             val isOpen: Boolean get() = state == FULLY_OPEN
 
             /**
+             * All the way down, as against merely not open: a door halfway
+             * through its travel is neither, and can still be sent either way.
+             */
+            val isShut: Boolean get() = state == SHUT
+
+            /**
              * The same door a step further along, which is how a door moves:
              * it slides rather than jumps, and stops at either end of its
              * travel however often it is pushed.

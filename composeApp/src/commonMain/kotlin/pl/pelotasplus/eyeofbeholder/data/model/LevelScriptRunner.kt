@@ -458,9 +458,9 @@ class LevelScriptRunner(
                 // A plate set into the floor is weighed and then works a door
                 // somewhere else, which is most of what the levels do with
                 // doors that have no button on them.
-                is OpenDoor -> state = doorSwinging(state, token.location, opening = true, stage)
+                is OpenDoor -> state = doorSent(state, token.location, opening = true)
 
-                is CloseDoor -> state = doorSwinging(state, token.location, opening = false, stage)
+                is CloseDoor -> state = doorSent(state, token.location, opening = false)
 
                 is SetWall.ChangePartyDirection -> {
                     stage.takesTheParty()
@@ -558,32 +558,21 @@ class LevelScriptRunner(
     }
 
     /**
-     * A door the script works, drawn at each of the positions it slides
-     * through.
+     * A door the script works, set going and then left to it.
      *
-     * The script waits for it the way it waits for anything else it puts on
-     * screen. The original lets the script run on while a timer swings the
-     * door, but a door takes about a second and what follows one in these
-     * scripts is the end of them.
+     * The script does not wait for it. A door takes about a second to travel
+     * and the script that started it usually ends within an instruction or
+     * two, so waiting would mean the party stood still through the one second
+     * the door is worth watching — and a door shut behind them could never be
+     * seen shutting at all.
      */
-    private suspend fun doorSwinging(
-        state: GameState,
-        at: Location,
-        opening: Boolean,
-        stage: ScriptStage,
-    ): GameState {
+    private fun doorSent(state: GameState, at: Location, opening: Boolean): GameState {
         val side = state.doorFacing(level, at) ?: run {
             Logger.w(TAG) { "No door at $at to ${if (opening) "open" else "close"}" }
             return state
         }
 
-        var world = state
-        repeat(Maz.WallType.Door.TRAVEL) {
-            world = world.doorStepped(level, at, side, opening)
-            stage.show(world)
-            stage.hold(DOOR_STEP)
-        }
-        return world
+        return state.doorSetGoing(level, at, side, opening)
     }
 
     /**

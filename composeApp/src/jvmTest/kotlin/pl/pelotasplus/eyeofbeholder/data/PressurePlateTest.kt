@@ -82,13 +82,24 @@ class PressurePlateTest {
         value = 0,
     )
 
+    /**
+     * The world once the script has run and the doors it started have arrived.
+     *
+     * A script sets a door going and ends without waiting for it, so the state
+     * it hands back has the door one position along and still travelling.
+     * What this puzzle is about is where the door ends up, not how it got
+     * there, so the clock that would move it in the game is wound on here.
+     */
     private fun ran(event: ScriptEvent, from: GameState, at: Location) = runBlocking {
-        LevelScriptRunner(level.script, level = 1).onEvent(
+        var world = LevelScriptRunner(level.script, level = 1).onEvent(
             triggers = level.triggers,
             event = event,
             state = from,
             at = at,
         ).state
+
+        while (world.swinging.isNotEmpty()) world = world.doorsStepped().world
+        world
     }
 
     private fun GameState.theDoor() =

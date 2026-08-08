@@ -62,6 +62,17 @@ data class GameState(
 
     /** Each level's maze as its file describes it, for everything unchanged. */
     private val mazes: Map<Int, Maz> = emptyMap(),
+
+    /**
+     * The doors on their way somewhere.
+     *
+     * A door is started and then left to finish on its own, so whatever
+     * started it — a script, a button — is done with it at once and the party
+     * are free while it moves. A door shut behind them is the point of this:
+     * it is worth turning round to watch, and there is nothing to watch if
+     * the game is holding still until it has finished.
+     */
+    val swinging: List<Swinging> = emptyList(),
 ) {
 
     /** What is in [slot], or null for an empty hand or pack slot. */
@@ -396,6 +407,51 @@ data class GameState(
             val door = world.wall(level, at, face) as? Maz.WallType.Door ?: return@fold world
             world.wallChanged(level, at, face, door.stepped(opening).asByte())
         }
+
+    /**
+     * The same world with a door set going, which it then does by itself.
+     *
+     * A door already at the end it is being sent to does not move and is not
+     * heard trying, and one already going the other way turns around rather
+     * than being sent twice.
+     */
+    fun doorSetGoing(level: Int, at: Location, side: WallSide, opening: Boolean): GameState {
+        val door = wall(level, at, side) as? Maz.WallType.Door ?: return this
+        if (if (opening) door.isOpen else door.isShut) return this
+
+        val going = Swinging(level, at, side, opening)
+        val already = swinging.any { it.level == level && it.at == at }
+
+        return copy(
+            swinging = if (already) {
+                swinging.map { if (it.level == level && it.at == at) going else it }
+            } else {
+                swinging + going
+            },
+        )
+    }
+
+    /**
+     * Every door in motion one position further along, with what each of them
+     * was heard doing. A door that has arrived stops being one in motion.
+     */
+    fun doorsStepped(): DoorsStepped {
+        var world = this
+        val heard = mutableListOf<TrackIndex>()
+        val stillGoing = mutableListOf<Swinging>()
+
+        swinging.forEach { door ->
+            world = world.doorStepped(door.level, door.at, door.side, door.opening)
+
+            val now = world.wall(door.level, door.at, door.side) as? Maz.WallType.Door
+            val arrived = now == null || if (door.opening) now.isOpen else now.isShut
+
+            heard += DoorSounds.of(door.opening, arriving = arrived)
+            if (!arrived) stillGoing += door
+        }
+
+        return DoorsStepped(world.copy(swinging = stillGoing), heard)
+    }
 
     /**
      * The same world with a door forced out of its frame.

@@ -10,8 +10,18 @@ import pl.pelotasplus.eyeofbeholder.data.model.GameState
 import pl.pelotasplus.eyeofbeholder.data.model.Location
 import pl.pelotasplus.eyeofbeholder.data.model.Maz
 import pl.pelotasplus.eyeofbeholder.data.model.PartyState
+import pl.pelotasplus.eyeofbeholder.data.model.LevelScriptRunner
+import pl.pelotasplus.eyeofbeholder.data.model.ScriptEvent
+import pl.pelotasplus.eyeofbeholder.data.model.TrackIndex
+import pl.pelotasplus.eyeofbeholder.data.model.Trigger
+import pl.pelotasplus.eyeofbeholder.data.model.TriggerFlags
 import pl.pelotasplus.eyeofbeholder.data.model.WallAction
 import pl.pelotasplus.eyeofbeholder.data.model.WallSide
+import pl.pelotasplus.eyeofbeholder.data.model.script.CloseDoor
+import pl.pelotasplus.eyeofbeholder.data.model.script.End
+import pl.pelotasplus.eyeofbeholder.data.model.script.OpenDoor
+import pl.pelotasplus.eyeofbeholder.data.model.script.Script
+import pl.pelotasplus.eyeofbeholder.data.model.script.ScriptOffset
 import pl.pelotasplus.eyeofbeholder.data.repository.CpsRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.DecRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.InfRepositoryImpl
@@ -203,6 +213,111 @@ class WorkingAWallTest {
         assertEquals(18, party.filter { it.canAct }.maxOf { it.abilities.strength.current })
         assertEquals(ForcingADoor.Outcome.Gives, ForcingADoor.tried(party, throws(11)))
         assertEquals(ForcingADoor.Outcome.Holds, ForcingADoor.tried(party, throws(12)))
+    }
+
+    // --- what a door is heard doing ------------------------------------------
+
+    /**
+     * A door sounds at every position it passes through rather than once for
+     * the whole travel — the original plays it from the timer that moves the
+     * door, one per step, which is what makes a stone door grind its way up
+     * instead of clicking once and then gliding in silence.
+     */
+    @Test
+    fun `a door opening grinds at every position`() {
+        assertEquals(List(Maz.WallType.Door.TRAVEL) { TrackIndex(3) }, swung(opening = true))
+    }
+
+    /**
+     * Coming down it is the same until the last position, which is the one it
+     * lands on: the original picks a different sound once the door has arrived
+     * shut.
+     */
+    @Test
+    fun `a door closing lands with a sound of its own`() {
+        assertEquals(
+            listOf(TrackIndex(4), TrackIndex(4), TrackIndex(4), TrackIndex(5)),
+            swung(opening = false),
+        )
+    }
+
+    /**
+     * A switch pressed twice runs its script twice, and the second time asks a
+     * door that is already open to open. It does not move, so nothing grinds:
+     * a door heard sliding while it stands still is worse than silence.
+     */
+    @Test
+    fun `a door already open is not set going again`() {
+        assertEquals(emptyList(), swung(opening = true, from = ALREADY_OPEN))
+    }
+
+    @Test
+    fun `a door already shut is not set going again`() {
+        assertEquals(emptyList(), swung(opening = false, from = ALREADY_SHUT))
+    }
+
+    /**
+     * A script does not wait for the door it starts: it reaches its end while
+     * the door is still travelling, which is what lets the party turn and
+     * watch one shut behind them. Waiting for it meant the one second worth
+     * watching was the one second nothing could be done in.
+     */
+    @Test
+    fun `a script sets a door going and carries straight on`() {
+        val stage = RecordingStage()
+        val after = scripted(opening = true, from = ALREADY_SHUT, stage = stage)
+
+        assertEquals(1, after.swinging.size, "the door is on its way")
+        assertEquals(emptyList(), stage.holds, "and nothing was held waiting for it")
+    }
+
+    private val ALREADY_SHUT = false
+    private val ALREADY_OPEN = true
+
+    /** What level 8's doorway is heard doing, one entry per position. */
+    private fun swung(opening: Boolean, from: Boolean = !opening): List<TrackIndex> {
+        var world = scripted(opening, from)
+        val heard = mutableListOf<TrackIndex>()
+
+        while (world.swinging.isNotEmpty()) {
+            val stepped = world.doorsStepped()
+            heard += stepped.heard
+            world = stepped.world
+        }
+        return heard
+    }
+
+    /**
+     * The world a script leaves, having worked level 8's doorway.
+     *
+     * @param from whether the door stands open before the script runs
+     */
+    private fun scripted(
+        opening: Boolean,
+        from: Boolean,
+        stage: RecordingStage = RecordingStage(),
+    ): GameState = runBlocking {
+        val shut = world("LEVEL8.INF", on = 8, at = doorway)
+        val standing = if (!from) shut
+        else (1..Maz.WallType.Door.TRAVEL).fold(shut) { world, _ ->
+            world.doorStepped(8, doorway, WallSide.EAST, opening = true)
+        }
+
+        val script = listOf(
+            Script(
+                ScriptOffset(0),
+                if (opening) OpenDoor(doorway) else CloseDoor(doorway),
+            ),
+            Script(ScriptOffset(10), End),
+        )
+
+        LevelScriptRunner(script, level = 8).onEvent(
+            triggers = listOf(Trigger(doorway, TriggerFlags(0x08), script.first())),
+            event = ScriptEvent.PARTY_ENTERED,
+            state = standing,
+            stage = stage,
+            at = doorway,
+        ).state
     }
 
     private fun throws(number: Int) = Dice { _, _, _ -> number }

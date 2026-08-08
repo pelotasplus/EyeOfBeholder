@@ -56,3 +56,39 @@ object DoorMessages {
     /** A door that no strength will move, as against one that has only stuck. */
     const val NO_ONE_CAN_PRY = "No one is able to pry this door open."
 }
+
+/**
+ * A door on its way open or shut, which keeps going after whatever started it
+ * has finished.
+ */
+data class Swinging(
+    val level: Int,
+    val at: Location,
+    val side: WallSide,
+    val opening: Boolean,
+)
+
+/** A tick of every door in motion: the world after it, and what was heard. */
+data class DoorsStepped(val world: GameState, val heard: List<TrackIndex>)
+
+/**
+ * What a door is heard doing.
+ *
+ * One sounds at every position the door passes through rather than once for
+ * the whole travel, which is what makes a stone door grind its way up instead
+ * of clicking and then moving in silence. The last position of a door coming
+ * down is the one it lands on, and lands with a different noise.
+ */
+object DoorSounds {
+
+    private val SLIDING_UP = TrackIndex(3)
+    private val SLIDING_DOWN = TrackIndex(4)
+    private val LANDING_SHUT = TrackIndex(5)
+
+    /** @param arriving whether this is the last position of the travel */
+    fun of(opening: Boolean, arriving: Boolean): TrackIndex = when {
+        opening -> SLIDING_UP
+        arriving -> LANDING_SHUT
+        else -> SLIDING_DOWN
+    }
+}

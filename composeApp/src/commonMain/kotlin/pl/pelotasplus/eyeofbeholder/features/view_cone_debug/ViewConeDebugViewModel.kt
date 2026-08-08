@@ -34,6 +34,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.DialogueTextId
 import pl.pelotasplus.eyeofbeholder.data.model.DialogueText
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.DoorMessages
+import pl.pelotasplus.eyeofbeholder.data.model.DoorSounds
 import pl.pelotasplus.eyeofbeholder.data.model.FloorReach
 import pl.pelotasplus.eyeofbeholder.data.model.ForcingADoor
 import pl.pelotasplus.eyeofbeholder.data.model.Font
@@ -159,6 +160,9 @@ class ViewConeDebugViewModel(
 
     /** Redrawing the view for a teleporter's flicker, while one is in sight. */
     private var flickering: Job? = null
+
+    /** Moving whatever doors are on their way somewhere. */
+    private var swingingDoors: Job? = null
     private var pulse = TeleporterPulse.AS_LAID_OUT
 
     /** The view as last drawn, which a script's words are written over. */
@@ -1023,22 +1027,41 @@ class ViewConeDebugViewModel(
     }
 
     /**
-     * A door sliding open or shut, drawn at each of the positions it passes
-     * through rather than arriving at the far end at once.
+     * A door set going by its button. The button is what is heard here; the
+     * door is heard by the clock that moves it.
      */
     private fun swingsTheDoor(level: Int, at: Location, side: WallSide, opening: Boolean) {
         viewModelScope.launch {
-            // The button is what is heard, not the door: in the original a
-            // door slides in silence and the click is the whole of the noise,
-            // which is why this plays once here rather than once a step.
             playTrack(DOOR_BUTTON)
+            _state.update { it.copy(game = it.game.doorSetGoing(level, at, side, opening)) }
+            renderViewPort()
+        }
+    }
 
-            repeat(Maz.WallType.Door.TRAVEL) {
-                _state.update {
-                    it.copy(game = it.game.doorStepped(level, at, side, opening))
+    /**
+     * The clock that moves whatever doors are going, a position at a time.
+     *
+     * A door outlives what started it — a button press, a script that ended
+     * two instructions later — so nothing holds it and the party are free to
+     * turn and watch. It stops when the last one has arrived, or the game
+     * would redraw for ever.
+     */
+    private fun keepDoorsGoing(anyGoing: Boolean) {
+        if (anyGoing == (swingingDoors?.isActive == true)) return
+
+        swingingDoors?.cancel()
+        swingingDoors = if (!anyGoing) {
+            null
+        } else {
+            viewModelScope.launch {
+                while (_state.value.game.swinging.isNotEmpty()) {
+                    delay(DOOR_STEP.inMilliseconds)
+
+                    val stepped = _state.value.game.doorsStepped()
+                    _state.update { it.copy(game = stepped.world) }
+                    stepped.heard.forEach { playTrack(it) }
+                    drawViewPort()
                 }
-                renderViewPort()
-                delay(DOOR_STEP.inMilliseconds)
             }
         }
     }
@@ -1473,6 +1496,7 @@ class ViewConeDebugViewModel(
         }
 
         keepFlickering(teleportersInView(party.position, party.facing, wallAt).isNotEmpty())
+        keepDoorsGoing(_state.value.game.swinging.isNotEmpty())
     }
 
     /**
