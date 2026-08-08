@@ -29,6 +29,8 @@ import pl.pelotasplus.eyeofbeholder.data.model.Naming
 import pl.pelotasplus.eyeofbeholder.data.model.PaletteIndex
 import pl.pelotasplus.eyeofbeholder.data.model.PartyState
 import pl.pelotasplus.eyeofbeholder.data.model.SquarePlace
+import pl.pelotasplus.eyeofbeholder.data.model.THROWN_CPS
+import pl.pelotasplus.eyeofbeholder.data.model.WhatTheBlowCameTo
 import pl.pelotasplus.eyeofbeholder.data.RecordingStage
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptEvent
 import pl.pelotasplus.eyeofbeholder.data.model.TeleporterPulse
@@ -849,6 +851,28 @@ class ViewPortGoldenTest {
         )
 
     /**
+     * What the slot says a blow came to, which is the only report of it there
+     * is: a number on a splash of blood for one that landed, the same for a
+     * miss, and a warning box for the arm that never went anywhere.
+     *
+     * All three at once here, on the three champions who have one, so that the
+     * two backgrounds and the one and two line layouts are all in one frame.
+     */
+    @Test
+    fun `what the slots say a blow came to`() =
+        checkGolden(
+            "party-panel-blows",
+            partyOver(
+                level = "LEVEL4.INF", x = 15, y = 11,
+                reported = mapOf(
+                    (0 to 0) to WhatTheBlowCameTo.Damage(7),
+                    (1 to 0) to WhatTheBlowCameTo.Missed,
+                    (2 to 0) to WhatTheBlowCameTo.CannotReach,
+                ),
+            ),
+        )
+
+    /**
      * A hand that has just swung, drawn over with the same grid as a hand
      * holding something its champion cannot use. The original does not tell
      * the two apart, and neither does this — the weapon is still shown under
@@ -1023,6 +1047,8 @@ class ViewPortGoldenTest {
         lendingTo: Pair<Int, ItemIndex>? = null,
         /** Whose hands have just swung, and so are drawn over with the grid. */
         swung: List<Pair<Int, Int>> = emptyList(),
+        /** And what a hand's swing came to, while its slot is still saying. */
+        reported: Map<Pair<Int, Int>, WhatTheBlowCameTo> = emptyMap(),
     ): BufferedImage = runBlocking {
         val resources = ResourceRepositoryImpl()
         val cps = CpsRepositoryImpl(resources)
@@ -1066,6 +1092,7 @@ class ViewPortGoldenTest {
             font = FontRepositoryImpl(resources).loadFont("FONT6.FNT").getOrThrow(),
             itemIcons = cps.loadCps("ITEMICN.CPS").getOrThrow(),
             itemTypes = ItemTypesRepositoryImpl(resources).loadItemTypes().getOrThrow(),
+            thrown = cps.loadCps(THROWN_CPS).getOrThrow(),
             preferences = preferences,
         ).render(
             viewPort = viewPort,
@@ -1074,6 +1101,7 @@ class ViewPortGoldenTest {
             portraits = cps.loadCps("CHARGENA.CPS").getOrThrow(),
             carrying = { slot -> world.item(slot) },
             recovering = { whose, hand -> (whose.index to hand.index) in swung },
+            reporting = { whose, hand -> reported[whose.index to hand.index] },
         ).toImage()
     }
 

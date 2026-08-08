@@ -56,8 +56,8 @@ data class ChampionBox(val left: Int, val top: Int) {
         private const val HAND_Y = 9
         private const val HAND_STEP = 16
         private const val HAND_ICON_X = 8
-        private const val HAND_SLOT_WIDTH = 31
-        private const val HAND_SLOT_HEIGHT = 16
+        const val HAND_SLOT_WIDTH = 31
+        const val HAND_SLOT_HEIGHT = 16
 
         private const val BAR_X = 15
         private const val BAR_Y = 44
@@ -103,6 +103,25 @@ private const val GRID_X = 64
 private const val GRID_Y = 88
 private const val GRID_WIDTH = 32
 private const val GRID_HEIGHT = 16
+
+/**
+ * The splash a blow's outcome is written on, cut from the sheet of things that
+ * can be thrown — which is where the original keeps it, along with the beams
+ * and the other splash that is red.
+ */
+fun Cps.greenSplat(): Cps.ItemIcon = cut(
+    x = SPLAT_X,
+    y = SPLAT_Y,
+    w = SPLAT_WIDTH,
+    h = SPLAT_HEIGHT,
+)
+
+const val THROWN_CPS = "THROWN.CPS"
+
+private const val SPLAT_X = 128
+private const val SPLAT_Y = 96
+private const val SPLAT_WIDTH = 40
+private const val SPLAT_HEIGHT = 16
 
 /**
  * One of the 44 faces a champion can wear, cut from CHARGENA.CPS, where they

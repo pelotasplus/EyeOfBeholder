@@ -21,6 +21,8 @@ class PlayField(
     private val itemIcons: Cps? = null,
     /** What each kind of item is, which says whose hand it is any use in. */
     private val itemTypes: ItemTypes? = null,
+    /** THROWN.CPS, which the splash a blow is reported on is cut from. */
+    private val thrown: Cps? = null,
     private val preferences: Preferences = Preferences(),
 ) {
     private val pixels = MutableList(WIDTH * HEIGHT) { RGB(0, 0, 0, true) }
@@ -37,6 +39,8 @@ class PlayField(
         carrying: (ItemIndex) -> Item? = { null },
         /** Whether that hand has yet to come back to rest from a swing. */
         recovering: (PartySlot, CarrySlot) -> Boolean = { _, _ -> false },
+        /** What that hand's last swing came to, while the slot is still saying. */
+        reporting: (PartySlot, CarrySlot) -> WhatTheBlowCameTo? = { _, _ -> null },
     ): PlayField {
         // Something held up over the view is read off a champion's own page,
         // that being the one place a thing being carried can be clicked, so the
@@ -49,7 +53,7 @@ class PlayField(
 
         drawBackground()
         // a champion's own page takes the six boxes' side of the screen
-        if (sheet == null) drawParty(party, portraits, carrying, recovering)
+        if (sheet == null) drawParty(party, portraits, carrying, recovering, reporting)
         else if (!underThePage) drawSheet(sheet, portraits)
 
         drawViewPort(viewPort)
@@ -375,6 +379,7 @@ class PlayField(
         portraits: Cps?,
         carrying: (ItemIndex) -> Item?,
         recovering: (PartySlot, CarrySlot) -> Boolean,
+        reporting: (PartySlot, CarrySlot) -> WhatTheBlowCameTo?,
     ) {
         championBoxes.forEachIndexed { slot, box ->
             val champion = party.getOrNull(slot)?.takeIf { it.inTheParty } ?: return@forEachIndexed
@@ -388,9 +393,14 @@ class PlayField(
                 left = box.left,
                 top = box.top,
             )
-            drawChampion(champion, box, portraits, carrying) { hand ->
-                recovering(PartySlot(slot), CarrySlot(hand))
-            }
+            drawChampion(
+                champion = champion,
+                box = box,
+                portraits = portraits,
+                carrying = carrying,
+                recovering = { hand -> recovering(PartySlot(slot), CarrySlot(hand)) },
+                reporting = { hand -> reporting(PartySlot(slot), CarrySlot(hand)) },
+            )
         }
     }
 
@@ -400,6 +410,7 @@ class PlayField(
         portraits: Cps?,
         carrying: (ItemIndex) -> Item?,
         recovering: (Int) -> Boolean,
+        reporting: (Int) -> WhatTheBlowCameTo?,
     ) {
         portraits?.let { sheet ->
             val face = sheet.portrait(champion.portrait)
@@ -422,7 +433,7 @@ class PlayField(
             )
         }
 
-        drawHands(champion, box, carrying, recovering)
+        drawHands(champion, box, carrying, recovering, reporting)
         drawHitPointBar(champion, box)
     }
 
@@ -440,10 +451,18 @@ class PlayField(
         box: ChampionBox,
         carrying: (ItemIndex) -> Item?,
         recovering: (Int) -> Boolean,
+        reporting: (Int) -> WhatTheBlowCameTo?,
     ) {
         val icons = itemIcons ?: return
 
         repeat(Champion.HANDS) { hand ->
+            // What the last swing came to takes the slot over while it is
+            // still news, so the weapon is not drawn under it
+            reporting(hand)?.let { came ->
+                drawTheBlow(came, box, hand)
+                return@repeat
+            }
+
             val held = champion.carrying.getOrNull(hand)?.let(carrying)
             drawIcon(
                 icon = icons.itemIcon(held?.icon ?: emptyHandIcon(hand)),
@@ -460,6 +479,51 @@ class PlayField(
                     top = box.handTop(hand),
                 )
             }
+        }
+    }
+
+    /**
+     * What the swing came to, written where the weapon's icon goes.
+     *
+     * A blow that got somewhere is written on a splash of blood; the two that
+     * report the arm never going anywhere get a box in the colour the
+     * interface warns in. One line sits in the middle of the slot and two
+     * straddle it, and both are centred by the same rule — six pixels a
+     * letter, taken off the middle.
+     */
+    private fun drawTheBlow(came: WhatTheBlowCameTo, box: ChampionBox, hand: Int) {
+        val font = font ?: return
+        val top = box.handTop(hand)
+
+        val thrown = thrown
+        if (came.onABloodySplash && thrown != null) {
+            drawIcon(
+                icon = thrown.greenSplat(),
+                colours = thrown.palette ?: palette,
+                left = box.handSlotLeft - SPLAT_OVERHANG,
+                top = top,
+            )
+        } else if (!came.onABloodySplash) {
+            drawBox(
+                left = box.handSlotLeft,
+                top = top,
+                width = ChampionBox.HAND_SLOT_WIDTH,
+                height = ChampionBox.HAND_SLOT_HEIGHT,
+                topRight = WARNING_EDGE_LIT,
+                bottomLeft = WARNING_EDGE_SHADED,
+                fill = WARNING_FILL,
+            )
+        }
+
+        val lineTops = if (came.lines.size > 1) TWO_LINES else ONE_LINE
+        came.lines.forEachIndexed { line, text ->
+            write(
+                text = text,
+                font = font,
+                left = box.handSlotLeft + BLOW_MIDDLE - text.length * BLOW_LETTER,
+                top = top + lineTops[line],
+                colour = TEXT_COLOUR,
+            )
         }
     }
 
@@ -775,6 +839,24 @@ class PlayField(
         private val BUTTON_LABEL_COLOUR = PaletteIndex(15)
         private val BUTTON_LABEL_HIGHLIGHTED = PaletteIndex(9)
         private const val BUTTON_LABEL_OFFSET_Y = 2
+
+        /** The box the interface warns in, which is the dialogue box's colours reddened. */
+        private val WARNING_EDGE_LIT = PaletteIndex(23)
+        private val WARNING_EDGE_SHADED = PaletteIndex(17)
+        private val WARNING_FILL = PaletteIndex(20)
+
+        /**
+         * Where what a blow came to is written in the slot: one line in the
+         * middle, two straddling it, and both centred six pixels a letter off
+         * the middle of the slot's sixteen.
+         */
+        private val ONE_LINE = listOf(5)
+        private val TWO_LINES = listOf(2, 9)
+        private const val BLOW_MIDDLE = 16
+        private const val BLOW_LETTER = 3
+
+        /** The splash is a pixel wider on its left than the slot it covers. */
+        private const val SPLAT_OVERHANG = 1
 
         /** Party panel colours. */
         private val NAME_COLOUR = PaletteIndex(12)

@@ -36,6 +36,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.DialogueText
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.Blow
 import pl.pelotasplus.eyeofbeholder.data.model.Fighting
+import pl.pelotasplus.eyeofbeholder.data.model.THROWN_CPS
 import pl.pelotasplus.eyeofbeholder.data.model.HandRecovering
 import pl.pelotasplus.eyeofbeholder.data.model.DoorMessages
 import pl.pelotasplus.eyeofbeholder.data.model.DoorSounds
@@ -124,6 +125,9 @@ class ViewConeDebugViewModel(
     private var portraits: Cps? = null
     private var invent: Cps? = null
     private var carriedItemIcons: Cps? = null
+
+    /** The sheet the splash a blow is reported on is cut from. */
+    private var thrownShapes: Cps? = null
     private var itemTypes: ItemTypes? = null
 
     /** What every item in the game is called, which no save carries. */
@@ -276,6 +280,9 @@ class ViewConeDebugViewModel(
             cpsRepository.loadCps(CARRIED_ITEM_ICONS_CPS)
                 .onSuccess { carriedItemIcons = it }
                 .onFailure { Logger.e(it) { "Error while loading $CARRIED_ITEM_ICONS_CPS" } }
+            cpsRepository.loadCps(THROWN_CPS)
+                .onSuccess { thrownShapes = it }
+                .onFailure { Logger.e(it) { "Error while loading $THROWN_CPS" } }
             itemTypesRepository.loadItemTypes()
                 .onSuccess { itemTypes = it }
                 .onFailure { Logger.e(it) { "Error while loading the item types" } }
@@ -823,9 +830,11 @@ class ViewConeDebugViewModel(
             while (_state.value.game.recovering.isNotEmpty()) {
                 delay(HandRecovering.STEP.inMilliseconds)
 
-                val before = _state.value.game.recovering.size
+                // Two things a step can change on screen: a hand coming back
+                // to use, and one of them giving up saying what it came to.
+                val before = _state.value.game.asTheSlotsRead
                 _state.update { it.copy(game = it.game.recoveryStepped()) }
-                if (_state.value.game.recovering.size != before) drawWords()
+                if (_state.value.game.asTheSlotsRead != before) drawWords()
             }
         }
     }
@@ -1699,6 +1708,7 @@ class ViewConeDebugViewModel(
                 invent = invent,
                 itemIcons = carriedItemIcons,
                 itemTypes = itemTypes,
+                thrown = thrownShapes,
                 preferences = _state.value.preferences,
             )
                 .render(
@@ -1712,6 +1722,7 @@ class ViewConeDebugViewModel(
                     sheet = openSheet(),
                     carrying = { _state.value.game.item(it) },
                     recovering = { whose, hand -> _state.value.game.isRecovering(whose, hand) },
+                    reporting = { whose, hand -> _state.value.game.reportIn(whose, hand) },
                 )
                 .toImageBitmap()
         } else {

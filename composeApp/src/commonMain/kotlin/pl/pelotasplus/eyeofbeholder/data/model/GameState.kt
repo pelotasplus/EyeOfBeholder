@@ -641,10 +641,22 @@ data class GameState(
         recovering.any { it.whose == whose && it.hand == hand }
 
     /** The world with that hand put out of use for as long as a swing costs. */
-    fun handSwung(whose: PartySlot, hand: CarrySlot) = copy(
+    fun handSwung(whose: PartySlot, hand: CarrySlot, came: WhatTheBlowCameTo) = copy(
         recovering = recovering.filterNot { it.whose == whose && it.hand == hand } +
-            HandRecovering(whose, hand, HandRecovering.AFTER_A_SWING.value),
+            HandRecovering(whose, hand, came.wait.value, came),
     )
+
+    /**
+     * What the weapon slots show between them, which is what says whether a
+     * tick of the clock changed anything worth redrawing for.
+     */
+    val asTheSlotsRead: List<Pair<HandRecovering, Boolean>>
+        get() = recovering.map { it to it.stillReporting }
+
+    /** What that hand's slot says at the moment, if it is saying anything. */
+    fun reportIn(whose: PartySlot, hand: CarrySlot): WhatTheBlowCameTo? = recovering
+        .firstOrNull { it.whose == whose && it.hand == hand && it.stillReporting }
+        ?.came
 
     /**
      * The world one tick of the recovery clock later. A hand whose wait has run

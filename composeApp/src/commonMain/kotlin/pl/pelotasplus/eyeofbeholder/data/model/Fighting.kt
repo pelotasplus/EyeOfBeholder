@@ -29,32 +29,37 @@ class Fighting(
      * behind a grating.
      */
     fun strike(world: GameState, whose: PartySlot, hand: CarrySlot): Struck {
-        if (!whose.inTheFrontRank) return Struck(Blow.OutOfReach, world)
         if (world.isRecovering(whose, hand)) return Struck(Blow.StillRecovering, world)
 
-        val champion = world.championIn(whose) ?: return Struck(Blow.Nothing, world)
+        val blow = blowStruck(world, whose, hand)
+        val came = WhatTheBlowCameTo.of(blow)
 
-        // The arm is committed the moment it goes back, so it costs its wait
-        // whether or not it finds anything — swinging at thin air is how the
+        // The arm is committed the moment it goes back, so the wait is paid
+        // whether or not it found anything — swinging at thin air is how the
         // party would otherwise get a free look at what is round the corner.
-        val swung = world.handSwung(whose, hand)
+        // An arm that never went costs the shorter wait, being only the time
+        // the slot spends saying so.
+        var after = world
+        if (came != null) after = after.handSwung(whose, hand, came)
+        if (blow is Blow.Hit) after = after.monsterHurt(blow.monster, blow.damage)
 
-        val target = inReach(world, whose) ?: return Struck(Blow.Nothing, swung)
+        return Struck(blow, after)
+    }
+
+    private fun blowStruck(world: GameState, whose: PartySlot, hand: CarrySlot): Blow {
+        if (!whose.inTheFrontRank) return Blow.OutOfReach
+
+        val champion = world.championIn(whose) ?: return Blow.Nothing
+        val target = inReach(world, whose) ?: return Blow.Nothing
         val kind = kinds.firstOrNull { it.id == target.type.value }
 
         val weapon = world.item(champion.holding(hand))
         val bonus = champion.abilities.strengthToHitBonus + (weapon?.value ?: 0)
         val needed = champion.needsToHit(kind?.armorClass ?: 0) - bonus
 
-        if (dice.roll(1, 20, 0).coerceIn(1, 20) < needed) {
-            return Struck(Blow.Missed(target.index), swung)
-        }
+        if (dice.roll(1, 20, 0).coerceIn(1, 20) < needed) return Blow.Missed(target.index)
 
-        val damage = damageOf(weapon, champion, kind)
-        return Struck(
-            blow = Blow.Hit(target.index, damage),
-            world = swung.monsterHurt(target.index, damage),
-        )
+        return Blow.Hit(target.index, damageOf(weapon, champion, kind))
     }
 
     /**

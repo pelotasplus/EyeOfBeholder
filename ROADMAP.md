@@ -7,13 +7,11 @@ each.
   and leaves the world when its hit points run out — but nothing the party do
   takes any off. What is missing is the blow.
 
-  What is left of it is the number in the slot. The original spends the first
-  18 of the hand's 54 ticks showing what the blow came to where the weapon's
-  icon goes, on a green splat cut from the thrown-item sheet at 128,96 and 40
-  by 16. That is the only report a player gets of how hard they hit, and it is
-  why those two waits are one here rather than two. A miss, and the three ways
-  a blow can be refused, are words rather than numbers, and those words are in
-  the executable along with the ones on the buttons.
+  Two of the six things a slot can report are unreachable: `HACK` and `BASH`,
+  which are what it says when a weapon is worked against a wall that gives.
+  Nothing strikes a wall yet — that is the mirrors and their like — and the two
+  are named and waiting for whatever does it. `NO AMMO` needs something that
+  fires.
 
   Two things worth not re-deriving. There is no sound for a blow landing or a
   monster dying: this game plays one sound for the swing and nothing else, and

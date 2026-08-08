@@ -15,6 +15,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.Fighting
 import pl.pelotasplus.eyeofbeholder.data.model.Food
 import pl.pelotasplus.eyeofbeholder.data.model.GameState
+import pl.pelotasplus.eyeofbeholder.data.model.HandRecovering
 import pl.pelotasplus.eyeofbeholder.data.model.HitPoints
 import pl.pelotasplus.eyeofbeholder.data.model.Inf
 import pl.pelotasplus.eyeofbeholder.data.model.ItemIndex
@@ -288,12 +289,78 @@ class StrikingAMonsterTest {
         assertIs<Blow.Hit>(fighting(alwaysTwenty).strike(world, PartySlot(0), CarrySlot(0)).blow)
     }
 
-    /** A hand out of reach is refused before it is committed to anything. */
+    /**
+     * An arm that never went anywhere costs the shorter wait — long enough for
+     * the slot to say so and no longer. The full one is for a swing that
+     * happened, and the two are the original's 18 and 18 plus 36.
+     */
     @Test
-    fun `a hand that cannot reach costs nothing`() {
-        val struck = fighting(alwaysTwenty).strike(world(), PartySlot(2), CarrySlot(0))
+    fun `a hand that cannot reach costs only the time it spends saying so`() {
+        val cannot = fighting(alwaysTwenty).strike(world(), PartySlot(2), CarrySlot(0))
+        val swung = fighting(alwaysTwenty).strike(world(), PartySlot(0), CarrySlot(0))
 
-        assertEquals(emptyList(), struck.world.recovering)
+        assertEquals(
+            HandRecovering.REPORTING.value,
+            cannot.world.recovering.single().ticksLeft,
+        )
+        assertEquals(
+            HandRecovering.AFTER_A_SWING.value,
+            swung.world.recovering.single().ticksLeft,
+        )
+    }
+
+    // --- what the slot says --------------------------------------------------
+
+    /** A blow that landed is reported as the number it came to. */
+    @Test
+    fun `the slot says what a blow came to`() {
+        val struck = fighting(alwaysTwenty).strike(world(), PartySlot(0), CarrySlot(0))
+        val hit = assertIs<Blow.Hit>(struck.blow)
+
+        val said = struck.world.reportIn(PartySlot(0), CarrySlot(0))
+        assertEquals(listOf("${hit.damage}"), said?.lines)
+    }
+
+    /** A miss says so in a word, on the same splash of blood. */
+    @Test
+    fun `the slot says a miss`() {
+        val struck = fighting(alwaysOne).strike(world(), PartySlot(0), CarrySlot(0))
+        val said = struck.world.reportIn(PartySlot(0), CarrySlot(0))
+
+        assertEquals(listOf("MISS"), said?.lines)
+        assertTrue(said?.onABloodySplash == true)
+    }
+
+    /**
+     * And an arm that never went says so in the colour the interface warns in
+     * rather than on blood, there being none.
+     */
+    @Test
+    fun `the slot warns that a champion cannot reach`() {
+        val struck = fighting(alwaysTwenty).strike(world(), PartySlot(2), CarrySlot(0))
+        val said = struck.world.reportIn(PartySlot(2), CarrySlot(0))
+
+        assertEquals(listOf("CAN'T", "REACH"), said?.lines)
+        assertTrue(said?.onABloodySplash == false)
+    }
+
+    /**
+     * The slot stops saying before the hand comes back: the report is the
+     * first 18 ticks of the 54, and the weapon is shown under the grid for
+     * the rest.
+     */
+    @Test
+    fun `the slot stops reporting before the hand is free`() {
+        var world = fighting(alwaysTwenty).strike(world(), PartySlot(0), CarrySlot(0)).world
+
+        while (world.reportIn(PartySlot(0), CarrySlot(0)) != null) {
+            world = world.recoveryStepped()
+        }
+
+        assertTrue(
+            world.isRecovering(PartySlot(0), CarrySlot(0)),
+            "the hand came free the moment it stopped saying",
+        )
     }
 
     // --- showing that it landed ----------------------------------------------
