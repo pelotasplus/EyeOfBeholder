@@ -3,6 +3,35 @@
 Things worth doing that are not being done yet, and what stands in the way of
 each.
 
+## At a glance
+
+One line per entry below, in the same order, so a thing can be picked without
+reading the lot. Sizes are rough: XS an hour, S an afternoon, M a few days, L a
+piece of work in its own right.
+
+A ticked box is a cue to delete the entry it points at rather than something to
+leave ticked — this file is what is *not* done, and a finished thing belongs in
+the history instead.
+
+- [ ] **1. Combat** — the blow and the monster's turn are written; what is left rides on them
+  - [ ] 1a. Status attacks on a landed blow: poison, paralysis, a pocket picked — **S**
+  - [ ] 1b. Thrown and fired weapons; the only route to `NO AMMO` — **L**
+  - [ ] 1c. Monsters casting spells — **L**
+  - [ ] 1d. `HACK` and `BASH`, which want a wall that gives under a weapon — **S**, blocked on the mirrors
+  - [ ] 1e. The `SetFlag.MonsterFlag` bits nobody has found a meaning for — **XS** each
+- [ ] **2. The rest of what a monster does with its turn** — straying and the three patrols, plus fear and giving up — **S**
+- [ ] **3. What a script can ask about a thing by name** — needs ITEM.DAT names threaded through — **M**
+- [ ] **4. What lies on the squares beside the party** — items at the very edges of the view — **S**
+- [ ] **5. The words on the buttons are English constants** — they live in `START.EXE` — **L**
+- [ ] **6. A script reads the party where it left them** — and stops writing the whole world back — **M**
+- [ ] **7. The screen is composed a boxed pixel at a time** — 3.9ms of a 4.2ms frame — **M**
+- [ ] **8. Saved games on a server** — `SaveStore` is already the seam — **L**
+- [ ] **9. The rest of the audio** — mostly waiting on the features that would make the noise
+  - [ ] 9a. `WebAudioSink.wake` exists and is called from nowhere, so the web build is silent until the page is touched — **XS**
+  - [ ] 9b. The music, which is screen work before it is sound work — **M**
+
+## In full
+
 - **Combat.** A monster can be killed now, and the party can do it: a hand
   swings, rolls against armour, takes hit points off, and the thing flashes and
   leaves the world when they run out.
