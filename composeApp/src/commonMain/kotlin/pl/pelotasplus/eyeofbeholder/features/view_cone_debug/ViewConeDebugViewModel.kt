@@ -1162,7 +1162,10 @@ class ViewConeDebugViewModel(
         }
 
         _state.update {
-            it.copy(game = world.holding(inSlot).carrying(champion, slot.slot, world.inHand))
+            it.copy(
+                game = world.holding(inSlot)
+                    .carrying(champion, slot.slot, world.inHand, itemTypes),
+            )
         }
         announceTaking(world.item(inSlot))
         renderViewPort()
@@ -1190,7 +1193,7 @@ class ViewConeDebugViewModel(
         }
 
         _state.update {
-            it.copy(game = stacked.world.carrying(champion, slot.slot, stacked.head))
+            it.copy(game = stacked.world.carrying(champion, slot.slot, stacked.head, itemTypes))
         }
         renderViewPort()
     }

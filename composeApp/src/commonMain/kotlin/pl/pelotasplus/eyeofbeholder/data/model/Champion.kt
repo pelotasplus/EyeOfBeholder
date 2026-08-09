@@ -316,6 +316,10 @@ value class CarrySlot(val index: Int) {
 
         val WORN_ARMOUR = CarrySlot(17)
         val QUIVER = CarrySlot(16)
+        val WORN_HELMET = CarrySlot(18)
+
+        /** The two a ring goes on, which are worth armour between them. */
+        val RINGS = listOf(CarrySlot(25), CarrySlot(26))
     }
 }
 

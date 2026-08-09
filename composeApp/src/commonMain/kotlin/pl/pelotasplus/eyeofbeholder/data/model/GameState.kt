@@ -165,16 +165,29 @@ data class GameState(
      * Who the party are is part of the world now, so moving a thing between a
      * hand and a slot is one change to it rather than two — done as two, one
      * of them overwrites the other.
+     *
+     * Given [types] it also works their armour out again, which has to happen
+     * here or not at all: a saved armour class is only the answer as it stood
+     * when the game was saved, and a champion who puts a shield down and keeps
+     * the old number is as hard to hit as they ever were.
      */
-    fun carrying(champion: PartySlot, slot: CarrySlot, item: ItemIndex): GameState {
+    fun carrying(
+        champion: PartySlot,
+        slot: CarrySlot,
+        item: ItemIndex,
+        types: ItemTypes? = null,
+    ): GameState {
         val who = champions.getOrNull(champion.index) ?: return this
+
+        val after = who.copy(
+            carrying = who.carrying.toMutableList().also { held -> held[slot.index] = item },
+        )
 
         return copy(
             champions = champions.toMutableList().also {
-                it[champion.index] = who.copy(
-                    carrying = who.carrying.toMutableList()
-                        .also { held -> held[slot.index] = item },
-                )
+                it[champion.index] = types
+                    ?.let { known -> after.copy(armorClass = known.armourClassOf(after, items)) }
+                    ?: after
             },
         )
     }

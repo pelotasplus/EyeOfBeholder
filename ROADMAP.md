@@ -19,8 +19,7 @@ the history instead.
   - [ ] 1c. Monsters casting spells — **L**
   - [ ] 1d. `HACK` and `BASH`, which want a wall that gives under a weapon — **S**, blocked on the mirrors
   - [ ] 1e. The `SetFlag.MonsterFlag` bits nobody has found a meaning for — **XS** each
-  - [ ] 1f. Armour class is read from the save and never recomputed, so what a champion wears does not affect being hit — **S**
-  - [ ] 1g. The red splat and damage number over a hurt champion's portrait — **S**
+  - [ ] 1f. The red splat and damage number over a hurt champion's portrait — **S**
 - [ ] **2. The last two things a monster mode can do** — fear, and giving up on a destination. Both have a branch waiting and nothing to trigger them — **S**
 - [ ] **3. What a script can ask about a thing by name** — needs ITEM.DAT names threaded through — **M**
 - [ ] **4. What lies on the squares beside the party** — items at the very edges of the view — **S**
@@ -51,13 +50,10 @@ the history instead.
   flashes for a moment rather than fading, so it is one wait and one redraw and
   not a clock.
 
-  **Armour is decorative.** A champion's armour class is read out of the save
-  once and never worked out again, where the original recomputes it every time
-  anything is worn or taken off — ten, plus a modifier for how nimble they are,
-  less what they have on. So taking a breastplate off changes nothing about
-  being hit. It is also why the quick-start party seem untouchable: three of
-  them are at 0 and 1, and a wolf's to-hit number of 19 means it needs an 18 or
-  better. That is arithmetic working correctly, and it reads as a bug.
+  Armour is worked out from what is worn now, which is worth knowing for what
+  it explains rather than for what is left to do: the quick-start party are at
+  0 and 1, and a wolf's to-hit number of 19 means it needs an 18 or better.
+  Three of them being nearly untouchable by an animal is the arithmetic working.
 
   **Nothing shows a champion being hit.** The original draws a red splat over
   their portrait with the damage printed on it, and clears it eighteen ticks
