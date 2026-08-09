@@ -192,6 +192,17 @@ data class GameState(
         )
     }
 
+    /**
+     * Whether anything is standing on that square.
+     *
+     * A monster stops the party as surely as a wall does, and is refused the
+     * same way: they do not walk through one, and they do not swap places with
+     * one. It is also why a monster that has come up to them cannot be simply
+     * walked past — it has to be gone round or killed.
+     */
+    fun anythingStandingOn(at: Location): Boolean =
+        monsters.any { it.x == at.x && it.y == at.y }
+
     /** Who is in one of the six places, or null where nobody is. */
     fun championIn(slot: PartySlot): Champion? =
         champions.getOrNull(slot.index)?.takeIf { it.inTheParty }

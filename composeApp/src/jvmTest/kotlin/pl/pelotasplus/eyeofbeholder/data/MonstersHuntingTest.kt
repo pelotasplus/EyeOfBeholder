@@ -204,6 +204,28 @@ class MonstersHuntingTest {
     }
 
     /**
+     * A monster stops the party as surely as a wall does. They neither walk
+     * through one nor swap places with it, which is what makes something that
+     * has come up to them a thing to be gone round or killed rather than
+     * stepped past.
+     */
+    @Test
+    fun `the party cannot walk onto a square a monster stands on`() {
+        val world = world(
+            at = Location(13, 9),
+            facing = Direction.SOUTH,
+            party = Location(13, 10),
+        )
+
+        assertTrue(world.anythingStandingOn(Location(13, 9)), "nothing is standing there")
+        assertFalse(world.anythingStandingOn(Location(12, 9)), "something is in the way")
+
+        // Killing it clears the square, since the dead leave the world.
+        val alone = world.copy(monsters = emptyList())
+        assertFalse(alone.anythingStandingOn(Location(13, 9)))
+    }
+
+    /**
      * A pair placed side by side do not act together. Their group is their
      * record's own split by whether their slot is odd, so the two clerics —
      * slots 16 and 17 — take their turns a beat apart, and only one of them

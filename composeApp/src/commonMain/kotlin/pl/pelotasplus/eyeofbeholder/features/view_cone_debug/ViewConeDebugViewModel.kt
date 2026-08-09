@@ -490,7 +490,9 @@ class ViewConeDebugViewModel(
             y = (y ?: party.position.y).coerceAtLeast(0),
         )
 
-        if (wallBetweenPartyAnd(to)) {
+        // A monster stops them as surely as a wall, and is refused the same
+        // way: the party neither walk through one nor swap places with it.
+        if (wallBetweenPartyAnd(to) || _state.value.game.anythingStandingOn(to)) {
             bumpedIntoAWall()
             return
         }
@@ -948,7 +950,18 @@ class ViewConeDebugViewModel(
                 }
                 walked.forEach { monster ->
                     Logger.d(TAG) { "Monster ${monster.index} steps to ${monster.x}x${monster.y}" }
-                    movingSound(monster)?.let { playTrack(it) }
+                }
+
+                // There is one voice, and a new sound takes it from whatever
+                // had it. So a swing keeps it: the original stops the world for
+                // the length of the attack and nothing else can be heard over
+                // it, and without this a monster stepping somewhere in the dark
+                // silences the one in front winding up. One pair of feet at a
+                // time, too, for the same reason.
+                if (roused.isEmpty()) {
+                    walked.firstOrNull()?.let { monster ->
+                        movingSound(monster)?.let { playTrack(it) }
+                    }
                 }
                 if (moved) drawViewPort()
             }
