@@ -20,14 +20,6 @@ each.
   flashes for a moment rather than fading, so it is one wait and one redraw and
   not a clock.
 
-  Monsters hit back now, but only where they stand: nothing walks. A monster
-  already next to the party and facing them fights; one across the room waits
-  for ever. That is enough for level 5's pair, who are placed against the party
-  and roused where they stand, and it is not enough for anything else. What is
-  missing is the ten behaviour modes and the pathing under them — a monster
-  works out a square to make for, turns towards it and steps — and once it can
-  step, the same turn it already takes does the rest.
-
   Riding on a landed blow there are the status attacks a kind can carry:
   poison, paralysis, and having something taken out of a pocket. Each is a flag
   on the kind and a branch nobody has written.
@@ -39,6 +31,45 @@ each.
   `SetFlag.MonsterFlag` carries one bit anybody has found a meaning for, the
   one that rouses. The rest still warn rather than falling through the same
   `else` as everything uninteresting, and each wants whatever names it.
+
+- **Monsters that walk.** They hit back now, but only where they stand: one
+  already next to the party and facing them fights, and one across the room
+  waits for ever. That is enough for level 5's pair, who are placed against the
+  party and roused where they stand, and it is not enough for anything else. It
+  is also what makes the fight trivial — stepping aside is permanent safety
+  rather than a beat bought, so the four ticks a step costs decide nothing.
+
+  A monster carries a behaviour mode, and it is per placed monster rather than
+  per kind or per floor: byte 8 of its 14-byte record in the level's placement
+  data, parsed already as `mode`. There are ten, and only **mode 0, hunting the
+  party**, needs writing. It is where everything ends up — the party coming
+  within three squares in front of a monster sets it, rousing sets it, and one
+  of a group being struck sets it for the whole group. The other nine are what
+  something does *until* it notices — patrolling, straying, and standing under
+  a spell — and none is needed for anything placed so far.
+
+  They are also cheaper than they sound, and worth not mistaking for something
+  bigger: a patrol is not a route, and no route is written down anywhere. It is
+  one rule — walk straight on, and when that is blocked turn by a fixed amount
+  and step — where the amount is the whole difference between the three modes:
+  half a turn paces a corridor, a quarter turn either way follows a wall. Where
+  a monster goes falls out of the maze. Straying adds one bit of state so that
+  it also turns into an opening beside it rather than only when stopped. All of
+  it sits on top of taking one step, so whatever writes that gets the patrols
+  for a few lines each.
+
+  Four pieces, of which one is the work:
+
+  - **Wanting a square.** Within three squares and not already behind it, a
+    monster's destination becomes the party's square. A dozen lines.
+  - **Getting there.** Take the direction towards it, try that step, fall back
+    to a side step when it is blocked, give up when boxed in. Walls, doors, the
+    party and other monsters all block, and a monster small enough to share a
+    square has to find a free corner of it. This is the real work.
+  - **A step costing a turn.** A monster that walks does not also swing, the
+    way one that turns does not. That machinery exists, so it is a branch.
+  - **The noise.** Every kind carries a second track number, which is what it
+    sounds like moving, and nothing has ever played it.
 
 - **What a script can ask about a thing by name.** A lock is answered now — it
   can be shown what kind of thing the hand holds, what it is worth, and which
