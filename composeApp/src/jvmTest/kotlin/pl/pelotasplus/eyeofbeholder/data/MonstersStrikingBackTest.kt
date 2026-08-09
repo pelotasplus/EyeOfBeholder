@@ -31,6 +31,7 @@ import pl.pelotasplus.eyeofbeholder.data.repository.VcnRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.VmpRepositoryImpl
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /** The original's monster turn, which the party's step is measured against. */
@@ -250,13 +251,12 @@ class MonstersStrikingBackTest {
     }
 
     /**
-     * Turning costs a monster the turn after it too, so it cannot spin to face
-     * the party and swing in one breath. Round a corner from them, a monster
-     * spends one turn turning, one doing nothing, and only then swings — which
-     * is the room a party have to keep stepping round it.
+     * A monster swings only at the square it already faces, so one caught
+     * facing the wrong way spends a whole turn turning and swings on the next.
+     * That single turn is the room a party stepping round one have.
      */
     @Test
-    fun `turning costs a monster the turn after it`() {
+    fun `turning takes a turn, and swinging comes after it`() {
         val turn = turn(everyDieHighest)
         val fromTheSide = world().let { world ->
             world.copy(monsters = world.monsters.map { it.copy(direction = Direction.NORTH) })
@@ -266,11 +266,38 @@ class MonstersStrikingBackTest {
         assertTrue(turned.monsters.all { it.direction == Direction.SOUTH }, "never turned")
         assertTrue(turned.monsters.none { it.striking != null }, "turned and swung at once")
 
-        val paying = turn.begun(turned)
-        assertTrue(paying.monsters.none { it.striking != null }, "the turn cost nothing")
-
-        val swinging = turn.begun(paying)
+        val swinging = turn.begun(turned)
         assertTrue(swinging.monsters.all { it.striking == MonsterPose.ATTACK_A })
+    }
+
+    /**
+     * Once an arm is coming down at the party they can do nothing until it
+     * lands: the wind-up announces a hit rather than offering a chance to
+     * duck, and what a party dance away from is a monster's turn coming
+     * round, not the swing they can already see.
+     */
+    @Test
+    fun `a swing in front of the party pins them until it lands`() {
+        val turn = turn(everyDieHighest)
+
+        assertFalse(world().pinnedByASwing, "pinned before anything swung")
+
+        val swinging = turn.begun(world())
+        assertTrue(swinging.pinnedByASwing, "the party can walk out of a swing")
+
+        val landed = swinging.swingsCarriedOn().swingsCarriedOn()
+        assertFalse(landed.pinnedByASwing, "the party are held after the blow")
+    }
+
+    /** Something swinging from the side is not drawn doing it, and pins nobody. */
+    @Test
+    fun `a swing from the side pins nobody`() {
+        val fromTheSide = world().partyMovedTo(Location(13, 9)).let { world ->
+            world.copy(party = world.party.copy(facing = Direction.EAST))
+        }
+
+        assertTrue(turn(everyDieHighest).begun(fromTheSide).anythingSwinging)
+        assertFalse(turn(everyDieHighest).begun(fromTheSide).pinnedByASwing)
     }
 
     /** Nor does one that is nowhere near. */

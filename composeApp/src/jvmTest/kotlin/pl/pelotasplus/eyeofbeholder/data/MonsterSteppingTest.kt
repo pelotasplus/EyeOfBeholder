@@ -162,10 +162,7 @@ class MonsterSteppingTest {
         assertEquals(MonsterStepping.Stepped.Refused, stepped)
     }
 
-    /**
-     * Turning is a step of its own, and costs the turn after it — so a monster
-     * cannot round a corner and swing in one breath.
-     */
+    /** Turning is a step of its own, and all the monster does with the turn. */
     @Test
     fun `a monster given nowhere to go turns where it stands`() {
         val world = world()
@@ -183,7 +180,6 @@ class MonsterSteppingTest {
         assertEquals(13, turned.x)
         assertEquals(8, turned.y)
         assertEquals(Direction.EAST, turned.direction)
-        assertTrue(turned.justTurned, "the turn cost it nothing")
     }
 
     @Test

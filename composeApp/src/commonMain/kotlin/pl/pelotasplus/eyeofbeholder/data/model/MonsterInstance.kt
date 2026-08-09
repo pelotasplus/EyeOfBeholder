@@ -66,16 +66,20 @@ data class MonsterInstance(
      * what makes one survivable.
      */
     val readyToStrike: Boolean = false,
-    /**
-     * Whether it spent its last turn turning round. Turning costs a monster
-     * the turn after it as well, so it cannot spin to face the party and swing
-     * in the same breath — which is what gives a party who step round one the
-     * time to do it.
-     */
-    val justTurned: Boolean = false,
 ) {
     val x: Int get() = block and 0x1F
     val y: Int get() = block shr 5
+
+    /**
+     * Which of the four groups takes its turn with this one.
+     *
+     * Monsters do not all move at once. The four groups are spread across a
+     * turn's length, so two placed side by side act a beat apart rather than
+     * as one body — which is most of the difference between a fight and a
+     * mechanism. A monster's group is its record's own, doubled, and then
+     * split by whether its slot is odd, which is what separates a pair.
+     */
+    val turnGroup: Int get() = ((unit shl 1) or (index and 1)) and 3
 
     /** Which of its sheet's color schemes this monster is painted in. */
     val colors: MonsterColors get() = MonsterColors.forSlot(index)
@@ -120,11 +124,41 @@ data class MonsterInstance(
      * their square, and stand on the half of its own square that reaches.
      * Something filling a square reaches from anywhere on it.
      */
-    fun canReach(party: PartyState): Boolean {
-        val (dx, dy) = direction.transformCoordinates(0, -1)
-        if (x + dx != party.position.x || y + dy != party.position.y) return false
+    fun canReach(party: PartyState): Boolean =
+        facesTheSquareOf(party) &&
+            (!place.onTheFloor || WhoTheMonsterReaches.armIsLongEnough(direction, place))
 
-        return !place.onTheFloor || WhoTheMonsterReaches.armIsLongEnough(direction, place)
+    /**
+     * Whether the party's square is the one it is looking at, whatever corner
+     * of its own it happens to be standing on.
+     *
+     * Half of reaching them, and the half that says a monster has arrived: one
+     * that faces them and cannot touch them has only to shift its feet, where
+     * one facing elsewhere has further to go.
+     */
+    fun facesTheSquareOf(party: PartyState): Boolean {
+        val (dx, dy) = direction.transformCoordinates(0, -1)
+        return x + dx == party.position.x && y + dy == party.position.y
+    }
+
+    /**
+     * Whether the party are near enough, and far enough in front, to be worth
+     * setting off after.
+     *
+     * Three squares is as far as anything sees. Within that, the party are
+     * still missed if they are behind it and not right beside it, which is
+     * what lets a party creep past something's back — and what makes walking
+     * round one worth doing.
+     */
+    fun notices(party: PartyState): Boolean {
+        val away = Location(x, y).squaresFrom(party.position)
+        if (away >= OUT_OF_SIGHT) return false
+        if (away < CLOSE_ENOUGH_TO_FEEL) return true
+
+        val over = Bearing.of(direction).clockwiseTo(
+            Bearing.from(Location(x, y), party.position) ?: return true,
+        )
+        return over !in BEHIND_IT
     }
 
     /**
@@ -152,6 +186,15 @@ data class MonsterInstance(
     companion object {
         /** The mode a level gives something that talks before it fights. */
         const val WAITING_TO_SEE = 8
+
+        /** Past this many squares nothing notices the party at all. */
+        private const val OUT_OF_SIGHT = 4
+
+        /** Within this, the party are noticed from any side. */
+        private const val CLOSE_ENOUGH_TO_FEEL = 2
+
+        /** The wedge of the compass a monster has its back to. */
+        private val BEHIND_IT = 3..5
 
         /** What a monster nobody has rolled for carries instead of hit points. */
         val UNROLLED = HitPoints(current = 0, max = 0)

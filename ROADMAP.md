@@ -32,44 +32,41 @@ each.
   one that rouses. The rest still warn rather than falling through the same
   `else` as everything uninteresting, and each wants whatever names it.
 
-- **Monsters that walk.** They hit back now, but only where they stand: one
-  already next to the party and facing them fights, and one across the room
-  waits for ever. That is enough for level 5's pair, who are placed against the
-  party and roused where they stand, and it is not enough for anything else. It
-  is also what makes the fight trivial — stepping aside is permanent safety
-  rather than a beat bought, so the four ticks a step costs decide nothing.
+- **The rest of what a monster does with its turn.** Hunting is written and
+  sits behind "Monsters: hunt" in the Debug menu: something within three
+  squares and not behind it takes up the chase, walks, opens doors, shares
+  squares and swings, and the kinds that carry the flag for it swing in the
+  turn they moved in.
 
-  A monster carries a behaviour mode, and it is per placed monster rather than
-  per kind or per floor: byte 8 of its 14-byte record in the level's placement
-  data, parsed already as `mode`. There are ten, and only **mode 0, hunting the
-  party**, needs writing. It is where everything ends up — the party coming
-  within three squares in front of a monster sets it, rousing sets it, and one
-  of a group being struck sets it for the whole group. The other nine are what
-  something does *until* it notices — patrolling, straying, and standing under
-  a spell — and none is needed for anything placed so far.
+  What is not written is the other nine behaviour modes. A monster's is per
+  placed monster rather than per kind or per floor — byte 8 of its 14-byte
+  record, parsed as `mode` — and hunting is where they all end up, so nothing
+  placed so far needs the rest. They are cheaper than they sound, and worth not
+  mistaking for something bigger: a patrol is not a route, and no route is
+  written down anywhere. It is one rule — walk straight on, and when that is
+  blocked turn by a fixed amount and step — where the amount is the whole
+  difference between the three patrolling modes: half a turn paces a corridor,
+  a quarter turn either way follows a wall. Where a monster goes falls out of
+  the maze. Straying adds one bit of state so it also turns into an opening
+  beside it rather than only when stopped. All of it sits on the step that is
+  already written, so it is a few lines each.
 
-  They are also cheaper than they sound, and worth not mistaking for something
-  bigger: a patrol is not a route, and no route is written down anywhere. It is
-  one rule — walk straight on, and when that is blocked turn by a fixed amount
-  and step — where the amount is the whole difference between the three modes:
-  half a turn paces a corridor, a quarter turn either way follows a wall. Where
-  a monster goes falls out of the maze. Straying adds one bit of state so that
-  it also turns into an opening beside it rather than only when stopped. All of
-  it sits on top of taking one step, so whatever writes that gets the patrols
-  for a few lines each.
+  Two more of the same shape are unwritten and each has its branch waiting
+  where the original has one: a frightened monster, which refuses any step
+  that takes it towards the party, and a monster giving up on a destination it
+  cannot reach, which drops into straying at random. Nothing frightens
+  anything yet and nothing gets stuck yet.
 
-  Four pieces, of which one is the work:
+  One thing is knowingly different. Coming at a square off its shoulder, the
+  original reads the wall on the face the monster is looking at rather than the
+  one it walks through, so it can sidle through a wall. This reads the wall it
+  goes through.
 
-  - **Wanting a square.** Within three squares and not already behind it, a
-    monster's destination becomes the party's square. A dozen lines.
-  - **Getting there.** Take the direction towards it, try that step, fall back
-    to a side step when it is blocked, give up when boxed in. Walls, doors, the
-    party and other monsters all block, and a monster small enough to share a
-    square has to find a free corner of it. This is the real work.
-  - **A step costing a turn.** A monster that walks does not also swing, the
-    way one that turns does not. That machinery exists, so it is a branch.
-  - **The noise.** Every kind carries a second track number, which is what it
-    sounds like moving, and nothing has ever played it.
+  And one open question, from playing it: whether an approach really is as
+  repetitive as ours looks. The tables say a monster beside the party sidles
+  along beside them and never takes the square they left, and that is what
+  ours does — but it does not match how the fight is remembered, and the two
+  straying modes are the only other source of movement the original has.
 
 - **What a script can ask about a thing by name.** A lock is answered now — it
   can be shown what kind of thing the hand holds, what it is worth, and which

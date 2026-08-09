@@ -29,45 +29,121 @@ class MonstersTurn(
      *
      * Only a monster that has been roused: the pair on level 5 stand talking
      * until somebody hits one of them, and one nobody has provoked is scenery.
+     *
+     * Given [walking], one that cannot reach the party comes after them, and
+     * one that has not been roused takes up the hunt when it notices them.
+     * Without it a monster fights only from where it was placed, which is not
+     * the game but is what every scene so far was built and frozen against.
+     *
+     * Only the monsters of one [group] take a turn. Turns are staggered across
+     * the four rather than taken together, which is what keeps a pair from
+     * moving as one body — see [MonsterInstance.turnGroup]. Null is every
+     * monster at once, which is only ever what a test wants.
      */
-    fun begun(world: GameState): GameState {
-        // Only half of a monster's turns are turns it swings on, and only one
-        // that can reach counts them: the count belongs to the attack itself,
-        // so walking up to the party does not leave a monster a beat out when
-        // it arrives.
-        val after = world.copy(
+    fun begun(
+        world: GameState,
+        walking: MonsterPathing? = null,
+        wayRound: MonsterPathing.WayRound = MonsterPathing.WayRound.RIGHT_FIRST,
+        group: Int? = null,
+    ): GameState {
+        // Anything that walks also notices. What is standing by is deaf until
+        // it is hit, which is the whole of level 5's encounter.
+        val noticing = if (walking == null) world else world.copy(
             monsters = world.monsters.map {
-                when {
-                    !it.provoked || it.striking != null -> it
-                    it.justTurned -> it.copy(justTurned = false)
-                    it.canReach(world.party) -> it.turnCameRound()
-                    else -> it
+                if (!it.standingBy && !it.provoked && it.notices(world.party)) {
+                    it.copy(provoked = true)
+                } else {
+                    it
                 }
             },
         )
 
-        // A monster that turned last time spends this turn doing nothing at
-        // all, which is what stops one spinning to face the party and swinging
-        // in the same breath.
-        val taking = after.monsters.filter {
-            it.provoked && it.striking == null && !it.justTurned
-        }
-
-        val swinging = taking
-            .filter { it.readyToStrike && it.canReach(after.party) }
+        val taking = noticing.monsters
+            .filter {
+                it.provoked && it.striking == null && (group == null || it.turnGroup == group)
+            }
             .map { it.index }
 
-        // One that cannot reach turns towards them instead, and pays a turn
-        // for it. A monster reaches only the square it faces, so without this
-        // it is dangerous from one side and harmless from the other three —
-        // and the party would simply walk round it.
-        val turning = taking
-            .filterNot { it.canReach(after.party) }
-            .mapNotNull { monster ->
-                monster.facingThe(after.party)?.let { monster.index to it }
-            }
+        // One at a time, and read back out of the world each time: an earlier
+        // monster's step may have taken the square this one was making for.
+        return taking.fold(noticing) { world, slot ->
+            world.monsters.firstOrNull { it.index == slot }
+                ?.let { takenBy(world, it, walking, wayRound) }
+                ?: world
+        }
+    }
 
-        return after.monstersStriking(swinging).monstersTurnedToFace(turning)
+    /**
+     * One monster's turn: swing at the party if it is already facing them,
+     * and otherwise go to them.
+     *
+     * The order is the point. Swinging is only ever at the square a monster
+     * already faces, so arriving and striking are different turns — except for
+     * the kinds that carry the flag for it, which land a blow in the turn they
+     * moved in and so cannot be escaped by stepping aside.
+     */
+    private fun takenBy(
+        world: GameState,
+        monster: MonsterInstance,
+        walking: MonsterPathing?,
+        wayRound: MonsterPathing.WayRound,
+    ): GameState {
+        swungBy(world, monster, walking)?.let { return it }
+
+        if (walking == null) {
+            // Rooted, all a monster out of reach can do is turn towards the
+            // party. It reaches only the square it faces, so without this it
+            // is dangerous from one side and harmless from the other three.
+            return monster.facingThe(world.party)
+                ?.let { world.monsterTurned(monster.index, it) }
+                ?: world
+        }
+
+        val after = when (
+            val went = walking.towards(world, monster, world.party.position, wayRound)
+        ) {
+            is MonsterStepping.Stepped.Moved -> went.world
+            is MonsterStepping.Stepped.Turned -> went.world
+            MonsterStepping.Stepped.Refused -> world
+        }
+
+        if (kinds.firstOrNull { it.id == monster.type.value }?.hitsAsItMoves != true) return after
+
+        val moved = after.monsters.firstOrNull { it.index == monster.index } ?: return after
+        return swungBy(after, moved, walking) ?: after
+    }
+
+    /**
+     * What a monster facing the party's square does about it, or null when it
+     * is facing somewhere else and has walking to do.
+     *
+     * Facing them is not the same as touching them: an arm reaches from only
+     * two corners of a square, and one standing on the wrong corner spends the
+     * turn shifting its feet. Nor is every turn one it swings on — the count
+     * belongs to the attack itself, so a monster that spent turns walking is
+     * not owed a free blow for them.
+     */
+    private fun swungBy(
+        world: GameState,
+        monster: MonsterInstance,
+        walking: MonsterPathing?,
+    ): GameState? {
+        if (!monster.facesTheSquareOf(world.party)) return null
+
+        if (!monster.canReach(world.party)) {
+            return walking?.shuffling(world, monster) ?: world
+        }
+
+        val counted = monster.turnCameRound()
+        val after = world.copy(
+            monsters = world.monsters.map { if (it.index == monster.index) counted else it },
+        )
+
+        return if (counted.readyToStrike) {
+            after.monstersStriking(listOf(monster.index))
+        } else {
+            after
+        }
     }
 
     /**

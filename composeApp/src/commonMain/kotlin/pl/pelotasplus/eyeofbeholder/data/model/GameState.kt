@@ -688,15 +688,20 @@ data class GameState(
         },
     )
 
+    /** The world with one monster standing somewhere else on its own square. */
+    fun monsterShifted(slot: Int, place: SquarePlace) = copy(
+        monsters = monsters.map { if (it.index == slot) it.copy(place = place) else it },
+    )
+
     /**
      * The world with one monster facing [way] where it stands.
      *
-     * It has spent its turn doing it, the same as one that turned to face the
-     * party — so a monster cannot turn a corner and swing in one breath.
+     * Turning is all it does with the turn. It cannot also swing, because
+     * swinging is only ever at the square it was already facing.
      */
     fun monsterTurned(slot: Int, way: Direction) = copy(
         monsters = monsters.map {
-            if (it.index == slot) it.copy(direction = way, justTurned = true) else it
+            if (it.index == slot) it.copy(direction = way) else it
         },
     )
 
@@ -707,9 +712,7 @@ data class GameState(
 
         return copy(
             monsters = monsters.map { monster ->
-                turning[monster.index]
-                    ?.let { monster.copy(direction = it, justTurned = true) }
-                    ?: monster
+                turning[monster.index]?.let { monster.copy(direction = it) } ?: monster
             },
         )
     }
@@ -731,6 +734,24 @@ data class GameState(
 
     /** Whether any monster is part way through its own swing. */
     val anythingSwinging: Boolean get() = monsters.any { it.striking != null }
+
+    /**
+     * Whether the party are pinned by an arm already coming down at them.
+     *
+     * Once a monster in front of them has begun its swing the blow is theirs,
+     * and the original will not let them do anything at all until it lands —
+     * so the wind-up announces a hit rather than offering a chance to duck.
+     * What a party dance away from is a monster's turn coming round, not the
+     * swing they can already see.
+     *
+     * Only the square straight ahead: that is the one a swing is drawn on, and
+     * something reaching them from the side holds nobody up.
+     */
+    val pinnedByASwing: Boolean
+        get() {
+            val ahead = party.facing.oneStepFrom(party.position)
+            return monsters.any { it.striking != null && it.x == ahead.x && it.y == ahead.y }
+        }
 
     /** Whether that hand is still coming back to rest from its last swing. */
     fun isRecovering(whose: PartySlot, hand: CarrySlot): Boolean =

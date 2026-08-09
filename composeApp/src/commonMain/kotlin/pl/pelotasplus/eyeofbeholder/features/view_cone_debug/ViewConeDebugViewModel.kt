@@ -40,6 +40,8 @@ import pl.pelotasplus.eyeofbeholder.data.model.THROWN_CPS
 import pl.pelotasplus.eyeofbeholder.data.model.HandRecovering
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterInstance
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterPose
+import pl.pelotasplus.eyeofbeholder.data.model.MonsterPathing
+import pl.pelotasplus.eyeofbeholder.data.model.MonsterStepping
 import pl.pelotasplus.eyeofbeholder.data.model.MonstersTurn
 import pl.pelotasplus.eyeofbeholder.data.model.DoorMessages
 import pl.pelotasplus.eyeofbeholder.data.model.DoorSounds
@@ -194,6 +196,8 @@ class ViewConeDebugViewModel(
      */
     private var stepStillRunning = 0
     private var pulse = TeleporterPulse.AS_LAID_OUT
+    private var stepsTaken = 0
+    private var goingRight = true
 
     /** The view as last drawn, which a script's words are written over. */
     private var drawn: ViewPort? = null
@@ -232,6 +236,14 @@ class ViewConeDebugViewModel(
                 // naming has the keyboard, so Camp cannot pull the menu away
                 event is Event.Camp && menu.naming == null -> showMenu(null)
             }
+            return
+        }
+
+        // Nothing the party do gets done while an arm is coming down at them.
+        // The original stops the whole world for it; stopping only the party
+        // is enough, and keeps the doors and the other monsters from hitching.
+        if (event.isTheirOwnDoing && _state.value.game.pinnedByASwing) {
+            Logger.d(TAG) { "Ignoring $event while the party are being swung at" }
             return
         }
 
@@ -841,19 +853,25 @@ class ViewConeDebugViewModel(
         fighting = viewModelScope.launch {
             // A monster roused this instant has its whole turn ahead of it,
             // not the tail of one it never took.
-            var untilTheirTurn = A_MONSTER_TURN.value
+            // The four groups start spread across a turn rather than together,
+            // which is what stops a pair of monsters moving as one body.
+            val untilTheirTurn = WHEN_EACH_GROUP_STARTS.toIntArray()
             var untilTheNextFrame = A_SWING_FRAME.value
 
             while (stillFighting()) {
                 delay(GameState.CLOCK_STEP.inMilliseconds)
 
                 untilTheNextFrame -= GameState.CLOCK_STEP.value
-                untilTheirTurn -= GameState.CLOCK_STEP.value
 
                 val aFrame = untilTheNextFrame <= 0
-                val theirTurn = untilTheirTurn <= 0
                 if (aFrame) untilTheNextFrame = A_SWING_FRAME.value
-                if (theirTurn) untilTheirTurn = A_MONSTER_TURN.value
+
+                val theirTurn = untilTheirTurn.indices.filter { group ->
+                    untilTheirTurn[group] -= GameState.CLOCK_STEP.value
+                    (untilTheirTurn[group] <= 0).also {
+                        if (it) untilTheirTurn[group] = A_MONSTER_TURN.value
+                    }
+                }
 
                 // Everything the clock does to the world happens in one go.
                 // Read it, change it and write it back separately and whatever
@@ -863,7 +881,18 @@ class ViewConeDebugViewModel(
 
                 var landed = emptyList<MonstersTurn.Struck>()
                 var roused = emptyList<MonsterInstance>()
+                var walked = emptyList<MonsterInstance>()
                 var moved = false
+
+                // Settled before the world is touched: an update that loses a
+                // race runs its block again, and the way round a corner would
+                // otherwise flip a second time on the retry.
+                val walking = if (theirTurn.isEmpty()) null else walking()
+                val wayRound = if (theirTurn.isEmpty()) {
+                    MonsterPathing.WayRound.RIGHT_FIRST
+                } else {
+                    wayRound()
+                }
 
                 _state.update { state ->
                     var world = state.game
@@ -882,11 +911,24 @@ class ViewConeDebugViewModel(
                         }
                     }
 
-                    if (theirTurn) {
+                    if (theirTurn.isNotEmpty()) {
                         val already = world.monsters.filter { it.striking != null }.map { it.index }
-                        world = monstersTurn().begun(world)
+                        val stood = world.monsters.associate { it.index to it.block }
+
+                        theirTurn.forEach { group ->
+                            world = monstersTurn().begun(
+                                world = world,
+                                walking = walking,
+                                wayRound = wayRound,
+                                group = group,
+                            )
+                        }
+
                         roused = world.monsters.filter {
                             it.striking != null && it.index !in already
+                        }
+                        walked = world.monsters.filter {
+                            stood[it.index]?.let { was -> was != it.block } == true
                         }
                     }
 
@@ -901,6 +943,10 @@ class ViewConeDebugViewModel(
                     Logger.d(TAG) { "Monster ${monster.index} swings at the party" }
                     monsterSound(monster)?.let { playTrack(it) }
                 }
+                walked.forEach { monster ->
+                    Logger.d(TAG) { "Monster ${monster.index} steps to ${monster.x}x${monster.y}" }
+                    movingSound(monster)?.let { playTrack(it) }
+                }
                 if (moved) drawViewPort()
             }
 
@@ -908,21 +954,72 @@ class ViewConeDebugViewModel(
         }
     }
 
-    /** Whether anything is still going that the clock has to keep winding. */
-    private fun stillFighting(): Boolean =
-        _state.value.game.monsters.any { it.provoked } || stepStillRunning > 0
+    /**
+     * Whether anything is still going that the clock has to keep winding.
+     *
+     * Once monsters walk it never stops while any of them is awake, because
+     * noticing the party is itself something a turn does — a clock that waited
+     * for a fight would be waiting for the thing it is supposed to start.
+     */
+    private fun stillFighting(): Boolean {
+        val monsters = _state.value.game.monsters
+
+        if (monsters.any { it.provoked } || stepStillRunning > 0) return true
+
+        return debugging.monstersMayWalk.value && monsters.any { !it.standingBy }
+    }
 
     private fun monstersTurn() = MonstersTurn(
         kinds = _state.value.inf?.subLevels?.getOrNull(_state.value.subLevel)?.monsters.orEmpty(),
     )
 
-    /** What a monster sounds like swinging, which is the only sound it has. */
+    /**
+     * How to walk, or null while monsters are rooted where they were placed.
+     */
+    private fun walking(): MonsterPathing? {
+        if (!debugging.monstersMayWalk.value) return null
+
+        val inf = _state.value.inf ?: return null
+        val sublevel = inf.subLevels.getOrNull(_state.value.subLevel) ?: return null
+        val kinds = sublevel.monsters
+
+        return MonsterPathing(
+            stepping = MonsterStepping(levelNumber(inf.name), sublevel, kinds),
+            kinds = kinds,
+        )
+    }
+
+    /**
+     * Which way monsters go round things this turn.
+     *
+     * It flips every so often so that two given the same problem do not solve
+     * it the same way for ever. The count is here rather than in the world
+     * because a script writing the world back would undo it.
+     */
+    private fun wayRound(): MonsterPathing.WayRound {
+        if (++stepsTaken > STEPS_BEFORE_SWAPPING) {
+            stepsTaken = 0
+            goingRight = !goingRight
+        }
+
+        return if (goingRight) {
+            MonsterPathing.WayRound.RIGHT_FIRST
+        } else {
+            MonsterPathing.WayRound.LEFT_FIRST
+        }
+    }
+
+    /** What a monster sounds like swinging. */
     private fun monsterSound(monster: MonsterInstance): TrackIndex? =
+        kindOf(monster)?.sound1?.takeIf { it > 0 }?.let(::TrackIndex)
+
+    /** And what it sounds like taking a step, which is its other sound. */
+    private fun movingSound(monster: MonsterInstance): TrackIndex? =
+        kindOf(monster)?.sound2?.takeIf { it > 0 }?.let(::TrackIndex)
+
+    private fun kindOf(monster: MonsterInstance) =
         _state.value.inf?.subLevels?.getOrNull(_state.value.subLevel)?.monsters
             ?.firstOrNull { it.id == monster.type.value }
-            ?.sound1
-            ?.takeIf { it > 0 }
-            ?.let(::TrackIndex)
 
     /**
      * Takes the silhouette off whatever was struck, a moment after it was.
@@ -1965,6 +2062,14 @@ class ViewConeDebugViewModel(
             get() = this is MoveForward || this is MoveBackwards ||
                 this is StrafeLeft || this is StrafeRight ||
                 this is RotateLeft || this is RotateRight
+
+        /**
+         * Whether this is the party acting rather than the game being set up
+         * or asked a question. It is what a monster's swing suspends.
+         */
+        val isTheirOwnDoing: Boolean
+            get() = isAStep || this is ClickedTheView || this is UsedWhatIsAt ||
+                this is Camp
     }
 
     /** A question a script is waiting on, drawn as [scene] over the play field. */
@@ -2056,8 +2161,17 @@ class ViewConeDebugViewModel(
         /** How long one frame of a monster's swing is held. From the original. */
         private val A_SWING_FRAME = Ticks(8)
 
-        /** And how often a monster's unit takes a turn. Also the original's. */
+        /** And how often a monster's group takes a turn. Also the original's. */
         private val A_MONSTER_TURN = Ticks(20)
+
+        /**
+         * How far into the first turn each of the four groups first acts.
+         * From the original, where the last two share a start.
+         */
+        private val WHEN_EACH_GROUP_STARTS = listOf(0, 7, 14, 14)
+
+        /** How many steps before monsters try the other way round a corner. */
+        private const val STEPS_BEFORE_SWAPPING = 10
 
         private const val PLAY_FIELD_CPS = "PLAYFLD.CPS"
         private const val DECORATIONS_CPS = "DECORATE.CPS"

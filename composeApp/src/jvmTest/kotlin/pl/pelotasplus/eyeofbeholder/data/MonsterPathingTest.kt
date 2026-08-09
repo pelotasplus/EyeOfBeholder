@@ -228,6 +228,9 @@ class MonsterPathingTest {
      * Nothing walks a diagonal. Asked for the square off its shoulder, a
      * monster takes whichever half of the diagonal it is not already facing —
      * so one facing north comes at a square to its north-west by going west.
+     *
+     * It sidles rather than turning: still facing north when it gets there, so
+     * arriving beside the party leaves it one turn from swinging and not two.
      */
     @Test
     fun `a square off the shoulder is come at sideways`() {
@@ -240,7 +243,9 @@ class MonsterPathingTest {
             wayRound = MonsterPathing.WayRound.RIGHT_FIRST,
         )
 
+        assertTrue(stepped is MonsterStepping.Stepped.Moved, "it did not move")
         assertEquals(Location(12, 9), stepped.landedOn())
+        assertEquals(Direction.NORTH, stepped.world.theCleric().direction)
     }
 
     @Test

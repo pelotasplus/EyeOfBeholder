@@ -72,6 +72,16 @@ data class MonsterProperty(
     val isLarge: Boolean get() = capsFlags and LARGE != 0
 
     /**
+     * Whether it lands a blow in the turn it moved in.
+     *
+     * Most things spend a turn either going somewhere or swinging. One of
+     * these does both, so stepping out of its way buys nothing: it follows and
+     * hits in the same beat, and the party have to put a square between them
+     * rather than merely a sidestep.
+     */
+    val hitsAsItMoves: Boolean get() = capsFlags and HITS_AS_IT_MOVES != 0
+
+    /**
      * Whether a shut door stops it. One that can work a door spends a step
      * opening it rather than turning away and going round.
      */
@@ -86,6 +96,7 @@ data class MonsterProperty(
 
     private companion object {
         const val LARGE = 0x01
+        const val HITS_AS_IT_MOVES = 0x08
         const val COMES_IN_SIDEWAYS = 0x200
         const val OPENS_DOORS = 0x1000
     }

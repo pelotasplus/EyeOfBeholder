@@ -32,6 +32,11 @@ class MonsterStepping(
      * A monster steps onto [onto], or turns to [facing] where it stands when
      * given nowhere to go.
      *
+     * Where it ends up facing is [facing], and it need not be where it is
+     * going: a monster reaching a square off its shoulder sidles onto it
+     * still facing the way it was. Which face of the wall is asked about is
+     * always the way it travels, whatever it is looking at.
+     *
      * A monster asked to move somewhere it cannot always ends up doing
      * nothing, never half of it: whoever is choosing squares is expected to
      * ask again with another one.
@@ -51,17 +56,48 @@ class MonsterStepping(
         // them; it stops on the square beside them and swings from there.
         if (onto == world.party.position) return Stepped.Refused
 
-        val wall = world.wall(level, onto, way.wallSideFacingBack)
+        val travel = Direction.entries.firstOrNull { it.oneStepFrom(from) == onto }
+            ?: return Stepped.Refused
+
+        val wall = world.wall(level, onto, travel.wallSideFacingBack)
         if (!subLevel.canBeWalkedOnto(wall)) {
-            return openingTheDoor(world, monster, onto, way, wall)
+            return openingTheDoor(world, monster, onto, travel, wall)
         }
 
-        val place = roomOn(world, monster, onto) ?: return Stepped.Refused
+        val place = roomOn(world, monster, onto, way) ?: return Stepped.Refused
 
         return Stepped.Moved(
             world = world.monsterMoved(monster.index, onto, way, place),
             heard = kind(monster)?.sound2?.takeIf { it > 0 }?.let { TrackIndex(it) },
         )
+    }
+
+    /**
+     * A monster facing the party from a corner its arm does not reach from,
+     * shifting its feet.
+     *
+     * Alone on its square it simply stands in the middle of it, from where
+     * everything is in reach. Sharing it, it takes the best corner left. This
+     * is why a single monster is never stuck being harmless, and why one of a
+     * crowd sometimes is.
+     */
+    fun shuffleOn(world: GameState, monster: MonsterInstance): GameState {
+        val sharing = world.monsters.any {
+            it.index != monster.index && it.x == monster.x && it.y == monster.y
+        }
+
+        val place = if (sharing) {
+            val taken = world.monsters
+                .filter { it.index != monster.index && it.x == monster.x && it.y == monster.y }
+                .map { it.place }
+                .toSet()
+
+            CORNERS_FACING[monster.direction.ordinal].firstOrNull { it !in taken }
+        } else {
+            SquarePlace.MIDDLE
+        }
+
+        return place?.let { world.monsterShifted(monster.index, it) } ?: world
     }
 
     /**
@@ -102,22 +138,29 @@ class MonsterStepping(
      *
      * A square takes monsters of one size only, so four small things share it
      * and nothing else may join them, and anything bigger has it to itself.
+     *
+     * Arriving on an empty square it keeps the corner it was already standing
+     * on. That is what lets a monster keep up with a party sidling away from
+     * it: a monster's arm reaches only from the two corners on the side it
+     * faces, so being moved to a fresh corner would leave it standing beside
+     * the party unable to touch them.
      */
     private fun roomOn(
         world: GameState,
         monster: MonsterInstance,
         onto: Location,
+        facing: Direction,
     ): SquarePlace? {
         val size = kind(monster)?.size ?: return null
         val already = world.monsters.filter {
             it.index != monster.index && it.x == onto.x && it.y == onto.y
         }
 
-        if (already.any { kind(it)?.size != size }) return null
-        if (!size.shares) return if (already.isEmpty()) SquarePlace.MIDDLE else null
+        if (already.isEmpty()) return monster.place
+        if (already.any { kind(it)?.size != size } || !size.shares) return null
 
         val taken = already.map { it.place }.toSet()
-        return CORNERS_IN_ORDER.firstOrNull { it !in taken }
+        return CORNERS_FACING[facing.ordinal].firstOrNull { it !in taken }
     }
 
     private fun kind(monster: MonsterInstance): MonsterProperty? =
@@ -125,14 +168,38 @@ class MonsterStepping(
 
     private companion object {
         /**
-         * Which corner of a square a monster arriving on it takes. Nothing in
-         * the game distinguishes them, so the first free one will do.
+         * Which corner of a crowded square a monster takes, by the way it
+         * faces, best first. From the original.
+         *
+         * The order is not cosmetic: the first two of each row are the two
+         * corners its arm reaches from, so a monster squeezing onto an
+         * occupied square still ends up able to fight if there is any way to.
          */
-        val CORNERS_IN_ORDER = listOf(
-            SquarePlace.NORTH_WEST,
-            SquarePlace.NORTH_EAST,
-            SquarePlace.SOUTH_WEST,
-            SquarePlace.SOUTH_EAST,
+        val CORNERS_FACING = listOf(
+            listOf(
+                SquarePlace.NORTH_WEST,
+                SquarePlace.NORTH_EAST,
+                SquarePlace.SOUTH_WEST,
+                SquarePlace.SOUTH_EAST,
+            ),
+            listOf(
+                SquarePlace.NORTH_EAST,
+                SquarePlace.SOUTH_EAST,
+                SquarePlace.NORTH_WEST,
+                SquarePlace.SOUTH_WEST,
+            ),
+            listOf(
+                SquarePlace.SOUTH_WEST,
+                SquarePlace.SOUTH_EAST,
+                SquarePlace.NORTH_WEST,
+                SquarePlace.NORTH_EAST,
+            ),
+            listOf(
+                SquarePlace.NORTH_WEST,
+                SquarePlace.SOUTH_WEST,
+                SquarePlace.NORTH_EAST,
+                SquarePlace.SOUTH_EAST,
+            ),
         )
     }
 }

@@ -27,6 +27,10 @@ class MonsterPathing(
         LEFT_FIRST(listOf(0, -1, 1, -2, 2, -3, 3, -4)),
     }
 
+    /** A monster that has arrived getting its feet where its arm reaches. */
+    fun shuffling(world: GameState, monster: MonsterInstance) =
+        stepping.shuffleOn(world, monster)
+
     /**
      * One step of [monster]'s towards [destination].
      *
@@ -77,7 +81,9 @@ class MonsterPathing(
         val sideways = SIDESTEP[(bearing.eighths - 1) / 2][monster.direction.ordinal] ?: return null
         if (kind(monster)?.comesInSideways == true && dice.roll(1, 4, 0) >= 4) return null
 
-        val stepped = stepping.step(world, monster, sideways.oneStepFrom(from), sideways)
+        // It sidles: still facing the way it was, so that arriving beside the
+        // party leaves it one turn from swinging rather than two.
+        val stepped = stepping.step(world, monster, onto = sideways.oneStepFrom(from))
         return stepped.takeIf { it !is MonsterStepping.Stepped.Refused }
     }
 
