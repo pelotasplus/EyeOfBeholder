@@ -13,8 +13,18 @@ class MonstersTurn(
     private val dice: Dice = Dice.random,
 ) {
 
-    /** What a monster did on its turn, and the world it leaves behind. */
-    data class Taken(val struck: List<Struck>, val world: GameState)
+    /**
+     * What the monsters did with their turn, and the world they leave behind.
+     *
+     * A blow that did not land is in [missed] and not in [struck]: a miss takes
+     * nothing off anybody, and something that reports it as a hit for no damage
+     * will sooner or later flash, sound or bleed on a swing that touched air.
+     */
+    data class Taken(
+        val struck: List<Struck>,
+        val world: GameState,
+        val missed: List<Int> = emptyList(),
+    )
 
     /** One monster's blow at one champion. */
     data class Struck(val monster: Int, val at: PartySlot, val damage: Int, val heard: TrackIndex?)
@@ -46,12 +56,13 @@ class MonstersTurn(
         wayRound: MonsterPathing.WayRound = MonsterPathing.WayRound.RIGHT_FIRST,
         group: Int? = null,
     ): GameState {
-        // Anything that walks also notices. What is standing by is deaf until
-        // it is hit, which is the whole of level 5's encounter.
+        // Anything that walks also notices, and whatever it was doing before it
+        // is now hunting. What is standing by is deaf until it is hit, which is
+        // the whole of level 5's encounter.
         val noticing = if (walking == null) world else world.copy(
             monsters = world.monsters.map {
-                if (!it.standingBy && !it.provoked && it.notices(world.party)) {
-                    it.copy(provoked = true)
+                if (it.whatItDoes.noticesTheParty && !it.provoked && it.notices(world.party)) {
+                    it.takingUpTheHunt()
                 } else {
                     it
                 }
@@ -60,7 +71,12 @@ class MonstersTurn(
 
         val taking = noticing.monsters
             .filter {
-                it.provoked && it.striking == null && (group == null || it.turnGroup == group)
+                if (it.striking != null) return@filter false
+                if (group != null && it.turnGroup != group) return@filter false
+
+                // Rooted, only a fight is going on at all. Once monsters walk,
+                // everything with somewhere to be takes its turn.
+                it.provoked || (walking != null && it.whatItDoes.wanders)
             }
             .map { it.index }
 
@@ -88,6 +104,10 @@ class MonstersTurn(
         walking: MonsterPathing?,
         wayRound: MonsterPathing.WayRound,
     ): GameState {
+        if (walking != null && !monster.provoked) {
+            return wandering(world, monster, walking)
+        }
+
         swungBy(world, monster, walking)?.let { return it }
 
         if (walking == null) {
@@ -111,6 +131,72 @@ class MonstersTurn(
 
         val moved = after.monsters.firstOrNull { it.index == monster.index } ?: return after
         return swungBy(after, moved, walking) ?: after
+    }
+
+    /**
+     * A monster going about its own business, having not noticed the party.
+     *
+     * There is no route: it walks straight on, and turns by a fixed amount
+     * when the way shuts. The amount is the whole difference between pacing a
+     * corridor and following a wall.
+     */
+    private fun wandering(
+        world: GameState,
+        monster: MonsterInstance,
+        walking: MonsterPathing,
+    ): GameState {
+        val mode = monster.whatItDoes
+        val towards = mode.straysTowards
+            ?: return walking.onwards(world, monster, mode.turnsBy).worldOr(world)
+
+        return strayingOn(world, monster, walking, towards)
+    }
+
+    /**
+     * The same, but also turning off into an opening it walks past rather than
+     * only when something stops it — which is the only reason two monsters
+     * given the same corridor do not end up in the same place.
+     *
+     * The one byte it remembers is where it is in that loop: having just moved
+     * forward it is worth a glance to the side, having just turned it is not.
+     */
+    private fun strayingOn(
+        world: GameState,
+        monster: MonsterInstance,
+        walking: MonsterPathing,
+        towards: Int,
+    ): GameState {
+        var after = world
+        var now = monster
+
+        if (now.straying != Straying.SETTLED) {
+            if (now.straying == Straying.TURNED_AWAY) {
+                after = walking.onwards(after, now, -towards).worldOr(after)
+                now = after.monsters.firstOrNull { it.index == monster.index } ?: return after
+            }
+
+            val aside = now.direction.turnedBy(towards)
+            val open = walking.opensOnto(after, now, aside)
+
+            if (now.straying == Straying.TURNED_AWAY) {
+                return if (open) after else after.monsterStrayed(now.index, Straying.SETTLED)
+            }
+
+            if (open) {
+                return walking.turning(after, now, aside).worldOr(after)
+                    .monsterStrayed(now.index, Straying.SETTLED)
+            }
+        }
+
+        val ahead = now.direction.oneStepFrom(Location(now.x, now.y))
+        val stepped = walking.stepping(after, now, ahead)
+
+        return if (stepped is MonsterStepping.Stepped.Moved) {
+            stepped.world.monsterStrayed(now.index, Straying.WENT_FORWARD)
+        } else {
+            walking.turning(after, now, now.direction.turnedBy(-towards)).worldOr(after)
+                .monsterStrayed(now.index, Straying.TURNED_AWAY)
+        }
     }
 
     /**
@@ -155,14 +241,21 @@ class MonstersTurn(
     fun landed(world: GameState, byWhom: List<Int>): Taken {
         var after = world
         val struck = mutableListOf<Struck>()
+        val missed = mutableListOf<Int>()
 
         world.monsters.filter { it.index in byWhom }.forEach { monster ->
             val blow = strike(after, monster) ?: return@forEach
+
+            if (blow.damage <= 0) {
+                missed += monster.index
+                return@forEach
+            }
+
             struck += blow
             after = after.championHurt(blow.at, blow.damage)
         }
 
-        return Taken(struck, after)
+        return Taken(struck, after, missed)
     }
 
     private fun strike(world: GameState, monster: MonsterInstance): Struck? {

@@ -153,16 +153,27 @@ class MonstersStrikingBackTest {
         val armoured = world(List(6) { champion(armour = -8) })
 
         assertTrue(swungThrough(armoured).struck.all { it.damage > 0 })
-        assertTrue(swungThrough(armoured, everyDieLowest).struck.all { it.damage == 0 })
+        assertEquals(emptyList(), swungThrough(armoured, everyDieLowest).struck)
     }
 
-    /** A blow that misses is still a blow, and still swung and heard. */
+    /**
+     * A blow that misses is a turn taken and nothing else. It is kept apart
+     * from one that lands rather than reported as a hit for no damage: a
+     * champion is not hurt by it, and whatever comes to flash or bleed on
+     * being hit must not fire for a swing that touched air.
+     */
     @Test
-    fun `a miss is still a turn taken`() {
-        val taken = swungThrough(world(List(6) { champion(armour = -8) }), everyDieLowest)
+    fun `a miss takes the turn but is not a hit`() {
+        val armoured = world(List(6) { champion(armour = -8) })
+        val taken = swungThrough(armoured, everyDieLowest)
 
-        assertEquals(2, taken.struck.size)
-        assertTrue(taken.struck.all { it.damage == 0 })
+        assertEquals(emptyList(), taken.struck)
+        assertEquals(listOf(16, 17), taken.missed.sorted())
+
+        assertTrue(
+            taken.world.champions.all { it.hitPoints.current == it.hitPoints.max },
+            "a miss took hit points off somebody",
+        )
     }
 
     /**

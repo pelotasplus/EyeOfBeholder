@@ -880,6 +880,7 @@ class ViewConeDebugViewModel(
                     .coerceAtLeast(0)
 
                 var landed = emptyList<MonstersTurn.Struck>()
+                var swungAndMissed = emptyList<Int>()
                 var roused = emptyList<MonsterInstance>()
                 var walked = emptyList<MonsterInstance>()
                 var moved = false
@@ -907,6 +908,7 @@ class ViewConeDebugViewModel(
                         if (landing.isNotEmpty()) {
                             val taken = monstersTurn().landed(world, landing)
                             landed = taken.struck
+                            swungAndMissed = taken.missed
                             world = taken.world
                         }
                     }
@@ -939,6 +941,7 @@ class ViewConeDebugViewModel(
                 landed.forEach {
                     Logger.d(TAG) { "Monster ${it.monster} hits ${it.at} for ${it.damage}" }
                 }
+                swungAndMissed.forEach { Logger.d(TAG) { "Monster ${'$'}it misses" } }
                 roused.forEach { monster ->
                     Logger.d(TAG) { "Monster ${monster.index} swings at the party" }
                     monsterSound(monster)?.let { playTrack(it) }
