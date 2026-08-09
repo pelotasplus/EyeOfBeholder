@@ -19,7 +19,9 @@ the history instead.
   - [ ] 1c. Monsters casting spells — **L**
   - [ ] 1d. `HACK` and `BASH`, which want a wall that gives under a weapon — **S**, blocked on the mirrors
   - [ ] 1e. The `SetFlag.MonsterFlag` bits nobody has found a meaning for — **XS** each
-- [ ] **2. The rest of what a monster does with its turn** — straying and the three patrols, plus fear and giving up — **S**
+  - [ ] 1f. Armour class is read from the save and never recomputed, so what a champion wears does not affect being hit — **S**
+  - [ ] 1g. The red splat and damage number over a hurt champion's portrait — **S**
+- [ ] **2. The last two things a monster mode can do** — fear, and giving up on a destination. Both have a branch waiting and nothing to trigger them — **S**
 - [ ] **3. What a script can ask about a thing by name** — needs ITEM.DAT names threaded through — **M**
 - [ ] **4. What lies on the squares beside the party** — items at the very edges of the view — **S**
 - [ ] **5. The words on the buttons are English constants** — they live in `START.EXE` — **L**
@@ -49,6 +51,19 @@ the history instead.
   flashes for a moment rather than fading, so it is one wait and one redraw and
   not a clock.
 
+  **Armour is decorative.** A champion's armour class is read out of the save
+  once and never worked out again, where the original recomputes it every time
+  anything is worn or taken off — ten, plus a modifier for how nimble they are,
+  less what they have on. So taking a breastplate off changes nothing about
+  being hit. It is also why the quick-start party seem untouchable: three of
+  them are at 0 and 1, and a wolf's to-hit number of 19 means it needs an 18 or
+  better. That is arithmetic working correctly, and it reads as a bug.
+
+  **Nothing shows a champion being hit.** The original draws a red splat over
+  their portrait with the damage printed on it, and clears it eighteen ticks
+  later on the same character event timer the weapon hands already use — so the
+  clock for it exists and only the shape and the drawing are missing.
+
   Riding on a landed blow there are the status attacks a kind can carry:
   poison, paralysis, and having something taken out of a pocket. Each is a flag
   on the kind and a branch nobody has written.
@@ -61,30 +76,19 @@ the history instead.
   one that rouses. The rest still warn rather than falling through the same
   `else` as everything uninteresting, and each wants whatever names it.
 
-- **The rest of what a monster does with its turn.** Hunting is written and
-  sits behind "Monsters: hunt" in the Debug menu: something within three
-  squares and not behind it takes up the chase, walks, opens doors, shares
-  squares and swings, and the kinds that carry the flag for it swing in the
-  turn they moved in.
+- **The last two things a monster mode can do.** The modes are written and sit
+  behind "Monsters: hunt" in the Debug menu: hunting, wall-following either
+  way, pacing, straying either way, and sleeping until the party come near.
 
-  What is not written is the other nine behaviour modes. A monster's is per
-  placed monster rather than per kind or per floor — byte 8 of its 14-byte
-  record, parsed as `mode` — and hunting is where they all end up, so nothing
-  placed so far needs the rest. They are cheaper than they sound, and worth not
-  mistaking for something bigger: a patrol is not a route, and no route is
-  written down anywhere. It is one rule — walk straight on, and when that is
-  blocked turn by a fixed amount and step — where the amount is the whole
-  difference between the three patrolling modes: half a turn paces a corridor,
-  a quarter turn either way follows a wall. Where a monster goes falls out of
-  the maze. Straying adds one bit of state so it also turns into an opening
-  beside it rather than only when stopped. All of it sits on the step that is
-  already written, so it is a few lines each.
+  Two of the same shape are not, and each has its branch waiting where the
+  original has one. A **frightened** monster refuses any step that takes it
+  nearer the party, and nothing frightens anything yet. And a monster **giving
+  up** on a destination it cannot reach drops into straying, one side or the
+  other at random — which cannot happen while the only destination anything is
+  ever given is the party's own square.
 
-  Two more of the same shape are unwritten and each has its branch waiting
-  where the original has one: a frightened monster, which refuses any step
-  that takes it towards the party, and a monster giving up on a destination it
-  cannot reach, which drops into straying at random. Nothing frightens
-  anything yet and nothing gets stuck yet.
+  Three of the ten mode numbers are still one case between them, the one that
+  does nothing. One of them counts down a spell; nothing tells them apart.
 
   One thing is knowingly different. Coming at a square off its shoulder, the
   original reads the wall on the face the monster is looking at rather than the
