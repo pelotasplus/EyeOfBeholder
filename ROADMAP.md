@@ -19,7 +19,6 @@ the history instead.
   - [ ] 1c. Monsters casting spells — **L**
   - [ ] 1d. `HACK` and `BASH`, which want a wall that gives under a weapon — **S**, blocked on the mirrors
   - [ ] 1e. The `SetFlag.MonsterFlag` bits nobody has found a meaning for — **XS** each
-  - [ ] 1f. The red splat and damage number over a hurt champion's portrait — **S**
 - [ ] **2. The last two things a monster mode can do** — fear, and giving up on a destination. Both have a branch waiting and nothing to trigger them — **S**
 - [ ] **3. What a script can ask about a thing by name** — needs ITEM.DAT names threaded through — **M**
 - [ ] **4. What lies on the squares beside the party** — items at the very edges of the view — **S**
@@ -54,11 +53,6 @@ the history instead.
   it explains rather than for what is left to do: the quick-start party are at
   0 and 1, and a wolf's to-hit number of 19 means it needs an 18 or better.
   Three of them being nearly untouchable by an animal is the arithmetic working.
-
-  **Nothing shows a champion being hit.** The original draws a red splat over
-  their portrait with the damage printed on it, and clears it eighteen ticks
-  later on the same character event timer the weapon hands already use — so the
-  clock for it exists and only the shape and the drawing are missing.
 
   Riding on a landed blow there are the status attacks a kind can carry:
   poison, paralysis, and having something taken out of a pocket. Each is a flag

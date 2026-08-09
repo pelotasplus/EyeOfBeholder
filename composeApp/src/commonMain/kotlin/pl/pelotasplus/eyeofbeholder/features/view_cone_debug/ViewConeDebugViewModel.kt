@@ -33,6 +33,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.DialogueScene.Companion.OK
 import pl.pelotasplus.eyeofbeholder.data.model.OnAParchment
 import pl.pelotasplus.eyeofbeholder.data.model.DialogueTextId
 import pl.pelotasplus.eyeofbeholder.data.model.DialogueText
+import pl.pelotasplus.eyeofbeholder.data.model.DamageShown
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.Blow
 import pl.pelotasplus.eyeofbeholder.data.model.Fighting
@@ -179,6 +180,7 @@ class ViewConeDebugViewModel(
 
     /** Counting whatever hands have swung back to rest. */
     private var recoveringHands: Job? = null
+    private var fadingDamage: Job? = null
 
     /** Taking the silhouette off whatever was struck. */
     private var fading: Job? = null
@@ -835,6 +837,7 @@ class ViewConeDebugViewModel(
         viewModelScope.launch { playTrack(SWING) }
         renderViewPort()
         keepHandsRecovering()
+        letTheDamageFade()
         letTheFlashFade()
         keepTheFightGoing()
     }
@@ -1062,6 +1065,26 @@ class ViewConeDebugViewModel(
      * The same shape as the door clock, and for the same reason: the party are
      * free while it runs.
      */
+    /**
+     * Takes the splat off a champion's portrait once its moment has passed.
+     *
+     * The same countdown the weapon hands report on, and the same length: the
+     * original hangs both on one character timer.
+     */
+    private fun letTheDamageFade() {
+        if (fadingDamage?.isActive == true) return
+
+        fadingDamage = viewModelScope.launch {
+            while (_state.value.game.showingDamage.isNotEmpty()) {
+                delay(DamageShown.STEP.inMilliseconds)
+
+                val before = _state.value.game.showingDamage
+                _state.update { it.copy(game = it.game.damageFaded()) }
+                if (_state.value.game.showingDamage != before) drawWords()
+            }
+        }
+    }
+
     private fun keepHandsRecovering() {
         if (recoveringHands?.isActive == true) return
 
@@ -1971,6 +1994,7 @@ class ViewConeDebugViewModel(
                     carrying = { _state.value.game.item(it) },
                     recovering = { whose, hand -> _state.value.game.isRecovering(whose, hand) },
                     reporting = { whose, hand -> _state.value.game.reportIn(whose, hand) },
+                    hurt = { whose -> _state.value.game.damageShownOn(whose) },
                 )
                 .toImageBitmap()
         } else {

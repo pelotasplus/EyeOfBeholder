@@ -920,6 +920,23 @@ class ViewPortGoldenTest {
         )
 
     /**
+     * A blow just taken, splashed over the portrait with the number on it.
+     *
+     * One digit, two digits and the biggest a champion can be hit for at once,
+     * so the way the number is centred can be seen to hold. The fourth is left
+     * clean for comparison.
+     */
+    @Test
+    fun `a blow just taken shows on the portrait`() =
+        checkGolden(
+            "party-panel-splattered",
+            partyOver(
+                level = "LEVEL4.INF", x = 15, y = 11,
+                splattered = mapOf(0 to 3, 1 to 12, 2 to 127),
+            ),
+        )
+
+    /**
      * The same panel with the party hurt, so the bars show all three of their
      * colours at once: well, down to a third, and out cold.
      */
@@ -1080,6 +1097,8 @@ class ViewPortGoldenTest {
         swung: List<Pair<Int, Int>> = emptyList(),
         /** And what a hand's swing came to, while its slot is still saying. */
         reported: Map<Pair<Int, Int>, WhatTheBlowCameTo> = emptyMap(),
+        /** What a champion has just been hit for, while it still shows. */
+        splattered: Map<Int, Int> = emptyMap(),
     ): BufferedImage = runBlocking {
         val resources = ResourceRepositoryImpl()
         val cps = CpsRepositoryImpl(resources)
@@ -1133,6 +1152,7 @@ class ViewPortGoldenTest {
             carrying = { slot -> world.item(slot) },
             recovering = { whose, hand -> (whose.index to hand.index) in swung },
             reporting = { whose, hand -> reported[whose.index to hand.index] },
+            hurt = { whose -> splattered[whose.index] },
         ).toImage()
     }
 

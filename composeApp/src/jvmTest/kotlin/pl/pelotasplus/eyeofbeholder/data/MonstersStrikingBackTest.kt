@@ -8,6 +8,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.CharacterClass
 import pl.pelotasplus.eyeofbeholder.data.model.Champion
 import pl.pelotasplus.eyeofbeholder.data.model.ChampionFlags
 import pl.pelotasplus.eyeofbeholder.data.model.ClassLevel
+import pl.pelotasplus.eyeofbeholder.data.model.DamageShown
 import pl.pelotasplus.eyeofbeholder.data.model.Dice
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.Food
@@ -31,6 +32,7 @@ import pl.pelotasplus.eyeofbeholder.data.repository.VcnRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.VmpRepositoryImpl
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
@@ -309,6 +311,45 @@ class MonstersStrikingBackTest {
 
         assertTrue(turn(everyDieHighest).begun(fromTheSide).anythingSwinging)
         assertFalse(turn(everyDieHighest).begun(fromTheSide).pinnedByASwing)
+    }
+
+    /**
+     * A landed blow shows on the champion it landed on, and goes again after
+     * a moment. It is the only thing that says they were hit: hit points move
+     * too, but a bar creeping down is not something anybody sees mid-fight.
+     */
+    @Test
+    fun `a landed blow shows on the portrait and then fades`() {
+        val taken = swungThrough(world())
+        val hit = taken.struck.first()
+
+        assertEquals(hit.damage, taken.world.damageShownOn(hit.at))
+
+        var fading = taken.world
+        repeat(DamageShown.WHILE_IT_SHOWS.value / DamageShown.STEP.value) {
+            assertEquals(hit.damage, fading.damageShownOn(hit.at), "it went early")
+            fading = fading.damageFaded()
+        }
+
+        assertNull(fading.damageShownOn(hit.at), "it never went")
+    }
+
+    /** A second blow before the first has gone shows its own number, not the sum. */
+    @Test
+    fun `a fresh blow replaces the one still showing`() {
+        val world = world().championHurt(PartySlot(0), 5).championHurt(PartySlot(0), 3)
+
+        assertEquals(3, world.damageShownOn(PartySlot(0)))
+        assertEquals(1, world.showingDamage.size)
+    }
+
+    /** A miss shows nothing at all. */
+    @Test
+    fun `a miss puts no splat up`() {
+        val armoured = world(List(6) { champion(armour = -8) })
+        val taken = swungThrough(armoured, everyDieLowest)
+
+        assertTrue(taken.world.showingDamage.isEmpty())
     }
 
     /** Nor does one that is nowhere near. */

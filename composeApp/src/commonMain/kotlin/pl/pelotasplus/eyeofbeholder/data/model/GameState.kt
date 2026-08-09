@@ -92,6 +92,9 @@ data class GameState(
     /** The hands still coming back to rest from a swing, on the same footing. */
     val recovering: List<HandRecovering> = emptyList(),
 
+    /** The blows the party have just taken, still showing on their portraits. */
+    val showingDamage: List<DamageShown> = emptyList(),
+
 ) {
 
     /** What is in [slot], or null for an empty hand or pack slot. */
@@ -678,8 +681,23 @@ data class GameState(
                     hitPoints = who.hitPoints.copy(current = who.hitPoints.current - by),
                 )
             },
+            // A second blow before the first has faded shows its own number
+            // rather than the two added up.
+            showingDamage = showingDamage.filterNot { it.whose == whose } +
+                DamageShown(whose, by, DamageShown.WHILE_IT_SHOWS.value),
         )
     }
+
+    /** What is showing on that champion's portrait, if anything. */
+    fun damageShownOn(whose: PartySlot): Int? =
+        showingDamage.firstOrNull { it.whose == whose }?.amount
+
+    /** The world with every splat that much nearer to going. */
+    fun damageFaded(by: Ticks = DamageShown.STEP) = copy(
+        showingDamage = showingDamage
+            .map { it.copy(ticksLeft = it.ticksLeft - by.value) }
+            .filter { it.ticksLeft > 0 },
+    )
 
     /**
      * The world with a monster roused, and with it everything standing by

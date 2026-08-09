@@ -24,6 +24,17 @@ data class ChampionBox(val left: Int, val top: Int) {
     val barLabelLeft: Int get() = left + BAR_LABEL_X
     val barLabelTop: Int get() = top + BAR_LABEL_Y
 
+    /** Where a blow just taken is shown, over the face and the bars alike. */
+    val splatLeft: Int get() = left + SPLAT_OFFSET_X
+    val splatTop: Int get() = top + SPLAT_OFFSET_Y
+
+    /**
+     * Where the number on it goes. It is centred by counting the digits off
+     * the middle rather than measured, the same as everything else here.
+     */
+    fun damageLeft(digits: Int): Int = left + DAMAGE_MIDDLE - digits * DAMAGE_DIGIT
+    val damageTop: Int get() = top + DAMAGE_Y
+
     /**
      * Where what a champion holds is drawn: two slots stacked beside the
      * face, one hand above the other, with the icon set in from the left of
@@ -63,6 +74,13 @@ data class ChampionBox(val left: Int, val top: Int) {
         private const val BAR_Y = 44
         private const val BAR_LABEL_X = 2
         private const val BAR_LABEL_Y = 43
+
+        /** Where the splat sits in the box, and the number on it. All the game's own. */
+        private const val SPLAT_OFFSET_X = 13
+        private const val SPLAT_OFFSET_Y = 30
+        private const val DAMAGE_MIDDLE = 34
+        private const val DAMAGE_DIGIT = 3
+        private const val DAMAGE_Y = 42
 
         const val BAR_WIDTH = 39
         const val BAR_HEIGHT = 3
@@ -116,12 +134,25 @@ fun Cps.greenSplat(): Cps.ItemIcon = cut(
     h = SPLAT_HEIGHT,
 )
 
+/**
+ * The bigger, redder one, which goes over a champion's face when they are hit
+ * rather than in the slot a weapon reports from.
+ */
+fun Cps.redSplat(): Cps.ItemIcon = cut(
+    x = SPLAT_X,
+    y = RED_SPLAT_Y,
+    w = SPLAT_WIDTH,
+    h = RED_SPLAT_HEIGHT,
+)
+
 const val THROWN_CPS = "THROWN.CPS"
 
 private const val SPLAT_X = 128
 private const val SPLAT_Y = 96
 private const val SPLAT_WIDTH = 40
 private const val SPLAT_HEIGHT = 16
+private const val RED_SPLAT_Y = 72
+private const val RED_SPLAT_HEIGHT = 24
 
 /**
  * One of the 44 faces a champion can wear, cut from CHARGENA.CPS, where they

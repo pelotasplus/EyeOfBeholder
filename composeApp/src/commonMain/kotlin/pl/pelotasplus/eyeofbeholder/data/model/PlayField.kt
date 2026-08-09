@@ -41,6 +41,8 @@ class PlayField(
         recovering: (PartySlot, CarrySlot) -> Boolean = { _, _ -> false },
         /** What that hand's last swing came to, while the slot is still saying. */
         reporting: (PartySlot, CarrySlot) -> WhatTheBlowCameTo? = { _, _ -> null },
+        /** What that champion has just been hit for, while it is still showing. */
+        hurt: (PartySlot) -> Int? = { null },
     ): PlayField {
         // Something held up over the view is read off a champion's own page,
         // that being the one place a thing being carried can be clicked, so the
@@ -53,7 +55,7 @@ class PlayField(
 
         drawBackground()
         // a champion's own page takes the six boxes' side of the screen
-        if (sheet == null) drawParty(party, portraits, carrying, recovering, reporting)
+        if (sheet == null) drawParty(party, portraits, carrying, recovering, reporting, hurt)
         else if (!underThePage) drawSheet(sheet, portraits)
 
         drawViewPort(viewPort)
@@ -380,6 +382,7 @@ class PlayField(
         carrying: (ItemIndex) -> Item?,
         recovering: (PartySlot, CarrySlot) -> Boolean,
         reporting: (PartySlot, CarrySlot) -> WhatTheBlowCameTo?,
+        hurt: (PartySlot) -> Int?,
     ) {
         championBoxes.forEachIndexed { slot, box ->
             val champion = party.getOrNull(slot)?.takeIf { it.inTheParty } ?: return@forEachIndexed
@@ -400,6 +403,7 @@ class PlayField(
                 carrying = carrying,
                 recovering = { hand -> recovering(PartySlot(slot), CarrySlot(hand)) },
                 reporting = { hand -> reporting(PartySlot(slot), CarrySlot(hand)) },
+                hurt = hurt(PartySlot(slot)),
             )
         }
     }
@@ -411,6 +415,7 @@ class PlayField(
         carrying: (ItemIndex) -> Item?,
         recovering: (Int) -> Boolean,
         reporting: (Int) -> WhatTheBlowCameTo?,
+        hurt: Int?,
     ) {
         portraits?.let { sheet ->
             val face = sheet.portrait(champion.portrait)
@@ -435,6 +440,10 @@ class PlayField(
 
         drawHands(champion, box, carrying, recovering, reporting)
         drawHitPointBar(champion, box)
+
+        // Last of all, over the face and the bars alike: it is meant to be the
+        // thing a player sees rather than something tucked behind the rest.
+        hurt?.let { drawTheDamage(it, box) }
     }
 
     /**
@@ -491,6 +500,34 @@ class PlayField(
      * straddle it, and both are centred by the same rule — six pixels a
      * letter, taken off the middle.
      */
+    /**
+     * A blow a champion has just taken, splashed over their portrait with the
+     * number on it.
+     *
+     * The one thing that says they were hit at all. Hit points move too, but a
+     * bar creeping down is not something anybody notices mid-fight.
+     */
+    private fun drawTheDamage(damage: Int, box: ChampionBox) {
+        val font = font ?: return
+        val thrown = thrown ?: return
+
+        drawIcon(
+            icon = thrown.redSplat(),
+            colours = thrown.palette ?: palette,
+            left = box.splatLeft,
+            top = box.splatTop,
+        )
+
+        val shown = "$damage"
+        write(
+            text = shown,
+            font = font,
+            left = box.damageLeft(shown.length),
+            top = box.damageTop,
+            colour = TEXT_COLOUR,
+        )
+    }
+
     private fun drawTheBlow(came: WhatTheBlowCameTo, box: ChampionBox, hand: Int) {
         val font = font ?: return
         val top = box.handTop(hand)
