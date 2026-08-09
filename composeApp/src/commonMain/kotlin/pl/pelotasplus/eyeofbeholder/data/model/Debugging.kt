@@ -29,4 +29,20 @@ class Debugging {
     fun passWalls(may: Boolean) {
         _wallsArePassable.value = may
     }
+
+    private val _monstersMayWalk = MutableStateFlow(false)
+
+    /**
+     * Whether monsters go anywhere, or fight only from where they were placed.
+     *
+     * Off by default, which is the opposite of the game: something that walks
+     * arrives while a scene is being looked at, and every other switch here
+     * exists so that what is on the screen stays still long enough to be read.
+     * Turned on, they hunt.
+     */
+    val monstersMayWalk: StateFlow<Boolean> = _monstersMayWalk.asStateFlow()
+
+    fun letMonstersWalk(may: Boolean) {
+        _monstersMayWalk.value = may
+    }
 }

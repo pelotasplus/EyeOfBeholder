@@ -677,6 +677,29 @@ data class GameState(
         monsters = monsters.map { if (it.index in slots) it.swingingOn() else it },
     )
 
+    /** The world with one monster standing somewhere else, facing [way]. */
+    fun monsterMoved(slot: Int, to: Location, way: Direction, place: SquarePlace) = copy(
+        monsters = monsters.map {
+            if (it.index == slot) {
+                it.copy(block = to.asBlock, direction = way, place = place)
+            } else {
+                it
+            }
+        },
+    )
+
+    /**
+     * The world with one monster facing [way] where it stands.
+     *
+     * It has spent its turn doing it, the same as one that turned to face the
+     * party — so a monster cannot turn a corner and swing in one breath.
+     */
+    fun monsterTurned(slot: Int, way: Direction) = copy(
+        monsters = monsters.map {
+            if (it.index == slot) it.copy(direction = way, justTurned = true) else it
+        },
+    )
+
     /** The world with those monsters turned to face where they are told. */
     fun monstersTurnedToFace(ways: List<Pair<Int, Direction>>): GameState {
         if (ways.isEmpty()) return this

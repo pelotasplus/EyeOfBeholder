@@ -18,6 +18,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.MonsterGfx
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterInstance
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterTypeId
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterProperty
+import pl.pelotasplus.eyeofbeholder.data.model.MonsterSize
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptTimer
 import pl.pelotasplus.eyeofbeholder.data.model.SquarePlace
 import pl.pelotasplus.eyeofbeholder.data.model.SubLevel
@@ -668,7 +669,7 @@ class InfRepositoryImpl(
             val typeFlags = reader.readU16LE()
             val experience = reader.readU16LE()
 
-            val u30 = reader.readU8()
+            val size = MonsterSize.of(reader.readU8())
             val sound1 = reader.readI8()
             val sound2 = reader.readI8()
 
@@ -710,7 +711,7 @@ class InfRepositoryImpl(
                     capsFlags = capsFlags,
                     typeFlags = typeFlags,
                     experience = experience,
-                    u30 = u30,
+                    size = size,
                     sound1 = sound1,
                     sound2 = sound2,
                     numRemoteAttacks = numRemoteAttacks,

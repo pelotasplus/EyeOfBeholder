@@ -21,6 +21,9 @@ data class Location(
     val x: Int,
     val y: Int
 ) {
+    /** The same square packed the way a record on disk writes it. */
+    val asBlock: Int get() = (y shl 5) or (x and 31)
+
     companion object {
         fun read(reader: ByteReader): Location {
             val pos = reader.readU16LE()

@@ -56,4 +56,19 @@ enum class Direction {
         val newIndex = (currentIndex + rotationSteps) % 4
         return sides[newIndex]
     }
+
+    /** The square one step this way from [from]. */
+    fun oneStepFrom(from: Location): Location {
+        val (dx, dy) = transformCoordinates(0, -1)
+        return Location(from.x + dx, from.y + dy)
+    }
+
+    /**
+     * The side a square turns back towards whoever walks onto it this way.
+     *
+     * It is that wall which decides whether the step is allowed, and not the
+     * one on the square being left: a doorway carries its door on the face it
+     * is entered by.
+     */
+    val wallSideFacingBack: WallSide get() = WallSide.entries[ordinal].opposite
 }

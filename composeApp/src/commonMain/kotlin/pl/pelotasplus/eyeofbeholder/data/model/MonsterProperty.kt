@@ -30,6 +30,8 @@ package pl.pelotasplus.eyeofbeholder.data.model
  * @property capsFlags Capability flags (flying, invisible, etc.)
  * @property typeFlags Type classification (undead, dragon, giant, etc.)
  * @property experience XP awarded when defeated
+ * @property size How much of a square one takes up, and so how many will
+ *   share one
  * @property sound1 Attack sound effect index
  * @property sound2 Movement sound effect index
  * @property tuResist Turn undead resistance value
@@ -51,7 +53,7 @@ data class MonsterProperty(
     val capsFlags: Int,
     val typeFlags: Int,
     val experience: Int,
-    val u30: Int,
+    val size: MonsterSize,
     val sound1: Int, // attack sound
     val sound2: Int, // move sound
     val numRemoteAttacks: Int,
@@ -69,7 +71,22 @@ data class MonsterProperty(
      */
     val isLarge: Boolean get() = capsFlags and LARGE != 0
 
+    /**
+     * Whether a shut door stops it. One that can work a door spends a step
+     * opening it rather than turning away and going round.
+     */
+    val opensDoors: Boolean get() = capsFlags and OPENS_DOORS != 0
+
+    /**
+     * Whether it swerves round the party rather than always taking the
+     * shortest way in. Something with this only takes the sideways approach
+     * three times in four, which is what stops a pack arriving as one body.
+     */
+    val comesInSideways: Boolean get() = capsFlags and COMES_IN_SIDEWAYS != 0
+
     private companion object {
         const val LARGE = 0x01
+        const val COMES_IN_SIDEWAYS = 0x200
+        const val OPENS_DOORS = 0x1000
     }
 }

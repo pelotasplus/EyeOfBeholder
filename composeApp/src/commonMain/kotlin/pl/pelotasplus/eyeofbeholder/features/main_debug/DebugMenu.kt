@@ -76,6 +76,7 @@ private fun DebugMenuPanel(
     debugging: Debugging = koinInject(),
 ) {
     val wallsArePassable by debugging.wallsArePassable.collectAsState()
+    val monstersMayWalk by debugging.monstersMayWalk.collectAsState()
 
     Column(
         modifier = modifier
@@ -95,6 +96,13 @@ private fun DebugMenuPanel(
             modifier = Modifier.fillMaxWidth(),
         ) {
             Text(if (wallsArePassable) "Walls: pass" else "Walls: solid")
+        }
+
+        Button(
+            onClick = { debugging.letMonstersWalk(!monstersMayWalk) },
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text(if (monstersMayWalk) "Monsters: hunt" else "Monsters: rooted")
         }
 
         debugDestinations.forEach { destination ->
