@@ -31,6 +31,36 @@ class MonsterPathing(
     fun shuffling(world: GameState, monster: MonsterInstance) =
         stepping.shuffleOn(world, monster)
 
+    /** Whether there is an opening onto the square [way] of this monster. */
+    fun opensOnto(world: GameState, monster: MonsterInstance, way: Direction) =
+        stepping.opensOnto(world, monster, way)
+
+    /**
+     * Straight on if it can, and otherwise a turn of [turnsBy] quarters where
+     * it stands. This is the whole of a patrol: no route is written down
+     * anywhere, and where a monster ends up falls out of the maze.
+     */
+    fun onwards(
+        world: GameState,
+        monster: MonsterInstance,
+        turnsBy: Int,
+    ): MonsterStepping.Stepped {
+        val ahead = monster.direction.oneStepFrom(Location(monster.x, monster.y))
+
+        val stepped = stepping.step(world, monster, onto = ahead, facing = monster.direction)
+        if (stepped !is MonsterStepping.Stepped.Refused) return stepped
+
+        return stepping.step(world, monster, facing = monster.direction.turnedBy(turnsBy))
+    }
+
+    /** The same monster turned in place to face [way]. */
+    fun turning(world: GameState, monster: MonsterInstance, way: Direction) =
+        stepping.step(world, monster, facing = way)
+
+    /** One step onto [onto], keeping the way it faces. */
+    fun stepping(world: GameState, monster: MonsterInstance, onto: Location) =
+        stepping.step(world, monster, onto = onto, facing = monster.direction)
+
     /**
      * One step of [monster]'s towards [destination].
      *

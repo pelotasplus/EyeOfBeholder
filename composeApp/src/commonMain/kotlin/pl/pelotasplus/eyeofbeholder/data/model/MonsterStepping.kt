@@ -26,6 +26,13 @@ class MonsterStepping(
 
         /** It could not, and has done nothing at all. */
         data object Refused : Stepped
+
+        /** The world after it — [unchanged] where nothing happened. */
+        fun worldOr(unchanged: GameState): GameState = when (this) {
+            is Moved -> world
+            is Turned -> world
+            Refused -> unchanged
+        }
     }
 
     /**
@@ -70,6 +77,18 @@ class MonsterStepping(
             world = world.monsterMoved(monster.index, onto, way, place),
             heard = kind(monster)?.sound2?.takeIf { it > 0 }?.let { TrackIndex(it) },
         )
+    }
+
+    /**
+     * Whether the square [way] of this one has an opening onto it.
+     *
+     * The wall and nothing else — not who is standing there, not where the
+     * party are. It is what a straying monster glances at as it goes past, and
+     * seeing a way through is not the same as being able to take it.
+     */
+    fun opensOnto(world: GameState, monster: MonsterInstance, way: Direction): Boolean {
+        val onto = way.oneStepFrom(Location(monster.x, monster.y))
+        return subLevel.canBeWalkedOnto(world.wall(level, onto, way.wallSideFacingBack))
     }
 
     /**

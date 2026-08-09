@@ -57,6 +57,9 @@ enum class Direction {
         return sides[newIndex]
     }
 
+    /** The same way turned [quarters] clockwise; negative turns the other way. */
+    fun turnedBy(quarters: Int) = entries[(ordinal + quarters).mod(entries.size)]
+
     /** The square one step this way from [from]. */
     fun oneStepFrom(from: Location): Location {
         val (dx, dy) = transformCoordinates(0, -1)

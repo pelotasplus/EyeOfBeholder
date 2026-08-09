@@ -66,7 +66,11 @@ data class MonsterInstance(
      * what makes one survivable.
      */
     val readyToStrike: Boolean = false,
+    /** Where it is in its looking-about, for the two modes that stray. */
+    val straying: Straying = Straying.TURNED_AWAY,
 ) {
+    /** What it does with a turn nobody has provoked it into taking. */
+    val whatItDoes: MonsterMode get() = MonsterMode.of(mode)
     val x: Int get() = block and 0x1F
     val y: Int get() = block shr 5
 
@@ -117,7 +121,10 @@ data class MonsterInstance(
      * Whether it is waiting to see what the party do rather than doing
      * anything: the mode a level gives something that talks before it fights.
      */
-    val standingBy: Boolean get() = mode == WAITING_TO_SEE
+    val standingBy: Boolean get() = whatItDoes == MonsterMode.WAITING_TO_SEE
+
+    /** The same monster set after the party, whatever it was doing before. */
+    fun takingUpTheHunt() = copy(mode = MonsterMode.HUNTING.asWritten, provoked = true)
 
     /**
      * Whether its arm gets to the party from where it stands: it must face

@@ -688,6 +688,11 @@ data class GameState(
         },
     )
 
+    /** The world with one monster further round its own loop of looking about. */
+    fun monsterStrayed(slot: Int, straying: Straying) = copy(
+        monsters = monsters.map { if (it.index == slot) it.copy(straying = straying) else it },
+    )
+
     /** The world with one monster standing somewhere else on its own square. */
     fun monsterShifted(slot: Int, place: SquarePlace) = copy(
         monsters = monsters.map { if (it.index == slot) it.copy(place = place) else it },
