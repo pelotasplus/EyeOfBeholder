@@ -19,17 +19,15 @@ the history instead.
   - [ ] 1c. Monsters casting spells — **L**
   - [ ] 1d. `HACK` and `BASH`, which want a wall that gives under a weapon — **S**, and no floor has one
   - [ ] 1e. The `SetFlag.MonsterFlag` bits nobody has found a meaning for — **XS** each
-- [ ] **2. A monster's blow does not stop the world** — the original freezes every other clock for the length of one, and this does not — **S**
+- [ ] **2. A monster's blow does not stop the world** — the original freezes every other clock for the length of one — **S**, but blocked: the pause list names one monster clock twice and another not at all, and which of those is the bug decides whether this is worth writing
 - [ ] **3. The last two things a monster mode can do** — fear, and giving up on a destination. Both have a branch waiting and nothing to trigger them — **S**
 - [ ] **4. What a script can ask about a thing by name** — needs ITEM.DAT names threaded through — **M**
-- [ ] **5. What lies on the squares beside the party** — items at the very edges of the view — **S**
-- [ ] **6. The words on the buttons are English constants** — they live in `START.EXE` — **L**
-- [ ] **7. A script reads the party where it left them** — and stops writing the whole world back — **M**
-- [ ] **8. The screen is composed a boxed pixel at a time** — 3.9ms of a 4.2ms frame — **M**
-- [ ] **9. Saved games on a server** — `SaveStore` is already the seam — **L**
-- [ ] **10. The rest of the audio** — mostly waiting on the features that would make the noise
-  - [ ] 10a. `WebAudioSink.wake` exists and is called from nowhere, so the web build is silent until the page is touched — **XS**
-  - [ ] 10b. The music, which is screen work before it is sound work — **M**
+- [ ] **5. The words on the buttons are English constants** — they live in `START.EXE` — **L**
+- [ ] **6. A script reads the party where it left them** — and stops writing the whole world back — **M**
+- [ ] **7. The screen is composed a boxed pixel at a time** — 3.9ms of a 4.2ms frame — **M**
+- [ ] **8. Saved games on a server** — `SaveStore` is already the seam — **L**
+- [ ] **9. The rest of the audio** — mostly waiting on the features that would make the noise
+  - [ ] 9a. The music, which is screen work before it is sound work — **M**
 
 ## In full
 
@@ -75,15 +73,26 @@ the history instead.
   character timers, and the party. Here only the party are held, so the rest
   carry on underneath it.
 
-  It matters most for a pair. Level 5's two clerics land in turn groups whose
-  offsets happen to be the same, so they act on the same tick and both blows
-  arrive together, where the original would have the second one's clock stopped
-  while the first one's arm came down. Whether this is what makes that fight
-  feel unwinnable is not settled, but it is the last thing in that path that
-  is known to be missing rather than guessed at.
+  It is about eight ticks, and the turn log is what it should be judged
+  against.
 
-  It is about eight ticks, and the turn log added alongside this is what it
-  should be judged against.
+  **It will not fix level 5's clerics, and one thing has to be settled before
+  it is written.** The four monster clocks are numbered 0x20 to 0x23. The list
+  of what an attack pauses names 0x20, 0x21 and **0x22 twice**, and never names
+  0x23 — so the fourth group is not paused at all. The clerics are slots 16 and
+  17, whose groups work out as 2 and 3, and both groups start at the same
+  offset with the same period, so they always come round together and the one
+  that would be held is exactly the one the list forgets.
+
+  So either that duplicate is a bug in the original, in which case the pair
+  really do strike as one and this changes nothing for them; or it is a slip in
+  the reference implementation's transcription and the real list names 0x23, in
+  which case this is precisely the fix for that fight. Nothing here can tell
+  the two apart — it wants the original binary, or somebody playing the real
+  thing and watching whether the pair land together.
+
+  Written faithfully it pauses 0, 1 and 2 only, which is right for most
+  monsters on most floors and does nothing whatever for the temple.
 
 - **The last two things a monster mode can do.** The modes are written and sit
   behind "Monsters: hunt" in the Debug menu: hunting, wall-following either
@@ -105,19 +114,6 @@ the history instead.
   held thing's name contains a word, identified or not. Nothing answers those,
   because names live in ITEM.DAT and the world a script is handed does not
   carry them. Whatever needs them will need the names threading through.
-
-- **What lies on the squares beside the party.** The party's own row is three
-  squares: the one they stand on and one to either side. Their walls are drawn
-  and so is what lies underfoot, but the two beside them hold nothing —
-  `viewBlockRows` stops one row ahead and the own square is drawn by a call of
-  its own, so no item on either side is ever reached.
-
-  The original draws them, last of all and after everything in front. It is a
-  narrow thing to see: their screen x is 128 either way from a viewport 176
-  wide, so an icon there is a strip at the very edge, and the original works
-  out the strip first and skips the square when nothing of it is left. What
-  they never draw is a monster or a door — both are guarded on the square not
-  being one of the party's own row — so only items are missing.
 
 - **The words on the buttons are English constants.** The word that turns a
   page and the word that closes one are written into the source, where the
@@ -197,10 +193,10 @@ the history instead.
 
   Nothing plays the music, either. The long tunes are rendered and sitting
   there, but they belong to the intro and the finale, which is screen work
-  before it is sound work. When a browser is what plays them, note that nothing
-  sounds until the player has touched the page: the first key that moves the
-  party has to be what wakes the context, and `WebAudioSink.wake` is there for
-  it and is not called from anywhere.
+  before it is sound work. A browser will not sound until the player has
+  touched the page, which is handled: the first event that is not the game
+  starting wakes the speaker, whatever it was — a key, a click, an answer —
+  since it is the pressing rather than what it did that a browser waits for.
 
   What is given up by rendering rather than synthesising is per-effect volume
   ramps and anything the driver triggers on its own. Taking that back means the

@@ -45,11 +45,11 @@ class WebAudioSink : AudioSink {
     }
 
     /**
-     * To be called from something the player did. A context built before any
-     * interaction starts suspended and stays that way until it is resumed
-     * from inside a real event.
+     * A context built before any interaction starts suspended and stays that
+     * way until it is resumed from inside a real event, so this has to be
+     * reached from the player's own doing and not from a clock or a load.
      */
-    fun wake() {
+    override fun wake() {
         context()?.resume()
     }
 

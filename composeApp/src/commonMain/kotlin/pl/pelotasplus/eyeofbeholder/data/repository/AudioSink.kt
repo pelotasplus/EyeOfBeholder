@@ -23,6 +23,18 @@ interface AudioSink {
 
     /** Silence, immediately: leaving a level, or turning sound off. */
     fun stopAll()
+
+    /**
+     * Told that the player has just done something, which is the only moment
+     * some speakers may be started from.
+     *
+     * A browser will not make a sound until the page has been interacted with,
+     * and refuses by staying quiet rather than by failing — so a page loaded
+     * and left to sit has a speaker that never comes up, and nothing to say
+     * so. Everywhere else there is nothing to do, which is why this does
+     * nothing unless a platform says otherwise.
+     */
+    fun wake() = Unit
 }
 
 /** A sound that is being heard, for as long as anyone still wants it. */

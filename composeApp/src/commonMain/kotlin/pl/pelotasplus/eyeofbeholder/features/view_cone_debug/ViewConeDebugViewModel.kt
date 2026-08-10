@@ -216,6 +216,13 @@ class ViewConeDebugViewModel(
     val state = _state.asStateFlow()
 
     fun onEvent(event: Event) {
+        // Every event but the one that starts the game is the player doing
+        // something, and some speakers may only be started from inside one of
+        // those. It goes before anything that can turn an event away: a step
+        // refused by a wall is still a key that was pressed, and it is the
+        // pressing that the speaker is waiting for.
+        if (event !is Event.Initialize) audioSink.wake()
+
         // A script running is not a reason to stand still: a door swinging
         // somewhere can be watched, or turned away from, while it swings. Only
         // a script that has taken the party — walked them somewhere, turned
