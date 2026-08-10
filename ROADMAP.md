@@ -17,18 +17,19 @@ the history instead.
   - [ ] 1a. Status attacks on a landed blow: poison, paralysis, a pocket picked — **S**
   - [ ] 1b. Thrown and fired weapons; the only route to `NO AMMO` — **L**
   - [ ] 1c. Monsters casting spells — **L**
-  - [ ] 1d. `HACK` and `BASH`, which want a wall that gives under a weapon — **S**, blocked on the mirrors
+  - [ ] 1d. `HACK` and `BASH`, which want a wall that gives under a weapon — **S**, and no floor has one
   - [ ] 1e. The `SetFlag.MonsterFlag` bits nobody has found a meaning for — **XS** each
-- [ ] **2. The last two things a monster mode can do** — fear, and giving up on a destination. Both have a branch waiting and nothing to trigger them — **S**
-- [ ] **3. What a script can ask about a thing by name** — needs ITEM.DAT names threaded through — **M**
-- [ ] **4. What lies on the squares beside the party** — items at the very edges of the view — **S**
-- [ ] **5. The words on the buttons are English constants** — they live in `START.EXE` — **L**
-- [ ] **6. A script reads the party where it left them** — and stops writing the whole world back — **M**
-- [ ] **7. The screen is composed a boxed pixel at a time** — 3.9ms of a 4.2ms frame — **M**
-- [ ] **8. Saved games on a server** — `SaveStore` is already the seam — **L**
-- [ ] **9. The rest of the audio** — mostly waiting on the features that would make the noise
-  - [ ] 9a. `WebAudioSink.wake` exists and is called from nowhere, so the web build is silent until the page is touched — **XS**
-  - [ ] 9b. The music, which is screen work before it is sound work — **M**
+- [ ] **2. A monster's blow does not stop the world** — the original freezes every other clock for the length of one, and this does not — **S**
+- [ ] **3. The last two things a monster mode can do** — fear, and giving up on a destination. Both have a branch waiting and nothing to trigger them — **S**
+- [ ] **4. What a script can ask about a thing by name** — needs ITEM.DAT names threaded through — **M**
+- [ ] **5. What lies on the squares beside the party** — items at the very edges of the view — **S**
+- [ ] **6. The words on the buttons are English constants** — they live in `START.EXE` — **L**
+- [ ] **7. A script reads the party where it left them** — and stops writing the whole world back — **M**
+- [ ] **8. The screen is composed a boxed pixel at a time** — 3.9ms of a 4.2ms frame — **M**
+- [ ] **9. Saved games on a server** — `SaveStore` is already the seam — **L**
+- [ ] **10. The rest of the audio** — mostly waiting on the features that would make the noise
+  - [ ] 10a. `WebAudioSink.wake` exists and is called from nowhere, so the web build is silent until the page is touched — **XS**
+  - [ ] 10b. The music, which is screen work before it is sound work — **M**
 
 ## In full
 
@@ -37,10 +38,12 @@ the history instead.
   leaves the world when they run out.
 
   Two of the six things a slot can report are unreachable: `HACK` and `BASH`,
-  which are what it says when a weapon is worked against a wall that gives.
-  Nothing strikes a wall yet — that is the mirrors and their like — and the two
-  are named and waiting for whatever does it. `NO AMMO` needs something that
-  fires.
+  which are what it says when a weapon is *swung* at a wall with nothing in
+  front of it. That is a different path from using a weapon on one, which is
+  written: a wall answers a swing only where its special type is 8 or 9, and
+  all that decides is which of the two words appears — the wall that actually
+  gives is special type 255, and no floor so far has one. `NO AMMO` needs
+  something that fires.
 
   Two things worth not re-deriving. There is no sound for a blow landing or a
   monster dying: this game plays one sound for the swing and nothing else, and
@@ -66,6 +69,22 @@ the history instead.
   one that rouses. The rest still warn rather than falling through the same
   `else` as everything uninteresting, and each wants whatever names it.
 
+- **A monster's blow does not stop the world.** An attack on the square
+  straight in front of the party freezes every other clock in the original for
+  as long as it takes: the other monsters' turn timers, the doors, the
+  character timers, and the party. Here only the party are held, so the rest
+  carry on underneath it.
+
+  It matters most for a pair. Level 5's two clerics land in turn groups whose
+  offsets happen to be the same, so they act on the same tick and both blows
+  arrive together, where the original would have the second one's clock stopped
+  while the first one's arm came down. Whether this is what makes that fight
+  feel unwinnable is not settled, but it is the last thing in that path that
+  is known to be missing rather than guessed at.
+
+  It is about eight ticks, and the turn log added alongside this is what it
+  should be judged against.
+
 - **The last two things a monster mode can do.** The modes are written and sit
   behind "Monsters: hunt" in the Debug menu: hunting, wall-following either
   way, pacing, straying either way, and sleeping until the party come near.
@@ -79,17 +98,6 @@ the history instead.
 
   Three of the ten mode numbers are still one case between them, the one that
   does nothing. One of them counts down a spell; nothing tells them apart.
-
-  One thing is knowingly different. Coming at a square off its shoulder, the
-  original reads the wall on the face the monster is looking at rather than the
-  one it walks through, so it can sidle through a wall. This reads the wall it
-  goes through.
-
-  And one open question, from playing it: whether an approach really is as
-  repetitive as ours looks. The tables say a monster beside the party sidles
-  along beside them and never takes the square they left, and that is what
-  ours does — but it does not match how the fight is remembered, and the two
-  straying modes are the only other source of movement the original has.
 
 - **What a script can ask about a thing by name.** A lock is answered now — it
   can be shown what kind of thing the hand holds, what it is worth, and which
