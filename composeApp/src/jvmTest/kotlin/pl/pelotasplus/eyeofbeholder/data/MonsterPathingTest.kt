@@ -11,6 +11,8 @@ import pl.pelotasplus.eyeofbeholder.data.model.MonsterPathing
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterProperty
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterStepping
 import pl.pelotasplus.eyeofbeholder.data.model.PartyState
+import pl.pelotasplus.eyeofbeholder.data.model.WallByte
+import pl.pelotasplus.eyeofbeholder.data.model.WallSide
 import pl.pelotasplus.eyeofbeholder.data.repository.CpsRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.DecRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.InfRepositoryImpl
@@ -246,6 +248,51 @@ class MonsterPathingTest {
         assertTrue(stepped is MonsterStepping.Stepped.Moved, "it did not move")
         assertEquals(Location(12, 9), stepped.landedOn())
         assertEquals(Direction.NORTH, stepped.world.theCleric().direction)
+    }
+
+    /**
+     * A sidestep is judged by the wall across the face the monster is looking
+     * at, not the one it walks through, and that is what stops it sidling
+     * along beside the party for ever.
+     *
+     * Facing south and sidling west, it asks about the *north* face of the
+     * square beside it — the one opposite the way it is looking, which has
+     * nothing to do with the way it is going. Where that is shut the sidestep
+     * is refused, and being refused
+     * is what sends it to the fan — which goes the same way but turns it as it
+     * goes, so it arrives facing west, no longer facing the party, and has to
+     * spend another turn coming round. That turn is the room a party have.
+     */
+    @Test
+    fun `a wall on the face it looks at refuses the sidestep and turns it`() {
+        val open = world(at = Location(13, 9), facing = Direction.SOUTH, party = Location(12, 10))
+
+        // Sidling west it keeps facing south, and can swing again at once.
+        val sidled = pathing().towards(
+            world = open,
+            monster = open.theCleric(),
+            destination = Location(12, 10),
+            wayRound = MonsterPathing.WayRound.RIGHT_FIRST,
+        )
+        assertEquals(Location(12, 9), sidled.landedOn())
+        assertEquals(Direction.SOUTH, (sidled as MonsterStepping.Stepped.Moved).world.theCleric().direction)
+
+        // Shut the face it is looking at, leaving the one it walks through open.
+        val shut = open.wallChanged(5, Location(12, 9), WallSide.NORTH, WallByte(1))
+
+        val fanned = pathing().towards(
+            world = shut,
+            monster = shut.theCleric(),
+            destination = Location(12, 10),
+            wayRound = MonsterPathing.WayRound.RIGHT_FIRST,
+        )
+
+        assertEquals(Location(12, 9), fanned.landedOn(), "the fan did not take it west")
+        assertEquals(
+            Direction.WEST,
+            (fanned as MonsterStepping.Stepped.Moved).world.theCleric().direction,
+            "it sidled instead of being refused and fanning",
+        )
     }
 
     @Test

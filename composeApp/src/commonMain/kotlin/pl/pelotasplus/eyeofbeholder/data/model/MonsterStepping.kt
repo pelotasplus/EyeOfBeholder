@@ -41,8 +41,18 @@ class MonsterStepping(
      *
      * Where it ends up facing is [facing], and it need not be where it is
      * going: a monster reaching a square off its shoulder sidles onto it
-     * still facing the way it was. Which face of the wall is asked about is
-     * always the way it travels, whatever it is looking at.
+     * still facing the way it was.
+     *
+     * The wall it asks about is the one across the face it is *looking* at,
+     * not the one it is walking through. That reads like a mistake and is not:
+     * it is what stops a monster sidling along a corridor for ever. Sidling
+     * west while facing south, it asks about the north face of the square
+     * beside it, and where that is shut it is refused. Being refused is what
+     * sends it to the fan, which goes the same way but turns it as it goes —
+     * so it arrives no longer facing the party and owes a turn before it can
+     * swing. Corrected to the travelling face, a monster never fails a
+     * sidestep, never reaches the fan, and slides along beside a party for
+     * ever swinging as it goes, which is not the game.
      *
      * A monster asked to move somewhere it cannot always ends up doing
      * nothing, never half of it: whoever is choosing squares is expected to
@@ -63,12 +73,11 @@ class MonsterStepping(
         // them; it stops on the square beside them and swings from there.
         if (onto == world.party.position) return Stepped.Refused
 
-        val travel = Direction.entries.firstOrNull { it.oneStepFrom(from) == onto }
-            ?: return Stepped.Refused
+        if (Direction.entries.none { it.oneStepFrom(from) == onto }) return Stepped.Refused
 
-        val wall = world.wall(level, onto, travel.wallSideFacingBack)
+        val wall = world.wall(level, onto, way.wallSideFacingBack)
         if (!subLevel.canBeWalkedOnto(wall)) {
-            return openingTheDoor(world, monster, onto, travel, wall)
+            return openingTheDoor(world, monster, onto, way, wall)
         }
 
         val place = roomOn(world, monster, onto, way) ?: return Stepped.Refused
