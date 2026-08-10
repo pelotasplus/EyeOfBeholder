@@ -27,6 +27,17 @@ enum class ScriptEvent(val mask: Int) {
 
     /** The wall facing the party was clicked, wherever the party stand. */
     WALL_CLICKED(0x40),
+
+    /**
+     * Something in a hand was used, and the wall the party face is being asked
+     * what it makes of that.
+     *
+     * It fires for whatever was used and leaves the script to care what it
+     * was: a window is broken by a weapon and not by a torch, and the script
+     * is what asks. Distinct from [WALL_CLICKED], which is the same wall
+     * merely pointed at — one reads a carving, the other takes a sword to it.
+     */
+    ITEM_USED_ON_WALL(0x100),
 }
 
 /**

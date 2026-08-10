@@ -244,6 +244,8 @@ class LevelScriptRunner(
     private val subLevel: Int = 0,
     /** That sublevel's species, which say what a conjured monster can take. */
     private val kinds: List<MonsterProperty> = emptyList(),
+    /** What each kind of item is, for the questions a script asks about one. */
+    private val itemTypes: ItemTypes? = null,
     private val dice: Dice = Dice.random,
 ) {
 
@@ -259,7 +261,9 @@ class LevelScriptRunner(
         state: GameState,
         stage: ScriptStage = ScriptStage.silent(),
         at: Location = state.party.position,
-    ): ScriptRun = onEvent(triggers, event, state, stage, at, depth = 0)
+        /** What was used, for the questions a script asks about it. */
+        used: ItemIndex? = null,
+    ): ScriptRun = onEvent(triggers, event, state, stage, at, depth = 0, used = used)
 
     private suspend fun onEvent(
         triggers: List<Trigger>,
@@ -268,6 +272,7 @@ class LevelScriptRunner(
         stage: ScriptStage,
         position: Location,
         depth: Int,
+        used: ItemIndex? = null,
     ): ScriptRun {
         val here = triggers.filter { it.location == position }
         val trigger = here.firstOrNull { it.flags.reactsTo(event) }
@@ -285,7 +290,7 @@ class LevelScriptRunner(
         Logger.d(TAG) {
             "Running trigger at $position for $event from offset ${trigger.script.offset}"
         }
-        return runScript(trigger.script.offset, state, stage, triggers, depth, event).also { result ->
+        return runScript(trigger.script.offset, state, stage, triggers, depth, event, used).also { result ->
             Logger.d(TAG) { "Script from ${trigger.script.offset} left ${result.state.party}" }
         }
     }
@@ -297,6 +302,7 @@ class LevelScriptRunner(
         triggers: List<Trigger>,
         depth: Int,
         event: ScriptEvent,
+        used: ItemIndex?,
     ): ScriptRun {
         var state = initial
 
@@ -362,7 +368,7 @@ class LevelScriptRunner(
 
                 is Eval -> {
                     // a true condition falls through, a false one jumps
-                    val condition = evaluate(token.tokens, state, dialogAnswer, event)
+                    val condition = evaluate(token.tokens, state, dialogAnswer, event, used)
                     Logger.d(TAG) {
                         if (condition.isTrue) {
                             "    condition true, carrying on"
@@ -622,6 +628,7 @@ class LevelScriptRunner(
         state: GameState,
         dialogAnswer: DialogAnswer?,
         event: ScriptEvent,
+        used: ItemIndex?,
     ): ConditionValue {
         val stack = ArrayDeque<ConditionValue>()
         fun pop() = stack.removeLastOrNull() ?: ConditionValue.FALSE
@@ -646,6 +653,35 @@ class LevelScriptRunner(
                 // different things for being walked onto and for being clicked
                 // asks this first.
                 is Conditional.GetTriggerFlag -> push(ConditionValue.of(event.mask))
+
+                // What was used on the wall, which is how one that gives only
+                // to a weapon tells a sword from a torch. Nothing used is
+                // nothing on all four counts rather than a refusal: a script
+                // asking is entitled to an answer, and the answer is that the
+                // hand was empty.
+                is Conditional.OnBash.ItemExtraProperties -> push(
+                    ConditionValue.of(
+                        state.item(used ?: ItemIndex(ItemIndex.NOTHING))
+                            ?.let { itemTypes?.get(it.type)?.extraProperties }
+                            ?.and(WHAT_KIND_OF_THING)
+                            ?: 0,
+                    ),
+                )
+
+                is Conditional.OnBash.ItemType -> push(
+                    ConditionValue.of(
+                        state.item(used ?: ItemIndex(ItemIndex.NOTHING))?.type?.value ?: 0,
+                    ),
+                )
+
+                is Conditional.OnBash.ItemValue -> push(
+                    ConditionValue.of(
+                        state.item(used ?: ItemIndex(ItemIndex.NOTHING))?.value ?: 0,
+                    ),
+                )
+
+                is Conditional.OnBash.LastUsedItem ->
+                    push(ConditionValue.of(used?.value ?: 0))
 
                 // What a wall is now, which is not what its file says once a
                 // script has changed it: a script that opens a way through
@@ -760,6 +796,13 @@ class LevelScriptRunner(
     private companion object {
         const val TAG = "LevelScriptRunner"
         const val MAX_STEPS = 200
+
+        /**
+         * The low bits of an item's extra properties, which say what kind of
+         * thing it is. A script asking a wall what was used on it is asking
+         * this: one is a weapon swung by hand.
+         */
+        private const val WHAT_KIND_OF_THING = 0x7F
 
         /** How long a door rests at each of the positions it slides through. */
         val DOOR_STEP = Ticks(5)
