@@ -73,8 +73,11 @@ val blockScreenCoords: List<Int> = listOf(
     -22, -35, 22, -35, -27, -22, 27, -22, 0, -30,
     67, -35, 110, -35, 83, -22, 140, -22, 98, -30,
     // blocks 15-17: the party's own row. Only 16, the square underfoot, is
-    // drawn; the two beside it are 128 either way from a viewport 176 wide,
-    // so what stands on them is a strip at the very edge of the screen.
+    // ever seen. The two beside it carry the same 128 either way — the game's
+    // own numbers, and identical for both, so they do not even say which side
+    // is which — and 128 from the middle of a 176-wide viewport is 216 or -40
+    // once the middle is added back. An icon is sixteen pixels. Nothing put on
+    // those two squares can land on the screen, in this or in the original.
     -128, -4, 128, -4, -128, -66, 128, -66, 128, 0,
     -38, -4, 38, -4, -38, -66, 38, -66, 0, 0,
     -128, -4, 128, -4, -128, -66, 128, -66, 128, 0,
