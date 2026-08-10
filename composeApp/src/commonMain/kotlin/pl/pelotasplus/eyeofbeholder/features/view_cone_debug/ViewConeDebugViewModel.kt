@@ -59,6 +59,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.SquarePlace
 import pl.pelotasplus.eyeofbeholder.data.model.ItemIndex
 import pl.pelotasplus.eyeofbeholder.data.model.WallAction
 import pl.pelotasplus.eyeofbeholder.data.model.doesWhenClicked
+import pl.pelotasplus.eyeofbeholder.data.model.inTheFrontRank
 import pl.pelotasplus.eyeofbeholder.data.model.ItemMessages
 import pl.pelotasplus.eyeofbeholder.data.model.ItemNames
 import pl.pelotasplus.eyeofbeholder.data.model.ItemTypes
@@ -198,6 +199,7 @@ class ViewConeDebugViewModel(
      */
     private var stepStillRunning = 0
     private var pulse = TeleporterPulse.AS_LAID_OUT
+    private var tickNow = 0
     private var stepsTaken = 0
     private var goingRight = true
 
@@ -437,6 +439,7 @@ class ViewConeDebugViewModel(
                         level = arrivingAt,
                         subLevel = showing,
                         kinds = inf.subLevels[showing].monsters,
+                        itemTypes = itemTypes,
                     )
                     _state.update {
                         val was = it.game.party
@@ -814,6 +817,31 @@ class ViewConeDebugViewModel(
             slot.slot.isAHand && (held == null || itemTypes?.isSwungByHand(held) == true) ->
                 strike(whose, slot.slot)
         }
+
+        // And whatever it was, the wall in front of the party is asked what it
+        // makes of it. That is how a window is broken: not by pointing at it,
+        // which reads the carving, but by taking something to it.
+        usedOnTheWallAhead(whose, champion.holding(slot.slot))
+    }
+
+    /**
+     * The wall the party face, asked what it makes of the thing just used.
+     *
+     * A weapon is only offered by the front rank — the two who can reach it —
+     * which is the original's rule and not a guess at one.
+     */
+    private fun usedOnTheWallAhead(whose: PartySlot, used: ItemIndex) {
+        val held = _state.value.game.item(used)
+        val swung = held != null && itemTypes?.isSwungByHand(held) == true
+
+        if (swung && !whose.inTheFrontRank) return
+
+        val party = _state.value.game.party
+        runTriggersAt(
+            at = party.facing.oneStepFrom(party.position),
+            event = ScriptEvent.ITEM_USED_ON_WALL,
+            used = used,
+        )
     }
 
     /** [whose] swings what is in [hand] at whatever stands in front of the party. */
@@ -863,9 +891,15 @@ class ViewConeDebugViewModel(
             val untilTheirTurn = WHEN_EACH_GROUP_STARTS.toIntArray()
             var untilTheNextFrame = A_SWING_FRAME.value
 
+            // Ticks since this fight started, so the log reads as a rhythm
+            // rather than as a pile of unrelated lines. The party stamp their
+            // own steps with it, which is the comparison worth having.
+            tickNow = 0
+
             while (stillFighting()) {
                 delay(GameState.CLOCK_STEP.inMilliseconds)
 
+                tickNow += GameState.CLOCK_STEP.value
                 untilTheNextFrame -= GameState.CLOCK_STEP.value
 
                 val aFrame = untilTheNextFrame <= 0
@@ -888,6 +922,7 @@ class ViewConeDebugViewModel(
                 var swungAndMissed = emptyList<Int>()
                 var roused = emptyList<MonsterInstance>()
                 var walked = emptyList<MonsterInstance>()
+                var took = emptyList<String>()
                 var moved = false
 
                 // Settled before the world is touched: an update that loses a
@@ -921,6 +956,7 @@ class ViewConeDebugViewModel(
                     if (theirTurn.isNotEmpty()) {
                         val already = world.monsters.filter { it.striking != null }.map { it.index }
                         val stood = world.monsters.associate { it.index to it.block }
+                        val was = world.monsters.associateBy { it.index }
 
                         theirTurn.forEach { group ->
                             world = monstersTurn().begun(
@@ -935,8 +971,16 @@ class ViewConeDebugViewModel(
                             it.striking != null && it.index !in already
                         }
                         walked = world.monsters.filter {
-                            stood[it.index]?.let { was -> was != it.block } == true
+                            stood[it.index]?.let { at -> at != it.block } == true
                         }
+
+                        took = world.monsters
+                            .filter { it.turnGroup in theirTurn && it.provoked }
+                            .mapNotNull { now ->
+                                was[now.index]?.let { before ->
+                                    whatItDidWithItsTurn(tickNow, before, now, world.party)
+                                }
+                            }
                     }
 
                     moved = world.somethingMoved(state.game)
@@ -944,16 +988,12 @@ class ViewConeDebugViewModel(
                 }
 
                 landed.forEach {
-                    Logger.d(TAG) { "Monster ${it.monster} hits ${it.at} for ${it.damage}" }
+                    Logger.d(TAG) { "$tickNow  m${it.monster} lands on ${it.at} for ${it.damage}" }
                 }
-                swungAndMissed.forEach { Logger.d(TAG) { "Monster ${'$'}it misses" } }
-                roused.forEach { monster ->
-                    Logger.d(TAG) { "Monster ${monster.index} swings at the party" }
-                    monsterSound(monster)?.let { playTrack(it) }
-                }
-                walked.forEach { monster ->
-                    Logger.d(TAG) { "Monster ${monster.index} steps to ${monster.x}x${monster.y}" }
-                }
+                swungAndMissed.forEach { slot -> Logger.d(TAG) { "$tickNow  m$slot misses" } }
+                took.forEach { line -> Logger.d(TAG) { line } }
+
+                roused.forEach { monster -> monsterSound(monster)?.let { playTrack(it) } }
 
                 // There is one voice, and a new sound takes it from whatever
                 // had it. So a swing keeps it: the original stops the world for
@@ -971,6 +1011,40 @@ class ViewConeDebugViewModel(
 
             Logger.d(TAG) { "The fight is over" }
         }
+    }
+
+    /**
+     * One line for one monster's turn, for reading the rhythm of a fight off
+     * the log rather than off the tables.
+     *
+     * Everything needed to see why it chose what it chose is on the line:
+     * where it was and where it went, which way it looks, which corner it
+     * stands on, where the party are, and whether its arm reaches them from
+     * there. A turn where it does nothing is a line too — that is the half of
+     * the rhythm nothing else shows.
+     */
+    private fun whatItDidWithItsTurn(
+        tick: Int,
+        before: MonsterInstance,
+        after: MonsterInstance,
+        party: PartyState,
+    ): String {
+        val did = when {
+            after.striking != null && before.striking == null -> "SWINGS"
+            before.block != after.block -> "steps "
+            before.direction != after.direction -> "turns "
+            before.place != after.place -> "shifts"
+            else -> "waits "
+        }
+
+        fun <T> both(was: T, now: T) = if (was == now) "$now" else "$was->$now"
+
+        return "$tick\tm${after.index} $did" +
+            "\t${both("${before.x}x${before.y}", "${after.x}x${after.y}")}" +
+            "\t${both(before.direction, after.direction)}" +
+            "\t${both(before.place, after.place)}" +
+            "\tparty ${party.position.x}x${party.position.y} ${party.facing}" +
+            "\treach=${after.canReach(party)} ready=${after.readyToStrike}"
     }
 
     /**
@@ -1543,7 +1617,11 @@ class ViewConeDebugViewModel(
     private fun GameState.withWhoeverStandsThere(live: GameState): GameState =
         if (scriptHasTheParty) this else copy(party = live.party)
 
-    private fun runTriggersAt(at: Location, event: ScriptEvent): Boolean {
+    private fun runTriggersAt(
+        at: Location,
+        event: ScriptEvent,
+        used: ItemIndex? = null,
+    ): Boolean {
         val inf = _state.value.inf ?: return false
         val runner = scriptRunner ?: return false
 
@@ -1556,6 +1634,7 @@ class ViewConeDebugViewModel(
                 state = _state.value.game,
                 stage = stage,
                 at = at,
+                used = used,
             )
             // Whatever the script left on screen goes with it. Scripts end
             // without closing the box they last wrote in — the one that walks
