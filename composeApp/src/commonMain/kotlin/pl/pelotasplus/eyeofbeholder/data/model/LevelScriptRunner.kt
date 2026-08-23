@@ -7,6 +7,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.script.Conditional
 import pl.pelotasplus.eyeofbeholder.data.model.script.ConsumeItem
 import pl.pelotasplus.eyeofbeholder.data.model.script.CreateMonster
 import pl.pelotasplus.eyeofbeholder.data.model.script.Dialog
+import pl.pelotasplus.eyeofbeholder.data.model.script.Encounter
 import pl.pelotasplus.eyeofbeholder.data.model.script.End
 import pl.pelotasplus.eyeofbeholder.data.model.script.Eval
 import pl.pelotasplus.eyeofbeholder.data.model.script.GoSub
@@ -580,6 +581,15 @@ class LevelScriptRunner(
                 // did its work.
                 is SpecialEvent -> Logger.w(TAG) {
                     "$token is not implemented; the script will read its result as unanswered"
+                }
+
+                // The set pieces: an NPC asking to join, the portal, the way
+                // the party are told they have died. Skipping one is quiet in
+                // a way that matters — the script has usually just set the
+                // flag that says it has happened, so nothing brings it round
+                // again and the scene is gone for that game.
+                is Encounter -> Logger.w(TAG) {
+                    "$token is not implemented; whatever marks it as seen has been set anyway"
                 }
 
                 else -> Unit
