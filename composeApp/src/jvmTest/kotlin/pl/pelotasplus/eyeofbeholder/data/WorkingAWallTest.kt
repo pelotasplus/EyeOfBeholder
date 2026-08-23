@@ -271,6 +271,30 @@ class WorkingAWallTest {
         assertEquals(emptyList(), stage.holds, "and nothing was held waiting for it")
     }
 
+    /**
+     * A door still standing where it started is not therefore standing still.
+     * Sent open and told to close before the clock has moved it, it turns
+     * round rather than keeping the opening — a plate stepped on and straight
+     * off again leaves its door shut, where before the close was refused as
+     * being asked of a door that was already shut, and the opening it was
+     * still carrying took it up and left it there.
+     */
+    @Test
+    fun `a door told to close before it has moved turns round`() {
+        val shut = world("LEVEL8.INF", on = 8, at = doorway)
+
+        val opening = shut.doorSetGoing(8, doorway, WallSide.EAST, opening = true)
+        assertEquals(listOf(true), opening.swinging.map { it.opening }, "it was not sent open")
+
+        val turned = opening.doorSetGoing(8, doorway, WallSide.EAST, opening = false)
+        assertEquals(listOf(false), turned.swinging.map { it.opening }, "it kept the opening")
+
+        var world = turned
+        while (world.swinging.isNotEmpty()) world = world.doorsStepped().world
+
+        assertTrue(theDoor(world).isShut, "the door was left open")
+    }
+
     private val ALREADY_SHUT = false
     private val ALREADY_OPEN = true
 

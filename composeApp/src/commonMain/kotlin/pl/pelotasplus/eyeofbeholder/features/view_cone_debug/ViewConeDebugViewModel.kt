@@ -1595,6 +1595,7 @@ class ViewConeDebugViewModel(
                 while (_state.value.game.swinging.isNotEmpty()) {
                     delay(DOOR_STEP.inMilliseconds)
 
+                    Logger.d(TAG) { "Door step, going ${_state.value.game.swinging}" }
                     val stepped = _state.value.game.doorsStepped()
                     _state.update { it.copy(game = stepped.world) }
                     stepped.heard.forEach { playTrack(it) }

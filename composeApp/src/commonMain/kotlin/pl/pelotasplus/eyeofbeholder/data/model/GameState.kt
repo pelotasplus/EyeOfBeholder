@@ -510,16 +510,26 @@ data class GameState(
      * A door already at the end it is being sent to does not move and is not
      * heard trying, and one already going the other way turns around rather
      * than being sent twice.
+     *
+     * Where a door stands is not the whole of what it is doing. One still shut
+     * because the clock has not reached it yet is nonetheless on its way open,
+     * and telling it to close has to turn it round — otherwise a plate stepped
+     * on and straight off again keeps the opening it was sent on, and the door
+     * it works stands open for good. The original never meets this: it moves a
+     * door off the end position the moment it sends it, so a door on its way
+     * is never found standing at the end it started from.
      */
     fun doorSetGoing(level: Int, at: Location, side: WallSide, opening: Boolean): GameState {
         val door = wall(level, at, side) as? Maz.WallType.Door ?: return this
-        if (if (opening) door.isOpen else door.isShut) return this
+        val onItsWay = swinging.firstOrNull { it.level == level && it.at == at }
+
+        val atThatEnd = if (opening) door.isOpen else door.isShut
+        if (atThatEnd && onItsWay?.opening != !opening) return this
 
         val going = Swinging(level, at, side, opening)
-        val already = swinging.any { it.level == level && it.at == at }
 
         return copy(
-            swinging = if (already) {
+            swinging = if (onItsWay != null) {
                 swinging.map { if (it.level == level && it.at == at) going else it }
             } else {
                 swinging + going
