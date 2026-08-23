@@ -26,6 +26,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.script.SetFlag
 import pl.pelotasplus.eyeofbeholder.data.model.script.SetWall
 import pl.pelotasplus.eyeofbeholder.data.model.script.SpecialEvent
 import pl.pelotasplus.eyeofbeholder.data.model.script.Teleport
+import pl.pelotasplus.eyeofbeholder.data.model.script.ToggleWall
 import pl.pelotasplus.eyeofbeholder.data.model.script.UpdateScreen
 import pl.pelotasplus.eyeofbeholder.data.model.script.Wait
 import kotlin.jvm.JvmInline
@@ -513,6 +514,32 @@ class LevelScriptRunner(
                     state = state.partyTurnedTo(token.direction)
                 }
 
+                // A switch on a wall, working something on another square.
+                is ToggleWall.DoorSwitch -> state = doorSwitched(state, token.location)
+
+                is ToggleWall.OneSide -> {
+                    val was = state.wall(level, token.location, WallSide.entries[token.dir])
+                    state = state.wallChanged(
+                        level = level,
+                        at = token.location,
+                        side = WallSide.entries[token.dir],
+                        to = flipped(was.asByte(), token.a, token.b),
+                    )
+                }
+
+                is ToggleWall.AllSides -> {
+                    // The original compares the north face whichever face the
+                    // switch is on, and then sets all four to the answer.
+                    val was = state.wall(level, token.location, WallSide.NORTH)
+                    state = state.wallsChanged(
+                        level = level,
+                        at = token.location,
+                        to = flipped(was.asByte(), token.a, token.b),
+                    )
+                }
+
+                is ToggleWall.Unknown -> Logger.w(TAG) { "$token is not a wall this knows" }
+
                 is SetWall.OneSide ->
                     state = state.wallChanged(level, token.location, token.side, token.to)
 
@@ -697,6 +724,38 @@ class LevelScriptRunner(
         return state
             .joinedBy(meeting.joiningAs, meeting.npc)
             .copy(flags = state.flags.setting(WhatTheGameItselfRemembers.SOMEBODY_WAS_LET_ALONG))
+    }
+
+    /**
+     * A wall that is one of two things and is being asked to be the other.
+     * Anything but the first of the two becomes the first.
+     */
+    private fun flipped(was: WallByte, one: Int, other: Int): WallByte =
+        WallByte(if (was.value == one) other else one)
+
+    /**
+     * A switch working the door on another square: whatever the door is
+     * doing, it does the opposite — one on its way open turns round, one
+     * standing shut opens, one standing open closes.
+     *
+     * Two squares are refused rather than worked. The party's own, which is
+     * the switch pulling the floor out from under them; and one with anything
+     * standing on it, which is a door shutting on a monster.
+     */
+    private fun doorSwitched(state: GameState, at: Location): GameState {
+        if (at == state.party.position) return state
+        if (state.anythingStandingOn(at)) return state
+
+        val side = state.doorFacing(level, at) ?: run {
+            Logger.w(TAG) { "No door at $at for a switch to work" }
+            return state
+        }
+        val door = state.wall(level, at, side) as? Maz.WallType.Door ?: return state
+
+        val onItsWay = state.swinging.firstOrNull { it.level == level && it.at == at }
+        val opening = onItsWay?.let { !it.opening } ?: door.isShut
+
+        return state.doorSetGoing(level, at, side, opening)
     }
 
     private fun doorSent(state: GameState, at: Location, opening: Boolean): GameState {
