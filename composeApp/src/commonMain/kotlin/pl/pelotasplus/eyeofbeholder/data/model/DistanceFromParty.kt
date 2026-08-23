@@ -18,9 +18,8 @@ import kotlin.math.roundToInt
  *
  * Measuring to the square is what makes the diagonal square further than the one
  * straight ahead, so a tree directly in front of the party (100) hides what lies
- * on the square beside it (141). Within a square, its near face, its contents
- * and its far face sit a fraction apart, never far enough to reorder two
- * squares.
+ * on the square beside it (141). A square's contents and the wall at the end of
+ * it sit a fraction apart, never far enough to reorder two squares.
  */
 @JvmInline
 value class DistanceFromParty(private val hundredthsOfASquare: Int) :
@@ -32,10 +31,6 @@ value class DistanceFromParty(private val hundredthsOfASquare: Int) :
     companion object {
         /** Further away than anything: the backdrop, and pixels nothing has claimed. */
         val BEYOND_EVERYTHING = DistanceFromParty(Int.MAX_VALUE)
-
-        /** The face of a square turned towards the party. */
-        fun nearSideOfSquare(relativeX: Int, relativeY: Int) =
-            DistanceFromParty(distanceTo(relativeX, relativeY) - FACE)
 
         /** Items and monsters, which stand in the middle of their square. */
         fun standingOnSquare(relativeX: Int, relativeY: Int) =

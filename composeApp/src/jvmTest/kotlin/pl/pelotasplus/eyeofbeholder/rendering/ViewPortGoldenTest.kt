@@ -257,6 +257,24 @@ class ViewPortGoldenTest {
     fun `level4 item against the wall facing west`() =
         checkGolden("level4-item-west", "LEVEL4.INF", x = 18, y = 14, direction = Direction.WEST)
 
+    /** A wolf side-on from the square in front of it, whole. */
+    @Test
+    fun `level4 18x14 south`() =
+        checkGolden("level4-18x14-south", "LEVEL4.INF", x = 18, y = 14, direction = Direction.SOUTH)
+
+    /**
+     * The same wolf a square further back, where the side wall it walks past
+     * used to take its tail off.
+     */
+    @Test
+    fun `level4 18x13 south`() =
+        checkGolden("level4-18x13-south", "LEVEL4.INF", x = 18, y = 13, direction = Direction.SOUTH)
+
+    /** And two squares back, where the same cut was made a size smaller. */
+    @Test
+    fun `level4 18x12 south`() =
+        checkGolden("level4-18x12-south", "LEVEL4.INF", x = 18, y = 12, direction = Direction.SOUTH)
+
     /**
      * A monster stands at 21x26, with the solid block at 22x26 between it and
      * the party and the button wall two squares ahead beside it. The two walls

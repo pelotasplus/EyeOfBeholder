@@ -62,9 +62,12 @@
   diagonally ahead, 200 two rows back. Measuring to the square is the point —
   a tree straight ahead (100) hides what lies on the square beside it (141),
   which a row number alone cannot say
-- Within one square its near face, contents and far face sit ±30 apart, well
-  inside the 41 between the square ahead and the one diagonal to it, so a face
-  never overtakes a neighbouring square
+- A wall is measured at the far end of its square, 30 past the contents, which
+  is well inside the 41 between the square ahead and the one diagonal to it. A
+  side wall runs away from the party rather than standing at one distance, and
+  the far end is the end that says what it hides: nothing standing on its own
+  row is behind it. Measuring one at its near end instead cuts the sprites
+  beside it — a wolf loses its tail, a cleric its arm
 - Scope everything through `ViewPort.at(distance) { }`; nothing outside it
   needs to know the buffer exists
 

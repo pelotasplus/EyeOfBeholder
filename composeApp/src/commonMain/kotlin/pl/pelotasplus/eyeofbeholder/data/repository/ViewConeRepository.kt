@@ -177,13 +177,11 @@ class ViewConeRepositoryImpl(
             val actualWallSide = direction.transformWallSide(slot.wallSide)
             val wallType = wallAt(Location(mazX, mazY), actualWallSide)
 
-            // A slot's SOUTH wall is the far face of its square; the others are
-            // the faces turned towards the party.
-            val distance = if (slot.wallSide == WallSide.SOUTH) {
-                DistanceFromParty.farSideOfSquare(slot.relativeX, slot.relativeY)
-            } else {
-                DistanceFromParty.nearSideOfSquare(slot.relativeX, slot.relativeY)
-            }
+            // A wall is measured at the far end of its square. A side wall runs
+            // away from the party rather than standing at one distance, and it
+            // is the far end that says what it hides: nothing standing on its
+            // own row is behind it, only what stands on the rows past it.
+            val distance = DistanceFromParty.farSideOfSquare(slot.relativeX, slot.relativeY)
 
             viewPort.at(distance) {
                 when (wallType) {
