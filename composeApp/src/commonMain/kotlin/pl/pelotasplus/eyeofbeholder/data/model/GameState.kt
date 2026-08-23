@@ -182,9 +182,14 @@ data class GameState(
     ): GameState {
         val who = champions.getOrNull(champion.index) ?: return this
 
-        val after = who.copy(
-            carrying = who.carrying.toMutableList().also { held -> held[slot.index] = item },
-        )
+        // Every champion has all twenty-seven places whether or not anything
+        // is in them. One carrying an empty list is one nothing has ever been
+        // put on, and reaching into it for a hand is what threw.
+        val slots = who.carrying.toMutableList()
+        while (slots.size < CarrySlot.ALL_OF_THEM) slots += ItemIndex(ItemIndex.NOTHING)
+        if (slot.index !in slots.indices) return this
+
+        val after = who.copy(carrying = slots.also { held -> held[slot.index] = item })
 
         return copy(
             champions = champions.toMutableList().also {

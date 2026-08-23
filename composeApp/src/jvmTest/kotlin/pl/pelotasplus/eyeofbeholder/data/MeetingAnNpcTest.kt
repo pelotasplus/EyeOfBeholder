@@ -3,6 +3,7 @@ package pl.pelotasplus.eyeofbeholder.data
 import kotlinx.coroutines.runBlocking
 import pl.pelotasplus.eyeofbeholder.data.model.Champion
 import pl.pelotasplus.eyeofbeholder.data.model.ChampionFlags
+import pl.pelotasplus.eyeofbeholder.data.model.CarrySlot
 import pl.pelotasplus.eyeofbeholder.data.model.CharacterClass
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.DialogueTextId
@@ -17,6 +18,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.Inf
 import pl.pelotasplus.eyeofbeholder.data.model.LevelScriptRunner
 import pl.pelotasplus.eyeofbeholder.data.model.Location
 import pl.pelotasplus.eyeofbeholder.data.model.NpcMeeting
+import pl.pelotasplus.eyeofbeholder.data.model.PartySlot
 import pl.pelotasplus.eyeofbeholder.data.model.PartyState
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptEvent
 import pl.pelotasplus.eyeofbeholder.data.model.SquarePlace
@@ -189,6 +191,32 @@ class MeetingAnNpcTest {
             5,
             after.champions.count { it.inTheParty && it.name != "Insal" },
             "somebody else's place was taken",
+        )
+    }
+
+    /**
+     * He comes with nothing, which is not the same as coming with nowhere to
+     * put anything: somebody joining with no slots at all is somebody whose
+     * hand cannot be given a thing, and handing them one threw.
+     */
+    @Test
+    fun `what he comes with is empty slots rather than no slots`() {
+        val after = walkedIn(answers = listOf(YES))
+        val joined = after.champions.last()
+
+        assertEquals(CarrySlot.ALL_OF_THEM, joined.carrying.size)
+        assertTrue(joined.carrying.none { it.isSomething }, "he came carrying something")
+
+        val given = after.carrying(
+            champion = PartySlot(after.champions.lastIndex),
+            slot = CarrySlot(0),
+            item = ItemIndex(1),
+        )
+
+        assertEquals(
+            ItemIndex(1),
+            given.champions.last().holding(CarrySlot(0)),
+            "the thing did not end up in his hand",
         )
     }
 

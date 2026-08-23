@@ -314,6 +314,12 @@ value class CarrySlot(val index: Int) {
     companion object {
         const val HANDS = 2
 
+        /** How many a champion has, filled or not. */
+        const val ALL_OF_THEM = 27
+
+        /** A champion carrying nothing at all, with every slot still there. */
+        val NOTHING_IN_ANY = List(ALL_OF_THEM) { ItemIndex(ItemIndex.NOTHING) }
+
         val WORN_ARMOUR = CarrySlot(17)
         val QUIVER = CarrySlot(16)
         val WORN_HELMET = CarrySlot(18)
