@@ -250,6 +250,16 @@ class ViewConeDebugViewModel(
             return
         }
 
+        // A dialogue owns the screen the same way, and goes the same two ways
+        // it came: one of its own words is clicked, or the script that put it
+        // up finishes. A key pressed under it does nothing — the party do not
+        // walk out from under a speech, and a step that took them out of one
+        // was a step that answered nothing.
+        if (_state.value.dialog != null && event.isTheirOwnDoing) {
+            Logger.d(TAG) { "Ignoring $event while a dialogue is up" }
+            return
+        }
+
         // Nothing the party do gets done while an arm is coming down at them.
         // The original stops the whole world for it; stopping only the party
         // is enough, and keeps the doors and the other monsters from hitching.
