@@ -165,6 +165,25 @@ fun Cps.portrait(id: PortraitId): Cps.ItemIcon = cut(
     h = PORTRAIT_SIZE,
 )
 
+/**
+ * The face of whoever is in a slot, from whichever sheet keeps it.
+ *
+ * A champion the player made counts from zero across the sheet the maker drew
+ * from. Somebody met in the dungeon counts backwards from -1 along the top row
+ * of a sheet of their own, which is how a face nobody chose is told from one
+ * that was chosen.
+ */
+fun faceOf(id: PortraitId, made: Cps, met: Cps?): Cps.ItemIcon? = when {
+    id.value >= 0 -> made.portrait(id)
+    met == null -> null
+    else -> met.cut(
+        x = (-(id.value + 1)) * PORTRAIT_SIZE,
+        y = 0,
+        w = PORTRAIT_SIZE,
+        h = PORTRAIT_SIZE,
+    )
+}
+
 private const val PORTRAITS_PER_ROW = 10
 private const val PORTRAIT_SIZE = 32
 

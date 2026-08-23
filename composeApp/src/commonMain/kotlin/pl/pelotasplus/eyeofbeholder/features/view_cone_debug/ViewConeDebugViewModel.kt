@@ -132,6 +132,7 @@ class ViewConeDebugViewModel(
     private var decorations: Cps? = null
     private var dialogueFrame: Cps? = null
     private var portraits: Cps? = null
+    private var metPortraits: Cps? = null
     private var invent: Cps? = null
     private var carriedItemIcons: Cps? = null
 
@@ -334,6 +335,10 @@ class ViewConeDebugViewModel(
             cpsRepository.loadCps(PORTRAITS_CPS)
                 .onSuccess { portraits = it }
                 .onFailure { Logger.e(it) { "Error while loading $PORTRAITS_CPS" } }
+
+            cpsRepository.loadCps(MET_PORTRAITS_CPS)
+                .onSuccess { metPortraits = it }
+                .onFailure { Logger.e(it) { "Error while loading $MET_PORTRAITS_CPS" } }
             cpsRepository.loadCps(INVENTORY_CPS)
                 .onSuccess { invent = it }
                 .onFailure { Logger.e(it) { "Error while loading $INVENTORY_CPS" } }
@@ -2171,6 +2176,7 @@ class ViewConeDebugViewModel(
                     messages = _state.value.messages,
                     party = roster,
                     portraits = portraits,
+                    metPortraits = metPortraits,
                     menu = _state.value.menu,
                     sheet = openSheet(),
                     carrying = { _state.value.game.item(it) },
@@ -2406,6 +2412,9 @@ class ViewConeDebugViewModel(
         /** The bigger one the interface is set in. */
         private const val MENU_FONT = "FONT8.FNT"
         private const val PORTRAITS_CPS = "CHARGENA.CPS"
+
+        /** The faces of the people the dungeon holds, rather than made ones. */
+        private const val MET_PORTRAITS_CPS = "OUTPORTS.CPS"
         private const val INVENTORY_CPS = "INVENT.CPS"
 
         /** Carried items are drawn from a sheet of their own, not the floor's. */

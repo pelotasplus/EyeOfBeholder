@@ -681,11 +681,22 @@ class LevelScriptRunner(
             )
         }
 
-        if (letThemAlong) {
-            Logger.w(TAG) { "${meeting.npc} was let along, but joining is not written yet" }
+        if (!letThemAlong) return state
+
+        // A party of six is asked which of them leaves to make room, which is
+        // not written yet: until it is, a full party is a join that does not
+        // happen, and nothing is remembered as having happened either.
+        if (!state.roomForOneMore) {
+            Logger.w(TAG) {
+                "${meeting.npc} was let along with no place free, and asking who " +
+                    "leaves is not written yet"
+            }
+            return state
         }
 
         return state
+            .joinedBy(meeting.joiningAs, meeting.npc)
+            .copy(flags = state.flags.setting(WhatTheGameItselfRemembers.SOMEBODY_WAS_LET_ALONG))
     }
 
     private fun doorSent(state: GameState, at: Location, opening: Boolean): GameState {

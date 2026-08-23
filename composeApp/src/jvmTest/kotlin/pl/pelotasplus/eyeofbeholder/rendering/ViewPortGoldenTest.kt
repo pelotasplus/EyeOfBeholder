@@ -5,6 +5,7 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.toPixelMap
 import kotlinx.coroutines.runBlocking
 import pl.pelotasplus.eyeofbeholder.data.model.CampMenu
+import pl.pelotasplus.eyeofbeholder.data.model.Champion
 import pl.pelotasplus.eyeofbeholder.data.model.CharacterSheet
 import pl.pelotasplus.eyeofbeholder.data.model.OpenSheet
 import pl.pelotasplus.eyeofbeholder.data.model.Preferences
@@ -1140,6 +1141,9 @@ class ViewPortGoldenTest {
         reported: Map<Pair<Int, Int>, WhatTheBlowCameTo> = emptyMap(),
         /** What a champion has just been hit for, while it still shows. */
         splattered: Map<Int, Int> = emptyMap(),
+        /** Somebody met in the dungeon, and which place they take. */
+        joinedBy: Champion? = null,
+        joiningAt: Int = 5,
     ): BufferedImage = runBlocking {
         val resources = ResourceRepositoryImpl()
         val cps = CpsRepositoryImpl(resources)
@@ -1165,6 +1169,15 @@ class ViewPortGoldenTest {
                 carrying = hurtChampion.carrying.toMutableList()
                     .also { it[1] = lendingTo.second },
             )
+        }.let { standing ->
+            if (joinedBy == null) standing
+            else standing.mapIndexed { slot, champion ->
+                when {
+                    slot < joiningAt -> champion
+                    slot == joiningAt -> joinedBy
+                    else -> Champion.NOBODY
+                }
+            }
         }
 
         val viewPort = repository.renderPosition(
@@ -1190,6 +1203,7 @@ class ViewPortGoldenTest {
             direction = Direction.NORTH,
             party = party,
             portraits = cps.loadCps("CHARGENA.CPS").getOrThrow(),
+            metPortraits = cps.loadCps(NpcMeeting.FACES).getOrThrow(),
             carrying = { slot -> world.item(slot) },
             recovering = { whose, hand -> (whose.index to hand.index) in swung },
             reporting = { whose, hand -> reported[whose.index to hand.index] },
@@ -1330,6 +1344,34 @@ class ViewPortGoldenTest {
                 goes = INSAL.standing.inTheView(),
                 textId = INSAL.asks.number,
                 buttons = listOf(NpcMeeting.YES, NpcMeeting.NO),
+            ),
+        )
+
+    /**
+     * The party with the person met on level 1 in the last place, whose face
+     * is not on the sheet the made ones come from.
+     */
+    @Test
+    fun `party panel with somebody met in it`() =
+        checkGolden(
+            "party-panel-joined",
+            partyOver(level = "LEVEL4.INF", x = 15, y = 11, joinedBy = INSAL.joiningAs),
+        )
+
+    /**
+     * And a party of four he makes five of: the place he takes is the first
+     * one free, which is the left of the bottom row rather than the right.
+     */
+    @Test
+    fun `party panel with somebody met in the fifth place`() =
+        checkGolden(
+            "party-panel-joined-fifth",
+            partyOver(
+                level = "LEVEL4.INF",
+                x = 15,
+                y = 11,
+                joinedBy = INSAL.joiningAs,
+                joiningAt = 4,
             ),
         )
 

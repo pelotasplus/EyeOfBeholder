@@ -1,16 +1,27 @@
 package pl.pelotasplus.eyeofbeholder.data
 
 import kotlinx.coroutines.runBlocking
+import pl.pelotasplus.eyeofbeholder.data.model.Champion
+import pl.pelotasplus.eyeofbeholder.data.model.ChampionFlags
+import pl.pelotasplus.eyeofbeholder.data.model.CharacterClass
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.DialogueTextId
 import pl.pelotasplus.eyeofbeholder.data.model.GameState
+import pl.pelotasplus.eyeofbeholder.data.model.HitPoints
+import pl.pelotasplus.eyeofbeholder.data.model.Item
+import pl.pelotasplus.eyeofbeholder.data.model.ItemIconId
+import pl.pelotasplus.eyeofbeholder.data.model.ItemIndex
+import pl.pelotasplus.eyeofbeholder.data.model.ItemNameId
+import pl.pelotasplus.eyeofbeholder.data.model.ItemTypeId
 import pl.pelotasplus.eyeofbeholder.data.model.Inf
 import pl.pelotasplus.eyeofbeholder.data.model.LevelScriptRunner
 import pl.pelotasplus.eyeofbeholder.data.model.Location
 import pl.pelotasplus.eyeofbeholder.data.model.NpcMeeting
 import pl.pelotasplus.eyeofbeholder.data.model.PartyState
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptEvent
+import pl.pelotasplus.eyeofbeholder.data.model.SquarePlace
 import pl.pelotasplus.eyeofbeholder.data.model.TrackIndex
+import pl.pelotasplus.eyeofbeholder.data.model.WhatTheGameItselfRemembers
 import pl.pelotasplus.eyeofbeholder.data.repository.CpsRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.DecRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.InfRepositoryImpl
@@ -21,6 +32,7 @@ import pl.pelotasplus.eyeofbeholder.data.repository.VcnRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.VmpRepositoryImpl
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /**
@@ -52,17 +64,38 @@ class MeetingAnNpcTest {
     private fun arriving(answers: List<Int>): RecordingStage {
         val stage = RecordingStage(answers)
 
-        runBlocking {
-            LevelScriptRunner(level.script, level = 1).onEvent(
-                triggers = level.triggers,
-                event = ScriptEvent.PARTY_ENTERED,
-                state = GameState(PartyState(met, Direction.NORTH)),
-                stage = stage,
-                at = met,
-            )
-        }
+        runBlocking { walkedIn(answers, stage) }
 
         return stage
+    }
+
+    /** The world the meeting leaves behind, party and all. */
+    private fun walkedIn(
+        answers: List<Int>,
+        stage: RecordingStage = RecordingStage(answers),
+        party: List<Champion> = aPartyOf(5),
+        items: List<Item> = emptyList(),
+    ): GameState = runBlocking {
+        LevelScriptRunner(level.script, level = 1).onEvent(
+            triggers = level.triggers,
+            event = ScriptEvent.PARTY_ENTERED,
+            state = GameState(
+                party = PartyState(met, Direction.NORTH),
+                champions = party,
+                items = items,
+            ),
+            stage = stage,
+            at = met,
+        ).state
+    }
+
+    /** [many] champions and the rest of the six empty, as a party is kept. */
+    private fun aPartyOf(many: Int) = List(PARTY_SLOTS) { slot ->
+        if (slot < many) {
+            Champion.NOBODY.copy(name = "One", flags = ChampionFlags(IN_THE_PARTY))
+        } else {
+            Champion.NOBODY
+        }
     }
 
     @Test
@@ -136,8 +169,110 @@ class MeetingAnNpcTest {
         }
     }
 
+    /**
+     * Saying yes takes him into the first free place, as the party's sixth.
+     * Who he is comes out of the original's own table: a halfling thief of the
+     * sixth level, and three hit points of thirty-nine, which is what he is
+     * asking to be got out of.
+     */
+    @Test
+    fun `saying yes takes him into the party`() {
+        val after = walkedIn(answers = listOf(YES))
+        val joined = after.champions.last()
+
+        assertEquals("Insal", joined.name)
+        assertTrue(joined.inTheParty, "he is in a slot but not in the party")
+        assertEquals(CharacterClass.THIEF, joined.characterClass)
+        assertEquals(6, joined.levels.single().level)
+        assertEquals(HitPoints(current = 3, max = 39), joined.hitPoints)
+        assertEquals(
+            5,
+            after.champions.count { it.inTheParty && it.name != "Insal" },
+            "somebody else's place was taken",
+        )
+    }
+
+    @Test
+    fun `saying no leaves the party as it was`() {
+        val after = walkedIn(answers = listOf(NO))
+
+        assertTrue(after.champions.none { it.name == "Insal" }, "he came along anyway")
+    }
+
+    /**
+     * The game remembers the join itself: no script sets the bit, and the one
+     * that reads it is on another floor entirely.
+     */
+    @Test
+    fun `the game remembers whether he was let along`() {
+        assertTrue(
+            walkedIn(answers = listOf(YES)).flags
+                .has(WhatTheGameItselfRemembers.SOMEBODY_WAS_LET_ALONG),
+        )
+        assertFalse(
+            walkedIn(answers = listOf(NO)).flags
+                .has(WhatTheGameItselfRemembers.SOMEBODY_WAS_LET_ALONG),
+        )
+    }
+
+    /**
+     * Somebody walking up cannot also be a pile of their own bones in the
+     * pack, so joining takes those out. Anybody else's are left alone, and so
+     * is anything the party are not carrying.
+     */
+    @Test
+    fun `his bones are let go of as he joins`() {
+        val bones = Item(
+            nameUnidentified = ItemNameId(0),
+            nameIdentified = ItemNameId(0),
+            flags = 0,
+            icon = ItemIconId(1),
+            type = ItemTypeId(BONES),
+            place = SquarePlace.MIDDLE,
+            location = Item.CARRIED,
+            next = 0,
+            prev = 0,
+            level = Item.CARRIED_LEVEL,
+            value = 1,
+        )
+        val somebodyElses = bones.copy(value = 2)
+
+        // slot 0 of the table is the nothing every empty hand and pack slot
+        // names, so a real thing is never in it
+        val carrier = Champion.NOBODY.copy(
+            name = "One",
+            flags = ChampionFlags(IN_THE_PARTY),
+            carrying = listOf(HIS_BONES, SOMEBODY_ELSES_BONES),
+        )
+
+        val after = walkedIn(
+            answers = listOf(YES),
+            party = listOf(carrier) + aPartyOf(0).drop(1),
+            items = listOf(bones.copy(location = Item.NOWHERE), bones, somebodyElses),
+        )
+
+        assertFalse(after.items[HIS_BONES.value].exists, "his own bones were kept")
+        assertTrue(
+            after.items[SOMEBODY_ELSES_BONES.value].exists,
+            "somebody else's bones were thrown away",
+        )
+        assertFalse(
+            after.champions.first().carrying.contains(HIS_BONES),
+            "the slot still points at bones that are gone",
+        )
+    }
+
     private companion object {
         const val YES = 1
         const val NO = 2
+
+        const val PARTY_SLOTS = 6
+        const val IN_THE_PARTY = 0x01
+
+        /** What a pile of bones is, as the item table counts kinds. */
+        const val BONES = 33
+
+        val HIS_BONES = ItemIndex(1)
+        val SOMEBODY_ELSES_BONES = ItemIndex(2)
     }
 }

@@ -30,6 +30,9 @@ data class NpcMeeting(
 
     /** Their picture, and where they stand in the view while they speak. */
     val standing: Standing,
+
+    /** Who they are, if they are let along. */
+    val joiningAs: Champion,
 ) {
     /**
      * Where somebody's picture is cut from the sheet the meetings share, and
@@ -67,6 +70,42 @@ data class NpcMeeting(
          */
         fun called(npc: NpcId): NpcMeeting? = if (npc.value == 0) IN_THE_CRYPT else null
 
+        /** The one bit of a champion's flag word that says they are here. */
+        private const val IN_THE_PARTY = 0x01
+
+        /**
+         * Who the first of them is. Every number here is the original's, out
+         * of the table of six it keeps in its own executable — as is the name,
+         * so it is English here for the same reason the two answers are.
+         *
+         * Three hit points of thirty-nine is not a mistake to be tidied up: he
+         * is nearly dead when the party find him, and that is the whole of why
+         * the offer is worth anything to him.
+         */
+        private val INSAL = Champion(
+            name = "Insal",
+            portrait = PortraitId(-1),
+            abilities = Abilities(
+                strength = Ability(current = 15, max = 15),
+                strengthPercentile = Ability(current = 0, max = 0),
+                intelligence = Ability(current = 13, max = 13),
+                wisdom = Ability(current = 11, max = 11),
+                dexterity = Ability(current = 17, max = 17),
+                constitution = Ability(current = 16, max = 16),
+                charisma = Ability(current = 9, max = 9),
+            ),
+            hitPoints = HitPoints(current = 3, max = 39),
+            armorClass = ArmorClass(10),
+            food = Food(8),
+            race = Race.HALFLING,
+            sex = Sex.MALE,
+            characterClass = CharacterClass.THIEF,
+            alignment = Alignment.CHAOTIC_NEUTRAL,
+            levels = listOf(ClassLevel(level = 6, experience = 27354)),
+            carrying = emptyList(),
+            flags = ChampionFlags(IN_THE_PARTY),
+        )
+
         /**
          * The one waiting on the first floor, whose whole meeting is the
          * question.
@@ -78,10 +117,14 @@ data class NpcMeeting(
             agrees = DialogueTextId(3),
             refused = DialogueTextId(2),
             standing = Standing(sourceTop = 0, width = 40, height = 57),
+            joiningAs = INSAL,
         )
 
-        /** The sheet every one of them is cut from. */
+        /** The sheet every one of them is cut from while they speak. */
         const val SHEET = "OUTTAKE.CPS"
+
+        /** And the one their face is cut from once they are in the party. */
+        const val FACES = "OUTPORTS.CPS"
 
         /** The two answers, which the original also keeps in its executable. */
         const val YES = "yes"

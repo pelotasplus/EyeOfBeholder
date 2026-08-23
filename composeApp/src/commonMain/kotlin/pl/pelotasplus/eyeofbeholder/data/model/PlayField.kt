@@ -34,6 +34,8 @@ class PlayField(
         messages: List<Message> = emptyList(),
         party: List<Champion> = emptyList(),
         portraits: Cps? = null,
+        /** The faces of the people the dungeon holds, who have no other sheet. */
+        metPortraits: Cps? = null,
         menu: CampMenu? = null,
         sheet: OpenSheet? = null,
         carrying: (ItemIndex) -> Item? = { null },
@@ -55,15 +57,18 @@ class PlayField(
 
         drawBackground()
         // a champion's own page takes the six boxes' side of the screen
-        if (sheet == null) drawParty(party, portraits, carrying, recovering, reporting, hurt)
-        else if (!underThePage) drawSheet(sheet, portraits)
+        if (sheet == null) {
+            drawParty(party, portraits, metPortraits, carrying, recovering, reporting, hurt)
+        } else if (!underThePage) {
+            drawSheet(sheet, portraits, metPortraits)
+        }
 
         drawViewPort(viewPort)
         drawCompass(direction)
         drawMessages(messages)
         dialogue?.let(::drawDialogue)
 
-        if (sheet != null && underThePage) drawSheet(sheet, portraits)
+        if (sheet != null && underThePage) drawSheet(sheet, portraits, metPortraits)
         menu?.let(::drawMenu)
         return this
     }
@@ -75,7 +80,7 @@ class PlayField(
      * top of it is only what changes: who this is, how they are, and what they
      * have in each of their slots.
      */
-    private fun drawSheet(sheet: OpenSheet, portraits: Cps?) {
+    private fun drawSheet(sheet: OpenSheet, portraits: Cps?, metPortraits: Cps?) {
         val invent = invent ?: return
 
         copy(
@@ -89,8 +94,9 @@ class PlayField(
         )
 
         portraits?.let { faces ->
-            val face = faces.portrait(sheet.champion.portrait)
-            val colours = faces.palette ?: palette
+            val face = faceOf(sheet.champion.portrait, faces, metPortraits) ?: return@let
+            val colours = (if (sheet.champion.portrait.value < 0) metPortraits else faces)
+                ?.palette ?: palette
             for (y in 0 until face.h) {
                 for (x in 0 until face.w) {
                     val index = face.pixels[y * face.w + x]
@@ -379,6 +385,7 @@ class PlayField(
     private fun drawParty(
         party: List<Champion>,
         portraits: Cps?,
+        metPortraits: Cps?,
         carrying: (ItemIndex) -> Item?,
         recovering: (PartySlot, CarrySlot) -> Boolean,
         reporting: (PartySlot, CarrySlot) -> WhatTheBlowCameTo?,
@@ -398,6 +405,7 @@ class PlayField(
             )
             drawChampion(
                 champion = champion,
+                metPortraits = metPortraits,
                 box = box,
                 portraits = portraits,
                 carrying = carrying,
@@ -410,6 +418,7 @@ class PlayField(
 
     private fun drawChampion(
         champion: Champion,
+        metPortraits: Cps?,
         box: ChampionBox,
         portraits: Cps?,
         carrying: (ItemIndex) -> Item?,
@@ -418,8 +427,9 @@ class PlayField(
         hurt: Int?,
     ) {
         portraits?.let { sheet ->
-            val face = sheet.portrait(champion.portrait)
-            val colours = sheet.palette ?: palette
+            val face = faceOf(champion.portrait, sheet, metPortraits) ?: return@let
+            val colours = (if (champion.portrait.value < 0) metPortraits else sheet)
+                ?.palette ?: palette
             for (y in 0 until face.h) {
                 for (x in 0 until face.w) {
                     val index = face.pixels[y * face.w + x]

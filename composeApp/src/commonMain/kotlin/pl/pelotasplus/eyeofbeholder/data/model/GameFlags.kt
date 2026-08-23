@@ -93,4 +93,24 @@ data class GameFlags(
         copy(levels = levels + (level to forLevel(level).without(bit)))
 
     fun clearingGlobal(bit: FlagBit) = copy(global = global.without(bit))
+
+    fun setting(remembered: WhatTheGameItselfRemembers) = settingGlobal(remembered.bit)
+
+    fun has(remembered: WhatTheGameItselfRemembers) = global.isSet(remembered.bit)
+}
+
+/**
+ * The bits of the global word the game itself writes rather than any script.
+ *
+ * A script's bits are anonymous — a number a level writes and another reads,
+ * meaning whatever the two of them agree. These are not: the engine sets them
+ * from inside a set piece, so nothing in the level data would ever explain
+ * them, and a name is the only place their meaning can live.
+ */
+enum class WhatTheGameItselfRemembers(val bit: FlagBit) {
+    /**
+     * Somebody met on level 1 was let along. The scripts never set this and
+     * level 15 reads it, which is where it is answered for.
+     */
+    SOMEBODY_WAS_LET_ALONG(FlagBit(6)),
 }

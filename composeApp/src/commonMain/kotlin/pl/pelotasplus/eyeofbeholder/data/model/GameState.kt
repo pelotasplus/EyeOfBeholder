@@ -223,6 +223,62 @@ data class GameState(
     /** The same world with [slot] in the hand instead of whatever was. */
     fun holding(slot: ItemIndex) = copy(inHand = slot)
 
+    /** Whether there is a place in the party for one more. */
+    val roomForOneMore: Boolean get() = champions.any { !it.inTheParty }
+
+    /**
+     * The same world with somebody taking the first free place in the party,
+     * and the bones the party were carrying of theirs let go of.
+     *
+     * Bones are what is left of somebody who is not with the party: carried to
+     * where they can be raised, they are that person again. Whoever has just
+     * walked up cannot also be a pile of bones in the pack, so the original
+     * takes theirs out at the moment of joining rather than leaving both.
+     */
+    fun joinedBy(somebody: Champion, whose: NpcId): GameState {
+        val place = champions.indexOfFirst { !it.inTheParty }
+        if (place < 0) return this
+
+        return copy(
+            champions = champions.mapIndexed { slot, was ->
+                if (slot == place) somebody else was
+            },
+        ).withoutBonesOf(whose)
+    }
+
+    /**
+     * A pile of bones knows whose it is by the number that person is, plus
+     * one. Only what the party are carrying is let go of: bones of theirs
+     * lying somewhere in the dungeon are nothing to do with the party.
+     */
+    private fun withoutBonesOf(whose: NpcId): GameState {
+        val carried = champions.flatMap { it.carrying }.toSet() + inHand
+
+        val theirs = carried
+            .filter { slot ->
+                item(slot)?.let {
+                    it.exists && it.type == BONES && it.value == whose.value + 1
+                } == true
+            }
+            .toSet()
+
+        if (theirs.isEmpty()) return this
+
+        return copy(
+            items = items.mapIndexed { slot, item ->
+                if (ItemIndex(slot) in theirs) item.copy(location = Item.NOWHERE) else item
+            },
+            champions = champions.map { champion ->
+                champion.copy(
+                    carrying = champion.carrying.map {
+                        if (it in theirs) ItemIndex(ItemIndex.NOTHING) else it
+                    },
+                )
+            },
+            inHand = if (inHand in theirs) ItemIndex(ItemIndex.NOTHING) else inHand,
+        )
+    }
+
     /**
      * Every thing in the world, bottom of its pile first.
      *
@@ -905,6 +961,9 @@ data class GameState(
 
     companion object {
         private const val TAG = "GameState"
+
+        /** What a pile of somebody's bones is, as the item table counts kinds. */
+        private val BONES = ItemTypeId(33)
 
         /**
          * How long the party take over a step or a turn. From the original,

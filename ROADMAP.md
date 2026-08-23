@@ -28,6 +28,7 @@ the history instead.
 - [ ] **8. Saved games on a server** — `SaveStore` is already the seam — **L**
 - [ ] **9. The rest of the audio** — mostly waiting on the features that would make the noise
   - [ ] 9a. The music, which is screen work before it is sound work — **M**
+- [ ] **10. Somebody met when the party are already six** — who has to leave to let them in — **S**
 
 ## In full
 
@@ -205,3 +206,16 @@ the history instead.
   architecturally to change one's mind later, because it would replace what
   fills a buffer and `AudioSink` would not notice. The rendered clips are what
   it would be proved right against.
+
+- **Somebody met when the party are already six.** Whoever is met asks to come
+  along, and the answer is only ever taken when there is a slot free. The
+  original asks a second question when there is not: it says the party is full
+  and puts the six names up with a way out beside them, and whoever is picked
+  leaves so the newcomer can take their place. Picking the way out is the join
+  refused, and what was said to being let along has already been read by then.
+
+  So it is one dialogue of seven answers, and dropping a champion — which is
+  the half that does not exist yet. A champion dropped is not a champion
+  deleted: they keep their slot's items and the party's own table has to let go
+  of them without the item table losing what they carried, which is the only
+  part of this worth being careful about.
