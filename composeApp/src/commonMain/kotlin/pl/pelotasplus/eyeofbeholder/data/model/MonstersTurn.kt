@@ -216,7 +216,7 @@ class MonstersTurn(
     ): GameState? {
         if (!monster.facesTheSquareOf(world.party)) return null
 
-        if (!monster.canReach(world.party)) {
+        if (!monster.reaches(world.party)) {
             return walking?.shuffling(world, monster) ?: world
         }
 
@@ -258,8 +258,14 @@ class MonstersTurn(
         return Taken(struck, after, missed)
     }
 
+    /** Whether its arm gets to the party, which its kind's size has a say in. */
+    private fun MonsterInstance.reaches(party: PartyState): Boolean {
+        val size = kinds.firstOrNull { it.id == type.value }?.size ?: return false
+        return canReach(party, size)
+    }
+
     private fun strike(world: GameState, monster: MonsterInstance): Struck? {
-        if (!monster.canReach(world.party)) return null
+        if (!monster.reaches(world.party)) return null
 
         val kind = kinds.firstOrNull { it.id == monster.type.value } ?: return null
         val whom = whoItReaches(world, monster) ?: return null

@@ -128,12 +128,15 @@ data class MonsterInstance(
 
     /**
      * Whether its arm gets to the party from where it stands: it must face
-     * their square, and stand on the half of its own square that reaches.
-     * Something filling a square reaches from anywhere on it.
+     * their square, and — if it is one of the small ones that go four to a
+     * square — stand on the half of its own square that reaches. Anything
+     * bigger reaches from wherever on the square it is, which is what lets
+     * both of a pair fight from the two corners they share it on.
      */
-    fun canReach(party: PartyState): Boolean =
+    fun canReach(party: PartyState, size: MonsterSize): Boolean =
         facesTheSquareOf(party) &&
-            (!place.onTheFloor || WhoTheMonsterReaches.armIsLongEnough(direction, place))
+            (size.reachesFromAnywhere || !place.onTheFloor ||
+                WhoTheMonsterReaches.armIsLongEnough(direction, place))
 
     /**
      * Whether the party's square is the one it is looking at, whatever corner

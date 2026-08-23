@@ -740,6 +740,17 @@ data class GameState(
         monsters = monsters.map { if (it.index == slot) it.copy(place = place) else it },
     )
 
+    /** The same for a squareful of them, standing aside for one arriving. */
+    fun monstersShifted(places: Map<Int, SquarePlace>): GameState {
+        if (places.isEmpty()) return this
+
+        return copy(
+            monsters = monsters.map { monster ->
+                places[monster.index]?.let { monster.copy(place = it) } ?: monster
+            },
+        )
+    }
+
     /**
      * The world with one monster facing [way] where it stands.
      *

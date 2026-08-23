@@ -270,6 +270,24 @@ class ViewPortGoldenTest {
     fun `level4 18x13 south`() =
         checkGolden("level4-18x13-south", "LEVEL4.INF", x = 18, y = 13, direction = Direction.SOUTH)
 
+    /**
+     * The same wolf with another of its kind sharing the square, which is as
+     * many as that size goes: the two stand on opposite corners and the pack
+     * arrives in pairs.
+     */
+    @Test
+    fun `level4 two wolves on one square`() =
+        checkGolden(
+            "level4-wolves-bunched",
+            renderFrame("LEVEL4.INF", x = 18, y = 14, direction = Direction.SOUTH) { monsters ->
+                val joined = monsters.first { it.x == 18 && it.y == 15 }
+
+                monsters.map {
+                    if (it.index == joined.index) it.copy(place = SquarePlace.NORTH_WEST) else it
+                } + joined.copy(index = 29, place = SquarePlace.SOUTH_EAST)
+            },
+        )
+
     /** And two squares back, where the same cut was made a size smaller. */
     @Test
     fun `level4 18x12 south`() =

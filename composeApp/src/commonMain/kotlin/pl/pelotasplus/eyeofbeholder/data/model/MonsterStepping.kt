@@ -80,10 +80,12 @@ class MonsterStepping(
             return openingTheDoor(world, monster, onto, way, wall)
         }
 
-        val place = roomOn(world, monster, onto, way) ?: return Stepped.Refused
+        val room = roomOn(world, monster, onto, way) ?: return Stepped.Refused
 
         return Stepped.Moved(
-            world = world.monsterMoved(monster.index, onto, way, place),
+            world = room.world
+                .monsterMoved(monster.index, onto, way, room.place)
+                .facingTogetherOn(monster, onto, way),
             heard = kind(monster)?.sound2?.takeIf { it > 0 }?.let { TrackIndex(it) },
         )
     }
@@ -110,19 +112,16 @@ class MonsterStepping(
      * crowd sometimes is.
      */
     fun shuffleOn(world: GameState, monster: MonsterInstance): GameState {
-        val sharing = world.monsters.any {
-            it.index != monster.index && it.x == monster.x && it.y == monster.y
-        }
+        val size = kind(monster)?.size ?: return world
+        val taken = world.monsters
+            .filter { it.index != monster.index && it.x == monster.x && it.y == monster.y }
+            .map { it.place }
+            .toSet()
 
-        val place = if (sharing) {
-            val taken = world.monsters
-                .filter { it.index != monster.index && it.x == monster.x && it.y == monster.y }
-                .map { it.place }
-                .toSet()
-
-            CORNERS_FACING[monster.direction.ordinal].firstOrNull { it !in taken }
-        } else {
+        val place = if (taken.isEmpty()) {
             SquarePlace.MIDDLE
+        } else {
+            placesOn(size, monster.direction).firstOrNull { it !in taken }
         }
 
         return place?.let { world.monsterShifted(monster.index, it) } ?: world
@@ -134,7 +133,9 @@ class MonsterStepping(
      */
     private fun turn(world: GameState, monster: MonsterInstance, way: Direction): Stepped =
         Stepped.Turned(
-            world = world.monsterTurned(monster.index, way),
+            world = world
+                .monsterTurned(monster.index, way)
+                .facingTogetherOn(monster, Location(monster.x, monster.y), way),
             opened = null,
         )
 
@@ -161,40 +162,107 @@ class MonsterStepping(
         )
     }
 
+    /** Room for one more on a square: where it stands, and who stood aside. */
+    private data class Room(val place: SquarePlace, val world: GameState)
+
     /**
      * Where on [onto] this monster would stand, or null if it will not fit.
      *
-     * A square takes monsters of one size only, so four small things share it
-     * and nothing else may join them, and anything bigger has it to itself.
+     * A square takes monsters of one size only, so its own kind of crowd
+     * gathers on it or none does: four small things one to a corner, two
+     * bigger ones in opposite corners, and the biggest have a square to
+     * themselves.
+     *
+     * Whoever is already there and standing in the middle stands aside as this
+     * one arrives, which is the only time a monster is moved by somebody
+     * else's step.
      *
      * Arriving on an empty square it keeps the corner it was already standing
      * on. That is what lets a monster keep up with a party sidling away from
-     * it: a monster's arm reaches only from the two corners on the side it
-     * faces, so being moved to a fresh corner would leave it standing beside
-     * the party unable to touch them.
+     * it: a small monster's arm reaches only from the two corners on the side
+     * it faces, so being moved to a fresh corner would leave it standing
+     * beside the party unable to touch them.
      */
     private fun roomOn(
         world: GameState,
         monster: MonsterInstance,
         onto: Location,
         facing: Direction,
-    ): SquarePlace? {
+    ): Room? {
         val size = kind(monster)?.size ?: return null
         val already = world.monsters.filter {
             it.index != monster.index && it.x == onto.x && it.y == onto.y
         }
 
-        if (already.isEmpty()) return monster.place
+        if (already.isEmpty()) return Room(monster.place, world)
         if (already.any { kind(it)?.size != size } || !size.shares) return null
+        if (already.size >= size.toASquare) return null
 
-        val taken = already.map { it.place }.toSet()
-        return CORNERS_FACING[facing.ordinal].firstOrNull { it !in taken }
+        val standingAside = already.associate { it.index to it.standsAsideAs(size) }
+        val free = placesOn(size, facing).firstOrNull { it !in standingAside.values } ?: return null
+
+        return Room(free, world.monstersShifted(standingAside))
+    }
+
+    /**
+     * Where one that was alone on a square goes when another arrives. The
+     * middle is only for as long as nobody is sharing.
+     */
+    private fun MonsterInstance.standsAsideAs(size: MonsterSize): SquarePlace =
+        if (place != SquarePlace.MIDDLE) place
+        else when (size) {
+            MonsterSize.TWO_TO_A_SQUARE -> PAIRED.first()
+            else -> CORNER_FACING[direction.ordinal]
+        }
+
+    /** The places a crowd of that size stands on, best first. */
+    private fun placesOn(size: MonsterSize, facing: Direction): List<SquarePlace> =
+        when (size) {
+            MonsterSize.TWO_TO_A_SQUARE -> PAIRED
+            else -> CORNERS_FACING[facing.ordinal]
+        }
+
+    /**
+     * The world with every monster on [at] facing [way].
+     *
+     * Two sharing a square turn as one: the original turns a whole square with
+     * whichever of the pair moved, and without it one of them ends up facing a
+     * wall while the other fights, which is a wolf standing about.
+     */
+    private fun GameState.facingTogetherOn(
+        monster: MonsterInstance,
+        at: Location,
+        way: Direction,
+    ): GameState {
+        if (kind(monster)?.size != MonsterSize.TWO_TO_A_SQUARE) return this
+
+        return monstersTurnedToFace(
+            monsters.filter { it.x == at.x && it.y == at.y }.map { it.index to way },
+        )
     }
 
     private fun kind(monster: MonsterInstance): MonsterProperty? =
         kinds.firstOrNull { it.id == monster.type.value }
 
     private companion object {
+        /**
+         * The two corners a pair share a square on, whichever way either of
+         * them faces. From the original, which has no other pair of places
+         * for them: a third of that size is turned away at the edge.
+         */
+        val PAIRED = listOf(SquarePlace.NORTH_WEST, SquarePlace.SOUTH_EAST)
+
+        /**
+         * Which corner one standing in the middle steps back to when it has
+         * to make room, by the way it faces. From the original.
+         */
+        val CORNER_FACING = listOf(
+            SquarePlace.NORTH_WEST,
+            SquarePlace.NORTH_EAST,
+            SquarePlace.SOUTH_EAST,
+            SquarePlace.SOUTH_WEST,
+        )
+
         /**
          * Which corner of a crowded square a monster takes, by the way it
          * faces, best first. From the original.

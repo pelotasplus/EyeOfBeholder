@@ -11,6 +11,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.MonsterPathing
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterProperty
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterStepping
 import pl.pelotasplus.eyeofbeholder.data.model.PartyState
+import pl.pelotasplus.eyeofbeholder.data.model.SquarePlace
 import pl.pelotasplus.eyeofbeholder.data.model.WallByte
 import pl.pelotasplus.eyeofbeholder.data.model.WallSide
 import pl.pelotasplus.eyeofbeholder.data.repository.CpsRepositoryImpl
@@ -77,6 +78,13 @@ class MonsterPathingTest {
     )
 
     private fun GameState.theCleric() = monsters.first { it.index == CLERIC }
+
+    /** The same world with more of the same kind standing on [at]. */
+    private fun GameState.crowdedOn(at: Location, vararg places: SquarePlace) = copy(
+        monsters = monsters + places.mapIndexed { index, place ->
+            theCleric().copy(index = 20 + index, block = at.asBlock, place = place)
+        },
+    )
 
     private fun MonsterStepping.Stepped.landedOn(): Location {
         assertTrue(this is MonsterStepping.Stepped.Moved, "it did not move")
@@ -293,6 +301,65 @@ class MonsterPathingTest {
             (fanned as MonsterStepping.Stepped.Moved).world.theCleric().direction,
             "it sidled instead of being refused and fanning",
         )
+    }
+
+    /**
+     * Somebody standing on the next square is not a wall. The original asks
+     * the square for a free place only once it knows something is on it, and
+     * walks on when it gets one — which is how a pack crowds onto the squares
+     * around the party instead of queueing up behind one another.
+     */
+    @Test
+    fun `a square its own kind stands on is walked onto`() {
+        val world = world(at = Location(13, 8), facing = Direction.SOUTH)
+            .crowdedOn(Location(13, 9), SquarePlace.MIDDLE)
+
+        val stepped = pathing().towards(
+            world = world,
+            monster = world.theCleric(),
+            destination = Location(13, 10),
+            wayRound = MonsterPathing.WayRound.RIGHT_FIRST,
+        )
+
+        assertEquals(Location(13, 9), stepped.landedOn())
+
+        // Out of the middle and into the corner its own facing names, which
+        // for one looking south is the south-east one.
+        val after = (stepped as MonsterStepping.Stepped.Moved).world
+        assertEquals(
+            SquarePlace.SOUTH_EAST,
+            after.monsters.first { it.index == 20 }.place,
+            "the one already there did not stand aside",
+        )
+        assertEquals(
+            SquarePlace.SOUTH_WEST,
+            after.theCleric().place,
+            "the one arriving did not take the best corner left",
+        )
+    }
+
+    /**
+     * A square with no place left is a refusal like any other, and a refusal
+     * is what the fan is for: the walk goes round rather than stopping.
+     */
+    @Test
+    fun `a full square is gone round rather than into`() {
+        val world = world(at = Location(13, 8), facing = Direction.SOUTH).crowdedOn(
+            Location(13, 9),
+            SquarePlace.NORTH_WEST,
+            SquarePlace.NORTH_EAST,
+            SquarePlace.SOUTH_WEST,
+            SquarePlace.SOUTH_EAST,
+        )
+
+        val stepped = pathing().towards(
+            world = world,
+            monster = world.theCleric(),
+            destination = Location(13, 10),
+            wayRound = MonsterPathing.WayRound.RIGHT_FIRST,
+        )
+
+        assertEquals(Location(12, 8), stepped.landedOn(), "the fan did not take it round")
     }
 
     @Test

@@ -1061,7 +1061,8 @@ class ViewConeDebugViewModel(
             "\t${both(before.direction, after.direction)}" +
             "\t${both(before.place, after.place)}" +
             "\tparty ${party.position.x}x${party.position.y} ${party.facing}" +
-            "\treach=${after.canReach(party)} ready=${after.readyToStrike}"
+            "\treach=${kindOf(after)?.let { after.canReach(party, it.size) }}" +
+            " ready=${after.readyToStrike}"
     }
 
     /**

@@ -79,6 +79,12 @@ class MonstersHuntingTest {
     private fun turn() = MonstersTurn(kinds)
 
     private fun GameState.theCleric() = monsters.first { it.index == CLERIC }
+
+    /** Its kind is the level's own, so what its arm reaches is too. */
+    private fun GameState.theClericReaches() = theCleric().let {
+        it.canReach(party, kinds.first { kind -> kind.id == it.type.value }.size)
+    }
+
     private fun GameState.whereTheClericIs() = theCleric().let { Location(it.x, it.y) }
 
     @Test
@@ -124,7 +130,7 @@ class MonstersHuntingTest {
 
         assertEquals(Location(13, 9), after.whereTheClericIs())
         assertEquals(Direction.SOUTH, after.theCleric().direction)
-        assertTrue(after.theCleric().canReach(after.party), "it arrived out of reach")
+        assertTrue(after.theClericReaches(), "it arrived out of reach")
     }
 
     /**
@@ -148,7 +154,7 @@ class MonstersHuntingTest {
         assertEquals(Location(12, 9), after.whereTheClericIs())
         assertEquals(Direction.SOUTH, after.theCleric().direction, "it turned instead of sidling")
         assertTrue(
-            after.theCleric().canReach(after.party),
+            after.theClericReaches(),
             "it arrived on a corner it cannot reach from",
         )
     }
@@ -269,13 +275,13 @@ class MonstersHuntingTest {
         }.rousedBy(CLERIC)
 
         assertTrue(world.theCleric().facesTheSquareOf(world.party))
-        assertFalse(world.theCleric().canReach(world.party), "it could reach all along")
+        assertFalse(world.theClericReaches(), "it could reach all along")
 
         val after = turn().begun(world, walking)
 
         assertEquals(Location(13, 9), after.whereTheClericIs(), "it walked off instead")
         assertEquals(SquarePlace.MIDDLE, after.theCleric().place)
-        assertTrue(after.theCleric().canReach(after.party))
+        assertTrue(after.theClericReaches())
     }
 
     /**
