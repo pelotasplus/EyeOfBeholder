@@ -76,7 +76,7 @@ class MonsterStepping(
         if (Direction.entries.none { it.oneStepFrom(from) == onto }) return Stepped.Refused
 
         val wall = world.wall(level, onto, way.wallSideFacingBack)
-        if (!subLevel.canBeWalkedOnto(wall)) {
+        if (!subLevel.canBeWalkedOntoByAMonster(wall)) {
             return openingTheDoor(world, monster, onto, way, wall)
         }
 
@@ -99,7 +99,9 @@ class MonsterStepping(
      */
     fun opensOnto(world: GameState, monster: MonsterInstance, way: Direction): Boolean {
         val onto = way.oneStepFrom(Location(monster.x, monster.y))
-        return subLevel.canBeWalkedOnto(world.wall(level, onto, way.wallSideFacingBack))
+        return subLevel.canBeWalkedOntoByAMonster(
+            world.wall(level, onto, way.wallSideFacingBack),
+        )
     }
 
     /**

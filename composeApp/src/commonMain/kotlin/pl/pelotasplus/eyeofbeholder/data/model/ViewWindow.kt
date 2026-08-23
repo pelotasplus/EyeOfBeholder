@@ -101,7 +101,8 @@ fun SubLevel.showsWhatIsOnIt(wall: Maz.WallType): Boolean = when (wall) {
 fun SubLevel.canBeReachedOnto(wall: Maz.WallType): Boolean = when (wall) {
     Maz.WallType.NoWall -> true
     is Maz.WallType.Door -> wall.isOpen
-    is Maz.WallType.FixedWall, Maz.WallType.StairUp, Maz.WallType.StairDown -> false
+    Maz.WallType.StairUp, Maz.WallType.StairDown -> true
+    is Maz.WallType.FixedWall -> false
     is Maz.WallType.Decoration -> {
         val mapped = decorations.firstOrNull { it.decorationWallIndex == wall.decorationWallIndex }
         mapped != null && mapped.flags.letAThingThrough
@@ -116,15 +117,33 @@ fun SubLevel.canBeReachedOnto(wall: Maz.WallType): Boolean = when (wall) {
  * separately: a wall carries one mark for what the party may step through and
  * more for what may be put or taken through it, and a level is free to set
  * either without the other.
+ *
+ * Stairs are drawn as a wall and are not one: the party walk into the square
+ * and the script standing on it takes them up or down. Walking into them is
+ * the only way to use a pair — nothing on a flight of stairs answers a click.
  */
 fun SubLevel.canBeWalkedOnto(wall: Maz.WallType): Boolean = when (wall) {
     Maz.WallType.NoWall -> true
     is Maz.WallType.Door -> wall.isOpen
-    is Maz.WallType.FixedWall, Maz.WallType.StairUp, Maz.WallType.StairDown -> false
+    Maz.WallType.StairUp, Maz.WallType.StairDown -> true
+    is Maz.WallType.FixedWall -> false
     is Maz.WallType.Decoration -> {
         val mapped = decorations.firstOrNull { it.decorationWallIndex == wall.decorationWallIndex }
         mapped != null && mapped.flags.letThePartyThrough
     }
+}
+
+/**
+ * The same question asked for a monster, which the original asks with a mark
+ * of its own.
+ *
+ * The two answers part on one wall: a flight of stairs takes the party and
+ * nothing that follows them, so a pack chasing them to the stairs is left at
+ * the foot of it.
+ */
+fun SubLevel.canBeWalkedOntoByAMonster(wall: Maz.WallType): Boolean = when (wall) {
+    Maz.WallType.StairUp, Maz.WallType.StairDown -> false
+    else -> canBeWalkedOnto(wall)
 }
 
 /**

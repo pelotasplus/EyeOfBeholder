@@ -12,6 +12,9 @@ import pl.pelotasplus.eyeofbeholder.data.model.Location
 import pl.pelotasplus.eyeofbeholder.data.model.PartyState
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptEvent
 import pl.pelotasplus.eyeofbeholder.data.model.Ticks
+import pl.pelotasplus.eyeofbeholder.data.model.WallSide
+import pl.pelotasplus.eyeofbeholder.data.model.canBeWalkedOnto
+import pl.pelotasplus.eyeofbeholder.data.model.getWall
 import pl.pelotasplus.eyeofbeholder.data.model.speakerFrom
 import pl.pelotasplus.eyeofbeholder.data.model.spokenBy
 import pl.pelotasplus.eyeofbeholder.data.model.script.NewLevelOrMonster
@@ -157,6 +160,45 @@ class LevelTransitionTest {
             assertEquals(null, turned.changeLevel, "facing $facing should not go down")
             assertEquals(
                 Location(10, 3),
+                turned.state.party.position,
+                "facing $facing should be put back off the stairs",
+            )
+        }
+    }
+
+    /**
+     * The stairs at the east end of level 1, which the party reach from 29x15.
+     * They are drawn as a wall and are not one to the party: the step onto
+     * 30x15 is what runs the script at all, and the script then asks the same
+     * thing level 6's staircase asks — that they be looking up the flight and
+     * not merely standing on it — before taking them to the forest at 17x15.
+     */
+    @Test
+    fun `the level 1 stairs are walked into and take the party up`() = runBlocking {
+        val level = load("LEVEL1.INF")
+        val sub = level.subLevels[0]
+        val stairs = Location(30, 15)
+
+        assertTrue(
+            sub.canBeWalkedOnto(sub.maz.square(stairs).getWall(WallSide.WEST)),
+            "the party cannot walk into the stairs, so nothing runs",
+        )
+
+        suspend fun step(facing: Direction) = LevelScriptRunner(level.script, level = 1).onEvent(
+            level.triggers,
+            ScriptEvent.PARTY_ENTERED,
+            GameState(PartyState(stairs, facing), monsters = level.monsterInstances),
+        )
+
+        val up = step(Direction.EAST)
+        assertEquals(4, up.changeLevel?.level, "facing up the stairs goes up them")
+        assertEquals(Location(17, 15), up.changeLevel?.location)
+
+        Direction.entries.filter { it != Direction.EAST }.forEach { facing ->
+            val turned = step(facing)
+            assertEquals(null, turned.changeLevel, "facing $facing should not go up")
+            assertEquals(
+                Location(29, 15),
                 turned.state.party.position,
                 "facing $facing should be put back off the stairs",
             )

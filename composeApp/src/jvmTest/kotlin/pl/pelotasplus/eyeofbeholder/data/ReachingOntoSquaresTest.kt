@@ -153,13 +153,17 @@ class ReachingOntoSquaresTest {
         assertFalse(sublevel.canBeReachedOnto(shut))
     }
 
-    /** Stairs are not floor to put anything on. */
+    /**
+     * Stairs carry the two marks a wall the party walk through carries — their
+     * own and the one small things pass by — so a flight of stairs is floor
+     * enough to put something down on, as well as to walk into.
+     */
     @Test
-    fun `stairs cannot be reached onto`() {
+    fun `stairs can be reached onto`() {
         val sublevel = level("LEVEL6.INF").subLevels[0]
 
-        assertFalse(sublevel.canBeReachedOnto(Maz.WallType.StairUp))
-        assertFalse(sublevel.canBeReachedOnto(Maz.WallType.StairDown))
+        assertTrue(sublevel.canBeReachedOnto(Maz.WallType.StairUp))
+        assertTrue(sublevel.canBeReachedOnto(Maz.WallType.StairDown))
     }
 
     private fun door(state: Int) = Maz.WallType.Door(

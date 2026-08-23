@@ -8,6 +8,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.WallSide
 import pl.pelotasplus.eyeofbeholder.data.model.WallSight
 import pl.pelotasplus.eyeofbeholder.data.model.canBeReachedOnto
 import pl.pelotasplus.eyeofbeholder.data.model.canBeWalkedOnto
+import pl.pelotasplus.eyeofbeholder.data.model.canBeWalkedOntoByAMonster
 import pl.pelotasplus.eyeofbeholder.data.model.getWall
 import pl.pelotasplus.eyeofbeholder.data.model.showsWhatIsOnIt
 import pl.pelotasplus.eyeofbeholder.data.model.sightThrough
@@ -73,10 +74,19 @@ class WalkingIntoWallsTest {
         assertTrue(sublevel.canBeWalkedOnto(Maz.WallType.fromInt(7)))
     }
 
+    /**
+     * Stairs are drawn as a wall and are not one. The party walk into the
+     * square and the script standing on it takes them to the other level; what
+     * stops a wall stopping them is a mark of their own, which stairs carry
+     * and monsters' does not — a pack chasing them is left at the foot.
+     */
     @Test
-    fun `stairs are a wall to walk into rather than a way through`() {
-        assertFalse(sublevel.canBeWalkedOnto(Maz.WallType.StairUp))
-        assertFalse(sublevel.canBeWalkedOnto(Maz.WallType.StairDown))
+    fun `stairs take the party and not what is chasing them`() {
+        assertTrue(sublevel.canBeWalkedOnto(Maz.WallType.StairUp))
+        assertTrue(sublevel.canBeWalkedOnto(Maz.WallType.StairDown))
+
+        assertFalse(sublevel.canBeWalkedOntoByAMonster(Maz.WallType.StairUp))
+        assertFalse(sublevel.canBeWalkedOntoByAMonster(Maz.WallType.StairDown))
     }
 
     // --- what a decorated wall says for itself ----------------------------
