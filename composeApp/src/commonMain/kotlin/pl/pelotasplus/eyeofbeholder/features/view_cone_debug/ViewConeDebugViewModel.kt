@@ -907,6 +907,11 @@ class ViewConeDebugViewModel(
     private fun keepTheFightGoing() {
         if (fighting?.isActive == true) return
 
+        // Nothing to keep going. This is asked after every draw, so starting a
+        // clock that would find nothing to do and stop again is a clock per
+        // frame — and a line in the log saying a fight nobody was in is over.
+        if (!stillFighting()) return
+
         fighting = viewModelScope.launch {
             // A monster roused this instant has its whole turn ahead of it,
             // not the tail of one it never took.
