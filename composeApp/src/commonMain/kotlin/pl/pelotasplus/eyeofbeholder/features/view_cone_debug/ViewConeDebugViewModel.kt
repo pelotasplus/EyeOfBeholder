@@ -769,7 +769,7 @@ class ViewConeDebugViewModel(
         // A piece of floor answers a click only when there is something to do
         // with it — otherwise the click is the wall's, so a lever low on one
         // stays clickable with an empty hand.
-        FloorReach.at(x, y)?.let { reach ->
+        (aimedAt(x, y) ?: FloorReach.at(x, y))?.let { reach ->
             if (reachedInto(reach)) return
         }
 
@@ -1344,6 +1344,48 @@ class ViewConeDebugViewModel(
     }
 
     /**
+     * The piece of floor a click is aimed at, when it lands on the picture of
+     * something lying within reach.
+     *
+     * The original answers a click by which of four strips of floor it fell
+     * in, and a thing is drawn centred on its corner rather than inside a
+     * strip — so the top of a thing on the party's own square is drawn up in
+     * the strip belonging to the square ahead, and clicking it reaches past
+     * it. Aiming at what is drawn is what a player means by the click; the
+     * strips still answer everywhere else, so bare floor works as it did.
+     *
+     * Only what the party could reach anyway: a thing on a corner no strip
+     * names is looked at rather than picked up, exactly as before.
+     */
+    private fun aimedAt(x: Int, y: Int): FloorReach? {
+        val world = _state.value.game
+
+        // A full hand is putting down rather than picking up, and what it is
+        // aimed at is the floor the thing would stand on. Where two of those
+        // overlap — a thing on the party's own square is drawn over the feet
+        // of one on the square ahead — the nearer middle wins.
+        if (world.inHand.isSomething) {
+            return drawn?.landingSpots
+                ?.filter { it.where.covers(x, y) }
+                ?.minByOrNull { it.where.howFarFrom(x, y) }
+                ?.reach
+        }
+
+        val ahead = party.facing.transformCoordinates(0, -1).let { (dx, dy) ->
+            Location(party.position.x + dx, party.position.y + dy)
+        }
+
+        // the last drawn is the one on top, which is the one being looked at
+        val clicked = drawn?.itemsOnTheFloor?.lastOrNull { it.covers(x, y) } ?: return null
+        val item = world.item(clicked.slot) ?: return null
+
+        return FloorReach.entries.firstOrNull { reach ->
+            val square = if (reach.aheadOfTheParty) ahead else party.position
+            item.location == square && item.place == reach.placeFacing(party.facing)
+        }
+    }
+
+    /**
      * Puts down what is being held on a piece of floor, or picks up what is
      * lying there.
      *
@@ -1364,6 +1406,17 @@ class ViewConeDebugViewModel(
         if (reach.aheadOfTheParty && !canReachOnto(inf, level, at)) return false
 
         val place = reach.placeFacing(party.facing)
+
+        // What the square holds is the half of this worth reading in a log: a
+        // click that finds nothing is either the wrong corner or the wrong
+        // square, and the two look the same from the outside.
+        Logger.d(TAG) {
+            "Reached into $reach: $place on $at, holding ${world.inHand}, " +
+                "lyingAt=${world.lyingAt(level, at, place)}, square holds " +
+                world.items.withIndex()
+                    .filter { (_, item) -> item.level == level && item.location == at }
+                    .map { (slot, item) -> "$slot:${item.place}:${item.icon.value}" }
+        }
 
         val changed = if (world.inHand.isSomething) {
             world.puttingDown(level, at, place)
@@ -1982,6 +2035,7 @@ class ViewConeDebugViewModel(
             wallAt = wallAt,
             pulse = pulse,
             fromTheBottomUp = _state.value.game.fromTheBottomUp,
+            holding = _state.value.game.inHand.takeIf { it.isSomething },
         ).onSuccess { viewPort ->
             drawn = viewPort
             paint(viewPort, sublevel.palette)

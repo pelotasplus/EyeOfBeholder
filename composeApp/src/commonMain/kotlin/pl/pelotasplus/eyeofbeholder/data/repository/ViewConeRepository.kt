@@ -10,6 +10,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.Location
 import pl.pelotasplus.eyeofbeholder.data.model.Maz
 import pl.pelotasplus.eyeofbeholder.data.model.WallSide
 import pl.pelotasplus.eyeofbeholder.data.model.DistanceFromParty
+import pl.pelotasplus.eyeofbeholder.data.model.FloorReach
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterInstance
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterSheet
 import pl.pelotasplus.eyeofbeholder.data.model.Door
@@ -89,6 +90,8 @@ interface ViewConeRepository {
         },
         pulse: TeleporterPulse = TeleporterPulse.AS_LAID_OUT,
         fromTheBottomUp: List<ItemIndex> = items.indices.map(::ItemIndex),
+        /** What the party carry, so the view can say where putting it would leave it. */
+        holding: ItemIndex? = null,
     ): Result<ViewPort>
 }
 
@@ -132,6 +135,7 @@ class ViewConeRepositoryImpl(
         wallAt: (Location, WallSide) -> Maz.WallType,
         pulse: TeleporterPulse,
         fromTheBottomUp: List<ItemIndex>,
+        holding: ItemIndex?,
     ): Result<ViewPort> {
         Logger.d(TAG) { "Render position $playerX x $playerY level ${sublevel.level}"}
 
@@ -264,6 +268,12 @@ class ViewConeRepositoryImpl(
             blockIndex = ViewPort.OWN_BLOCK_INDEX, dim = 3,
             partyFacing = direction,
         )
+
+        holding?.let { slot ->
+            items.getOrNull(slot.value)?.let { held ->
+                whereItWouldLand(viewPort, held, slot, smallIcons, largeIcons, direction)
+            }
+        }
 
         return Result.success(viewPort)
     }
@@ -398,6 +408,42 @@ class ViewConeRepositoryImpl(
         }
     }
 
+    /**
+     * Works out, for each piece of floor the party can reach into, where the
+     * thing they carry would be drawn if they put it there — so that a click
+     * putting it down can be answered by the floor it points at rather than by
+     * the strip of screen it fell in.
+     */
+    private fun whereItWouldLand(
+        viewPort: ViewPort,
+        held: Item,
+        slot: ItemIndex,
+        smallIcons: Cps,
+        largeIcons: Cps,
+        direction: Direction,
+    ) {
+        val sheet = sheetFor(held.icon, smallIcons, largeIcons) ?: return
+
+        FloorReach.entries.forEach { reach ->
+            val place = reach.placeFacing(direction).asSeenFacing(direction) ?: return@forEach
+            val blockIndex = if (reach.aheadOfTheParty) AHEAD_BLOCK_INDEX else ViewPort.OWN_BLOCK_INDEX
+            val dim = if (reach.aheadOfTheParty) 2 else 3
+            val scaleSteps = itemScaleStepsAt(dim, place)
+            if (!scaleSteps.isVisible) return@forEach
+
+            viewPort.landingSpot(
+                largeIcons = sheet,
+                iconIdx = held.icon,
+                slot = slot,
+                reach = reach,
+                blockIndex = blockIndex,
+                place = place,
+                scaleSteps = scaleSteps,
+                nudge = nudgeOf(slot),
+            )
+        }
+    }
+
     private fun drawItemsAtBlock(
         viewPort: ViewPort,
         items: List<Item>,
@@ -446,6 +492,7 @@ class ViewConeRepositoryImpl(
                             viewPort.drawFloorItem(
                                 largeIcons = sheet,
                                 iconIdx = item.icon,
+                                slot = slot,
                                 blockIndex = blockIndex,
                                 place = seenAt,
                                 scaleSteps = scaleSteps,
@@ -563,5 +610,8 @@ class ViewConeRepositoryImpl(
 
         /** The row a monster has to be on for its arm to be in the fight. */
         private const val NEXT_TO_THE_PARTY = -1
+
+        /** The square straight in front, among the eighteen in sight. */
+        private const val AHEAD_BLOCK_INDEX = 13
     }
 }

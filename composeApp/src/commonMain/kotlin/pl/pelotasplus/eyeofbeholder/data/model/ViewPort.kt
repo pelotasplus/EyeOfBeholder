@@ -53,6 +53,52 @@ class ViewPort(
     /** How far away whatever last painted each pixel was. */
     private val distances = MutableList(ROWS * COLS) { DistanceFromParty.BEYOND_EVERYTHING }
 
+    private val drawnFloorItems = mutableListOf<DrawnItem>()
+
+    private val landings = mutableListOf<Landing>()
+
+    /** Where whatever is in hand would land, per piece of floor within reach. */
+    val landingSpots: List<Landing> get() = landings
+
+    /** One piece of floor, and where a thing put on it would be drawn. */
+    data class Landing(val reach: FloorReach, val where: DrawnItem)
+
+    /**
+     * Where each thing lying on a floor was drawn, in the order they were
+     * drawn, so that a click can be answered by what the player is looking at
+     * rather than only by the strip of floor it landed in.
+     */
+    val itemsOnTheFloor: List<DrawnItem> get() = drawnFloorItems
+
+    /** One thing's picture, as it ended up on screen. */
+    data class DrawnItem(
+        val slot: ItemIndex,
+        val left: Int,
+        val top: Int,
+        val width: Int,
+        val height: Int,
+    ) {
+        /**
+         * Whether a click at this point is aimed at the thing. The picture is
+         * given a little room around it: these are 176-by-120 pixels, and a
+         * finger is not a mouse.
+         */
+        fun covers(x: Int, y: Int) =
+            x in left - GRABBABLE until left + width + GRABBABLE &&
+                y in top - GRABBABLE until top + height + GRABBABLE
+
+        /** How far off the middle of the picture a point is, to choose between two. */
+        fun howFarFrom(x: Int, y: Int): Int {
+            val across = x - (left + width / 2)
+            val down = y - (top + height / 2)
+            return across * across + down * down
+        }
+
+        private companion object {
+            const val GRABBABLE = 2
+        }
+    }
+
     private var painting = DistanceFromParty.BEYOND_EVERYTHING
     private var hiddenByCloserThings = false
     private var within = ViewWindow.WHOLE_VIEW
@@ -457,6 +503,7 @@ class ViewPort(
     fun drawFloorItem(
         largeIcons: Cps,
         iconIdx: ItemIconId,
+        slot: ItemIndex,
         blockIndex: Int,
         place: ViewPlace,
         scaleSteps: ScaleSteps,
@@ -472,6 +519,50 @@ class ViewPort(
         val startY = ScreenY(spot.y + 124 - icon.h + nudge.down)
 
         drawIcon(icon, startX, startY, fadeSteps = scaleSteps)
+
+        drawnFloorItems += DrawnItem(
+            slot = slot,
+            left = startX.value,
+            top = startY.value,
+            width = icon.w,
+            height = icon.h,
+        )
+    }
+
+    /**
+     * Where the thing in hand would come to rest on one of the pieces of floor
+     * the party can reach, without drawing anything.
+     *
+     * Putting a thing down is aimed the same way picking one up is: at the
+     * floor the player is looking at. A strip of screen and the picture of a
+     * thing standing on it do not have the same edges, and it is the picture
+     * the player means.
+     */
+    fun landingSpot(
+        largeIcons: Cps,
+        iconIdx: ItemIconId,
+        slot: ItemIndex,
+        reach: FloorReach,
+        blockIndex: Int,
+        place: ViewPlace,
+        scaleSteps: ScaleSteps,
+        nudge: ItemNudge,
+    ) {
+        var icon = largeIcons.getItemIcon(iconIdx) ?: return
+        repeat(scaleSteps.value) { icon = scaleDown(icon) }
+
+        val spot = blockSpot(blockIndex, place)
+
+        landings += Landing(
+            reach = reach,
+            where = DrawnItem(
+                slot = slot,
+                left = spot.x + 88 - icon.w / 2 + nudge.across,
+                top = spot.y + 124 - icon.h + nudge.down,
+                width = icon.w,
+                height = icon.h,
+            ),
+        )
     }
 
     /**
