@@ -24,6 +24,7 @@ import pl.pelotasplus.eyeofbeholder.data.repository.VcnRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.VmpRepositoryImpl
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /**
@@ -140,6 +141,36 @@ class PressurePlateTest {
 
         val walkedOff = ran(ScriptEvent.PARTY_LEFT, putDown, plate)
         assertTrue(walkedOff.theDoor().isOpen, "the weight did not hold it open")
+    }
+
+    /**
+     * The level's other floor button, at 6x10, which looks like this one in
+     * the floor and is not the same thing. Its flag word takes the party
+     * arriving and nothing else, and its whole script is one instruction:
+     * open the door at 6x8. Nothing anywhere on the level shuts that door
+     * again, so there is nothing for a weight to hold — and a weight is not
+     * something the button would feel in any case.
+     */
+    @Test
+    fun `the button at 6x10 opens its door for good and ignores a weight`() {
+        val button = Location(6, 10)
+        val itsDoorway = Location(6, 8)
+        val trigger = level.triggers.first { it.location == button }
+
+        assertTrue(trigger.flags.reactsTo(ScriptEvent.PARTY_ENTERED))
+        listOf(ScriptEvent.PARTY_LEFT, ScriptEvent.ITEM_PUT_DOWN, ScriptEvent.ITEM_TAKEN)
+            .forEach { assertFalse(trigger.flags.reactsTo(it), "$it works the button") }
+
+        fun GameState.itsDoor() = wall(1, itsDoorway, WallSide.SOUTH) as Maz.WallType.Door
+
+        val dropped = ran(ScriptEvent.ITEM_PUT_DOWN, world(standingOn = itsDoorway), button)
+        assertEquals(0, dropped.itsDoor().state, "a weight worked a button that takes a foot")
+
+        val stoodOn = ran(ScriptEvent.PARTY_ENTERED, world(standingOn = button), button)
+        assertTrue(stoodOn.itsDoor().isOpen, "the button did not open the door")
+
+        val steppedOff = ran(ScriptEvent.PARTY_LEFT, stoodOn, button)
+        assertTrue(steppedOff.itsDoor().isOpen, "the door shut behind the party")
     }
 
     /** Take the weight off and it shuts again. */
