@@ -96,20 +96,44 @@ data class DialogueScene(
      * box inset in the dialogue frame, while a plate — the temple seen from the
      * gate, a map — spans the screen above the speech instead of the frame.
      */
-    enum class PictureFrame(
+    sealed class PictureFrame(
         val left: Int,
         val top: Int,
         val width: Int,
         val height: Int,
+        /** Nothing is drawn under a picture that is not inside the frame. */
+        val insteadOfTheFrame: Boolean,
+        /**
+         * Whether what is drawn is a shape cut from its sheet rather than a
+         * rectangle of it: a person met stands over the view, so the sheet's
+         * own background is no part of them.
+         */
+        val cutOut: Boolean = false,
     ) {
-        SPEAKER(left = 8, top = 8, width = 160, height = 96),
-        ACROSS_THE_TOP(left = 0, top = 0, width = 320, height = 121);
+        data object SPEAKER : PictureFrame(
+            left = 8, top = 8, width = 160, height = 96, insteadOfTheFrame = false,
+        )
 
-        /** Nothing is drawn under a picture that covers where the frame goes. */
-        val insteadOfTheFrame: Boolean get() = width > FRAME_WIDTH
+        data object ACROSS_THE_TOP : PictureFrame(
+            left = 0, top = 0, width = 320, height = 121, insteadOfTheFrame = true,
+        )
+
+        /**
+         * Somebody met in the dungeon, who is not a picture in a frame at all:
+         * they stand in the view at their own size, over whatever the party
+         * were looking at, and are spoken to in the strip below.
+         */
+        class Standing(left: Int, top: Int, width: Int, height: Int) : PictureFrame(
+            left = left,
+            top = top,
+            width = width,
+            height = height,
+            insteadOfTheFrame = true,
+            cutOut = true,
+        )
 
         companion object {
-            fun of(rect: Int) = entries.getOrElse(rect) { SPEAKER }
+            fun of(rect: Int) = if (rect == 1) ACROSS_THE_TOP else SPEAKER
         }
     }
 

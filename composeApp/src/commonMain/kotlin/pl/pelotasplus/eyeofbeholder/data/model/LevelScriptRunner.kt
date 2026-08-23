@@ -96,6 +96,19 @@ data class ScriptQuestion(
     val buttons: List<MessageId>,
     val scene: List<Dialog>,
     /**
+     * What the buttons say, where the words are not the level's to give. A
+     * level writes the answers to its own questions into its messages; the
+     * answers to a meeting are the same two words everywhere in the dungeon
+     * and come out of the original's executable instead.
+     */
+    val words: List<String> = emptyList(),
+    /**
+     * Who is being spoken to, where the speaker is somebody met rather than a
+     * picture a script named: they stand in the view while they say their
+     * piece, and the level has nothing to say about them.
+     */
+    val met: NpcId? = null,
+    /**
      * What the script printed into the box before speaking — the party's own
      * line, usually. Drawing the box again wipes them, so a reply arrives on a
      * clean box while an exchange builds up on one.
@@ -583,11 +596,24 @@ class LevelScriptRunner(
                     "$token is not implemented; the script will read its result as unanswered"
                 }
 
-                // The set pieces: an NPC asking to join, the portal, the way
-                // the party are told they have died. Skipping one is quiet in
-                // a way that matters — the script has usually just set the
-                // flag that says it has happened, so nothing brings it round
-                // again and the scene is gone for that game.
+                is Encounter.NpcSequence -> {
+                    val meeting = NpcMeeting.called(token.npc)
+
+                    if (meeting == null) {
+                        Logger.w(TAG) {
+                            "$token has no meeting written for it; whatever marks it " +
+                                "as seen has been set anyway"
+                        }
+                    } else {
+                        state = met(meeting, state, stage)
+                    }
+                }
+
+                // The other two set pieces: the portal, and the way the party
+                // are told they have died. Skipping one is quiet in a way that
+                // matters — the script has usually just set the flag that says
+                // it has happened, so nothing brings it round again and the
+                // scene is gone for that game.
                 is Encounter -> Logger.w(TAG) {
                     "$token is not implemented; whatever marks it as seen has been set anyway"
                 }
@@ -608,6 +634,60 @@ class LevelScriptRunner(
      * the door is worth watching — and a door shut behind them could never be
      * seen shutting at all.
      */
+    /**
+     * Somebody stepping up to the party, saying their piece and asking to come
+     * along.
+     *
+     * The question is put the way a script's own questions are, so it is read,
+     * answered and drawn by whatever is showing the script. Saying yes is
+     * answered before anybody joins: adding them to the party is not written
+     * yet, and the flag that would say they had joined is not set for a
+     * meeting that ended with nobody joining.
+     */
+    private suspend fun met(
+        meeting: NpcMeeting,
+        state: GameState,
+        stage: ScriptStage,
+    ): GameState {
+        // The view is drawn again before they step into it, which is the
+        // original's first move on any set piece. The instruction before this
+        // one usually turns the party to face whoever it is, and they are
+        // drawn standing in the view that turn leaves.
+        stage.show(state)
+        stage.play(meeting.heardAs)
+
+        val letThemAlong = stage.ask(
+            ScriptQuestion(
+                textId = meeting.asks,
+                buttons = emptyList(),
+                words = listOf(NpcMeeting.YES, NpcMeeting.NO),
+                scene = emptyList(),
+                met = meeting.npc,
+            ),
+        ) == DialogAnswer.forButton(0)
+
+        val answer = if (letThemAlong) meeting.agrees else meeting.refused
+
+        answer?.let {
+            stage.ask(
+                ScriptQuestion(
+                    textId = it,
+                    buttons = emptyList(),
+                    words = listOf(DialogueScene.OK),
+                    scene = emptyList(),
+                    waitsToBeRead = true,
+                    met = meeting.npc,
+                ),
+            )
+        }
+
+        if (letThemAlong) {
+            Logger.w(TAG) { "${meeting.npc} was let along, but joining is not written yet" }
+        }
+
+        return state
+    }
+
     private fun doorSent(state: GameState, at: Location, opening: Boolean): GameState {
         val side = state.doorFacing(level, at) ?: run {
             Logger.w(TAG) { "No door at $at to ${if (opening) "open" else "close"}" }

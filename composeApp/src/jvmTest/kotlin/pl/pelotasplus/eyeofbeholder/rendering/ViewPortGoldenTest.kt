@@ -17,6 +17,8 @@ import pl.pelotasplus.eyeofbeholder.data.repository.ItemTypesRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.model.Maz
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterInstance
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterPose
+import pl.pelotasplus.eyeofbeholder.data.model.NpcId
+import pl.pelotasplus.eyeofbeholder.data.model.NpcMeeting
 import pl.pelotasplus.eyeofbeholder.data.model.WallByte
 import pl.pelotasplus.eyeofbeholder.data.model.WallSide
 import pl.pelotasplus.eyeofbeholder.data.model.getWall
@@ -86,6 +88,9 @@ class ViewPortGoldenTest {
 
     /** The mage's spellbook, which nobody but a mage has any use for. */
     private val SPELLBOOK = ItemIndex(462)
+
+    /** The one the party meet on level 1, whose scene is the one drawn here. */
+    private val INSAL = NpcMeeting.called(NpcId(0))!!
 
     @Test
     fun `level7 start position`() =
@@ -1305,6 +1310,29 @@ class ViewPortGoldenTest {
         ).toImage()
     }
 
+    /**
+     * The person waiting on level 1, standing in the view as they ask to come
+     * along. They are not framed the way a speaker a script names is: they are
+     * cut from the sheet the meetings share, at their own size, and stand on
+     * the floor of the view.
+     */
+    @Test
+    fun `level1 the person met in the crypt`() =
+        checkGolden(
+            "level1-met-in-the-crypt",
+            dialogueOver(
+                level = "LEVEL1.INF",
+                x = 15,
+                y = 11,
+                direction = Direction.WEST,
+                picture = NpcMeeting.SHEET,
+                sourceTop = INSAL.standing.sourceTop,
+                goes = INSAL.standing.inTheView(),
+                textId = INSAL.asks.number,
+                buttons = listOf(NpcMeeting.YES, NpcMeeting.NO),
+            ),
+        )
+
     /** @param messages the level's own message ids, each with the ink to write it in. */
     private fun messagesOver(
         level: String,
@@ -1369,7 +1397,7 @@ class ViewPortGoldenTest {
             sublevel = sublevel,
             playerX = x,
             playerY = y,
-            direction = Direction.NORTH,
+            direction = direction,
         ).getOrThrow()
 
         val font = FontRepositoryImpl(resources).loadFont("FONT6.FNT").getOrThrow()

@@ -1,6 +1,7 @@
 package pl.pelotasplus.eyeofbeholder.data.model.script
 
 import pl.pelotasplus.eyeofbeholder.data.ByteReader
+import pl.pelotasplus.eyeofbeholder.data.model.NpcId
 
 /**
  * Triggers a special encounter or cutscene sequence. Opcode 0xE6.
@@ -20,7 +21,7 @@ sealed class Encounter : ScriptToken {
     data object PasswordCheck : Encounter()
 
     /** NPC sequence. cmd >= 0 */
-    data class NpcSequence(val npcId: Int) : Encounter()
+    data class NpcSequence(val npc: NpcId) : Encounter()
 
     companion object {
         fun read(reader: ByteReader): Encounter {
@@ -38,7 +39,7 @@ sealed class Encounter : ScriptToken {
                 -3 -> DeathSequence
                 -2 -> PortalSequence
                 -1 -> PasswordCheck
-                else -> NpcSequence(npcId = normalizedCmd)
+                else -> NpcSequence(NpcId(normalizedCmd))
             }
         }
     }

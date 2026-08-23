@@ -41,6 +41,8 @@ import pl.pelotasplus.eyeofbeholder.data.model.THROWN_CPS
 import pl.pelotasplus.eyeofbeholder.data.model.HandRecovering
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterInstance
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterPose
+import pl.pelotasplus.eyeofbeholder.data.model.NpcId
+import pl.pelotasplus.eyeofbeholder.data.model.NpcMeeting
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterPathing
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterStepping
 import pl.pelotasplus.eyeofbeholder.data.model.MonstersTurn
@@ -1847,7 +1849,12 @@ class ViewConeDebugViewModel(
         override suspend fun ask(question: ScriptQuestion): DialogAnswer {
             Logger.i(TAG) { "Script is showing text ${question.textId} with ${question.buttons}" }
 
-            return awaiting.ask { showDialog(question) }
+            return awaiting.ask { showDialog(question) }.also {
+                // An answered question leaves the box drawn again behind it, so
+                // whatever is said to the answer is said on a clean one rather
+                // than under the question it answers.
+                standingInTheBox = emptyList()
+            }
         }
     }
 
@@ -1865,7 +1872,7 @@ class ViewConeDebugViewModel(
             .getOrNull()
             ?: DialogueText.EMPTY
 
-        val labels = question.buttons.mapNotNull { inf.message(it) }
+        val labels = question.words.ifEmpty { question.buttons.mapNotNull { inf.message(it) } }
         val unread = speech.pages.drop(1)
 
         val clickable = question.hasSomethingToClick(labels)
@@ -1890,6 +1897,7 @@ class ViewConeDebugViewModel(
                             else -> emptyList()
                         },
                         waitsToBeRead = unread.isNotEmpty() || question.waitsToBeRead,
+                        met = question.met,
                     ),
                     unread = unread,
                     buttons = labels,
@@ -1910,17 +1918,39 @@ class ViewConeDebugViewModel(
      * corner to cut out — x in units of eight pixels, as the original counts
      * them — and its rect says which of the two places it goes.
      */
+    /**
+     * Whoever the party have run into, standing in the view while they speak.
+     *
+     * They are not one of the pictures a level names: everybody the dungeon
+     * holds is cut from one sheet, at their own size, and stands on the floor
+     * of the view rather than inside the frame a speaker is framed in.
+     */
+    private suspend fun whoeverIsMet(npc: NpcId): DialogueScene.Picture? {
+        val meeting = NpcMeeting.called(npc) ?: return null
+        val sheet = pictureCalled(NpcMeeting.SHEET) ?: return null
+
+        return DialogueScene.Picture(
+            cps = sheet,
+            sourceLeft = 0,
+            sourceTop = meeting.standing.sourceTop,
+            goes = meeting.standing.inTheView(),
+        )
+    }
+
     private suspend fun sceneFor(
         scene: List<Dialog>,
         text: String,
         buttonLabels: List<String>,
         waitsToBeRead: Boolean,
         readOff: DialogueScene.ReadOff.Written = DialogueScene.ReadOff.TheStripBelow,
+        met: NpcId? = null,
     ): DialogueScene {
         val font = font ?: return DialogueScene(null, null, emptyList(), emptyList())
 
         val instruction = scene.filterIsInstance<Dialog.DisplayPicture>().lastOrNull()
-        val portrait = if (instruction == null) {
+        val portrait = if (met != null) {
+            whoeverIsMet(met)
+        } else if (instruction == null) {
             // a reply draws no one: whoever is speaking stays up while they talk
             speaker
         } else {

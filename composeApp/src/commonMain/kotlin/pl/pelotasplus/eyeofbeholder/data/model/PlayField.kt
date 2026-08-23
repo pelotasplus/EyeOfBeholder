@@ -697,6 +697,7 @@ class PlayField(
                 height = portrait.goes.height,
                 left = portrait.goes.left,
                 top = portrait.goes.top,
+                cutOut = portrait.goes.cutOut,
             )
         }
 
@@ -800,6 +801,11 @@ class PlayField(
         }
     }
 
+    /**
+     * @param cutOut whether the sheet's own background is part of what is
+     *   being copied. A picture filling a frame is a rectangle of the file;
+     *   somebody standing over the view is a shape cut out of it.
+     */
     private fun copy(
         from: Cps,
         sourceLeft: Int,
@@ -808,6 +814,7 @@ class PlayField(
         height: Int,
         left: Int,
         top: Int,
+        cutOut: Boolean = false,
     ) {
         val colours = from.palette ?: palette
 
@@ -818,6 +825,8 @@ class PlayField(
                 if (sourceX !in 0 until from.width || sourceY !in 0 until from.height) continue
 
                 val index = from.pixels[sourceY * from.width + sourceX]
+                if (cutOut && index.isTransparent) continue
+
                 draw(left + x, top + y, colours.colors[index.value])
             }
         }

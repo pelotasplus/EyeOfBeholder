@@ -49,6 +49,14 @@ value class DecorationId(val value: Int)
 value class MonsterTypeId(val value: Int)
 
 /**
+ * One of the people the dungeon holds, as a script counts them. Their own
+ * space: the dungeon has three, numbered apart from every other table.
+ */
+@JvmInline
+@Serializable
+value class NpcId(val value: Int)
+
+/**
  * Which set of overlays a monster type wears, counting from 1 — a .DCR file
  * holds several. Zero means the type wears none, which the parser reads as no
  * id at all rather than as a set.
