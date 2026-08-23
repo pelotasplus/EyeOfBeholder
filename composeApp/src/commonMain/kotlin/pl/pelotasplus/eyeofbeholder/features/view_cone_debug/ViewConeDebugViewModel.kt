@@ -1019,6 +1019,12 @@ class ViewConeDebugViewModel(
                 landed.forEach {
                     Logger.d(TAG) { "$tickNow  m${it.monster} lands on ${it.at} for ${it.damage}" }
                 }
+
+                // A blow that landed puts a number on a portrait, and the
+                // clock that takes it off again is not this one: this one
+                // stops with the fight, and a splat left when it did would
+                // stay on the face until something else started it.
+                if (landed.isNotEmpty()) letTheDamageFade()
                 swungAndMissed.forEach { slot -> Logger.d(TAG) { "$tickNow  m$slot misses" } }
                 took.forEach { line -> Logger.d(TAG) { line } }
 
