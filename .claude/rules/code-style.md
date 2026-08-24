@@ -61,6 +61,27 @@ Text("Debug")
 val scaleFactor = minOf(...).toInt().coerceAtLeast(1)
 ```
 
+## Don't invoke the original unless the fact is the point
+
+"The original does X" is worth writing only where knowing it changes what a
+reader would do. Two cases earn it: a table or a number transcribed rather
+than derived, where the note is what stops somebody recomputing it or nudging
+it by eye; and a rule so surprising that a reader would otherwise take it for
+a bug and fix it.
+
+Everywhere else, say what the code does. The comment is about this code, and
+the reader is here rather than in a reference implementation:
+
+```kotlin
+// no
+// The original answers a click by which of four strips of floor it fell in,
+// and refuses the whole switch rather than closing on a monster.
+
+// yes
+// A click reaches whichever of the four strips of floor it fell in, and a
+// switch is refused whole rather than half worked.
+```
+
 ## Don't name ScummVM symbols in comments
 
 A reader without the ScummVM checkout open can do nothing with

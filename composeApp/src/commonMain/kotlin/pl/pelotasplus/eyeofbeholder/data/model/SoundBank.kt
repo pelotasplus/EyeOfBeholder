@@ -29,7 +29,7 @@ value class SoundBank private constructor(val name: String) {
 /**
  * Which track of a bank, as the game counts them.
  *
- * Track 0 is the driver's own silence — asking for it is how the original
+ * Track 0 is the driver's own silence — asking for it is how the game
  * stops what is playing — so it is never a sound anyone means to hear.
  */
 @JvmInline

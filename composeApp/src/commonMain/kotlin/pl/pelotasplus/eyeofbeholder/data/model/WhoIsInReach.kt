@@ -10,7 +10,7 @@ package pl.pelotasplus.eyeofbeholder.data.model
  * second, so the two in the front rank do not both hit the same creature while
  * another stands untouched beside it.
  *
- * The order is the original's table rather than a rule fitted to it. A rule is
+ * The order is a transcribed table rather than a rule fitted to it. A rule is
  * tempting — near before far, own side before the other — and it is right for
  * three of the four directions and wrong facing west, where the two far
  * corners come the other way round.
@@ -31,7 +31,7 @@ object WhoIsInReach {
 
     /**
      * Which corner each champion reaches for first, second, third and fourth,
-     * for each way the party can face. From the original.
+     * for each way the party can face. Transcribed.
      *
      * Four directions, two sides of the front rank, four corners named as the
      * maze has them.

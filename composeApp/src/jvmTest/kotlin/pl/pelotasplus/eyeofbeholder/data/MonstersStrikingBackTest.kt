@@ -36,7 +36,7 @@ import kotlin.test.assertNull
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-/** The original's monster turn, which the party's step is measured against. */
+/** How long a monster's turn is, which the party's step is measured against. */
 private val A_MONSTER_TURN = pl.pelotasplus.eyeofbeholder.data.model.Ticks(20)
 
 /**
@@ -367,7 +367,7 @@ class MonstersStrikingBackTest {
      * of the dance: step aside, turn, step back and swing all fit inside one
      * turn of something standing next to you, with one to spare.
      *
-     * Both numbers are the original's, and neither is generous. If either ever
+     * Both numbers are transcribed, and neither is generous. If either ever
      * moves, the fight stops being the fight the game was designed around.
      */
     @Test

@@ -150,9 +150,9 @@ class WalkingIntoWallsTest {
     /**
      * The same wall is not solid for the other two questions, and the four must
      * not be made to agree. Without a wall set there is nothing to take a bite
-     * out of the view and nothing to hide what lies on the square, so the
-     * original asks those two of the wall set and only passability of the
-     * marks. Blocking sight here would draw a hole in the corridor.
+     * out of the view and nothing to hide what lies on the square: those two
+     * are asked of the wall set, and only passability is asked of the marks.
+     * Blocking sight here would draw a hole in the corridor.
      */
     @Test
     fun `a wall the level maps nothing for is still seen through`() {

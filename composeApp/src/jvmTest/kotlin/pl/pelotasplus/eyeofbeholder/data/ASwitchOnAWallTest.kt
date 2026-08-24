@@ -91,9 +91,9 @@ class ASwitchOnAWallTest {
     }
 
     /**
-     * A door is not shut on whatever is standing in it. The original refuses
-     * the whole switch rather than closing on a monster, so the lever does
-     * nothing at all while one is there.
+     * A door is not shut on whatever is standing in it. The whole switch is
+     * refused rather than half worked, so the lever does nothing at all while
+     * something is there.
      */
     @Test
     fun `it will not shut a door with something standing in it`() {

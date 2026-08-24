@@ -227,8 +227,8 @@ class MonsterStepping(
     /**
      * The world with every monster on [at] facing [way].
      *
-     * Two sharing a square turn as one: the original turns a whole square with
-     * whichever of the pair moved, and without it one of them ends up facing a
+     * Two sharing a square turn as one: a whole square turns with whichever
+     * of the pair moved, and without it one of them ends up facing a
      * wall while the other fights, which is a wolf standing about.
      */
     private fun GameState.facingTogetherOn(
@@ -249,14 +249,14 @@ class MonsterStepping(
     private companion object {
         /**
          * The two corners a pair share a square on, whichever way either of
-         * them faces. From the original, which has no other pair of places
+         * them faces. Transcribed, which has no other pair of places
          * for them: a third of that size is turned away at the edge.
          */
         val PAIRED = listOf(SquarePlace.NORTH_WEST, SquarePlace.SOUTH_EAST)
 
         /**
          * Which corner one standing in the middle steps back to when it has
-         * to make room, by the way it faces. From the original.
+         * to make room, by the way it faces. Transcribed.
          */
         val CORNER_FACING = listOf(
             SquarePlace.NORTH_WEST,
@@ -267,7 +267,7 @@ class MonsterStepping(
 
         /**
          * Which corner of a crowded square a monster takes, by the way it
-         * faces, best first. From the original.
+         * faces, best first. Transcribed.
          *
          * The order is not cosmetic: the first two of each row are the two
          * corners its arm reaches from, so a monster squeezing onto an

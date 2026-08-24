@@ -14,7 +14,7 @@ package pl.pelotasplus.eyeofbeholder.data.model
 data class Preferences(
     /**
      * Nothing plays yet, so this is a switch with nothing behind it. It is
-     * here because the menu it belongs to is: the original offers these two,
+     * here because the menu it belongs to is: the menu has these two lines,
      * and a Preferences menu with one line on it is not that menu.
      */
     val sounds: Boolean = true,
@@ -34,7 +34,7 @@ data class Preferences(
         Setting.BAR_GRAPHS -> copy(barGraphs = !barGraphs)
     }
 
-    /** The lines of the menu, in the order the original lists them. */
+    /** The lines of the menu, in the order they are listed. */
     enum class Setting(val reads: String) {
         SOUNDS("Sounds are"),
         BAR_GRAPHS("Bar Graphs are");

@@ -83,8 +83,7 @@ data class CharacterSheet(
  * Where everything on the second page goes, and in what colour.
  *
  * The page is the same panel with its figure and slots painted out, so it
- * starts by blanking [BLANKED] and then writes over it. From the original
- * game.
+ * starts by blanking [BLANKED] and then writes over it. Transcribed.
  */
 object StatsPage {
     /** The parts of the panel the figure and the slots are wiped from. */

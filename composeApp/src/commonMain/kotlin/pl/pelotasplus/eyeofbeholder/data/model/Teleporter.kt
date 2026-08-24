@@ -16,8 +16,7 @@ package pl.pelotasplus.eyeofbeholder.data.model
  * There is one pair of clouds per depth row, bigger and further apart the
  * nearer the square; the party's own square has none, being under their feet.
  *
- * The blobs, the cloud positions and the placement all come from the original
- * game.
+ * The blobs, the cloud positions and the placement are all transcribed.
  */
 val WallByte.isTeleporter: Boolean get() = value == TELEPORTER_WALL
 

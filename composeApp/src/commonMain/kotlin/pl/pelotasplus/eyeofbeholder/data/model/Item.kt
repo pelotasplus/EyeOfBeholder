@@ -43,7 +43,7 @@ data class Item(
     val place: SquarePlace,
     val location: Location,
     /**
-     * The chain of items lying on one square, as the original keeps it.
+     * The chain of items lying on one square, as a save keeps it.
      * Nothing here follows it — a square's items are found by asking every
      * item where it lies — so these are what was read and are not kept up.
      */
@@ -185,8 +185,8 @@ data class ItemTypes(private val types: List<ItemType>) {
      * Whether a champion may strike with what is in [hand], the other hand
      * being part of the answer.
      *
-     * Three things stop them, and the original draws the same grid over the
-     * slot for all three. The item may be for a class they are not — a
+     * Three things stop them, and the same grid is drawn over the slot for
+     * all three. The item may be for a class they are not — a
      * spellbook in a fighter's hand, thieves' tools in anyone else's. The
      * other hand may be holding something that wants both. And a weapon that
      * wants both hands cannot be wielded from the shield hand at all.

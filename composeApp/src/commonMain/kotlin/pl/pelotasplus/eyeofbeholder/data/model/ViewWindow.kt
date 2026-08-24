@@ -7,8 +7,8 @@ package pl.pelotasplus.eyeofbeholder.data.model
  * Depth alone cannot say what a wall hides. A monster two rows ahead is nearer
  * to the party than the far face of the square in front of it, so by distance
  * it wins — and yet a solid square standing beside that face covers it
- * completely. The original settles this before it draws anything: every wall
- * turned towards the party takes a bite out of every square's band, and a
+ * completely. It is settled before anything is drawn: every wall turned
+ * towards the party takes a bite out of every square's band, and a
  * square whose band closes is skipped entirely, contents and all.
  */
 data class ViewWindow(val from: Int, val to: Int) {
@@ -113,7 +113,7 @@ fun SubLevel.canBeReachedOnto(wall: Maz.WallType): Boolean = when (wall) {
  * Whether the party may walk onto a square, given the wall it turns towards
  * them.
  *
- * Reaching and walking are asked separately because the original asks them
+ * Reaching and walking are asked separately because they are answered
  * separately: a wall carries one mark for what the party may step through and
  * more for what may be put or taken through it, and a level is free to set
  * either without the other.
@@ -134,8 +134,7 @@ fun SubLevel.canBeWalkedOnto(wall: Maz.WallType): Boolean = when (wall) {
 }
 
 /**
- * The same question asked for a monster, which the original asks with a mark
- * of its own.
+ * The same question asked for a monster, which has a mark of its own.
  *
  * The two answers part on one wall: a flight of stairs takes the party and
  * nothing that follows them, so a pack chasing them to the stairs is left at
@@ -229,7 +228,7 @@ private const val NO_BITE = -40
 /** This wall covers this square completely. */
 private const val HIDES_IT_ENTIRELY = -41
 
-// Both tables below are the original game's, one entry per (square being
+// Both tables below are transcribed, one entry per (square being
 // drawn, wall in the view) pair.
 
 /**

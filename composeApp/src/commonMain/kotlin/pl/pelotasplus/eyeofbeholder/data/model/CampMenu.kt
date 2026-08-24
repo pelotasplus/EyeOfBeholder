@@ -9,7 +9,7 @@ package pl.pelotasplus.eyeofbeholder.data.model
  * save and load lists put theirs at another and call it Cancel. That is the
  * only difference between them, so they are one type.
  *
- * The strings and every coordinate here come from the original game.
+ * The strings and every coordinate here are transcribed.
  */
 data class CampMenu(
     val title: String,
@@ -48,8 +48,7 @@ data class CampMenu(
 
         /**
          * The two things the player may choose, each line saying which way it
-         * stands. The original titles this menu the same as the camp menu it
-         * is opened from.
+         * stands. It is titled the same as the camp menu it is opened from.
          */
         fun preferences(preferences: Preferences) = CampMenu(
             title = "Camp:",

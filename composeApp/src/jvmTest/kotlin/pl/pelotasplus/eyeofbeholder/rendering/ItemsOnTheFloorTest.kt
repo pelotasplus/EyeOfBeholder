@@ -25,7 +25,7 @@ import kotlin.test.assertTrue
  * Where things lying on the floor end up on screen, which is what a click on
  * one of them has to be answered from.
  *
- * The original answers such a click by which of four strips of floor it fell
+ * Such a click is otherwise answered by which of four strips of floor it fell
  * in. A thing is drawn centred on its corner and not inside a strip, so the
  * two do not agree everywhere — and where they part, a click on the picture
  * of a thing reaches past it. The renderer records what it drew so that the

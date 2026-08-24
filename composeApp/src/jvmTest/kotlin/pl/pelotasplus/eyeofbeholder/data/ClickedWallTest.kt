@@ -38,7 +38,7 @@ class ClickedWallTest {
     }
 
     @Test
-    fun `just outside still counts, because the original is generous`() {
+    fun `just outside still counts, the slop being generous`() {
         // four pixels above and left, eight below and right
         assertTrue(ClickedWall.hits(decoration(mirrored = false), rectangles, x = 77, y = 37))
         assertTrue(ClickedWall.hits(decoration(mirrored = false), rectangles, x = 100, y = 55))

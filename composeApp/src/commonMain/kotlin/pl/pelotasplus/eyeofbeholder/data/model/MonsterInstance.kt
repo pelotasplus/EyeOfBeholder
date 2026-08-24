@@ -60,8 +60,8 @@ data class MonsterInstance(
     val striking: MonsterPose? = null,
     /**
      * Whether this turn is one it swings on. A monster in reach of the party
-     * strikes every other turn rather than every one — the original flips a
-     * bit each time it comes round and does nothing on the turns the bit lands
+     * strikes every other turn rather than every one — a bit flips each time
+     * its turn comes round, and nothing happens on the turns the bit lands
      * clear, which halves how hard a fight comes at the party and is most of
      * what makes one survivable.
      */

@@ -3,8 +3,8 @@ package pl.pelotasplus.eyeofbeholder.data.model
 /**
  * Who a message names where it leaves a gap for a name.
  *
- * Not the leader, and not the same champion twice running: the original rolls
- * a die for a slot and walks forward from there to the first who can answer,
+ * Not the leader, and not the same champion twice running: a die is rolled
+ * for a slot and walked forward from there to the first who can answer,
  * so a remark about a draft from the west comes from whoever happens to pipe
  * up. Being knocked out does not stop a champion speaking — only dying for
  * good, or being turned to stone, takes them out of the running.

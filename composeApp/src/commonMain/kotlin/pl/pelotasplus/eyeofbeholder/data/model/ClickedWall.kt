@@ -10,7 +10,7 @@ package pl.pelotasplus.eyeofbeholder.data.model
  *
  * The rectangle tested is the decoration as drawn at the near distance, where
  * the party stand to reach it, and it is generous by a few pixels on every
- * side because the original is.
+ * side.
  */
 object ClickedWall {
 
@@ -20,7 +20,7 @@ object ClickedWall {
      */
     private const val WITHIN_REACH = 1
 
-    /** The original's slop: four pixels above and left, eight below and right. */
+    /** The slop: four pixels above and left, eight below and right. */
     private const val SLOP_BEFORE = 4
     private const val SLOP_AFTER = 8
 

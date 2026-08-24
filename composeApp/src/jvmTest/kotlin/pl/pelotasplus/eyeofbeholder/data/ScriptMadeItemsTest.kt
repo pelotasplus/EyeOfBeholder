@@ -28,7 +28,7 @@ class ScriptMadeItemsTest {
     private val here = Location(5, 6)
     private val level = 4
 
-    /** Slot zero is nothing at all — the original uses it for an empty hand. */
+    /** Slot zero is nothing at all — it is what an empty hand names. */
     private val scroll = ItemIndex(1)
 
     private val world = GameState(

@@ -20,7 +20,7 @@ import kotlin.test.assertTrue
  * Taking something off the floor and putting it down again.
  *
  * The table has room for more items than a game holds, and slot zero is
- * nothing at all — the original uses it for an empty hand — so the numbers
+ * nothing at all — it is what an empty hand names — so the numbers
  * here start at one.
  */
 class ItemInHandTest {

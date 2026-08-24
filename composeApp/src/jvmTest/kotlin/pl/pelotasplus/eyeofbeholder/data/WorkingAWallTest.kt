@@ -219,7 +219,7 @@ class WorkingAWallTest {
 
     /**
      * A door sounds at every position it passes through rather than once for
-     * the whole travel — the original plays it from the timer that moves the
+     * the whole travel — it is played from the timer that moves the
      * door, one per step, which is what makes a stone door grind its way up
      * instead of clicking once and then gliding in silence.
      */
@@ -230,7 +230,7 @@ class WorkingAWallTest {
 
     /**
      * Coming down it is the same until the last position, which is the one it
-     * lands on: the original picks a different sound once the door has arrived
+     * lands on: a different sound is picked once the door has arrived
      * shut.
      */
     @Test

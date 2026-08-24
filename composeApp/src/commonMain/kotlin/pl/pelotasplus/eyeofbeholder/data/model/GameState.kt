@@ -38,8 +38,7 @@ data class GameState(
     val items: List<Item> = emptyList(),
 
     /**
-     * What the player is holding, which in the original is the mouse cursor
-     * itself. It belongs to nobody in the party: it has been picked up out of
+     * What the player is holding, which is the mouse cursor itself. It belongs to nobody in the party: it has been picked up out of
      * a hand or off the floor and not yet put anywhere.
      */
     val inHand: ItemIndex = ItemIndex(ItemIndex.NOTHING),
@@ -237,8 +236,8 @@ data class GameState(
      *
      * Bones are what is left of somebody who is not with the party: carried to
      * where they can be raised, they are that person again. Whoever has just
-     * walked up cannot also be a pile of bones in the pack, so the original
-     * takes theirs out at the moment of joining rather than leaving both.
+     * walked up cannot also be a pile of bones in the pack, so theirs go at
+     * the moment of joining.
      */
     fun joinedBy(somebody: Champion, whose: NpcId): GameState {
         val place = champions.indexOfFirst { !it.inTheParty }
@@ -322,8 +321,8 @@ data class GameState(
 
     /**
      * Whether one particular thing lies on a square, and which slot of the
-     * table it is — the number the original hands back, so that a script may
-     * do more with it than ask whether it was there at all.
+     * table it is — the number handed back, so that a script may do more
+     * with it than ask whether it was there at all.
      */
     fun theOneLyingOn(level: Int, at: Location, item: ItemIndex): ItemIndex? =
         item.takeIf { this.item(it)?.let { on -> on.level == level && on.location == at } == true }
@@ -576,9 +575,7 @@ data class GameState(
      * because the clock has not reached it yet is nonetheless on its way open,
      * and telling it to close has to turn it round — otherwise a plate stepped
      * on and straight off again keeps the opening it was sent on, and the door
-     * it works stands open for good. The original never meets this: it moves a
-     * door off the end position the moment it sends it, so a door on its way
-     * is never found standing at the end it started from.
+     * it works stands open for good.
      */
     fun doorSetGoing(level: Int, at: Location, side: WallSide, opening: Boolean): GameState {
         val door = wall(level, at, side) as? Maz.WallType.Door ?: return this
@@ -868,8 +865,8 @@ data class GameState(
      * Whether the party are pinned by an arm already coming down at them.
      *
      * Once a monster in front of them has begun its swing the blow is theirs,
-     * and the original will not let them do anything at all until it lands —
-     * so the wind-up announces a hit rather than offering a chance to duck.
+     * and they may do nothing at all until it lands — so the wind-up
+     * announces a hit rather than offering a chance to duck.
      * What a party dance away from is a monster's turn coming round, not the
      * swing they can already see.
      *
@@ -971,7 +968,7 @@ data class GameState(
         private val BONES = ItemTypeId(33)
 
         /**
-         * How long the party take over a step or a turn. From the original,
+         * How long the party take over a step or a turn. Transcribed,
          * where a monster's turn is twenty — so the party get five actions to
          * a monster's one, which is exactly the room the dance round a monster
          * needs and no more.

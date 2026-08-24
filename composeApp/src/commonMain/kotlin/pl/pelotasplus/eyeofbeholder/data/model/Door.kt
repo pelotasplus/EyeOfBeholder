@@ -146,7 +146,7 @@ fun splitBelowTop(size: Int, panelHeight: Int, opened: Int): Int =
  */
 private val DOORWAY_WIDTH = listOf(128, 80, 48)
 
-// The tables below are the original game's, one entry per size.
+// The tables below are transcribed, one entry per size.
 
 /** Where the opening starts. */
 private val LINTEL = listOf(16, 24, 30)

@@ -9,7 +9,7 @@ import kotlinx.coroutines.flow.asStateFlow
  * is playing it, held in one place so the Debug menu and the play field agree
  * about them.
  *
- * These are not [Preferences]. A preference is the player's and the original
+ * These are not [Preferences]. A preference is the player's and the game
  * offers it; this is scaffolding, and a finished game would have none of it.
  */
 class Debugging {

@@ -9,7 +9,7 @@ package pl.pelotasplus.eyeofbeholder.data.model
  *
  * @property relativeX X offset from the player when facing NORTH (negative = left)
  * @property relativeY Y offset from the player when facing NORTH (negative = ahead)
- * @property blockIndex The original engine's visible-block index (0-17) used to
+ * @property blockIndex The visible-block index (0-17) used to
  *           address [blockScreenCoords]
  * @property scaleSteps 2/3-shrink steps applied at this distance
  */
@@ -77,7 +77,7 @@ val blockScreenCoords: List<Int> = listOf(
     // own numbers, and identical for both, so they do not even say which side
     // is which — and 128 from the middle of a 176-wide viewport is 216 or -40
     // once the middle is added back. An icon is sixteen pixels. Nothing put on
-    // those two squares can land on the screen, in this or in the original.
+    // those two squares can land on the screen at all.
     -128, -4, 128, -4, -128, -66, 128, -66, 128, 0,
     -38, -4, 38, -4, -38, -66, 38, -66, 0, 0,
     -128, -4, 128, -4, -128, -66, 128, -66, 128, 0,

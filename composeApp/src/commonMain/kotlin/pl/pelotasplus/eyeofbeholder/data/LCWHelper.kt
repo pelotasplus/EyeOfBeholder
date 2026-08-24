@@ -26,8 +26,8 @@ import co.touchlab.kermit.Logger
  * Decoding stops at the end-of-data marker or as soon as the destination is
  * full, and every count is clamped to the space left. Some shipped EoB2 assets
  * (DRANX.CPS, DOORWAY1.CPS, KHELBAN1.CPS) have streams that run past the end of
- * the image or reference before its start; the original engine clamps rather
- * than failing, producing a partial image, so this does too.
+ * the image or reference before its start; a decoder clamps rather than
+ * failing, producing a partial image, so this does too.
  */
 object LCWHelper {
     fun decompress(source: UByteArray, dest: UByteArray) {
@@ -47,7 +47,7 @@ object LCWHelper {
 
                 for (i in 0 until count) {
                     // reads before the buffer start read as 0, as an empty
-                    // destination page would in the original engine
+                    // destination page would
                     dest[dp] = if (posit + i < 0) ZERO else dest[posit + i]
                     dp++
                 }

@@ -79,7 +79,7 @@ class SavedGameRoundTripTest {
     }
 
     /**
-     * The bar along the bottom comes back too. The original saved no such
+     * The bar along the bottom comes back too. A save of the game's own held no such
      * thing, but coming back to a tab is not the same as choosing to load a
      * game: the lines on screen are the last thing that happened.
      */

@@ -74,7 +74,7 @@ private const val WHAT_KIND_OF_THING = 0x7F
 /** The two kinds of thing a hand can hold that turn a blow. */
 private val SHIELDS = listOf(27, 57)
 
-/** Body, both hands and head — the four the original adds up. */
+/** Body, both hands and head — the four that are added up. */
 private val WORN_FOR_PROTECTION = listOf(
     CarrySlot.WORN_ARMOUR,
     CarrySlot(0),

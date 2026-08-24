@@ -4,8 +4,8 @@ package pl.pelotasplus.eyeofbeholder.data.model
  * A conversation drawn over the play field: whoever is speaking, framed, what
  * they say underneath, and a button per answer.
  *
- * Every coordinate here is the original game's rather than something to tune by
- * eye. The frame being 184 wide is why the party's side of the screen survives a
+ * Every coordinate here is transcribed rather than something to tune by eye.
+ * The frame being 184 wide is why the party's side of the screen survives a
  * conversation.
  */
 data class DialogueScene(
@@ -24,7 +24,7 @@ data class DialogueScene(
         /**
          * Somewhere words are written: a panel cleared to the interface's own
          * colours, the corner the writing starts in, and the corner the button
-         * that reads it on sits in. All of the original's.
+         * that reads it on sits in. All transcribed.
          */
         sealed class Written(
             val panelLeft: Int,
@@ -90,7 +90,7 @@ data class DialogueScene(
 
     /**
      * The two places a script can put a picture, and how much of the file each
-     * one takes. Both are the original's.
+     * one takes. Both transcribed.
      *
      * A script names one of these per picture: whoever is speaking goes in the
      * box inset in the dialogue frame, while a plate — the temple seen from the
@@ -211,7 +211,7 @@ data class DialogueScene(
         )
 
         /**
-         * Where the answers go, both rows from the original: a pair sits inset,
+         * Where the answers go, both rows transcribed: a pair sits inset,
          * three spread across the full width. Asking three questions with the
          * pair's positions puts the third on top of the second.
          */
@@ -223,8 +223,9 @@ data class DialogueScene(
          * is on sits apart from the answers, in a corner of its own, wherever
          * the speech happens to end.
          *
-         * The original reads both of these words from its own executable, so
-         * they are English here and would be the language of the copy there.
+         * Both words live in the game's executable rather than in its data,
+         * so they are English here and would be the language of the copy
+         * there.
          */
         const val MORE = "more"
 

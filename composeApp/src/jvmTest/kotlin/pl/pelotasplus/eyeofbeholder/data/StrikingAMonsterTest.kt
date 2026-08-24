@@ -42,7 +42,7 @@ import kotlin.test.assertTrue
 /**
  * Swinging a hand weapon at level 5's clerics, who stand together on 13x8.
  *
- * The rules are AD&D and the numbers are the original's. A champion needs a
+ * The rules are AD&D and the numbers are transcribed. A champion needs a
  * twenty-sided die at or above `20 - (steps of improvement) - the monster's
  * armour class`, where how big a step is and how often it comes is what tells
  * a fighter from a mage. The clerics are armour class 2.
@@ -313,7 +313,7 @@ class StrikingAMonsterTest {
     /**
      * An arm that never went anywhere costs the shorter wait — long enough for
      * the slot to say so and no longer. The full one is for a swing that
-     * happened, and the two are the original's 18 and 18 plus 36.
+     * happened, and the two are 18 and 18 plus 36.
      */
     @Test
     fun `a hand that cannot reach costs only the time it spends saying so`() {

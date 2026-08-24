@@ -23,7 +23,7 @@ sealed interface OnAParchment {
             const val WIDTH = 160
             const val HEIGHT = 96
 
-            /** Which corner each of the three is cut from. From the original. */
+            /** Which corner each of the three is cut from. Transcribed. */
             private val CORNERS = listOf(0 to 0, 160 to 0, 0 to 96)
 
             /** A parchment's value counts the maps down from minus one. */

@@ -9,8 +9,8 @@ import kotlinx.serialization.Serializable
  * move, but a bar creeping down is not something a player notices in a fight.
  * A splat with a number on it is.
  *
- * @property ticksLeft How much longer it stays up. The original hangs it on
- *   the same countdown a weapon hand reports on, and for the same length.
+ * @property ticksLeft How much longer it stays up. It hangs on the same
+ *   countdown a weapon hand reports on, and for the same length.
  */
 @Serializable
 data class DamageShown(

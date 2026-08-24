@@ -6,9 +6,8 @@ package pl.pelotasplus.eyeofbeholder.data.model
  * A meeting is a set piece: a script hands over, the person says their piece,
  * and the party answer — one of the answers being to let them come along. The
  * speeches are TEXT.DAT's, which is where every other spoken thing comes from;
- * the words on the buttons are read out of the original's own executable and
- * so are English here, the way [DialogueScene.MORE] and [DialogueScene.OK]
- * are.
+ * the words on the buttons belong to no level and are English here, the way
+ * [DialogueScene.MORE] and [DialogueScene.OK] are.
  *
  * The dungeon's other two set pieces — the portal, and being told the party
  * have died — go through the same opcode and are not these.
@@ -36,8 +35,8 @@ data class NpcMeeting(
 ) {
     /**
      * Where somebody's picture is cut from the sheet the meetings share, and
-     * how big they are. From the original, which keeps the width in bytes and
-     * every one of them at the left edge of the sheet.
+     * how big they are. Transcribed from the game rather than measured off the
+     * sheet, and every one of them is at its left edge.
      *
      * Where they stand falls out of their size: they are centred on the view
      * and stand on the floor of it, so a taller person's head is higher up
@@ -74,9 +73,8 @@ data class NpcMeeting(
         private const val IN_THE_PARTY = 0x01
 
         /**
-         * Who the first of them is. Every number here is the original's, out
-         * of the table of six it keeps in its own executable — as is the name,
-         * so it is English here for the same reason the two answers are.
+         * Who the first of them is. Every number here is transcribed from the
+         * game's own table of the six it holds, the name along with them.
          *
          * Three hit points of thirty-nine is not a mistake to be tidied up: he
          * is nearly dead when the party find him, and that is the whole of why
@@ -128,7 +126,7 @@ data class NpcMeeting(
         /** And the one their face is cut from once they are in the party. */
         const val FACES = "OUTPORTS.CPS"
 
-        /** The two answers, which the original also keeps in its executable. */
+        /** The two answers, which belong to no level either. */
         const val YES = "yes"
         const val NO = "no"
     }

@@ -11,9 +11,9 @@ import pl.pelotasplus.eyeofbeholder.data.model.SavedGame
  * Saving and loading a game, in our own format.
  *
  * The [SaveStore] underneath knows where bytes live and nothing else; this
- * knows what they mean. Reading the original game's files is
+ * knows what they mean. Reading the game's own save files is
  * [OriginalSaveRepository]'s job and stays separate — one reads a format we do
- * not write, the other writes a format the original cannot read.
+ * not write, the other writes a format the game itself cannot read.
  */
 interface SavedGameRepository {
 

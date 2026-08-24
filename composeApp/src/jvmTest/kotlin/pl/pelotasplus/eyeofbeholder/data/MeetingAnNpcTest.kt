@@ -41,9 +41,9 @@ import kotlin.test.assertTrue
  * The person waiting on level 1 at 15x11, who steps up as the party arrive.
  *
  * The square's script sets the flag that says the meeting has happened, turns
- * the party to face west, and hands over to the meeting. What the meeting is
- * made of is the original's: a sound, a piece that ends in asking to come
- * along, and one of two answers to what the party say.
+ * the party to face west, and hands over to the meeting. A meeting is a sound,
+ * a piece that ends in asking to come along, and one of two answers to what
+ * the party say.
  */
 class MeetingAnNpcTest {
 
@@ -173,7 +173,7 @@ class MeetingAnNpcTest {
 
     /**
      * Saying yes takes him into the first free place, as the party's sixth.
-     * Who he is comes out of the original's own table: a halfling thief of the
+     * Who he is is transcribed rather than invented: a halfling thief of the
      * sixth level, and three hit points of thirty-nine, which is what he is
      * asking to be got out of.
      */

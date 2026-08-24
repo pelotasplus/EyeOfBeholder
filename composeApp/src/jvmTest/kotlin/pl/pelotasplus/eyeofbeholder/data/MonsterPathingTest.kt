@@ -304,7 +304,7 @@ class MonsterPathingTest {
     }
 
     /**
-     * Somebody standing on the next square is not a wall. The original asks
+     * Somebody standing on the next square is not a wall. A square is asked
      * the square for a free place only once it knows something is on it, and
      * walks on when it gets one — which is how a pack crowds onto the squares
      * around the party instead of queueing up behind one another.

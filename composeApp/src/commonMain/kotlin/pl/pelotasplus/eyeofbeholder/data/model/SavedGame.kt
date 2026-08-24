@@ -3,7 +3,7 @@ package pl.pelotasplus.eyeofbeholder.data.model
 import kotlinx.serialization.Serializable
 
 /**
- * A game as we save it, which is not how the original saved one.
+ * A game as we save it, which is not how the game itself saved one.
  *
  * [OriginalSave] reads the game's own `EOBDATA*.SAV`, a fixed 46,891-byte
  * record from 1991. Writing that back would pin us to what it had room for,
@@ -34,8 +34,8 @@ data class SavedGame(
     /**
      * What is on the bar along the bottom.
      *
-     * The original saved no such thing, and it did not need to: loading a game
-     * was something a player chose, and the screen being redrawn clean was the
+     * A save of the game's own held no such thing, and did not need to:
+     * loading was something a player chose, and a screen redrawn clean was the
      * point. Coming back to a tab is not that — the lines that were on screen
      * are the last thing that happened, and losing them loses the thread.
      */

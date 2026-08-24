@@ -85,7 +85,7 @@ enum class MonsterMode(val asWritten: Int) {
 /**
  * Where a straying monster is in its own small loop of looking about.
  *
- * It is one byte in the original and the whole of what makes straying
+ * It is one byte, and the whole of what makes straying
  * different from following a wall: without it a monster only ever turns when
  * something stops it, and never takes the opening it walks past.
  */

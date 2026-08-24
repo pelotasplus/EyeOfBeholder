@@ -35,8 +35,8 @@ data class Palette(
      * application keeps darkening. Sprites drawn N scale steps away are
      * remapped N times via [fadedIndex]. Index 0 stays 0 (transparent).
      *
-     * The arithmetic runs on the original 6-bit VGA channel values (recovered
-     * from the stored 8-bit colors) so it matches the DOS engine exactly.
+     * The arithmetic runs on the 6-bit VGA channel values the colours were
+     * stored as, recovered from the 8-bit ones kept here.
      */
     val distanceFadeTable: List<Int> by lazy {
         val r = IntArray(256)
@@ -64,7 +64,7 @@ data class Palette(
                 val dg = g[candidate] - tg
                 val db = b[candidate] - tb
                 val distance = dr * dr + dg * dg + db * db
-                // <= keeps the original's later-index-wins tie-breaking
+                // <= keeps the later-index-wins tie-breaking
                 if (distance <= bestDistance && (candidate == FADE_ROOT_COLOR || candidate != i)) {
                     bestDistance = distance
                     best = candidate
@@ -84,7 +84,7 @@ data class Palette(
 
     private fun to6bit(v8: Int): Int = (v8 * 63 + 127) / 255
 
-    /** Shift channel [c] toward [root]; mirrors the original's uint8 wrap-around. */
+    /** Shift channel [c] toward [root], wrapping around as a uint8 does. */
     private fun fadeChannel(c: Int, root: Int, weight: Int): Int =
         (c - (((c - root) * weight) shl 1 shr 8)) and 0xFF
 
@@ -120,7 +120,7 @@ data class Palette(
         /** Palette entry every color fades toward (a dark grey in EoB2 palettes). */
         private const val FADE_ROOT_COLOR = 12
 
-        /** Fade strength per application; halved before use like the original. */
+        /** Fade strength per application; halved before use. */
         private const val FADE_WEIGHT = 85
     }
 }

@@ -48,9 +48,9 @@ data class Champion(
     val inTheParty: Boolean get() = flags.inTheParty
 
     /**
-     * Whether the panel draws this one in red — the original reddens the name
-     * and the numbers for anything wrong with the champion rather than only
-     * for death.
+     * Whether the panel draws this one in red — the name and the numbers
+     * redden for anything wrong with the champion rather than only for
+     * death.
      */
     val inTrouble: Boolean get() = flags.inTrouble
 
@@ -75,8 +75,8 @@ data class Champion(
 
     /**
      * Whether a message can be put in this one's mouth: in the party, still
-     * raisable, and not stone. Being knocked out is no bar — the original asks
-     * only these three things of whoever it picks to speak.
+     * raisable, and not stone. Being knocked out is no bar: those three
+     * things are all that is asked of whoever speaks.
      */
     val canSpeak: Boolean get() = inTheParty && !deadForGood && !flags.petrified
 

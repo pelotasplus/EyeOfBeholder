@@ -268,16 +268,16 @@ class ViewConeDebugViewModel(
         }
 
         // Nothing the party do gets done while an arm is coming down at them.
-        // The original stops the whole world for it; stopping only the party
-        // is enough, and keeps the doors and the other monsters from hitching.
+        // Only the party are held: the doors and the other monsters carry on
+        // underneath, which keeps them from hitching.
         if (event.isTheirOwnDoing && _state.value.game.pinnedByASwing) {
             Logger.d(TAG) { "Ignoring $event while the party are being swung at" }
             return
         }
 
         // A party do not move as fast as a key repeats. Four ticks a step is
-        // the original's, and it is what makes stepping round a monster a
-        // matter of timing rather than of holding a key down.
+        // transcribed rather than tuned, and it is what makes stepping round a
+        // monster a matter of timing rather than of holding a key down.
         if (event.isAStep && stepStillRunning > 0) return
         if (event.isAStep) {
             stepStillRunning = GameState.A_STEP.value
@@ -537,9 +537,8 @@ class ViewConeDebugViewModel(
      * Whether something stands between the party and where they are stepping.
      *
      * It is the wall on the far square turning back towards them that decides,
-     * not the one on the square they are leaving — the original asks the same
-     * way round, and a doorway carries its door on the side it is entered
-     * from.
+     * not the one on the square they are leaving: a doorway carries its door
+     * on the side it is entered from.
      */
     private fun wallBetweenPartyAnd(to: Location): Boolean {
         val inf = _state.value.inf ?: return false
@@ -558,7 +557,7 @@ class ViewConeDebugViewModel(
         return !sublevel.canBeWalkedOnto(wall)
     }
 
-    /** What the original does when a step is refused: says so, and thuds. */
+    /** What a refused step comes to: a line, and a thud. */
     private fun bumpedIntoAWall() {
         viewModelScope.launch { playTrack(WALL_BUMP) }
     }
@@ -566,10 +565,10 @@ class ViewConeDebugViewModel(
     /**
      * Cuts whatever a dialogue was saying when the dialogue goes.
      *
-     * The original does this at both ends: it stops the sound before putting a
-     * dialogue up, and on taking one down it plays the track its banks keep
-     * empty — a program that makes no noise, whose whole purpose is to end the
-     * one already playing. A speech is worth hearing while its speaker is on
+     * It is cut at both ends: before a dialogue goes up, and on taking one
+     * down, where what is played is the track the banks keep empty — a program
+     * that makes no noise, whose whole purpose is to end the one already
+     * playing. A speech is worth hearing while its speaker is on
      * screen and not after the player has dismissed them.
      */
     private fun silenceEffects() {
@@ -609,8 +608,8 @@ class ViewConeDebugViewModel(
 
 
     /**
-     * Whichever champion answers this time. Rolled per line, the way the
-     * original does, so two remarks in a row need not come from one mouth.
+     * Whichever champion answers this time. Rolled per line, so two remarks
+     * in a row need not come from one mouth.
      */
     private fun whoeverSpeaks(): Champion? =
         roster.speakerFrom(Random.nextInt(Champion.PARTY_SLOTS))
@@ -811,8 +810,8 @@ class ViewConeDebugViewModel(
      *
      * Reading and striking are the uses there are so far. Everything else a
      * thing can be — drunk, aimed, eaten — is left alone rather than answered
-     * with the original's line about using it wrongly, which would say the
-     * wrong thing about a potion that simply is not modelled yet.
+     * with the line about using a thing wrongly, which would say the wrong
+     * thing about a potion that simply is not modelled yet.
      */
     private fun onUsedWhatIsAt(x: Int, y: Int) {
         val sheet = sheetOnShow
@@ -839,9 +838,9 @@ class ViewConeDebugViewModel(
                 }
             }
 
-            // An empty hand is a fist, which the original lets a champion
-            // swing like anything else — so the hand is what decides this,
-            // not what is in it.
+            // An empty hand is a fist, and a champion swings it like
+            // anything else — so the hand is what decides this, not what is
+            // in it.
             slot.slot.isAHand && (held == null || itemTypes?.isSwungByHand(held) == true) ->
                 strike(whose, slot.slot)
         }
@@ -856,7 +855,7 @@ class ViewConeDebugViewModel(
      * The wall the party face, asked what it makes of the thing just used.
      *
      * A weapon is only offered by the front rank — the two who can reach it —
-     * which is the original's rule and not a guess at one.
+     * which is a rule of the game and not a guess at one.
      */
     private fun usedOnTheWallAhead(whose: PartySlot, used: ItemIndex) {
         val held = _state.value.game.item(used)
@@ -901,9 +900,9 @@ class ViewConeDebugViewModel(
     /**
      * The clock the fight runs on.
      *
-     * Three things are wound by it and they are deliberately separate, as they
-     * are in the original: the party's own step, the frames of a monster's
-     * swing, and the turn that starts one. A monster's turn comes round every
+     * Three things are wound by it and they are deliberately separate: the
+     * party's own step, the frames of a monster's swing, and the turn that
+     * starts one. A monster's turn comes round every
      * twenty ticks whatever the party do — stepping does not hurry it and
      * being hit does not delay it, so a party who dance well are not slowing
      * anything down, only standing somewhere else when the blow falls.
@@ -1212,8 +1211,8 @@ class ViewConeDebugViewModel(
     /**
      * Takes the splat off a champion's portrait once its moment has passed.
      *
-     * The same countdown the weapon hands report on, and the same length: the
-     * original hangs both on one character timer.
+     * The same countdown the weapon hands report on, and the same length:
+     * both hang on one timer.
      */
     private fun letTheDamageFade() {
         if (fadingDamage?.isActive == true) return
@@ -1313,8 +1312,7 @@ class ViewConeDebugViewModel(
      * Swaps what is being held with what is in one of a champion's slots.
      *
      * With an empty hand that is taking what was there, and with an empty slot
-     * it is putting something down; the original does not tell the three cases
-     * apart, and neither does this.
+     * it is putting something down; the three cases are not told apart, and neither does this.
      */
     private fun swapHandWith(champion: PartySlot, slot: InventorySlot) {
         val world = _state.value.game
@@ -1378,7 +1376,7 @@ class ViewConeDebugViewModel(
         renderViewPort()
     }
 
-    /** Whatever comes into the hand says what it is, the way the original does. */
+    /** Whatever comes into the hand says what it is. */
     private fun announceTaking(item: Item?) {
         val names = itemNames ?: return
         if (item == null) return
@@ -1399,7 +1397,7 @@ class ViewConeDebugViewModel(
      * The piece of floor a click is aimed at, when it lands on the picture of
      * something lying within reach.
      *
-     * The original answers a click by which of four strips of floor it fell
+     * A click otherwise reaches whichever of the four strips of floor it fell
      * in, and a thing is drawn centred on its corner rather than inside a
      * strip — so the top of a thing on the party's own square is drawn up in
      * the strip belonging to the square ahead, and clicking it reaches past
@@ -1965,7 +1963,7 @@ class ViewConeDebugViewModel(
      * put on screen.
      *
      * Speakers are packed four to a file, and the instruction's x and y name the
-     * corner to cut out — x in units of eight pixels, as the original counts
+     * corner to cut out — x in units of eight pixels, as the file counts
      * them — and its rect says which of the two places it goes.
      */
     /**
@@ -2188,7 +2186,7 @@ class ViewConeDebugViewModel(
      * Writing does not redraw the world, and must not: a script writes as the
      * party arrive somewhere they are about to be taken out of, and the view
      * from a staircase they are walking into is not a view anyone is meant to
-     * see. The original defers its redraw for the same reason.
+     * see.
      */
     private fun drawWords() {
         val inf = _state.value.inf ?: return
@@ -2331,8 +2329,8 @@ class ViewConeDebugViewModel(
         /**
          * Whether this is the party moving themselves, which is the one thing
          * they are made to take their time over. Turning counts: it is a step
-         * of the same length in the original, and a fight is danced as much
-         * with turns as with steps.
+         * of the same length, and a fight is danced as much with turns as
+         * with steps.
          */
         val isAStep: Boolean
             get() = this is MoveForward || this is MoveBackwards ||
@@ -2434,15 +2432,15 @@ class ViewConeDebugViewModel(
         /** How long a struck monster is drawn as a silhouette. */
         private val FLASH = Ticks(2)
 
-        /** How long one frame of a monster's swing is held. From the original. */
+        /** How long one frame of a monster's swing is held. Transcribed. */
         private val A_SWING_FRAME = Ticks(8)
 
-        /** And how often a monster's group takes a turn. Also the original's. */
+        /** And how often a monster's group takes a turn. Also transcribed. */
         private val A_MONSTER_TURN = Ticks(20)
 
         /**
          * How far into the first turn each of the four groups first acts.
-         * From the original, where the last two share a start.
+         * Transcribed, and the last two share a start.
          */
         private val WHEN_EACH_GROUP_STARTS = listOf(0, 7, 14, 14)
 

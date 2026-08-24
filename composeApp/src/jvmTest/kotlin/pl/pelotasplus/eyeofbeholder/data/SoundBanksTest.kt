@@ -25,7 +25,7 @@ import kotlin.test.assertTrue
  *
  * Nothing here is measured off the renderer. Which banks must exist comes from
  * the levels, which name their own; which tracks must be audible comes from
- * the original engine, which plays those numbers at named moments — a door
+ * the game, which plays those numbers at named moments — a door
  * being forced, a spell going off, a champion going down. A bank missing a
  * track the game plays is a silence a player would notice and a test would
  * not, unless it is this one.
@@ -46,7 +46,7 @@ class SoundBanksTest {
     )
 
     /**
-     * Effects the original plays from code that can run on any level at all —
+     * Effects played from code that can run on any level at all —
      * a blow landing, a door, a spell, a body hitting the floor — and so
      * effects every level's bank has to be able to answer.
      *

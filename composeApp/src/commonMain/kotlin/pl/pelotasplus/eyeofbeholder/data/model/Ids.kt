@@ -68,7 +68,7 @@ value class MonsterDecorationSetId(val value: Int)
  * How many 2/3 shrink steps a sprite is drawn at, from [itemScaleSteps]. Also
  * the number of times its colors are remapped through
  * [Palette.distanceFadeTable], so distant sprites darken as they shrink — the
- * two counts are the same quantity in the original engine.
+ * two counts are the same quantity.
  */
 @JvmInline
 value class ScaleSteps(val value: Int) {
@@ -77,8 +77,8 @@ value class ScaleSteps(val value: Int) {
 }
 
 /**
- * A count of game timer ticks — the 18.2 Hz interrupt the DOS original paced
- * everything by, one tick being 55 milliseconds.
+ * A count of game timer ticks — the 18.2 Hz interrupt everything was paced
+ * by, one tick being 55 milliseconds.
  *
  * Scripts pause in these: a scripted walk moves the party a square and waits
  * 15, which is the beat between its steps.

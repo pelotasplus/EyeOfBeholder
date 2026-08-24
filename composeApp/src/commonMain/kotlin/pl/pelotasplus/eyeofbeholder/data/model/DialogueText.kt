@@ -3,7 +3,7 @@ package pl.pelotasplus.eyeofbeholder.data.model
 import kotlin.jvm.JvmInline
 
 /**
- * A speech, in the parts the original stops between.
+ * A speech, in the parts it stops between.
  *
  * The clerics ask whether the party has seen Amber and stop there; only once
  * that has been read does Joril answer. The break is written into the speech

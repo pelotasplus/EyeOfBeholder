@@ -947,7 +947,7 @@ class ViewPortGoldenTest {
 
     /**
      * A hand that has just swung, drawn over with the same grid as a hand
-     * holding something its champion cannot use. The original does not tell
+     * holding something its champion cannot use. The two are not told
      * the two apart, and neither does this — the weapon is still shown under
      * it, and shown to be no use for the moment.
      *
@@ -1061,7 +1061,7 @@ class ViewPortGoldenTest {
             ),
         )
 
-    /** Camp → the menu the original opens, over the view. */
+    /** Camp → the menu it opens, over the view. */
     @Test
     fun `the camp menu`() = checkGolden("camp-menu", menuOver(CampMenu.camp()))
 
@@ -1069,7 +1069,7 @@ class ViewPortGoldenTest {
     fun `the game options menu`() =
         checkGolden("camp-game-options", menuOver(CampMenu.gameOptions()))
 
-    /** Three slots used and three not, the way the original's list reads. */
+    /** Three slots used and three not, the way the list reads. */
     @Test
     fun `the load game slots`() =
         checkGolden(

@@ -18,8 +18,8 @@ class MonsterPathing(
      * Which way a monster tries first when it cannot go straight at what it
      * wants.
      *
-     * The original alternates this every eleventh step taken by anything at
-     * all, so that two monsters given the same problem do not solve it the
+     * It alternates every eleventh step taken by anything at all, so that
+     * two monsters given the same problem do not solve it the
      * same way for ever — which is all that stops a pack walking as one body.
      */
     enum class WayRound(val fan: List<Int>) {
@@ -155,7 +155,7 @@ class MonsterPathing(
     private companion object {
         /**
          * Which way to come at a square that lies diagonally, by the diagonal
-         * and by the way the monster faces. From the original; a monster
+         * and by the way the monster faces. Transcribed; a monster
          * facing away from the diagonal has no answer here and fans out
          * instead.
          *

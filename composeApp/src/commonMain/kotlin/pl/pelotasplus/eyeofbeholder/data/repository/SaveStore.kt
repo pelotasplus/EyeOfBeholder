@@ -24,7 +24,7 @@ interface SaveStore {
 }
 
 /**
- * One of the six the original offers, or the autosave alongside them.
+ * One of the six a player is offered, or the autosave alongside them.
  *
  * The autosave is deliberately not a seventh numbered slot: the six are the
  * player's to name and overwrite, and the game writing over one of them
@@ -34,7 +34,7 @@ interface SaveStore {
 value class SaveSlot private constructor(val name: String) {
 
     companion object {
-        /** As many as the original's Load Game list shows. */
+        /** As many as the Load Game list shows. */
         const val COUNT = 6
 
         val AUTOSAVE = SaveSlot("autosave")

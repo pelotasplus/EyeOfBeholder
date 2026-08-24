@@ -1,9 +1,9 @@
 package pl.pelotasplus.eyeofbeholder.features.view_cone_debug
 
 /**
- * Clickable regions of PLAYFLD.CPS, in the original 320×200 screen space.
+ * Clickable regions of PLAYFLD.CPS, in the 320×200 screen's own space.
  *
- * Taken verbatim from the original game's button table, where each entry is
+ * Transcribed from the button table, where each entry is
  * `{ x, y, w, h }`.
  */
 enum class PlayFieldControl(

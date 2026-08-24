@@ -86,7 +86,7 @@ class MonstersBunchingTest {
     /**
      * The one already there is standing in the middle, which is where anything
      * alone on a square stands. It steps back to make room, and the pair end
-     * up on the two opposite corners the original keeps for them.
+     * up on the two opposite corners kept for them.
      */
     @Test
     fun `a second wolf joins the one already there`() {
@@ -182,7 +182,7 @@ class MonstersBunchingTest {
     }
 
     /**
-     * A pair turn together. The original turns a whole square with whichever
+     * A pair turn together. A whole square turns with whichever
      * of them moved, and without it one of a pair ends up facing a wall while
      * the other fights.
      */

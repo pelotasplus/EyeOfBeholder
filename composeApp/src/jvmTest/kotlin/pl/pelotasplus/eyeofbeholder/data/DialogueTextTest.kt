@@ -16,7 +16,7 @@ class DialogueTextTest {
 
     /** The clerics ask their question and stop; Joril answers on the next page. */
     @Test
-    fun `a speech breaks where the original stops to be read`() {
+    fun `a speech breaks where it stops to be read`() {
         val pages = text(23).pages
 
         assertEquals(2, pages.size, "expected two pages, got $pages")

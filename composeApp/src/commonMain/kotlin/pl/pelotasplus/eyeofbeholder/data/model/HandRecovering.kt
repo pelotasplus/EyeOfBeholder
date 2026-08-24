@@ -4,8 +4,8 @@ package pl.pelotasplus.eyeofbeholder.data.model
  * A hand that has swung and has not come back to rest, and how much longer it
  * has to go.
  *
- * A weapon is not swung as fast as the mouse can be clicked. The original puts
- * the hand out of use for a while afterwards and draws the same grid over it
+ * A weapon is not swung as fast as the mouse can be clicked. The hand goes
+ * out of use for a while afterwards, drawn over with the same grid
  * that it draws over something a champion may not use at all — a spellbook in
  * a fighter's hand — so a hand recovering and a hand holding the wrong thing
  * look alike and are refused alike.

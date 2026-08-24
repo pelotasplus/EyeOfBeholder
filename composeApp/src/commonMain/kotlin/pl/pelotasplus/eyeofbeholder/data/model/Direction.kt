@@ -28,7 +28,7 @@ enum class Direction {
 
     /**
      * Rotate coordinates based on player direction.
-     * Baseline: NORTH (negative Y = forward in original implementation)
+     * Baseline: NORTH, where negative Y is forward.
      */
     fun transformCoordinates(relX: Int, relY: Int): Pair<Int, Int> {
         return when (this) {

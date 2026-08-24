@@ -7,7 +7,7 @@ import kotlinx.collections.immutable.ImmutableList
  * The 3D dungeon viewport renderer — the heart of the visual engine.
  *
  * Produces a 176×120 pixel image (22×15 tiles of 8×8) that simulates a
- * first-person 3D view of the dungeon, matching the original EoB DOS renderer.
+ * first-person 3D view of the dungeon.
  *
  * ## Rendering pipeline (called from ViewConeRepository.renderPosition)
  * 1. **Backdrop** — fill the viewport with floor/ceiling tiles from the VMP backdrop
@@ -653,8 +653,8 @@ class ViewPort(
      * @param scaleSteps Number of 2/3 shrink steps for distance
      */
     /**
-     * @param struck whether it was hit this instant, which the original shows
-     *   by drawing the whole shape in one colour for a moment.
+     * @param struck whether it was hit this instant, which is shown by
+     *   drawing the whole shape in one colour for a moment.
      */
     fun drawMonster(
         frame: Cps.ItemIcon,

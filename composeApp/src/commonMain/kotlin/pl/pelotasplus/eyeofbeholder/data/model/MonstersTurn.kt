@@ -305,7 +305,7 @@ class MonstersTurn(
 /**
  * Which champion a monster's arm comes down on, in the order it reaches them.
  *
- * Three tables of the original's, and the shape of them is: the party's facing
+ * Three transcribed tables, and the shape of them is: the party's facing
  * against the monster's picks one of four groups of twelve; where the monster
  * stands on its own square picks which half of that twelve; and the six that
  * are left are champion slots, nearest first.
@@ -335,13 +335,13 @@ object WhoTheMonsterReaches {
 
     /**
      * Whether a monster on that corner can reach the party's square at all.
-     * A separate table of the original's from [NEARER], and the one that keeps
-     * something tucked into a far corner out of the fight.
+     * A separate table from [NEARER], and the one that keeps something
+     * tucked into a far corner out of the fight.
      */
     fun armIsLongEnough(facing: Direction, place: SquarePlace): Boolean =
         !place.onTheFloor || CAN_REACH[facing.ordinal * SIDES + place.ordinal] == 1
 
-    /** Which corners reach, by the monster's facing. From the original. */
+    /** Which corners reach, by the monster's facing. Transcribed. */
     private val CAN_REACH = listOf(
         1, 1, 0, 0,
         0, 1, 0, 1,

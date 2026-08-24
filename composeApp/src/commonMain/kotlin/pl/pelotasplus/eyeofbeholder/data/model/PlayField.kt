@@ -6,8 +6,8 @@ import kotlinx.serialization.Serializable
  * The 320×200 game screen: PLAYFLD.CPS with the rendered 3D view blitted into
  * its top-left window and the compass needle overlaid from DECORATE.CPS.
  *
- * All coordinates are the original game's: the view is copied to (0,0) at
- * 176×120, and the compass is three shapes drawn at [COMPASS_TARGETS].
+ * All coordinates are transcribed: the view is copied to (0,0) at 176×120,
+ * and the compass is three shapes drawn at [COMPASS_TARGETS].
  */
 class PlayField(
     private val background: Cps,
@@ -378,8 +378,8 @@ class PlayField(
      * A box down the right for each champion, and nothing at all for a slot
      * nobody fills.
      *
-     * An empty slot is not an empty box: the original draws a slot only if
-     * somebody is in it, so a party of four leaves the bottom of the panel as
+     * An empty slot is not an empty box: a slot is drawn only where somebody
+     * is in it, so a party of four leaves the bottom of the panel as
      * bare wall.
      */
     private fun drawParty(
@@ -462,8 +462,8 @@ class PlayField(
      *
      * A hand its champion cannot strike with is drawn over with a grid: the
      * item is still shown, and shown to be no use. A hand that has just swung
-     * gets the same grid — the original does not tell the two apart, so a hand
-     * recovering looks exactly like one holding the wrong thing.
+     * gets the same grid — the two are not told apart, so a hand recovering
+     * looks exactly like one holding the wrong thing.
      */
     private fun drawHands(
         champion: Champion,
@@ -639,8 +639,8 @@ class PlayField(
     }
 
     /**
-     * Hit points as the original writes them when it is not drawing bars: what
-     * is left of them ranged right, out of what there is ranged left, so a
+     * Hit points as they are written where bars are not drawn: what is left
+     * of them ranged right, out of what there is ranged left, so a
      * column of them lines up on the word between.
      */
     private fun hitPointsWritten(hitPoints: HitPoints) =
@@ -945,9 +945,9 @@ class PlayField(
         const val VIEW_Y = 0
 
         /**
-         * Shape sources in DECORATE.CPS. The original cuts shapes out in
-         * 8-pixel units, so the compass columns are 3 units = 24px wide and
-         * start at `direction * 24`.
+         * Shape sources in DECORATE.CPS. Shapes are cut in 8-pixel units, so
+         * the compass columns are 3 units = 24px wide and start at
+         * `direction * 24`.
          */
         private const val COMPASS_WIDTH = 24
         private val COMPASS_SOURCE_Y = listOf(120, 137, 147)
@@ -959,9 +959,8 @@ class PlayField(
 }
 
 /**
- * Column of this direction's shapes in DECORATE.CPS. The original engine
- * indexes the compass shape array by `_currentDirection`, which is
- * north, east, south, west in that order.
+ * Column of this direction's shapes in DECORATE.CPS, which are kept in the
+ * order the facings are counted in: north, east, south, west.
  */
 private val Direction.compassColumn: Int
     get() = when (this) {

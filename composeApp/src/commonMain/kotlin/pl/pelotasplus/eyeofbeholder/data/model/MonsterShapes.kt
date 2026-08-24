@@ -11,8 +11,8 @@ package pl.pelotasplus.eyeofbeholder.data.model
  * shrink. Which colors an instance is painted in is [MonsterSheet]'s business,
  * and where it lands on screen is [blockScreenCoords]'.
  *
- * The rects come from the original game. Read them off a sheet rather than
- * re-deriving them by eye.
+ * The rects are transcribed. Read them off a sheet rather than re-deriving
+ * them by eye.
  *
  * Not yet implemented: DCR overlay decorations, attack and walk animation
  * frames, monsters standing on the party's own row.
@@ -71,7 +71,7 @@ data class MonsterFacing(val pose: MonsterPose, val mirrored: Boolean = false)
 
 /**
  * What the party sees of a standing monster, given which way each of them
- * faces. This is the standing half of the original game's table; the
+ * faces. This is the standing half of the table; the
  * walk-cycle half comes with animation.
  */
 fun monsterFacing(partyFacing: Direction, monsterFacing: Direction): MonsterFacing =

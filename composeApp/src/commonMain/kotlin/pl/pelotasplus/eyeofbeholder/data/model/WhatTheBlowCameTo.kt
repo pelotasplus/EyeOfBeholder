@@ -10,7 +10,7 @@ package pl.pelotasplus.eyeofbeholder.data.model
  * are the two where nothing happened at all — the arm never reached, or there
  * was nothing to fire.
  *
- * The words are the original's, and English here as [DialogueScene.MORE] and
+ * The words are transcribed, and English here as [DialogueScene.MORE] and
  * [DialogueScene.OK] are: they are in the game's executable rather than in any
  * of its data files.
  */
@@ -19,7 +19,7 @@ sealed class WhatTheBlowCameTo(val lines: List<String>, val theArmDidSomething: 
     /**
      * Whether it is written on a splash of blood or in a box of the colour
      * that means something is wrong. The same question decides both that and
-     * [wait], which is the original's doing rather than a simplification: the
+     * [wait], which is deliberate rather than a simplification: the
      * two outcomes it warns about are the two where the arm never went
      * anywhere, and those are the two it does not charge the full wait for.
      */
@@ -59,8 +59,8 @@ sealed class WhatTheBlowCameTo(val lines: List<String>, val theArmDidSomething: 
             is Blow.Missed -> Missed
 
             // Swinging at an empty square is a miss like any other: the
-            // original tells the two apart only when the square holds a wall
-            // that can be worked, which is what Hacked and Bashed are for.
+            // two are told apart only where the square holds a wall that can
+            // be worked, which is what Hacked and Bashed are for.
             Blow.Nothing -> Missed
 
             Blow.OutOfReach -> CannotReach

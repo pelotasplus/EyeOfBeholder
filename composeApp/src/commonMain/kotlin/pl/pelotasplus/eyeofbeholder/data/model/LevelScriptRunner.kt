@@ -99,8 +99,8 @@ data class ScriptQuestion(
     /**
      * What the buttons say, where the words are not the level's to give. A
      * level writes the answers to its own questions into its messages; the
-     * answers to a meeting are the same two words everywhere in the dungeon
-     * and come out of the original's executable instead.
+     * answers to a meeting are the same two words everywhere in the dungeon,
+     * and are written into the source like the two a speech is read with.
      */
     val words: List<String> = emptyList(),
     /**
@@ -528,8 +528,8 @@ class LevelScriptRunner(
                 }
 
                 is ToggleWall.AllSides -> {
-                    // The original compares the north face whichever face the
-                    // switch is on, and then sets all four to the answer.
+                    // The north face is the one compared, whichever face the
+                    // switch is on, and all four are set to the answer.
                     val was = state.wall(level, token.location, WallSide.NORTH)
                     state = state.wallsChanged(
                         level = level,
@@ -676,10 +676,10 @@ class LevelScriptRunner(
         state: GameState,
         stage: ScriptStage,
     ): GameState {
-        // The view is drawn again before they step into it, which is the
-        // original's first move on any set piece. The instruction before this
-        // one usually turns the party to face whoever it is, and they are
-        // drawn standing in the view that turn leaves.
+        // The view is drawn again before they step into it: the instruction
+        // before this one usually turns the party to face whoever it is, and
+        // they are drawn standing in the view that turn leaves rather than in
+        // whatever the party were looking at a moment ago.
         stage.show(state)
         stage.play(meeting.heardAs)
 
@@ -738,9 +738,9 @@ class LevelScriptRunner(
      * doing, it does the opposite — one on its way open turns round, one
      * standing shut opens, one standing open closes.
      *
-     * Two squares are refused rather than worked. The party's own, which is
-     * the switch pulling the floor out from under them; and one with anything
-     * standing on it, which is a door shutting on a monster.
+     * Two squares are refused rather than worked, and refused whole rather
+     * than half done: the party's own, and one with anything standing on it,
+     * which would be a door coming down on a monster.
      */
     private fun doorSwitched(state: GameState, at: Location): GameState {
         if (at == state.party.position) return state

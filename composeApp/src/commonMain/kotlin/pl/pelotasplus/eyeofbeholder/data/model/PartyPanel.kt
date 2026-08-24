@@ -5,8 +5,8 @@ package pl.pelotasplus.eyeofbeholder.data.model
  *
  * Two columns of three, and the slot order runs across before it runs down.
  *
- * The play field art has only the top four drawn into it — the original stamps
- * every box from a template it keeps on a page of its own — so the bottom row
+ * The play field art has only the top four drawn into it — every box is
+ * stamped from a template kept on a page of its own — so the bottom row
  * is stamped from the art's own first box, which comes to the same picture.
  *
  * The offsets inside a box are its own art read off: a name strip along the
@@ -124,8 +124,8 @@ private const val GRID_HEIGHT = 16
 
 /**
  * The splash a blow's outcome is written on, cut from the sheet of things that
- * can be thrown — which is where the original keeps it, along with the beams
- * and the other splash that is red.
+ * can be thrown — which is where it is kept, along with the beams and the
+ * other splash that is red.
  */
 fun Cps.greenSplat(): Cps.ItemIcon = cut(
     x = SPLAT_X,

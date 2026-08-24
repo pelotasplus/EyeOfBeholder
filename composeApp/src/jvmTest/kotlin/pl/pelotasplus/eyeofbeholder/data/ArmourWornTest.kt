@@ -17,10 +17,10 @@ import kotlin.test.assertTrue
 /**
  * Working out what a champion's armour is worth.
  *
- * The quick start party is the proof: the original wrote an armour class for
+ * The quick start party is the proof: an armour class was written for
  * each of them into the save, and that number was itself the answer to this
  * sum when the game was saved. Getting all four back from the dexterity and
- * the gear is a check against the original's arithmetic and not against ours.
+ * the gear is a check against that arithmetic and not against ours.
  */
 class ArmourWornTest {
 
@@ -37,7 +37,7 @@ class ArmourWornTest {
     }
 
     @Test
-    fun `it gets back what the original wrote for every champion`() {
+    fun `it gets back what the save holds for every champion`() {
         val party = save.party.filter { it.inTheParty }
         assertEquals(4, party.size, "the quick start party is not four")
 

@@ -7,7 +7,7 @@ package pl.pelotasplus.eyeofbeholder.data.model
  * browser the key presses arrive anyway, but a phone raises its keyboard for a
  * real text control and for nothing else, so there would be nowhere for the
  * letters to come from. Where that is so, a save names itself instead — which
- * is what the original's own console versions do.
+ * is what the console versions of this game do.
  */
 expect val canTypeIntoTheGame: Boolean
 
@@ -30,7 +30,7 @@ data class Naming(val slot: Int, val typed: String) {
     val nameable: Boolean get() = typed.isNotBlank()
 
     companion object {
-        /** As many as the original's twenty byte description holds, less its terminator. */
+        /** As many as the twenty byte description holds, less its terminator. */
         const val LONGEST = 19
     }
 }

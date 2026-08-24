@@ -3,9 +3,10 @@ package pl.pelotasplus.eyeofbeholder.data.model
 /**
  * What one swing of a hand weapon comes to.
  *
- * Every number here is the original's, and the original is AD&D: a champion
- * needs a roll of a twenty-sided die at or above a target worked out from what
- * they are, how experienced they are and how well armoured the monster is.
+ * Every number here is transcribed, and the rules behind them are AD&D: a
+ * champion needs a roll of a twenty-sided die at or above a target worked out
+ * from what they are, how experienced they are and how well armoured the
+ * monster is.
  */
 sealed interface Blow {
 
@@ -46,7 +47,7 @@ val Champion.strikingBonus: Int get() = abilities.strengthToHitBonus
 
 /**
  * How fast a class's chance of hitting improves: [byPoints] better every
- * [everyLevels] levels. All four are the original's.
+ * [everyLevels] levels. All four transcribed.
  */
 enum class ToHitProgression(val everyLevels: Int, val byPoints: Int) {
     AS_A_FIGHTER(everyLevels = 1, byPoints = 1),
@@ -74,7 +75,7 @@ val CharacterClass.toHitProgression: ToHitProgression
     }
 
 /**
- * What strength adds to a swing, from the original's table: nothing at all
+ * What strength adds to a swing, from a transcribed table: nothing at all
  * through the middle of the range, a penalty below it, and a bonus above.
  *
  * Eighteen is a special case, being the only score with a percentile roll
@@ -112,7 +113,7 @@ val Abilities.strengthDamageBonus: Int
  * weapon carries a set of dice for something a champion's size and another for
  * something bigger, and which is used is the monster's own business.
  *
- * The flat addition is the small set's for both, as the original has it.
+ * The flat addition is the small set's for both, which is not a slip.
  */
 fun ItemType.damageAgainst(target: MonsterProperty?, dice: Dice): Int =
     if (target?.isLarge == true) dice.roll(dmgNumDiceL, dmgNumPipsL, dmgIncS)

@@ -11,7 +11,7 @@ import kotlin.test.assertEquals
  * Walking along the party with the arrows on an open page.
  *
  * The party has six slots and the game ships with four of them filled, so the
- * rule the original follows — the arrows walk from champion to champion and
+ * rule that is followed — the arrows walk from champion to champion and
  * round from the last to the first — is not the same as counting to six.
  */
 class CharacterSheetTest {

@@ -18,7 +18,7 @@ import kotlin.test.assertTrue
 
 /**
  * A letter, a note or a map is the one kind of thing whose value says what is
- * written on it rather than what it does, and the original reads one by
+ * written on it rather than what it does, and one is read by
  * putting that page of TEXT.DAT up. The value counts from zero; the texts are
  * numbered from one.
  */
