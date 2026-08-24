@@ -79,6 +79,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.Preferences
 import pl.pelotasplus.eyeofbeholder.data.model.SoundBank
 import pl.pelotasplus.eyeofbeholder.data.model.TrackIndex
 import pl.pelotasplus.eyeofbeholder.data.model.Volume
+import kotlin.math.abs
 import pl.pelotasplus.eyeofbeholder.data.model.SavedGame
 import pl.pelotasplus.eyeofbeholder.data.model.rightNow
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptEvent
@@ -1028,17 +1029,19 @@ class ViewConeDebugViewModel(
                 swungAndMissed.forEach { slot -> Logger.d(TAG) { "$tickNow  m$slot misses" } }
                 took.forEach { line -> Logger.d(TAG) { line } }
 
-                roused.forEach { monster -> monsterSound(monster)?.let { playTrack(it) } }
+                roused.forEach { monster ->
+                    monsterSound(monster)?.let { playTrack(it, asFarOffAs(monster)) }
+                }
 
                 // There is one voice, and a new sound takes it from whatever
-                // had it. So a swing keeps it: the original stops the world for
-                // the length of the attack and nothing else can be heard over
-                // it, and without this a monster stepping somewhere in the dark
-                // silences the one in front winding up. One pair of feet at a
+                // had it. So a swing keeps it: an attack holds the world for
+                // its length and nothing is heard over it, and without this a
+                // monster stepping somewhere in the dark silences the one in
+                // front winding up. One pair of feet at a
                 // time, too, for the same reason.
                 if (roused.isEmpty()) {
-                    walked.firstOrNull()?.let { monster ->
-                        movingSound(monster)?.let { playTrack(it) }
+                    walked.minByOrNull { squaresOff(it) }?.let { monster ->
+                        movingSound(monster)?.let { playTrack(it, asFarOffAs(monster)) }
                     }
                 }
                 if (moved) drawViewPort()
@@ -1137,6 +1140,22 @@ class ViewConeDebugViewModel(
             MonsterPathing.WayRound.LEFT_FIRST
         }
     }
+
+    /**
+     * How far off something is, as the game measures what can be heard: the
+     * shorter way halved and added to the longer, so a thing on the diagonal
+     * is nearer than counting both ways would make it.
+     */
+    private fun squaresOff(monster: MonsterInstance): Int {
+        val party = _state.value.game.party.position
+        val across = abs(monster.x - party.x)
+        val along = abs(monster.y - party.y)
+
+        return maxOf(across, along) + minOf(across, along) / 2
+    }
+
+    /** And so how loud it is here, or silent for something too far off. */
+    private fun asFarOffAs(monster: MonsterInstance) = Volume.asFarOffAs(squaresOff(monster))
 
     /** What a monster sounds like swinging. */
     private fun monsterSound(monster: MonsterInstance): TrackIndex? =

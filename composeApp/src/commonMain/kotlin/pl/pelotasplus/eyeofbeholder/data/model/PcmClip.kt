@@ -18,7 +18,7 @@ class PcmClip(
 }
 
 /**
- * How loud, on the original's scale, where 255 is as loud as a sound goes.
+ * How loud, on a scale where 255 is as loud as a sound goes.
  *
  * The game asks for effects at a volume rather than at a gain — a spell
  * fading with distance counts down towards 0 — so that is the number kept,
@@ -37,5 +37,19 @@ value class Volume(val raw: Int) {
 
         val FULL = Volume(FULL_RAW)
         val SILENT = Volume(0)
+
+        /**
+         * How loud something happening [squares] away is heard, and whether it
+         * is heard at all.
+         *
+         * Walls do not stop sound in this dungeon; distance does. Each square
+         * takes a sixteenth of full volume off, so what is one away is nearly
+         * as loud as being there and what is fifteen away is not heard at all.
+         */
+        fun asFarOffAs(squares: Int): Volume =
+            Volume((AS_FAR_AS_IT_CARRIES - squares).coerceAtLeast(0) shl 4)
+
+        /** Which is as far as any of it carries. */
+        const val AS_FAR_AS_IT_CARRIES = 15
     }
 }
