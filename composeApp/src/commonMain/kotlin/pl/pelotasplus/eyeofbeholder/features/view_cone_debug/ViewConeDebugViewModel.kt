@@ -204,6 +204,9 @@ class ViewConeDebugViewModel(
     private var stepStillRunning = 0
     private var pulse = TeleporterPulse.AS_LAID_OUT
     private var tickNow = 0
+
+    /** The last thing said about each monster's turn, so it is not said twice. */
+    private val lastTurnLine = mutableMapOf<Int, String>()
     private var stepsTaken = 0
     private var goingRight = true
 
@@ -925,6 +928,7 @@ class ViewConeDebugViewModel(
             // rather than as a pile of unrelated lines. The party stamp their
             // own steps with it, which is the comparison worth having.
             tickNow = 0
+            lastTurnLine.clear()
 
             while (stillFighting()) {
                 delay(GameState.CLOCK_STEP.inMilliseconds)
@@ -1060,13 +1064,19 @@ class ViewConeDebugViewModel(
      * stands on, where the party are, and whether its arm reaches them from
      * there. A turn where it does nothing is a line too — that is the half of
      * the rhythm nothing else shows.
+     *
+     * The same line twice running is not, though. Something roused that
+     * cannot reach the party and has not been let walk waits for ever, and
+     * saying so once a turn until the party do something buries the fight it
+     * was written to show. So a line is kept back while it would repeat, and
+     * the next one that differs is printed.
      */
     private fun whatItDidWithItsTurn(
         tick: Int,
         before: MonsterInstance,
         after: MonsterInstance,
         party: PartyState,
-    ): String {
+    ): String? {
         val did = when {
             after.striking != null && before.striking == null -> "SWINGS"
             before.block != after.block -> "steps "
@@ -1077,13 +1087,18 @@ class ViewConeDebugViewModel(
 
         fun <T> both(was: T, now: T) = if (was == now) "$now" else "$was->$now"
 
-        return "$tick\tm${after.index} $did" +
+        val line = "m${after.index} $did" +
             "\t${both("${before.x}x${before.y}", "${after.x}x${after.y}")}" +
             "\t${both(before.direction, after.direction)}" +
             "\t${both(before.place, after.place)}" +
             "\tparty ${party.position.x}x${party.position.y} ${party.facing}" +
             "\treach=${kindOf(after)?.let { after.canReach(party, it.size) }}" +
             " ready=${after.readyToStrike}"
+
+        if (lastTurnLine[after.index] == line) return null
+        lastTurnLine[after.index] = line
+
+        return "$tick\t$line"
     }
 
     /**
