@@ -26,10 +26,29 @@ private external class GainNode : JsAny {
 
 private external class AudioContext : JsAny {
     val destination: JsAny
+    val state: String
     fun createBuffer(channels: Int, frames: Int, sampleRate: Int): AudioBuffer
     fun createBufferSource(): AudioBufferSourceNode
     fun createGain(): GainNode
     fun resume()
+}
+
+private external class EventTarget : JsAny {
+    fun addEventListener(type: String, listener: (JsAny) -> Unit, useCapture: Boolean)
+}
+
+private external val document: EventTarget
+
+/**
+ * Listening on the way down rather than on the way up, so the page is heard
+ * from whether or not the canvas goes on to swallow the event.
+ */
+internal actual fun whenTheUserTouchesThePage(what: () -> Unit) {
+    val fire: (JsAny) -> Unit = { what() }
+
+    listOf("pointerdown", "keydown", "touchend").forEach { gesture ->
+        document.addEventListener(gesture, fire, true)
+    }
 }
 
 /**
@@ -75,6 +94,8 @@ private class WasmWebAudioContext : WebAudioContext {
     override fun resume() {
         context.resume()
     }
+
+    override val isRunning: Boolean get() = context.state == "running"
 
     private companion object {
         const val FULL_SCALE = 32768f

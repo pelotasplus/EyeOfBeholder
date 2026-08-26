@@ -13,11 +13,22 @@ import pl.pelotasplus.eyeofbeholder.data.model.Volume
  * pressed or the screen touched, and [wake] exists for a page that was loaded
  * and left to sit. Nothing here should throw at a caller who only wanted a
  * door to creak.
+ *
+ * Browsers do not agree on what counts as the player having done something.
+ * One takes the first click as permission for everything after it, whenever it
+ * comes; another only allows the speaker to be started from inside the event
+ * itself, and the toolkit's own events are dispatched too late for that. So
+ * the page is listened to directly as well, which is the one place both
+ * readings hold.
  */
 class WebAudioSink : AudioSink {
 
     private var context: WebAudioContext? = null
     private val playing = mutableSetOf<WebAudioVoice>()
+
+    init {
+        whenTheUserTouchesThePage { wake() }
+    }
 
     override fun play(clip: PcmClip, volume: Volume, loop: Boolean): PlayingSound {
         val audio = context() ?: return NotPlaying
@@ -48,9 +59,20 @@ class WebAudioSink : AudioSink {
      * A context built before any interaction starts suspended and stays that
      * way until it is resumed from inside a real event, so this has to be
      * reached from the player's own doing and not from a clock or a load.
+     *
+     * Asking it to resume is not always enough. A speaker can also want
+     * something actually played before it counts as started, so a single
+     * silent sample goes down the same path a clip does. Once the context is
+     * running there is nothing left to do, and this costs nothing to call.
      */
     override fun wake() {
-        context()?.resume()
+        val audio = context() ?: return
+        if (audio.isRunning) return
+
+        runCatching {
+            audio.resume()
+            audio.voice(SILENCE, SILENCE_RATE, gain = 0f, loop = false).start()
+        }.onFailure { Logger.w(TAG, it) { "Could not wake the speaker" } }
     }
 
     private fun context(): WebAudioContext? {
@@ -64,8 +86,23 @@ class WebAudioSink : AudioSink {
 
     private companion object {
         const val TAG = "AudioSink"
+
+        /** One sample of nothing, which is enough to have played something. */
+        val SILENCE = ShortArray(1)
+        const val SILENCE_RATE = 22050
     }
 }
+
+/**
+ * Runs [what] inside the browser's own event, every time the page is clicked,
+ * typed at or touched.
+ *
+ * The listeners are never taken off again. Handing the same function back to
+ * the browser to remove is not something the interop promises across both web
+ * targets, and there is nothing to gain: once the speaker is running this is a
+ * comparison and a return.
+ */
+internal expect fun whenTheUserTouchesThePage(what: () -> Unit)
 
 /**
  * What the two web targets have to supply, because JavaScript interop is not
@@ -75,6 +112,9 @@ class WebAudioSink : AudioSink {
 internal interface WebAudioContext {
     fun voice(samples: ShortArray, sampleRate: Int, gain: Float, loop: Boolean): WebAudioVoice
     fun resume()
+
+    /** Whether the speaker is up, as opposed to built but still held shut. */
+    val isRunning: Boolean
 }
 
 internal interface WebAudioVoice {

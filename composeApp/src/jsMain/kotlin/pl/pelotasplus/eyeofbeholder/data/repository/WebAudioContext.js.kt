@@ -1,11 +1,24 @@
 package pl.pelotasplus.eyeofbeholder.data.repository
 
+import kotlinx.browser.document
+
 private external class AudioContext {
     val destination: dynamic
+    val state: String
     fun createBuffer(channels: Int, frames: Int, sampleRate: Int): dynamic
     fun createBufferSource(): dynamic
     fun createGain(): dynamic
     fun resume()
+}
+
+/**
+ * Listening on the way down rather than on the way up, so the page is heard
+ * from whether or not the canvas goes on to swallow the event.
+ */
+internal actual fun whenTheUserTouchesThePage(what: () -> Unit) {
+    listOf("pointerdown", "keydown", "touchend").forEach { gesture ->
+        document.addEventListener(gesture, { what() }, true)
+    }
 }
 
 internal actual fun WebAudioContext(): WebAudioContext = JsWebAudioContext()
@@ -42,6 +55,8 @@ private class JsWebAudioContext : WebAudioContext {
     override fun resume() {
         context.resume()
     }
+
+    override val isRunning: Boolean get() = context.state == "running"
 
     private companion object {
         const val FULL_SCALE = 32768f
