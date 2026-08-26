@@ -14,7 +14,7 @@ import kotlinx.coroutines.flow.asStateFlow
  */
 class Debugging {
 
-    private val _wallsArePassable = MutableStateFlow(true)
+    private val _wallsArePassable = MutableStateFlow(false)
 
     /**
      * Whether the party walk through walls.
