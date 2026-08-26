@@ -6,12 +6,14 @@ import pl.pelotasplus.eyeofbeholder.data.model.script.ClearFlag
 import pl.pelotasplus.eyeofbeholder.data.model.script.Conditional
 import pl.pelotasplus.eyeofbeholder.data.model.script.ConsumeItem
 import pl.pelotasplus.eyeofbeholder.data.model.script.CreateMonster
+import pl.pelotasplus.eyeofbeholder.data.model.script.Damage
 import pl.pelotasplus.eyeofbeholder.data.model.script.Dialog
 import pl.pelotasplus.eyeofbeholder.data.model.script.Encounter
 import pl.pelotasplus.eyeofbeholder.data.model.script.End
 import pl.pelotasplus.eyeofbeholder.data.model.script.Eval
 import pl.pelotasplus.eyeofbeholder.data.model.script.GoSub
 import pl.pelotasplus.eyeofbeholder.data.model.script.Goto
+import pl.pelotasplus.eyeofbeholder.data.model.script.Launcher
 import pl.pelotasplus.eyeofbeholder.data.model.script.CloseDoor
 import pl.pelotasplus.eyeofbeholder.data.model.script.Message
 import pl.pelotasplus.eyeofbeholder.data.model.script.OpenDoor
@@ -22,11 +24,13 @@ import pl.pelotasplus.eyeofbeholder.data.model.script.NewLevelOrMonster
 import pl.pelotasplus.eyeofbeholder.data.model.script.Return
 import pl.pelotasplus.eyeofbeholder.data.model.script.Script
 import pl.pelotasplus.eyeofbeholder.data.model.script.ScriptOffset
+import pl.pelotasplus.eyeofbeholder.data.model.script.ScriptToken
 import pl.pelotasplus.eyeofbeholder.data.model.script.SetFlag
 import pl.pelotasplus.eyeofbeholder.data.model.script.SetWall
 import pl.pelotasplus.eyeofbeholder.data.model.script.SpecialEvent
 import pl.pelotasplus.eyeofbeholder.data.model.script.Teleport
 import pl.pelotasplus.eyeofbeholder.data.model.script.ToggleWall
+import pl.pelotasplus.eyeofbeholder.data.model.script.Turn
 import pl.pelotasplus.eyeofbeholder.data.model.script.UpdateScreen
 import pl.pelotasplus.eyeofbeholder.data.model.script.Wait
 import kotlin.jvm.JvmInline
@@ -186,6 +190,16 @@ interface ScriptStage {
     /** Put a question up, and wait for it to be answered. */
     suspend fun ask(question: ScriptQuestion): DialogAnswer
 
+    /**
+     * Something the script asked for that nothing here does yet, said in the
+     * words a player could repeat back.
+     *
+     * It does not suspend and it changes nothing: a gap is reported beside the
+     * run rather than being a beat of it, so a stage that has nowhere to put
+     * the notice can ignore it and the script reads the same either way.
+     */
+    fun notImplemented(what: String) = Unit
+
     companion object {
         /**
          * Runs a script straight through: nothing is drawn, no wait takes any
@@ -243,13 +257,16 @@ private value class ConditionValue(private val raw: Int) : Comparable<ConditionV
  * long that takes — a script may hold the screen between steps or wait on an
  * answer, and it does both through the [ScriptStage] it is given.
  *
- * This is not the full interpreter. It handles control flow, the movement
- * instructions, level flags, monsters spawned by script, and everything a
- * conversation is made of; it ignores damage, items and sound.
+ * This is not the full interpreter, and the instructions it does not run say
+ * so as it goes past them, naming the level and the offset they sit at. That
+ * log is the list of what is left to write, so nothing is skipped in silence.
  *
- * Conditions needing state this project does not model yet (party classes,
- * items in hand, dice rolls) evaluate to true, which keeps stairs reachable.
- * Each one is logged, so what a level actually depends on stays visible.
+ * The `when` over the instructions has no `else`: a token added to the
+ * language has to be given a branch here, even if all that branch does is
+ * report itself.
+ *
+ * Conditions needing state this project does not model yet evaluate to true,
+ * which keeps stairs reachable, and are reported the same way.
  */
 class LevelScriptRunner(
     private val script: List<Script>,
@@ -342,6 +359,21 @@ class LevelScriptRunner(
 
         fun stop(changeLevel: ChangeLevel? = null) = ScriptRun(state, changeLevel)
 
+        // An instruction nobody has written yet says so, and says what the
+        // script goes on to do instead. Silence is the wrong answer here: a
+        // script that quietly does nothing reads exactly like one that had
+        // nothing to do, and every level is full of both.
+        //
+        // The log gets the whole instruction and where it sits, for whoever
+        // goes to write it; the screen gets [what] and [instead] in words a
+        // player can report without one.
+        fun notYet(token: ScriptToken, what: String, instead: String) {
+            Logger.w(TAG) {
+                "Level $level, ${script[index].offset}: $token is not implemented; $instead"
+            }
+            stage.notImplemented("$what is not written yet, $instead")
+        }
+
         while (index in script.indices) {
             if (steps++ > MAX_STEPS) {
                 Logger.w(TAG) { "Script from $from did not terminate after $MAX_STEPS steps" }
@@ -383,7 +415,7 @@ class LevelScriptRunner(
 
                 is Eval -> {
                     // a true condition falls through, a false one jumps
-                    val condition = evaluate(token.tokens, state, dialogAnswer, event, used)
+                    val condition = evaluate(token.tokens, state, dialogAnswer, event, used, stage)
                     Logger.d(TAG) {
                         if (condition.isTrue) {
                             "    condition true, carrying on"
@@ -443,9 +475,7 @@ class LevelScriptRunner(
                     if (token.bit == SetFlag.MonsterFlag.ROUSED) {
                         state.rousedBy(token.monsterId)
                     } else {
-                        Logger.w(TAG) {
-                            "Nothing marks monster ${token.monsterId} with ${token.bit}"
-                        }
+                        notYet(token, "this monster flag", "the monster is left as it was")
                         state
                     }
 
@@ -538,7 +568,8 @@ class LevelScriptRunner(
                     )
                 }
 
-                is ToggleWall.Unknown -> Logger.w(TAG) { "$token is not a wall this knows" }
+                is ToggleWall.Unknown ->
+                    notYet(token, "this wall switch", "the wall is left as it was")
 
                 is SetWall.OneSide ->
                     state = state.wallChanged(level, token.location, token.side, token.to)
@@ -619,18 +650,17 @@ class LevelScriptRunner(
                 // test an answer that was never given, and takes a branch
                 // silently. Say so rather than let it read as a script that
                 // did its work.
-                is SpecialEvent -> Logger.w(TAG) {
-                    "$token is not implemented; the script will read its result as unanswered"
-                }
+                is SpecialEvent -> notYet(
+                    token,
+                    "this set piece",
+                    "the script will read its result as unanswered",
+                )
 
                 is Encounter.NpcSequence -> {
                     val meeting = NpcMeeting.called(token.npc)
 
                     if (meeting == null) {
-                        Logger.w(TAG) {
-                            "$token has no meeting written for it; whatever marks it " +
-                                "as seen has been set anyway"
-                        }
+                        notYet(token, "this meeting", "it counts as seen anyway")
                     } else {
                         state = met(meeting, state, stage)
                     }
@@ -641,11 +671,38 @@ class LevelScriptRunner(
                 // matters — the script has usually just set the flag that says
                 // it has happened, so nothing brings it round again and the
                 // scene is gone for that game.
-                is Encounter -> Logger.w(TAG) {
-                    "$token is not implemented; whatever marks it as seen has been set anyway"
-                }
+                is Encounter -> notYet(token, "this set piece", "it counts as seen anyway")
 
-                else -> Unit
+                is Damage -> notYet(token, "damage", "nobody is hurt")
+
+                // A dart from a wall, or the bolt a trap throws down a
+                // corridor. Both are things put in flight, which nothing here
+                // keeps track of yet.
+                is Launcher -> notYet(token, "a thing thrown", "nothing is put in flight")
+
+                // Turning the party is an instruction of its own as well as one
+                // of the wall opcodes, and the other kind turns what is already
+                // in flight.
+                is Turn -> notYet(token, "turning", "nothing turns")
+
+                // Everything a script moves that is not the party: an item to
+                // another square or another level, a monster somewhere else.
+                is Teleport -> notYet(token, "moving a thing", "nothing is moved")
+
+                // Graphics the level wants for a fight it is about to start.
+                is NewLevelOrMonster.LoadMonsterShapes -> notYet(
+                    token,
+                    "loading monster shapes",
+                    "the shapes already loaded are used",
+                )
+
+                // The flags that are not the level's or the game's: the answer
+                // slot, and the one that stops the party camping.
+                is SetFlag -> notYet(token, "this flag", "nothing is marked")
+
+                is ClearFlag -> notYet(token, "this flag", "nothing is cleared")
+
+                is SetWall -> notYet(token, "this wall", "the wall is left as it was")
             }
             index++
         }
@@ -789,6 +846,7 @@ class LevelScriptRunner(
         dialogAnswer: DialogAnswer?,
         event: ScriptEvent,
         used: ItemIndex?,
+        stage: ScriptStage,
     ): ConditionValue {
         val stack = ArrayDeque<ConditionValue>()
         fun pop() = stack.removeLastOrNull() ?: ConditionValue.FALSE
@@ -925,14 +983,6 @@ class LevelScriptRunner(
                 // Written as one expression, Kotlin stops at the first false
                 // and leaves the second where it was, and everything the
                 // condition does after that reads one value along.
-                // Both operands come off the stack whatever the answer is.
-                // Written as one expression, Kotlin stops at the first false
-                // and leaves the second where it was, and everything the
-                // condition does after that reads one value along.
-                // Both operands come off the stack whatever the answer is.
-                // Written as one expression, Kotlin stops at the first false
-                // and leaves the second where it was, and everything the
-                // condition does after that reads one value along.
                 is Conditional.And -> {
                     val left = pop().isTrue
                     val right = pop().isTrue
@@ -944,8 +994,14 @@ class LevelScriptRunner(
                     val right = pop().isTrue
                     push(left || right)
                 }
+                // Taken as true so the stairs stay reachable, which is a guess
+                // and shows as one: the branch the script takes from here is
+                // not the branch the game would have taken.
                 else -> {
-                    Logger.d(TAG) { "    condition $token not modelled yet, assuming true" }
+                    Logger.w(TAG) {
+                        "Level $level: condition $token is not implemented; taken as true"
+                    }
+                    stage.notImplemented("a question the script asked is not written yet")
                     push(ConditionValue.TRUE)
                 }
             }

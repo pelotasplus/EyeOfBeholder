@@ -13,15 +13,19 @@ import pl.pelotasplus.eyeofbeholder.data.model.PartyState
 import pl.pelotasplus.eyeofbeholder.data.model.SquarePlace
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptEvent
 import pl.pelotasplus.eyeofbeholder.data.model.ChangeLevel
+import pl.pelotasplus.eyeofbeholder.data.model.ScriptQuestion
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptRun
+import pl.pelotasplus.eyeofbeholder.data.model.ScriptSpeech
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptStage
 import pl.pelotasplus.eyeofbeholder.data.model.Ticks
+import pl.pelotasplus.eyeofbeholder.data.model.TrackIndex
 import pl.pelotasplus.eyeofbeholder.data.model.WallByte
 import pl.pelotasplus.eyeofbeholder.data.model.WallSide
 import pl.pelotasplus.eyeofbeholder.data.model.Trigger
 import pl.pelotasplus.eyeofbeholder.data.model.TriggerFlags
 import pl.pelotasplus.eyeofbeholder.data.model.script.Conditional
 import pl.pelotasplus.eyeofbeholder.data.model.script.CreateMonster
+import pl.pelotasplus.eyeofbeholder.data.model.script.Damage
 import pl.pelotasplus.eyeofbeholder.data.model.script.Dialog
 import pl.pelotasplus.eyeofbeholder.data.model.script.GoSub
 import pl.pelotasplus.eyeofbeholder.data.model.script.Return
@@ -665,6 +669,70 @@ class LevelScriptRunnerTest {
     @Test
     fun `nothing is conjured onto the square the party stands on`() {
         assertTrue(runFully(0 to spawnAt(here)).state.monsters.isEmpty())
+    }
+
+    // --- what the runner does not do yet -------------------------------------
+
+    /**
+     * An instruction with no branch written for it is announced and stepped
+     * over. Both halves matter: a gap that says nothing cannot be found, and
+     * one that stops the script turns a missing feature into a dead level.
+     */
+    @Test
+    fun `an instruction nobody has written announces itself and the script runs on`() {
+        val stage = Notices()
+
+        val outcome = runFully(
+            0 to Damage(
+                charIndex = -1,
+                times = 2,
+                itemOrPips = 6,
+                useStrModifierOrBase = 0,
+                flags = 0,
+                savingThrowType = 0,
+                savingThrowEffect = 0,
+            ),
+            10 to changeLevelToken(5),
+            stage = stage,
+        )
+
+        assertEquals(changeToLevel(5), outcome.changeLevel)
+        assertEquals(listOf("damage is not written yet, nobody is hurt"), stage.said)
+    }
+
+    /**
+     * A question the runner cannot answer is taken as true, which is a guess
+     * at which branch the game would have taken. It says so for the same
+     * reason: the script goes on either way, and quietly.
+     */
+    @Test
+    fun `a question nobody has modelled announces itself`() {
+        val stage = Notices()
+
+        val outcome = runFully(
+            0 to Eval(listOf(Conditional.OnSpell), ScriptOffset(20)),
+            10 to changeLevelToken(5),
+            20 to changeLevelToken(9),
+            stage = stage,
+        )
+
+        assertEquals(changeToLevel(5), outcome.changeLevel)
+        assertEquals(listOf("a question the script asked is not written yet"), stage.said)
+    }
+
+    /** A stage that keeps the notices rather than showing them. */
+    private class Notices : ScriptStage {
+        val said = mutableListOf<String>()
+
+        override fun notImplemented(what: String) {
+            said += what
+        }
+
+        override suspend fun show(world: GameState) = Unit
+        override suspend fun say(speech: ScriptSpeech) = Unit
+        override suspend fun hold(ticks: Ticks) = Unit
+        override suspend fun play(track: TrackIndex) = Unit
+        override suspend fun ask(question: ScriptQuestion) = DialogAnswer(1)
     }
 
     private fun run(

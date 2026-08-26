@@ -1892,6 +1892,22 @@ class ViewConeDebugViewModel(
             drawWords()
         }
 
+        /**
+         * A gap in the interpreter, written onto the bar with everything else
+         * the party are told, so it turns up while playing rather than only in
+         * a log nobody has open.
+         *
+         * The same gap is not repeated while it is still legible: a script may
+         * run the instruction every step, and three lines of the same notice
+         * would push off what the level was actually saying.
+         */
+        override fun notImplemented(what: String) {
+            if (_state.value.messages.any { it.text == what }) return
+
+            this@ViewConeDebugViewModel.say(what)
+            drawWords()
+        }
+
         override suspend fun hold(ticks: Ticks) = delay(ticks.inMilliseconds)
 
         override suspend fun ask(question: ScriptQuestion): DialogAnswer {
