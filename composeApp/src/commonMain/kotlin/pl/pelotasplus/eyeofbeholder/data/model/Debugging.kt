@@ -45,4 +45,13 @@ class Debugging {
     fun letMonstersWalk(may: Boolean) {
         _monstersMayWalk.value = may
     }
+
+    private val _showingMap = MutableStateFlow(true)
+
+    /** Whether the little map of where the party have been is drawn. */
+    val showingMap: StateFlow<Boolean> = _showingMap.asStateFlow()
+
+    fun showMap(show: Boolean) {
+        _showingMap.value = show
+    }
 }

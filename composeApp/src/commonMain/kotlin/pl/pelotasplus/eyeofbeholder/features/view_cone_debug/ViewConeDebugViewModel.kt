@@ -213,6 +213,9 @@ class ViewConeDebugViewModel(
     /** The view as last drawn, which a script's words are written over. */
     private var drawn: ViewPort? = null
 
+    /** Where the party have been, kept per level and sublevel. */
+    private val whereTheyHaveBeen = mutableMapOf<Pair<Int, Int>, Set<Location>>()
+
     /** Whatever is being heard, so that the next thing can take its place. */
     private var sounding: PlayingSound? = null
 
@@ -2143,7 +2146,12 @@ class ViewConeDebugViewModel(
         val level = levelNumber(inf.name)
         val wallAt = { at: Location, side: WallSide -> _state.value.game.wall(level, at, side) }
 
-        val sublevel = inf.subLevels[followTheWalls(inf, wallAt)]
+        val sub = followTheWalls(inf, wallAt)
+        val sublevel = inf.subLevels[sub]
+
+        val here = whereTheyHaveBeen.getOrElse(level to sub) { emptySet() } + party.position
+        whereTheyHaveBeen[level to sub] = here
+        _state.update { it.copy(visited = here) }
 
         viewConeRepository.renderPosition(
             items = _state.value.game.items,
@@ -2439,6 +2447,9 @@ class ViewConeDebugViewModel(
 
         /** What is being held, drawn under the pointer rather than on the field. */
         val held: ImageBitmap? = null,
+
+        /** The squares the party have stood on in the sublevel they are in. */
+        val visited: Set<Location> = emptySet(),
 
         /**
          * The world, as the scripts see it. There is one, and it is this: a

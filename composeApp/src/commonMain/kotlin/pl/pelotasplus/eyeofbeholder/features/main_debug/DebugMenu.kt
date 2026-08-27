@@ -77,6 +77,7 @@ private fun DebugMenuPanel(
 ) {
     val wallsArePassable by debugging.wallsArePassable.collectAsState()
     val monstersMayWalk by debugging.monstersMayWalk.collectAsState()
+    val showingMap by debugging.showingMap.collectAsState()
 
     Column(
         modifier = modifier
@@ -103,6 +104,13 @@ private fun DebugMenuPanel(
             modifier = Modifier.fillMaxWidth(),
         ) {
             Text(if (monstersMayWalk) "Monsters: hunt" else "Monsters: rooted")
+        }
+
+        Button(
+            onClick = { debugging.showMap(!showingMap) },
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text(if (showingMap) "Map: on" else "Map: off")
         }
 
         debugDestinations.forEach { destination ->

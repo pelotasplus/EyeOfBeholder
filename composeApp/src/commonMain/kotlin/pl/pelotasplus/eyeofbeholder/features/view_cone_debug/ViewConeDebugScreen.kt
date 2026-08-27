@@ -14,6 +14,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -22,6 +23,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.input.key.KeyEventType
@@ -39,13 +41,20 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 import pl.pelotasplus.eyeofbeholder.LocalPlayFieldFocus
+import pl.pelotasplus.eyeofbeholder.data.model.Debugging
 import pl.pelotasplus.eyeofbeholder.data.model.DialogAnswer
 import pl.pelotasplus.eyeofbeholder.data.model.DialogueScene
+import pl.pelotasplus.eyeofbeholder.data.model.Location
+import pl.pelotasplus.eyeofbeholder.data.model.Maz
+import pl.pelotasplus.eyeofbeholder.data.model.PartyState
 import pl.pelotasplus.eyeofbeholder.data.model.Typing
 import pl.pelotasplus.eyeofbeholder.data.model.ViewPort
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
+import pl.pelotasplus.eyeofbeholder.data.model.WallSide
+import pl.pelotasplus.eyeofbeholder.data.model.getWall
 
 @Composable
 fun ViewConeDebugScreen(
@@ -54,9 +63,11 @@ fun ViewConeDebugScreen(
     startY: Int? = null,
     startDirection: Direction? = null,
     viewModel: ViewConeDebugViewModel = koinViewModel(),
+    debugging: Debugging = koinInject(),
     modifier: Modifier = Modifier
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val showingMap by debugging.showingMap.collectAsState()
 
     LaunchedEffect(level, startX, startY, startDirection) {
         viewModel.onEvent(
@@ -101,6 +112,7 @@ fun ViewConeDebugScreen(
             viewModel.onEvent(ViewConeDebugViewModel.Event.UsedWhatIsAt(x, y))
         },
         onTyping = { viewModel.onEvent(ViewConeDebugViewModel.Event.Typed(it)) },
+        showingMap = showingMap,
     )
 }
 
@@ -113,6 +125,7 @@ private fun ViewConeDebugContent(
     onViewClick: (x: Int, y: Int) -> Unit = { _, _ -> },
     onUseClick: (x: Int, y: Int) -> Unit = { _, _ -> },
     onTyping: (Typing) -> Unit = {},
+    showingMap: Boolean = true,
 ) {
     val keyboard = remember { FocusRequester() }
     val playFieldFocus = LocalPlayFieldFocus.current
@@ -266,6 +279,23 @@ private fun ViewConeDebugContent(
             }
         }
 
+        // The little map of where the party have been, in the true bottom-right
+        // corner of the window rather than of the game area. It carries no
+        // pointer handler of its own, so a click on it falls through to
+        // whatever game control sits under it.
+        if (showingMap) {
+            state.inf?.subLevels?.getOrNull(state.subLevel)?.maz?.let { maz ->
+                AutoMap(
+                    maz = maz,
+                    visited = state.visited,
+                    party = state.game.party,
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .size(with(density) { (MAP_SIDE * scaleFactor).toDp() }),
+                )
+            }
+        }
+
         state.inf?.let { inf ->
             Text(
                 text = with(state.game.party) {
@@ -281,6 +311,66 @@ private fun ViewConeDebugContent(
                     .padding(horizontal = 8.dp, vertical = 4.dp),
             )
         }
+    }
+}
+
+/** How wide and tall the little map is, in the 320×200 screen's own space. */
+private const val MAP_SIDE = 50
+
+/**
+ * A map of the squares the party have stood on, and the walls around them.
+ *
+ * Fog of war: only [visited] squares are drawn, each with the walls that face
+ * it, and the party as a dot with a tail for the way they face. The whole 32×32
+ * maze is fitted to the box, so it is small — enough to place oneself by.
+ */
+@Composable
+private fun AutoMap(
+    maz: Maz,
+    visited: Set<Location>,
+    party: PartyState,
+    modifier: Modifier = Modifier,
+) {
+    Canvas(modifier) {
+        val cell = minOf(size.width / maz.width, size.height / maz.height)
+        val originX = size.width - cell * maz.width
+        val originY = size.height - cell * maz.height
+
+        drawRect(Color(0xE6101018))
+
+        val wallColour = Color(0xFFC8C8D8)
+        val stroke = maxOf(1f, cell * 0.18f)
+
+        visited.forEach { at ->
+            val left = originX + at.x * cell
+            val top = originY + at.y * cell
+            drawRect(Color(0xFF33333F), topLeft = Offset(left, top), size = Size(cell, cell))
+
+            val square = maz.square(at)
+            if (square.getWall(WallSide.NORTH) != Maz.WallType.NoWall) {
+                drawLine(wallColour, Offset(left, top), Offset(left + cell, top), stroke)
+            }
+            if (square.getWall(WallSide.SOUTH) != Maz.WallType.NoWall) {
+                drawLine(wallColour, Offset(left, top + cell), Offset(left + cell, top + cell), stroke)
+            }
+            if (square.getWall(WallSide.WEST) != Maz.WallType.NoWall) {
+                drawLine(wallColour, Offset(left, top), Offset(left, top + cell), stroke)
+            }
+            if (square.getWall(WallSide.EAST) != Maz.WallType.NoWall) {
+                drawLine(wallColour, Offset(left + cell, top), Offset(left + cell, top + cell), stroke)
+            }
+        }
+
+        val hereX = originX + (party.position.x + 0.5f) * cell
+        val hereY = originY + (party.position.y + 0.5f) * cell
+        val (dx, dy) = party.facing.transformCoordinates(0, -1)
+        drawCircle(Color(0xFFFFD54F), radius = cell * 0.35f, center = Offset(hereX, hereY))
+        drawLine(
+            Color(0xFFFFD54F),
+            Offset(hereX, hereY),
+            Offset(hereX + dx * cell * 0.7f, hereY + dy * cell * 0.7f),
+            maxOf(1f, cell * 0.25f),
+        )
     }
 }
 
