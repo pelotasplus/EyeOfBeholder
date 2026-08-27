@@ -182,6 +182,10 @@ data class ItemTypes(private val types: List<ItemType>) {
     /** Whether this is something a champion eats — rations, however fresh. */
     fun isEaten(item: Item): Boolean = item.type == RATIONS
 
+    /** Which horn this is, if it is one: a horn is blown rather than swung. */
+    fun hornBlown(item: Item): Horn? =
+        if (kindOf(item) != A_HORN) null else Horn.of(item.value)
+
     private fun kindOf(item: Item): Int = (this[item.type]?.extraProperties ?: 0) and KIND
 
     /**
@@ -278,6 +282,9 @@ data class ItemTypes(private val types: List<ItemType>) {
 
         /** The one type a champion eats. Its value is the food it restores. */
         val RATIONS = ItemTypeId(31)
+
+        /** Blown rather than swung, and its value says which of the four it is. */
+        const val A_HORN = 19
     }
 }
 

@@ -224,9 +224,6 @@ class ViewConeDebugViewModel(
     /** How long they have slept this rest, so waking early can say so. */
     private var hoursSlept = 0
 
-    /** Where the party have been, kept per level and sublevel. */
-    private val whereTheyHaveBeen = mutableMapOf<Pair<Int, Int>, Set<Location>>()
-
     /** Whatever is being heard, so that the next thing can take its place. */
     private var sounding: PlayingSound? = null
 
@@ -968,9 +965,21 @@ class ViewConeDebugViewModel(
             return
         }
 
+        // A horn is blown rather than swung, and blowing it is heard. What the
+        // sound is for is the wall's business, asked for below like any other
+        // thing taken to one — a puzzle listening for a horn wants the right
+        // one, and the sound alone is all the horn itself does.
+        val horn = held?.let { itemTypes?.hornBlown(it) }
+        if (horn != null) {
+            say(horn.sounds)
+            viewModelScope.launch { playTrack(horn.heardAs) }
+        }
+
         // An empty hand is a fist, and a champion swings it like anything else
         // — so the hand is what decides this, not what is in it.
-        if (slot.slot.isAHand && (held == null || itemTypes?.isSwungByHand(held) == true)) {
+        if (horn == null &&
+            slot.slot.isAHand && (held == null || itemTypes?.isSwungByHand(held) == true)
+        ) {
             strike(whose, slot.slot)
         }
 
@@ -2300,9 +2309,11 @@ class ViewConeDebugViewModel(
         val sub = followTheWalls(inf, wallAt)
         val sublevel = inf.subLevels[sub]
 
-        val here = whereTheyHaveBeen.getOrElse(level to sub) { emptySet() } + party.position
-        whereTheyHaveBeen[level to sub] = here
-        _state.update { it.copy(visited = here) }
+        val floor = GameState.Floor(level, sub)
+        _state.update {
+            val mapped = it.game.visiting(floor, party.position)
+            it.copy(game = mapped, visited = mapped.visited(floor))
+        }
 
         viewConeRepository.renderPosition(
             items = _state.value.game.items,
