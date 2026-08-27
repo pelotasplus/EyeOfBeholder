@@ -15,6 +15,8 @@ class Fighting(
     private val itemTypes: ItemTypes,
     private val kinds: List<MonsterProperty>,
     private val dice: Dice = Dice.random,
+    // Where a slain monster's belongings land, on the level they land on.
+    private val level: Int = 0,
 ) {
 
     /** A blow, and the world it leaves behind. */
@@ -53,6 +55,7 @@ class Fighting(
                 if (killed) {
                     val worth = kinds.firstOrNull { it.id == struck.type.value }?.experience ?: 0
                     after = after.partyEarns(XpPoints(worth.toLong()), dice)
+                    after = after.whatAMonsterDrops(struck, level, dice)
                 }
             }
 

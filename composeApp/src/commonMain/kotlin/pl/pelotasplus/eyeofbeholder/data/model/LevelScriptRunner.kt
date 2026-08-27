@@ -685,9 +685,20 @@ class LevelScriptRunner(
                 // in flight.
                 is Turn -> notYet(token, "turning", "nothing turns")
 
-                // Everything a script moves that is not the party: an item to
-                // another square or another level, a monster somewhere else.
-                is Teleport -> notYet(token, "moving a thing", "nothing is moved")
+                // The things on a square carried to another, on this level or
+                // onto another. A null level in the token is this one.
+                is Teleport.MoveItems -> state = state.itemsMoved(
+                    ofType = token.ofType,
+                    fromLevel = token.fromLevel ?: level,
+                    from = token.from,
+                    toLevel = token.toLevel ?: level,
+                    to = token.to,
+                )
+
+                is Teleport.MoveMonster ->
+                    state = state.monstersMovedFrom(token.source, token.destination)
+
+                is Teleport.Unknown -> notYet(token, "moving a thing", "nothing is moved")
 
                 // Graphics the level wants for a fight it is about to start.
                 is NewLevelOrMonster.LoadMonsterShapes -> notYet(

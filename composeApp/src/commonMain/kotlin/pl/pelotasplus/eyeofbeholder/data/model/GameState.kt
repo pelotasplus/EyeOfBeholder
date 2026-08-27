@@ -369,6 +369,52 @@ data class GameState(
      * Nothing is made when there is nothing to copy, and the world comes back
      * unchanged.
      */
+    /**
+     * The things lying on [from] carried over to [to]: all of them, or only
+     * those of [ofType]. A lever that makes a key appear does this, taking it
+     * from a square off the edge of the map where it was kept.
+     */
+    fun itemsMoved(
+        ofType: Int?,
+        fromLevel: Int,
+        from: Location,
+        toLevel: Int,
+        to: Location,
+    ): GameState = copy(
+        items = items.map {
+            val carried = it.level == fromLevel && it.location == from &&
+                (ofType == null || it.type.value == ofType)
+            if (carried) it.copy(level = toLevel, location = to) else it
+        },
+    )
+
+    /** Every monster standing on [from] moved to [to], facing as it did. */
+    fun monstersMovedFrom(from: Location, to: Location): GameState = copy(
+        monsters = monsters.map {
+            if (it.x == from.x && it.y == from.y) it.copy(block = to.asBlock) else it
+        },
+    )
+
+    /**
+     * What a slain [monster] leaves behind: a copy of the thing it always
+     * carries, and one time in ten a copy of the thing it might. Both fall on
+     * a corner of the square it died on — the one it stood on, or a corner
+     * picked at random if it filled the middle.
+     */
+    fun whatAMonsterDrops(monster: MonsterInstance, level: Int, dice: Dice): GameState {
+        val where = Location(monster.x, monster.y)
+        val corner = if (monster.place.onTheFloor) monster.place else SquarePlace.of(dice.roll(1, 4, -1))
+
+        var world = this
+        if (monster.pocketItem != ItemIndex.NOTHING) {
+            world = world.itemCopied(ItemIndex(monster.pocketItem), level, where, corner)
+        }
+        if (monster.weapon != ItemIndex.NOTHING && dice.roll(1, ONE_TIME_IN_TEN, 0) == 1) {
+            world = world.itemCopied(ItemIndex(monster.weapon), level, where, corner)
+        }
+        return world
+    }
+
     fun itemCopied(
         copyOf: ItemIndex,
         level: Int,
@@ -979,6 +1025,9 @@ data class GameState(
 
     companion object {
         private const val TAG = "GameState"
+
+        /** How often the thing a monster only might carry actually drops. */
+        private const val ONE_TIME_IN_TEN = 10
 
         /** What a pile of somebody's bones is, as the item table counts kinds. */
         private val BONES = ItemTypeId(33)

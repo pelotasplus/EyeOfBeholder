@@ -4,130 +4,80 @@ import pl.pelotasplus.eyeofbeholder.data.ByteReader
 import pl.pelotasplus.eyeofbeholder.data.model.Location
 
 /**
- * Teleport script token.
- * Handles movement of items, monsters, and party.
+ * Moving something from one place to another — the party, a monster, or the
+ * things lying on a square.
+ *
+ * One opcode with a kind byte that says which, and each kind carries a
+ * different tail. The layout is transcribed: a level in the tail is a byte
+ * that is [THE_SAME_LEVEL] for the level the party are on, or else a marker
+ * and the level after it; a block is a packed square.
  */
 sealed class Teleport : ScriptToken {
 
-    
-
-    /**
-     * Move item.
-     * type = 0xF5 (-11)
-     */
-    sealed class MoveItem : Teleport() {
-        abstract val source: Location
-
-        data class ToLevel(
-            override val source: Location,
-            val srcLevel: Int,
-            val dstLevel: Int,
-            val dstLocation: Location
-        ) : MoveItem()
-
-        data class ToBlock(
-            override val source: Location,
-            val srcLevel: Int,
-            val dstBlk: Location
-        ) : MoveItem()
-
-        data class Other(
-            override val source: Location,
-            val srcLevel: Int,
-            val sub: Int,
-            val payload: UByteArray
-        ) : MoveItem()
-    }
-
-    /**
-     * Move item by type.
-     * type = 0xE1 (-31)
-     */
-    data class MoveItemByType(
-        val itemType: Int,
-        val source: Location,
-        val srcBlk: Location,
-        val dstBlk: Location
-    ) : Teleport()
-
-    /**
-     * Move monster.
-     * type = 0xF3 (-13)
-     */
+    /** Every monster standing on [source] moved to [destination]. */
     data class MoveMonster(
         val source: Location,
-        val destination: Location
+        val destination: Location,
     ) : Teleport()
 
     /**
-     * Move party.
-     * type = 0xE8 (-24)
+     * The party put on [destination].
      *
-     * Two blocks are stored and only [destination] is used — the opcode shares
-     * its layout with the moves that take something from one square to
-     * another, and the party is simply put on the second. Scripts leave
-     * [source] at (0,0), so reading the wrong one of the two would look right
-     * nearly everywhere.
+     * Two squares are stored and only [destination] is used — the kind byte
+     * shares its tail with the moves that take a thing from one square to
+     * another. Scripts leave [source] at (0,0).
      */
     data class MoveParty(
         val source: Location,
-        val destination: Location
+        val destination: Location,
     ) : Teleport()
 
-    data class Unknown(
-        val type: Int,
-        val source: Location
+    /**
+     * The things lying on [from] moved to [to], of every kind ([ofType] null)
+     * or of one ([ofType] set) — which is how a lever makes a key appear on a
+     * square from the store it was kept in off the map.
+     *
+     * A null level is the level the party are on.
+     */
+    data class MoveItems(
+        val ofType: Int?,
+        val fromLevel: Int?,
+        val from: Location,
+        val toLevel: Int?,
+        val to: Location,
     ) : Teleport()
+
+    /** A kind byte nothing reads yet, its tail unread. */
+    data class Unknown(val type: Int) : Teleport()
 
     companion object {
+        private const val MOVE_ITEM = 0xF5
+        private const val MOVE_ITEM_OF_TYPE = 0xE1
+        private const val MOVE_MONSTER = 0xF3
+        private const val MOVE_PARTY = 0xE8
+
+        /** The level byte that means the one the party are on. */
+        private const val THE_SAME_LEVEL = 0xEB
+
         fun read(reader: ByteReader): Teleport {
-            val type = reader.readU8()
-
-            // If type is 0xE1, read item_type before source
-            val itemType = if (type == 0xE1) reader.readU16LE() else null
-
-            val source = Location.read(reader)
-
-            return when (type) {
-                0xF5 -> { // Move item
-                    val srcLevel = reader.readU8()
-                    val sub = reader.readU8()
-                    when (sub) {
-                        0xE5 -> MoveItem.ToLevel(
-                            source = source,
-                            srcLevel = srcLevel,
-                            dstLevel = reader.readU8(),
-                            dstLocation = Location.read(reader)
-                        )
-                        0xEB -> MoveItem.ToBlock(
-                            source = source,
-                            srcLevel = srcLevel,
-                            dstBlk = Location.read(reader)
-                        )
-                        else -> MoveItem.Other(
-                            source = source,
-                            srcLevel = srcLevel,
-                            sub = sub,
-                            payload = reader.readBytes(4)
-                        )
-                    }
-                }
-                0xE1 -> MoveItemByType( // Move item by type
-                    itemType = itemType!!,
-                    source = source,
-                    srcBlk = Location.read(reader),
-                    dstBlk = Location.read(reader)
+            return when (val type = reader.readU8()) {
+                MOVE_MONSTER -> MoveMonster(Location.read(reader), Location.read(reader))
+                MOVE_PARTY -> MoveParty(Location.read(reader), Location.read(reader))
+                MOVE_ITEM, MOVE_ITEM_OF_TYPE -> MoveItems(
+                    ofType = if (type == MOVE_ITEM_OF_TYPE) reader.readU16LE() else null,
+                    fromLevel = readLevel(reader),
+                    from = Location.read(reader),
+                    toLevel = readLevel(reader),
+                    to = Location.read(reader),
                 )
-                0xF3 -> MoveMonster( // Move monster
-                    source = source,
-                    destination = Location.read(reader)
-                )
-                0xE8 -> MoveParty( // Move party
-                    source = source,
-                    destination = Location.read(reader)
-                )
-                else -> Unknown(type = type, source = source)
+
+                else -> Unknown(type)
             }
+        }
+
+        private fun readLevel(reader: ByteReader): Int? {
+            val marker = reader.readU8()
+            return if (marker == THE_SAME_LEVEL) null else reader.readU8()
         }
     }
 }
