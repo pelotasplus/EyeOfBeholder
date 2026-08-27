@@ -210,7 +210,7 @@ class PlayField(
                 top = top,
                 colour = StatsPage.LABEL_COLOUR,
             )
-            writeCentred("${career.experience}", font, StatsPage.EXPERIENCE_MIDDLE, top)
+            writeCentred("${career.experience.count}", font, StatsPage.EXPERIENCE_MIDDLE, top)
             writeCentred("${career.level}", font, StatsPage.LEVEL_MIDDLE, top)
         }
     }

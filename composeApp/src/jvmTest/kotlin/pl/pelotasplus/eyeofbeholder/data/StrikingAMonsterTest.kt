@@ -10,6 +10,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.Champion
 import pl.pelotasplus.eyeofbeholder.data.model.CarrySlot
 import pl.pelotasplus.eyeofbeholder.data.model.ChampionFlags
 import pl.pelotasplus.eyeofbeholder.data.model.ClassLevel
+import pl.pelotasplus.eyeofbeholder.data.model.XpPoints
 import pl.pelotasplus.eyeofbeholder.data.model.Dice
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.Fighting
@@ -89,7 +90,7 @@ class StrikingAMonsterTest {
         armorClass = ArmorClass(10),
         food = Food(100),
         characterClass = CharacterClass.FIGHTER,
-        levels = listOf(ClassLevel(level, 0)),
+        levels = listOf(ClassLevel(level, XpPoints(0))),
         carrying = List(27) { ItemIndex(ItemIndex.NOTHING) },
         flags = ChampionFlags(1),
     )
@@ -134,9 +135,9 @@ class StrikingAMonsterTest {
     fun `a mage improves a point every three levels`() {
         val mage = fighter().copy(characterClass = CharacterClass.MAGE)
 
-        assertEquals(18, mage.copy(levels = listOf(ClassLevel(1, 0))).needsToHit(2))
-        assertEquals(18, mage.copy(levels = listOf(ClassLevel(3, 0))).needsToHit(2))
-        assertEquals(17, mage.copy(levels = listOf(ClassLevel(4, 0))).needsToHit(2))
+        assertEquals(18, mage.copy(levels = listOf(ClassLevel(1, XpPoints(0)))).needsToHit(2))
+        assertEquals(18, mage.copy(levels = listOf(ClassLevel(3, XpPoints(0)))).needsToHit(2))
+        assertEquals(17, mage.copy(levels = listOf(ClassLevel(4, XpPoints(0)))).needsToHit(2))
     }
 
     /** A cleric improves two points every three levels, so it comes in jumps. */
@@ -144,8 +145,8 @@ class StrikingAMonsterTest {
     fun `a cleric improves two points every three levels`() {
         val cleric = fighter().copy(characterClass = CharacterClass.CLERIC)
 
-        assertEquals(18, cleric.copy(levels = listOf(ClassLevel(3, 0))).needsToHit(2))
-        assertEquals(16, cleric.copy(levels = listOf(ClassLevel(4, 0))).needsToHit(2))
+        assertEquals(18, cleric.copy(levels = listOf(ClassLevel(3, XpPoints(0)))).needsToHit(2))
+        assertEquals(16, cleric.copy(levels = listOf(ClassLevel(4, XpPoints(0)))).needsToHit(2))
     }
 
     /** Worse armour is easier to hit, and the two move together point for point. */
@@ -250,6 +251,37 @@ class StrikingAMonsterTest {
 
         assertTrue(swings < 100, "the cleric never died")
         assertEquals(1, world.monstersOn(Location(13, 8)))
+    }
+
+    /**
+     * A kill is worth what its kind is worth, and the party split it. The
+     * cleric is left with a single hit point so one blow finishes it, and the
+     * two thousand it carries is shared between the two who were there.
+     */
+    @Test
+    fun `killing a monster shares out what it was worth`() {
+        val nearlyDead = world().let { w ->
+            w.copy(monsters = w.monsters.map {
+                if (it.index == onTheLeft) it.copy(hitPoints = HitPoints(1, 1)) else it
+            })
+        }
+        val worth = kinds.first { it.id == nearlyDead.monsters.first { m -> m.index == onTheLeft }.type.value }
+            .experience
+
+        val struck = fighting(alwaysTwenty).strike(nearlyDead, PartySlot(0), CarrySlot(0))
+
+        assertTrue(struck.world.monsters.none { it.index == onTheLeft }, "the cleric survived")
+        struck.world.champions.forEach {
+            assertEquals(XpPoints(worth / 2L), it.levels.first().experience, "${it.name} was not paid")
+        }
+    }
+
+    /** A blow that does not land pays nobody. */
+    @Test
+    fun `missing earns no experience`() {
+        val struck = fighting(alwaysOne).strike(world(), PartySlot(0), CarrySlot(0))
+
+        assertTrue(struck.world.champions.all { it.levels.first().experience == XpPoints(0) })
     }
 
     // --- the hand coming back to rest ----------------------------------------

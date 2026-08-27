@@ -99,7 +99,7 @@ data class NpcMeeting(
             sex = Sex.MALE,
             characterClass = CharacterClass.THIEF,
             alignment = Alignment.CHAOTIC_NEUTRAL,
-            levels = listOf(ClassLevel(level = 6, experience = 27354)),
+            levels = listOf(ClassLevel(level = 6, experience = XpPoints(27354))),
             // he comes with nothing, which is not the same as coming with
             // nowhere to put anything
             carrying = CarrySlot.NOTHING_IN_ANY,

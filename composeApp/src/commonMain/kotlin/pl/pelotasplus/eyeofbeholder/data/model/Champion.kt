@@ -350,7 +350,7 @@ value class Food(val value: Int)
 
 /** A level in one class, for a champion who may have levels in three. */
 @Serializable
-data class ClassLevel(val level: Int, val experience: Long)
+data class ClassLevel(val level: Int, val experience: XpPoints)
 
 /** A slot in the world's item list, or [NOTHING] for an empty hand or pack slot. */
 @JvmInline

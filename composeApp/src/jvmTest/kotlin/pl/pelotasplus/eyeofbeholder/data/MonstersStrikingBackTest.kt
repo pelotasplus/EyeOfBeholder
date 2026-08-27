@@ -8,6 +8,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.CharacterClass
 import pl.pelotasplus.eyeofbeholder.data.model.Champion
 import pl.pelotasplus.eyeofbeholder.data.model.ChampionFlags
 import pl.pelotasplus.eyeofbeholder.data.model.ClassLevel
+import pl.pelotasplus.eyeofbeholder.data.model.XpPoints
 import pl.pelotasplus.eyeofbeholder.data.model.DamageShown
 import pl.pelotasplus.eyeofbeholder.data.model.Dice
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
@@ -72,7 +73,7 @@ class MonstersStrikingBackTest {
         armorClass = ArmorClass(armour),
         food = Food(100),
         characterClass = CharacterClass.FIGHTER,
-        levels = listOf(ClassLevel(1, 0)),
+        levels = listOf(ClassLevel(1, XpPoints(0))),
         carrying = List(27) { ItemIndex(ItemIndex.NOTHING) },
         flags = ChampionFlags(1),
     )

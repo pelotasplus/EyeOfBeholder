@@ -45,7 +45,17 @@ class Fighting(
         // Swinging rouses whatever was swung at whether or not it connects,
         // and a miss is as much an answer to a greeting as a hit.
         when (blow) {
-            is Blow.Hit -> after = after.rousedBy(blow.monster).monsterHurt(blow.monster, blow.damage)
+            is Blow.Hit -> {
+                val struck = world.monsters.firstOrNull { it.index == blow.monster }
+                after = after.rousedBy(blow.monster).monsterHurt(blow.monster, blow.damage)
+
+                val killed = struck != null && after.monsters.none { it.index == blow.monster }
+                if (killed) {
+                    val worth = kinds.firstOrNull { it.id == struck.type.value }?.experience ?: 0
+                    after = after.partyEarns(XpPoints(worth.toLong()), dice)
+                }
+            }
+
             is Blow.Missed -> after = after.rousedBy(blow.monster)
             else -> Unit
         }

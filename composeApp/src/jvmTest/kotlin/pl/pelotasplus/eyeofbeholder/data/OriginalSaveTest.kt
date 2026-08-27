@@ -89,8 +89,8 @@ class OriginalSaveTest {
 
         assertEquals(listOf(6, 6), stumpy.levels.map { it.level }, "a fighter-thief")
         assertEquals(listOf(6), pericles.levels.map { it.level }, "one class only")
-        assertEquals(listOf(34500L, 34500L), stumpy.levels.map { it.experience })
-        assertEquals(listOf(69000L), pericles.levels.map { it.experience })
+        assertEquals(listOf(34500L, 34500L), stumpy.levels.map { it.experience.count })
+        assertEquals(listOf(69000L), pericles.levels.map { it.experience.count })
     }
 
     @Test

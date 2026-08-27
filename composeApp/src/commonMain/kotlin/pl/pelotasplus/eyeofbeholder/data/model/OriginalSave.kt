@@ -137,7 +137,7 @@ data class OriginalSave(
                 characterClass = CharacterClass.of(characterClass),
                 alignment = Alignment.of(alignment),
                 // a class the champion has no levels in is not a class they have
-                levels = levels.zip(experience) { level, earned -> ClassLevel(level, earned) }
+                levels = levels.zip(experience) { level, earned -> ClassLevel(level, XpPoints(earned)) }
                     .filter { it.level > 0 },
                 carrying = carrying,
                 flags = flags,
