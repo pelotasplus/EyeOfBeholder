@@ -97,7 +97,21 @@ data class GameState(
     /** The blows the party have just taken, still showing on their portraits. */
     val showingDamage: List<DamageShown> = emptyList(),
 
+    /**
+     * The squares the party have stood on, floor by floor, which is what the
+     * little map draws. Kept with the world rather than beside it so that a
+     * game picked up again is picked up mapped.
+     */
+    val visited: Map<Floor, Set<Location>> = emptyMap(),
+
 ) {
+
+    /** What the party have seen of [floor]. */
+    fun visited(floor: Floor): Set<Location> = visited[floor].orEmpty()
+
+    /** The world with [at] on [floor] counted as seen. */
+    fun visiting(floor: Floor, at: Location): GameState =
+        copy(visited = visited + (floor to (visited(floor) + at)))
 
     /** What is in [slot], or null for an empty hand or pack slot. */
     fun item(slot: ItemIndex): Item? =
@@ -1011,6 +1025,9 @@ data class GameState(
     /** One face of one square of one level. */
     data class WallAt(val level: Int, val at: Location, val side: WallSide)
 
+    /** One floor of the dungeon: a level, and which of its sublevels. */
+    data class Floor(val level: Int, val subLevel: Int)
+
     /**
      * A stack after something joined it or left it: the world as it now
      * stands, and which item the slot holding the stack should name.
@@ -1033,6 +1050,9 @@ data class GameState(
         leftBehind = asTheyWereLeft,
         changedWalls = changedWalls.map { (where, to) ->
             ChangedWall(where.level, where.at, where.side, to)
+        },
+        visited = visited.map { (floor, squares) ->
+            VisitedFloor(floor.level, floor.subLevel, squares)
         },
     )
 
@@ -1081,6 +1101,9 @@ data class GameState(
             asTheyWereLeft = saved.leftBehind + (on to saved.monsters),
             changedWalls = saved.changedWalls.associate {
                 WallAt(it.level, it.at, it.side) to it.to
+            },
+            visited = saved.visited.associate {
+                Floor(it.level, it.subLevel) to it.squares
             },
         )
 

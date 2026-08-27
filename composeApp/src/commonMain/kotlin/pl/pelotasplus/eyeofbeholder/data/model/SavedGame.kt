@@ -69,6 +69,26 @@ data class SavedWorld(
 
     /** What was being held when the game was saved, which belongs to nobody. */
     val inHand: ItemIndex = ItemIndex(ItemIndex.NOTHING),
+
+    /**
+     * What the party have mapped, floor by floor. A save written before the
+     * map existed has none, and its party start again with a blank one.
+     */
+    val visited: List<VisitedFloor> = emptyList(),
+)
+
+/**
+ * One floor, and what the party have seen of it.
+ *
+ * A map keyed by the floor would say the same thing, but a two-part key would
+ * have to be flattened into a JSON string and parsed back, so the floor is
+ * written out as a value — the same way [ChangedWall] writes its face.
+ */
+@Serializable
+data class VisitedFloor(
+    val level: Int,
+    val subLevel: Int,
+    val squares: Set<Location>,
 )
 
 /**

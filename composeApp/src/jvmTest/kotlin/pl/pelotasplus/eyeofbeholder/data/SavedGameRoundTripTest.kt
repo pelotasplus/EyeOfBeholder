@@ -117,6 +117,58 @@ class SavedGameRoundTripTest {
      * shut — restoring the overrides but not the mazes would pass the first
      * of those and fail the second.
      */
+    /**
+     * What the party have mapped comes back with them, floor by floor —
+     * otherwise a game picked up again is picked up in the dark, and the
+     * corridors already walked have to be walked again to see them.
+     */
+    @Test
+    fun `the map the party made comes back with the game`() = runBlocking {
+        val here = GameState.Floor(level = 5, subLevel = 0)
+        val elsewhere = GameState.Floor(level = 6, subLevel = 1)
+        val mapped = world
+            .visiting(here, Location(10, 8))
+            .visiting(here, Location(10, 7))
+            .visiting(elsewhere, Location(1, 2))
+
+        repository.save(
+            slot = SaveSlot.numbered.first(),
+            description = "LEVEL5",
+            savedAt = 1_754_000_000_000,
+            level = 5,
+            champions = champions,
+            world = mapped,
+        ).getOrThrow()
+
+        val loaded = GameState.restoredFrom(
+            repository.load(SaveSlot.numbered.first()).getOrThrow().world,
+            on = 5,
+        )
+
+        assertEquals(setOf(Location(10, 8), Location(10, 7)), loaded.visited(here))
+        assertEquals(setOf(Location(1, 2)), loaded.visited(elsewhere), "another floor was lost")
+    }
+
+    /** A save written before there was a map reads as one nobody has drawn. */
+    @Test
+    fun `a save from before the map reads as unmapped`() = runBlocking {
+        repository.save(
+            slot = SaveSlot.numbered.first(),
+            description = "LEVEL5",
+            savedAt = 1_754_000_000_000,
+            level = 5,
+            champions = champions,
+            world = world,
+        ).getOrThrow()
+
+        val loaded = GameState.restoredFrom(
+            repository.load(SaveSlot.numbered.first()).getOrThrow().world,
+            on = 5,
+        )
+
+        assertEquals(emptySet(), loaded.visited(GameState.Floor(5, 0)))
+    }
+
     @Test
     fun `walls a script changed come back changed`() = runBlocking {
         val restored = restore()
