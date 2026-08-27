@@ -938,10 +938,17 @@ class ViewConeDebugViewModel(
                 val aFrame = untilTheNextFrame <= 0
                 if (aFrame) untilTheNextFrame = A_SWING_FRAME.value
 
-                val theirTurn = untilTheirTurn.indices.filter { group ->
-                    untilTheirTurn[group] -= GameState.CLOCK_STEP.value
-                    (untilTheirTurn[group] <= 0).also {
-                        if (it) untilTheirTurn[group] = A_MONSTER_TURN.value
+                // A blow coming down at the party holds the rest of the floor
+                // still: their turns wait rather than being lost, so nothing
+                // else swings until this one lands. The swing above still runs.
+                val theirTurn = if (_state.value.game.pinnedByASwing) {
+                    emptyList()
+                } else {
+                    untilTheirTurn.indices.filter { group ->
+                        untilTheirTurn[group] -= GameState.CLOCK_STEP.value
+                        (untilTheirTurn[group] <= 0).also {
+                            if (it) untilTheirTurn[group] = A_MONSTER_TURN.value
+                        }
                     }
                 }
 

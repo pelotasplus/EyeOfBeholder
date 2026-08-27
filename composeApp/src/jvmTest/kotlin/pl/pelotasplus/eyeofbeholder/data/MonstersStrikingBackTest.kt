@@ -303,6 +303,28 @@ class MonstersStrikingBackTest {
         assertFalse(landed.pinnedByASwing, "the party are held after the blow")
     }
 
+    /**
+     * One swing at a time. While one of the pair has an arm coming down the
+     * other does not start its own: the floor is held still until the blow
+     * lands, so two monsters in front cannot swing over each other and pin the
+     * party without a gap to move in.
+     */
+    @Test
+    fun `no second swing starts while one is coming down`() {
+        val midSwing = world().let { w ->
+            w.copy(
+                monsters = w.monsters.map {
+                    if (it.index == 16) it.copy(striking = MonsterPose.ATTACK_A) else it.copy(striking = null)
+                },
+            )
+        }
+        assertTrue(midSwing.pinnedByASwing, "the first is not counted as swinging in front")
+
+        val after = turn(everyDieHighest).begun(midSwing)
+
+        assertEquals(midSwing.monsters, after.monsters, "the floor did not hold still for the swing")
+    }
+
     /** Something swinging from the side is not drawn doing it, and pins nobody. */
     @Test
     fun `a swing from the side pins nobody`() {

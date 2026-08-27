@@ -56,6 +56,12 @@ class MonstersTurn(
         wayRound: MonsterPathing.WayRound = MonsterPathing.WayRound.RIGHT_FIRST,
         group: Int? = null,
     ): GameState {
+        // One swing at a time. A blow coming down at the party holds the rest
+        // of the floor still until it lands, so a second monster cannot start
+        // its own swing over the top of the first — without this a pair in
+        // front take turns swinging and never leave a gap to move in.
+        if (world.pinnedByASwing) return world
+
         // Anything that walks also notices, and whatever it was doing before it
         // is now hunting. What is standing by is deaf until it is hit, which is
         // the whole of level 5's encounter.
