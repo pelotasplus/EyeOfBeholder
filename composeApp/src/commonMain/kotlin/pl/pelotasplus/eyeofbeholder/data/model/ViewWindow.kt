@@ -136,12 +136,19 @@ fun SubLevel.canBeWalkedOnto(wall: Maz.WallType): Boolean = when (wall) {
 /**
  * The same question asked for a monster, which has a mark of its own.
  *
- * The two answers part on one wall: a flight of stairs takes the party and
- * nothing that follows them, so a pack chasing them to the stairs is left at
- * the foot of it.
+ * A wall carries the party's passage and a monster's on separate marks, and a
+ * level sets them apart: an illusory wall the party step through can still
+ * stop a monster, which is how a scripted guard is held in place until it has
+ * had its say. And a flight of stairs takes the party and nothing that follows
+ * them, so a pack chasing them to the stairs is left at the foot of it.
  */
 fun SubLevel.canBeWalkedOntoByAMonster(wall: Maz.WallType): Boolean = when (wall) {
     Maz.WallType.StairUp, Maz.WallType.StairDown -> false
+    is Maz.WallType.Decoration -> {
+        val mapped = decorations.firstOrNull { it.decorationWallIndex == wall.decorationWallIndex }
+        mapped != null && mapped.flags.letAMonsterThrough
+    }
+
     else -> canBeWalkedOnto(wall)
 }
 

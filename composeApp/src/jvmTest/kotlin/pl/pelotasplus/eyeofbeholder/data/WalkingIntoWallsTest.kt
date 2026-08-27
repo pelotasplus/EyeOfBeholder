@@ -89,6 +89,25 @@ class WalkingIntoWallsTest {
         assertFalse(sublevel.canBeWalkedOntoByAMonster(Maz.WallType.StairDown))
     }
 
+    /**
+     * A wall the party pass can still stop a monster. Two guards on level 1
+     * stand at 4x7 behind the illusory wall at 5x7, which the party walk
+     * straight through; the guards do not, and so cannot be at the party until
+     * the script that lets them speak takes the wall down. Without the
+     * monster's own mark they come through it and are killed before the meeting
+     * they were placed for.
+     */
+    @Test
+    fun `a wall the party walk through can still hold a monster back`() {
+        val illusion = sublevel.maz.square(Location(5, 7)).getWall(WallSide.WEST)
+
+        assertTrue(sublevel.canBeWalkedOnto(illusion), "the party cannot reach the guards")
+        assertFalse(
+            sublevel.canBeWalkedOntoByAMonster(illusion),
+            "the guards walk out before they have spoken",
+        )
+    }
+
     // --- what a decorated wall says for itself ----------------------------
 
     /**

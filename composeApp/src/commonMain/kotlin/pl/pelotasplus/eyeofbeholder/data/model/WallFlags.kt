@@ -16,10 +16,18 @@ import kotlin.jvm.JvmInline
 @JvmInline
 value class WallFlags(private val written: Int) {
 
-    private val bits: Int get() = written xor WRITTEN_INVERTED
+    private val bits: Int get() = written xor MONSTER
 
     /** The party walk through a wall that is marked for them. */
     val letThePartyThrough: Boolean get() = bits and PARTY != 0
+
+    /**
+     * A monster carries its own mark, and it is not the party's: a level can
+     * draw a wall the party walk through and a monster cannot, which is how the
+     * two guards on level 1 are kept behind their wall until the script that
+     * lets them speak takes it down.
+     */
+    val letAMonsterThrough: Boolean get() = bits and MONSTER != 0
 
     /**
      * Putting something down beyond a wall, or taking it back, asks for any of
@@ -44,13 +52,14 @@ value class WallFlags(private val written: Int) {
         /** Arrows and the like, which pass a grating the party cannot. */
         const val SMALL_THINGS = 0x02
 
+        /**
+         * What a monster may walk through. A level writes this bit the other
+         * way round from the rest, so it is turned back before anything reads
+         * it — set means passable, as the others do.
+         */
+        const val MONSTER = 0x04
+
         const val A_GAP = 0x08
         const val SHOWS_ITS_CONTENTS = 0x80
-
-        /**
-         * The one bit written the other way round. Nothing asks about it yet;
-         * it is turned back here so that whatever asks first will be right.
-         */
-        const val WRITTEN_INVERTED = 0x04
     }
 }
