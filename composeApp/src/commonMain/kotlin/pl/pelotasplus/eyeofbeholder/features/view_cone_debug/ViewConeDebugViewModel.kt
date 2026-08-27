@@ -1781,7 +1781,10 @@ class ViewConeDebugViewModel(
             // of by the player.
             if (_state.value.dialog != null) silenceEffects()
             _state.update {
-                it.copy(game = run.state.withWhoeverStandsThere(it.game), dialog = null)
+                it.copy(
+                    game = run.state.withWhoeverStandsThere(it.game).asAScriptLeaves(it.game),
+                    dialog = null,
+                )
             }
             speaker = null
             scriptHasTheParty = false

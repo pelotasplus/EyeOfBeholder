@@ -911,6 +911,22 @@ data class GameState(
             .filter { it.ticksLeft > 0 },
     )
 
+    /**
+     * The world a script left, but with the things a clock owns taken from
+     * [live] rather than from the script.
+     *
+     * A hand coming back to rest and a blow still showing are none of a
+     * script's business, and they tick on their own clock. A script reads the
+     * world when it starts and writes it back when it ends — which, for a
+     * speech that waits to be read, can be much later — so without this it
+     * puts back the stale hands it began with and freezes them there, the
+     * clock that was emptying them already stopped.
+     */
+    fun asAScriptLeaves(live: GameState) = copy(
+        recovering = live.recovering,
+        showingDamage = live.showingDamage,
+    )
+
     fun partyMovedTo(destination: Location) =
         copy(party = party.copy(position = destination))
 

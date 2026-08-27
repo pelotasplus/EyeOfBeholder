@@ -1,8 +1,12 @@
 package pl.pelotasplus.eyeofbeholder.data
 
+import pl.pelotasplus.eyeofbeholder.data.model.CarrySlot
+import pl.pelotasplus.eyeofbeholder.data.model.DamageShown
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.GameState
+import pl.pelotasplus.eyeofbeholder.data.model.HandRecovering
 import pl.pelotasplus.eyeofbeholder.data.model.Location
+import pl.pelotasplus.eyeofbeholder.data.model.PartySlot
 import pl.pelotasplus.eyeofbeholder.data.model.Maz
 import pl.pelotasplus.eyeofbeholder.data.model.WallByte
 import pl.pelotasplus.eyeofbeholder.data.model.WallSide
@@ -143,4 +147,28 @@ class GameStateTest {
         weapon = 0,
         pocketItem = 0,
     )
+
+    /**
+     * A script hands back what a clock was minding. A speech waits to be read
+     * while the hands come back to rest on their own clock, so the world the
+     * script wrote when it started holds stale hands; taking them from the
+     * live world instead is what stops them freezing grey for ever.
+     */
+    @Test
+    fun `a script does not freeze the hands a clock was emptying`() {
+        val whose = PartySlot(0)
+        val scriptEnded = world.copy(
+            party = PartyState(Location(2, 1), Direction.EAST),
+            recovering = listOf(HandRecovering(whose, CarrySlot(0), ticksLeft = 18, came = null)),
+            showingDamage = listOf(DamageShown(whose, 5, 18)),
+        )
+        // the clock emptied both while the speech waited to be read
+        val live = world.copy(recovering = emptyList(), showingDamage = emptyList())
+
+        val left = scriptEnded.asAScriptLeaves(live)
+
+        assertEquals(emptyList(), left.recovering, "the stale hands were frozen back on")
+        assertEquals(emptyList(), left.showingDamage)
+        assertEquals(Location(2, 1), left.party.position, "it undid what the script did")
+    }
 }
