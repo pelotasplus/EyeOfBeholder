@@ -5,6 +5,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.Dice
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.GameState
 import pl.pelotasplus.eyeofbeholder.data.model.Location
+import pl.pelotasplus.eyeofbeholder.data.model.ItemTypeId
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterInstance
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterTypeId
 import pl.pelotasplus.eyeofbeholder.data.model.PartyState
@@ -41,7 +42,7 @@ class MovingThingsTest {
         assertEquals(3, world.count(type = 26, at = Location(15, 0)), "not where the level keeps them")
 
         val after = world.itemsMoved(
-            ofType = 26, fromLevel = 1, from = Location(15, 0), toLevel = 1, to = Location(16, 2),
+            ofType = ItemTypeId(26), fromLevel = 1, from = Location(15, 0), toLevel = 1, to = Location(16, 2),
         )
 
         assertEquals(0, after.count(type = 26, at = Location(15, 0)), "left some behind")
@@ -52,7 +53,7 @@ class MovingThingsTest {
     fun `only the named type is carried`() {
         val store = Location(15, 0)
         val mixed = world.itemsMoved(
-            ofType = 999, fromLevel = 1, from = store, toLevel = 1, to = Location(16, 2),
+            ofType = ItemTypeId(999), fromLevel = 1, from = store, toLevel = 1, to = Location(16, 2),
         )
 
         assertEquals(3, mixed.count(type = 26, at = store), "carried the wrong kind")

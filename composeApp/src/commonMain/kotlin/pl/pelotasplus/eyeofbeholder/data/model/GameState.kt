@@ -375,7 +375,7 @@ data class GameState(
      * from a square off the edge of the map where it was kept.
      */
     fun itemsMoved(
-        ofType: Int?,
+        ofType: ItemTypeId?,
         fromLevel: Int,
         from: Location,
         toLevel: Int,
@@ -383,7 +383,7 @@ data class GameState(
     ): GameState = copy(
         items = items.map {
             val carried = it.level == fromLevel && it.location == from &&
-                (ofType == null || it.type.value == ofType)
+                (ofType == null || it.type == ofType)
             if (carried) it.copy(level = toLevel, location = to) else it
         },
     )

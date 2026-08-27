@@ -1,6 +1,7 @@
 package pl.pelotasplus.eyeofbeholder.data.model.script
 
 import pl.pelotasplus.eyeofbeholder.data.ByteReader
+import pl.pelotasplus.eyeofbeholder.data.model.ItemTypeId
 import pl.pelotasplus.eyeofbeholder.data.model.Location
 
 /**
@@ -40,7 +41,7 @@ sealed class Teleport : ScriptToken {
      * A null level is the level the party are on.
      */
     data class MoveItems(
-        val ofType: Int?,
+        val ofType: ItemTypeId?,
         val fromLevel: Int?,
         val from: Location,
         val toLevel: Int?,
@@ -64,7 +65,7 @@ sealed class Teleport : ScriptToken {
                 MOVE_MONSTER -> MoveMonster(Location.read(reader), Location.read(reader))
                 MOVE_PARTY -> MoveParty(Location.read(reader), Location.read(reader))
                 MOVE_ITEM, MOVE_ITEM_OF_TYPE -> MoveItems(
-                    ofType = if (type == MOVE_ITEM_OF_TYPE) reader.readU16LE() else null,
+                    ofType = if (type == MOVE_ITEM_OF_TYPE) ItemTypeId(reader.readU16LE()) else null,
                     fromLevel = readLevel(reader),
                     from = Location.read(reader),
                     toLevel = readLevel(reader),
