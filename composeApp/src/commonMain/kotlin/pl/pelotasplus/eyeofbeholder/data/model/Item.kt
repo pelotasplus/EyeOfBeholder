@@ -179,6 +179,9 @@ data class ItemTypes(private val types: List<ItemType>) {
      */
     fun isSwungByHand(item: Item): Boolean = kindOf(item) == SWUNG_BY_HAND
 
+    /** Whether this is something a champion eats — rations, however fresh. */
+    fun isEaten(item: Item): Boolean = item.type == RATIONS
+
     private fun kindOf(item: Item): Int = (this[item.type]?.extraProperties ?: 0) and KIND
 
     /**
@@ -272,6 +275,9 @@ data class ItemTypes(private val types: List<ItemType>) {
 
         /** A weapon that stays in the hand, as against a thrown or fired one. */
         const val SWUNG_BY_HAND = 1
+
+        /** The one type a champion eats. Its value is the food it restores. */
+        val RATIONS = ItemTypeId(31)
     }
 }
 

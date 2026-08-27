@@ -76,6 +76,10 @@ import pl.pelotasplus.eyeofbeholder.data.model.PartyState
 import pl.pelotasplus.eyeofbeholder.data.model.PlayField
 import pl.pelotasplus.eyeofbeholder.data.model.Debugging
 import pl.pelotasplus.eyeofbeholder.data.model.Preferences
+import pl.pelotasplus.eyeofbeholder.data.model.Rest
+import pl.pelotasplus.eyeofbeholder.data.model.Resting
+import pl.pelotasplus.eyeofbeholder.data.model.HOURS_A_MENDED_POINT
+import pl.pelotasplus.eyeofbeholder.data.model.sleptAnHour
 import pl.pelotasplus.eyeofbeholder.data.model.SoundBank
 import pl.pelotasplus.eyeofbeholder.data.model.TrackIndex
 import pl.pelotasplus.eyeofbeholder.data.model.Volume
@@ -212,6 +216,12 @@ class ViewConeDebugViewModel(
 
     /** The view as last drawn, which a script's words are written over. */
     private var drawn: ViewPort? = null
+
+    /** The clock the party sleep on, while they are asleep. */
+    private var sleeping: Job? = null
+
+    /** How long they have slept this rest, so waking early can say so. */
+    private var hoursSlept = 0
 
     /** Where the party have been, kept per level and sublevel. */
     private val whereTheyHaveBeen = mutableMapOf<Pair<Int, Int>, Set<Location>>()
@@ -628,6 +638,102 @@ class ViewConeDebugViewModel(
         }
     }
 
+    /**
+     * A champion eats what is held over their face, the fuller for its worth
+     * in food, and the food gone from the hand. Rotten food is worth nothing
+     * and so is not eaten.
+     */
+    private fun eat(whose: PartySlot, food: Item) {
+        if (food.value < 0) {
+            say("That food is rotten.")
+            return
+        }
+
+        _state.update { it.copy(game = it.game.championFed(whose, food.value).handEmptied()) }
+        viewModelScope.launch { playTrack(EAT) }
+        renderViewPort()
+    }
+
+    /**
+     * The party lie down where they stand, and the hours run until everyone is
+     * mended, the food is gone, or the player says to stop.
+     *
+     * The hours are counted on a clock rather than added up at once: a rest is
+     * something the player watches and can cut short, which is the whole point
+     * of the way out in the corner of the box.
+     */
+    private suspend fun onRest() {
+        val inf = _state.value.inf
+        val kinds = inf?.subLevels?.getOrNull(_state.value.subLevel)?.monsters.orEmpty()
+        val resting = Resting(kinds = kinds, stepping = stepping())
+
+        when (val begun = resting.begin(_state.value.game, walking())) {
+            Rest.NotHere -> {
+                showMenu(null)
+                say(CANNOT_REST_HERE)
+                renderViewPort()
+            }
+
+            is Rest.SomethingIsNear -> {
+                _state.update { it.copy(game = begun.world) }
+                showMenu(null)
+                say(MONSTERS_ARE_NEAR)
+                renderViewPort()
+            }
+
+            is Rest.Slept -> {
+                _state.update { it.copy(game = begun.world) }
+                keepResting(resting)
+            }
+        }
+    }
+
+    private fun keepResting(resting: Resting) {
+        sleeping?.cancel()
+        hoursSlept = 0
+
+        sleeping = viewModelScope.launch {
+            showMenu(CampMenu.resting(hoursSlept))
+
+            while (resting.anybodyStillMending(_state.value.game)) {
+                delay(AN_HOUR_OF_SLEEP.inMilliseconds)
+
+                // The floor does not hold still while the party sleep: the
+                // monsters take their turns between the hours, and one that
+                // wanders up wakes the party where they lie.
+                when (val still = resting.begin(_state.value.game, walking())) {
+                    is Rest.SomethingIsNear -> {
+                        _state.update { it.copy(game = still.world) }
+                        showMenu(null)
+                        say(MONSTERS_ARE_NEAR)
+                        renderViewPort()
+                        return@launch
+                    }
+
+                    is Rest.Slept -> _state.update { it.copy(game = still.world) }
+                    Rest.NotHere -> Unit
+                }
+
+                hoursSlept += HOURS_A_MENDED_POINT
+                _state.update { it.copy(game = it.game.sleptAnHour(HOURS_A_MENDED_POINT)) }
+                showMenu(CampMenu.resting(hoursSlept))
+            }
+
+            wakeUp(hoursSlept)
+        }
+    }
+
+    /** The party up again, however the rest ended. */
+    private suspend fun wakeUp(hours: Int) {
+        val clock = sleeping
+        sleeping = null
+        clock?.cancel()
+
+        showMenu(null)
+        say(if (hours > 0) "Hours rested: $hours" else FULLY_RESTED)
+        renderViewPort()
+    }
+
     private suspend fun onMenuChoice(choice: MenuChoice) {
         when (choice) {
             MenuChoice.Close -> showMenu(null)
@@ -645,6 +751,12 @@ class ViewConeDebugViewModel(
                 }
                 showMenu(CampMenu.preferences(_state.value.preferences))
             }
+
+            MenuChoice.RestParty -> onRest()
+
+            // The hours already slept are kept: waking early is not undoing them.
+            MenuChoice.StopResting -> wakeUp(hoursSlept)
+            is MenuChoice.HoursRested -> Unit
 
             is MenuChoice.OpenSlots -> showSlots(choice.saving)
             is MenuChoice.UseSlot ->
@@ -757,7 +869,14 @@ class ViewConeDebugViewModel(
             if (face >= 0) {
                 val whose = PartySlot(face)
                 if (_state.value.game.championIn(whose) != null) {
-                    showSheet(CharacterSheet(whose))
+                    // A champion offered food in hand eats it; otherwise a click
+                    // on the face is the way onto their page.
+                    val held = _state.value.game.item(_state.value.game.inHand)
+                    if (held != null && itemTypes?.isEaten(held) == true) {
+                        eat(whose, held)
+                    } else {
+                        showSheet(CharacterSheet(whose))
+                    }
                 }
                 return
             }
@@ -1522,10 +1641,20 @@ class ViewConeDebugViewModel(
     }
 
     private fun onSheetChoice(sheet: CharacterSheet, choice: SheetChoice) {
+        // Eating leaves the page open: the plate is there to be used while a
+        // champion's things are being looked through.
+        if (choice == SheetChoice.Eat) {
+            _state.value.game.item(_state.value.game.inHand)
+                ?.takeIf { itemTypes?.isEaten(it) == true }
+                ?.let { eat(sheet.slot, it) }
+            return
+        }
+
         showSheet(
             when (choice) {
                 SheetChoice.Close -> null
                 SheetChoice.TurnPage -> sheet.turnedOver
+                SheetChoice.Eat -> sheet
                 is SheetChoice.Walk -> sheet.walked(choice.step, roster)
             }
         )
@@ -2473,10 +2602,15 @@ class ViewConeDebugViewModel(
         /** How long a door rests at each of the positions it slides through. */
         private val DOOR_STEP = Ticks(5)
 
-        /** What a level's bank keeps under 29: the party walking into something. */
-        private val WALL_BUMP = TrackIndex(29)
+        /** How long an hour of sleep takes to watch. */
+        private val AN_HOUR_OF_SLEEP = Ticks(3)
 
-        /** And under 6: the button beside a door being pressed. */
+        private const val CANNOT_REST_HERE = "You do not feel it is safe to rest here."
+        private const val MONSTERS_ARE_NEAR = "You can't rest here, monsters are near."
+        private const val FULLY_RESTED = "All characters are fully rested."
+
+        private val WALL_BUMP = TrackIndex(29)
+        private val EAT = TrackIndex(9)
         private val DOOR_BUTTON = TrackIndex(6)
 
         /** And under 32: a weapon swung, whether or not it finds anything. */

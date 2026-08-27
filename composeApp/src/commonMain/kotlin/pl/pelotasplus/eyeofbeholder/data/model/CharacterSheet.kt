@@ -53,6 +53,9 @@ data class CharacterSheet(
         SheetControl.TURN_PAGE.contains(x, y) -> SheetChoice.TurnPage
         SheetControl.PREVIOUS.contains(x, y) -> SheetChoice.Walk(-1)
         SheetControl.NEXT.contains(x, y) -> SheetChoice.Walk(1)
+
+        // the place laid is only on the belongings side of the page
+        page == Page.BELONGINGS && SheetControl.EAT.contains(x, y) -> SheetChoice.Eat
         else -> null
     }
 
@@ -246,6 +249,9 @@ sealed interface SheetChoice {
     data object Close : SheetChoice
     data object TurnPage : SheetChoice
 
+    /** Eat what is held, off the place laid on the belongings page. */
+    data object Eat : SheetChoice
+
     /** Along the party, by [step] slots, wrapping at either end. */
     data class Walk(val step: Int) : SheetChoice
 }
@@ -262,6 +268,9 @@ enum class SheetControl(
     PREVIOUS(274, 35, 20, 15),
     NEXT(297, 35, 20, 15),
     TURN_PAGE(291, 149, 25, 17),
+
+    /** The place laid beside the arrows: what is held is eaten off it. */
+    EAT(237, 35, 32, 17),
 
     /** Clicking the face puts the page down and the party back up. */
     CLOSE(CharacterSheet.PORTRAIT_LEFT, CharacterSheet.PORTRAIT_TOP, 32, 32);

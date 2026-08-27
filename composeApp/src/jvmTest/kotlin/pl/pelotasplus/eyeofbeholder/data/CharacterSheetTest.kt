@@ -4,6 +4,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.Champion
 import pl.pelotasplus.eyeofbeholder.data.model.CharacterSheet
 import pl.pelotasplus.eyeofbeholder.data.model.ChampionFlags
 import pl.pelotasplus.eyeofbeholder.data.model.PartySlot
+import pl.pelotasplus.eyeofbeholder.data.model.SheetChoice
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -57,5 +58,35 @@ class CharacterSheetTest {
     fun `walking keeps the page it was turned to`() {
         val stats = CharacterSheet(PartySlot(0), CharacterSheet.Page.STATS)
         assertEquals(CharacterSheet.Page.STATS, stats.walked(1, party).page)
+    }
+
+    // --- the place laid on the belongings page --------------------------------
+
+    private val belongings = CharacterSheet(PartySlot(0), CharacterSheet.Page.BELONGINGS)
+
+    /** The middle of the plate, which sits between the pack and the arrows. */
+    private val onThePlate = 250 to 42
+
+    @Test
+    fun `the plate is clicked to eat what is held`() {
+        assertEquals(SheetChoice.Eat, belongings.clicked(onThePlate.first, onThePlate.second))
+    }
+
+    /**
+     * It is laid on the belongings side only: the other side of the page is
+     * the champion's numbers, and there is nowhere to put a meal down.
+     */
+    @Test
+    fun `there is no plate on the other side of the page`() {
+        val stats = CharacterSheet(PartySlot(0), CharacterSheet.Page.STATS)
+
+        assertEquals(null, stats.clicked(onThePlate.first, onThePlate.second))
+    }
+
+    /** And it does not reach the arrows beside it, which walk the party. */
+    @Test
+    fun `the plate does not swallow the arrows next to it`() {
+        assertEquals(SheetChoice.Walk(-1), belongings.clicked(280, 42))
+        assertEquals(SheetChoice.Walk(1), belongings.clicked(305, 42))
     }
 }
