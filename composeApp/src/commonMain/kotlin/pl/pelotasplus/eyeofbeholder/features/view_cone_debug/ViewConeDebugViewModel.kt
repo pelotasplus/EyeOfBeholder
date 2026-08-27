@@ -1124,10 +1124,19 @@ class ViewConeDebugViewModel(
 
     private fun monstersTurn() = MonstersTurn(
         kinds = _state.value.inf?.subLevels?.getOrNull(_state.value.subLevel)?.monsters.orEmpty(),
+        stepping = stepping(),
     )
 
+    /** How a monster shifts its feet on its own square, rooted or not. */
+    private fun stepping(): MonsterStepping? {
+        val inf = _state.value.inf ?: return null
+        val sublevel = inf.subLevels.getOrNull(_state.value.subLevel) ?: return null
+        return MonsterStepping(levelNumber(inf.name), sublevel, sublevel.monsters)
+    }
+
     /**
-     * How to walk, or null while monsters are rooted where they were placed.
+     * How to walk across the floor, or null while monsters are rooted where
+     * they were placed.
      */
     private fun walking(): MonsterPathing? {
         if (!debugging.monstersMayWalk.value) return null

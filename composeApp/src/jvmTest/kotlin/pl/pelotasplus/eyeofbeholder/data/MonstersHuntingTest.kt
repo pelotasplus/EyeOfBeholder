@@ -284,6 +284,31 @@ class MonstersHuntingTest {
     }
 
     /**
+     * Shifting its feet to a corner it can reach from is not walking across
+     * the floor, so a monster does it even while rooted where it was placed.
+     * Without this a cleric met from the side stands on its far corner and
+     * never lands a blow, though the near corner beside it is free.
+     */
+    @Test
+    fun `a rooted monster still shifts its feet to reach`() {
+        val stepping = MonsterStepping(level = 5, subLevel = sub, kinds = kinds)
+        val world = world(
+            at = Location(13, 9),
+            facing = Direction.SOUTH,
+            party = Location(13, 10),
+        ).let { world ->
+            world.copy(monsters = world.monsters.map { it.copy(place = SquarePlace.NORTH_WEST) })
+        }.rousedBy(CLERIC)
+
+        assertFalse(world.theClericReaches(), "it could reach all along")
+
+        val after = MonstersTurn(kinds, stepping = stepping).begun(world, walking = null)
+
+        assertEquals(SquarePlace.MIDDLE, after.theCleric().place, "it stayed on the far corner")
+        assertTrue(after.theClericReaches())
+    }
+
+    /**
      * Three squares is as far as anything sees, and something walking away
      * from the party is not to be crept up behind for ever — but nor does it
      * notice them across a room.

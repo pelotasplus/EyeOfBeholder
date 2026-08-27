@@ -11,6 +11,10 @@ package pl.pelotasplus.eyeofbeholder.data.model
 class MonstersTurn(
     private val kinds: List<MonsterProperty>,
     private val dice: Dice = Dice.random,
+    // Shifting feet to reach the party is not walking across the floor, so a
+    // monster does it whether or not the floor lets it walk. Kept apart from
+    // [MonsterPathing] for that reason.
+    private val stepping: MonsterStepping? = null,
 ) {
 
     /**
@@ -223,6 +227,7 @@ class MonstersTurn(
         if (!monster.facesTheSquareOf(world.party)) return null
 
         if (!monster.reaches(world.party)) {
+            stepping?.let { return it.shuffleOn(world, monster) }
             return walking?.shuffling(world, monster) ?: world
         }
 
