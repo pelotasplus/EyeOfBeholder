@@ -830,19 +830,25 @@ class ViewConeDebugViewModel(
         val held = world.item(champion.holding(slot.slot))
         val parchment = held?.let { itemTypes?.whatIsOn(it) }
 
-        when {
-            parchment != null -> viewModelScope.launch {
+        // A thing read is a thing read and nothing else: the page goes up and
+        // the wall in front is left alone. Asking the wall's triggers here runs
+        // a script that ends by clearing the box — which closes the page the
+        // instant it opened, every time but the first, when reading the text
+        // file for the first time is slow enough to win the race.
+        if (parchment != null) {
+            viewModelScope.launch {
                 when (parchment) {
                     is OnAParchment.Writing -> read(parchment.page)
                     is OnAParchment.Map -> lookAt(parchment)
                 }
             }
+            return
+        }
 
-            // An empty hand is a fist, and a champion swings it like
-            // anything else — so the hand is what decides this, not what is
-            // in it.
-            slot.slot.isAHand && (held == null || itemTypes?.isSwungByHand(held) == true) ->
-                strike(whose, slot.slot)
+        // An empty hand is a fist, and a champion swings it like anything else
+        // — so the hand is what decides this, not what is in it.
+        if (slot.slot.isAHand && (held == null || itemTypes?.isSwungByHand(held) == true)) {
+            strike(whose, slot.slot)
         }
 
         // And whatever it was, the wall in front of the party is asked what it
