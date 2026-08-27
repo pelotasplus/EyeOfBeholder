@@ -2173,21 +2173,13 @@ class ViewConeDebugViewModel(
             drawWords()
         }
 
-        /**
-         * A gap in the interpreter, written onto the bar with everything else
-         * the party are told, so it turns up while playing rather than only in
-         * a log nobody has open.
-         *
-         * The same gap is not repeated while it is still legible: a script may
-         * run the instruction every step, and three lines of the same notice
-         * would push off what the level was actually saying.
-         */
-        override fun notImplemented(what: String) {
-            if (_state.value.messages.any { it.text == what }) return
-
-            this@ViewConeDebugViewModel.say(what)
-            drawWords()
-        }
+        // A gap in the interpreter is the log's business and not the bar's.
+        // Written on the bar it outlives the square that caused it — the bar
+        // keeps its lines across steps, across levels and into the save — so a
+        // notice from one floor is still sitting there on the next, read as
+        // coming from wherever the party now stand. The runner logs it with
+        // the level, the square and the whole instruction, which is what
+        // anybody going to write it needs anyway.
 
         override suspend fun hold(ticks: Ticks) = delay(ticks.inMilliseconds)
 
