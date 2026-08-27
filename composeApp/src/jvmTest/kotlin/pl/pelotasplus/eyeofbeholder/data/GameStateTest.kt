@@ -1,6 +1,13 @@
 package pl.pelotasplus.eyeofbeholder.data
 
 import pl.pelotasplus.eyeofbeholder.data.model.CarrySlot
+import pl.pelotasplus.eyeofbeholder.data.model.Champion
+import pl.pelotasplus.eyeofbeholder.data.model.ChampionFlags
+import pl.pelotasplus.eyeofbeholder.data.model.Item
+import pl.pelotasplus.eyeofbeholder.data.model.ItemIconId
+import pl.pelotasplus.eyeofbeholder.data.model.ItemIndex
+import pl.pelotasplus.eyeofbeholder.data.model.ItemNameId
+import pl.pelotasplus.eyeofbeholder.data.model.ItemTypeId
 import pl.pelotasplus.eyeofbeholder.data.model.DamageShown
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.GameState
@@ -170,5 +177,50 @@ class GameStateTest {
         assertEquals(emptyList(), left.recovering, "the stale hands were frozen back on")
         assertEquals(emptyList(), left.showingDamage)
         assertEquals(Location(2, 1), left.party.position, "it undid what the script did")
+    }
+
+    // --- what the party hold between them -------------------------------------
+
+    private fun carrying(vararg slots: Int) = Champion.NOBODY.copy(
+        flags = ChampionFlags(1),
+        carrying = slots.map { ItemIndex(it) },
+    )
+
+    /** A thing of one kind and worth, so a puzzle can ask for exactly one. */
+    private fun thing(type: Int, worth: Int) = Item(
+        nameUnidentified = ItemNameId(0),
+        nameIdentified = ItemNameId(0),
+        flags = 0,
+        icon = ItemIconId(0),
+        type = ItemTypeId(type),
+        place = SquarePlace.MIDDLE,
+        location = Location(0, 0),
+        next = 0,
+        prev = 0,
+        level = 0,
+        value = worth,
+    )
+
+    /**
+     * A puzzle asking whether the party between them hold what it wants counts
+     * champions rather than things, so one carrying two of them counts once.
+     * Slot zero is nothing at all, which is why the table starts with one.
+     */
+    @Test
+    fun `counting who carries a thing counts champions and not things`() {
+        val wanted = thing(type = 46, worth = 4)
+        val world = world.copy(
+            items = listOf(thing(0, 0), wanted, wanted, thing(type = 46, worth = 9)),
+            champions = listOf(
+                carrying(1, 2),
+                carrying(3),
+                carrying(0),
+            ),
+        )
+
+        assertEquals(1, world.championsCarrying(ItemTypeId(46), worth = 4), "two of them counted twice")
+        assertEquals(1, world.championsCarrying(ItemTypeId(46), worth = 9))
+        assertEquals(0, world.championsCarrying(ItemTypeId(46), worth = 1), "a worth nobody holds")
+        assertEquals(0, world.championsCarrying(ItemTypeId(2), worth = 4), "a kind nobody holds")
     }
 }

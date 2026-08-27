@@ -364,12 +364,14 @@ class LevelScriptRunner(
         // script that quietly does nothing reads exactly like one that had
         // nothing to do, and every level is full of both.
         //
-        // The log gets the whole instruction and where it sits, for whoever
-        // goes to write it; the screen gets [what] and [instead] in words a
-        // player can report without one.
+        // This goes to the log rather than to the player: the whole
+        // instruction, where it sits, and where the party were standing when
+        // it ran — which is what somebody going to write it needs, and is more
+        // than a line on the bar could carry.
         fun notYet(token: ScriptToken, what: String, instead: String) {
             Logger.w(TAG) {
-                "Level $level, ${script[index].offset}: $token is not implemented; $instead"
+                "Level $level ${state.party.position.x}x${state.party.position.y}, " +
+                    "${script[index].offset}: $token is not implemented; $instead"
             }
             stage.notImplemented("$what is not written yet, $instead")
         }
@@ -978,6 +980,15 @@ class LevelScriptRunner(
                 // it only counts while nobody is stood there too.
                 is Conditional.IsPartyAtLocation.CheckCurrentBlock ->
                     push(state.party.position == token.location)
+
+                // How many of the party hold one of a thing. A puzzle that
+                // wants one in every hand counts the champions rather than the
+                // things, so a champion carrying two of them counts once.
+                is Conditional.IsPartyAtLocation.CountCharactersWithItems -> push(
+                    ConditionValue.of(
+                        state.championsCarrying(ofType = token.ofType, worth = token.worth)
+                    )
+                )
 
                 is Conditional.IsItemAtLocation -> push(
                     ConditionValue.of(

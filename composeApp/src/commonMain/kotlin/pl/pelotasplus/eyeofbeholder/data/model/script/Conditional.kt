@@ -173,10 +173,14 @@ sealed interface Conditional {
     sealed class IsPartyAtLocation : Conditional {               // 0xF1
         override fun read(reader: ByteReader): Conditional = read(reader)
 
-        /** Count characters with specific items. first byte = -11 (0xF5) */
+        /**
+         * How many of the party are carrying a thing of [ofType] worth
+         * [worth]. Champions rather than things: one carrying two of them
+         * counts once. First byte = -11 (0xF5).
+         */
         data class CountCharactersWithItems(
-            val a: Int,
-            val b: Int
+            val ofType: ItemTypeId,
+            val worth: Int,
         ) : IsPartyAtLocation()
 
         /** Check if party is at current block. first byte != -11 */
@@ -189,8 +193,8 @@ sealed interface Conditional {
                 val firstByte = reader.readI8()
                 return if (firstByte == -11) { // 0xF5
                     CountCharactersWithItems(
-                        a = reader.readI16LE(),
-                        b = reader.readI16LE()
+                        ofType = ItemTypeId(reader.readI16LE()),
+                        worth = reader.readI16LE(),
                     )
                 } else {
                     CheckCurrentBlock(

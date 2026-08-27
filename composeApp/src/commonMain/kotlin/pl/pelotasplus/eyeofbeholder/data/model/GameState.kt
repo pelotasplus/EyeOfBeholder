@@ -817,6 +817,20 @@ data class GameState(
         },
     )
 
+    /**
+     * How many of the party are carrying a thing of [ofType] worth [worth].
+     *
+     * Champions, not things: somebody carrying three of them counts once. A
+     * puzzle asks this to see whether the party between them hold what it
+     * wants — four of one key, one each — and it counts anywhere a champion
+     * can put a thing, hands and pack and what is worn alike.
+     */
+    fun championsCarrying(ofType: ItemTypeId, worth: Int): Int = champions.count { champion ->
+        champion.inTheParty && champion.carrying.any { slot ->
+            item(slot)?.let { it.type == ofType && it.value == worth } == true
+        }
+    }
+
     /** [whose] the fuller for eating [by], up to a full stomach. */
     fun championFed(whose: PartySlot, by: Int): GameState {
         val who = champions.getOrNull(whose.index) ?: return this
