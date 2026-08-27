@@ -77,13 +77,13 @@ data class MonsterInstance(
     /**
      * Which of the four groups takes its turn with this one.
      *
-     * Monsters do not all move at once. The four groups are spread across a
-     * turn's length, so two placed side by side act a beat apart rather than
-     * as one body — which is most of the difference between a fight and a
-     * mechanism. A monster's group is its record's own, doubled, and then
-     * split by whether its slot is odd, which is what separates a pair.
+     * Monsters do not all move at once: the four groups are spread across a
+     * turn's length, so two of different groups act a beat apart rather than as
+     * one body. The group is the [unit] a level puts a monster in, so a pack
+     * placed as one unit moves together, corner for corner, and two units on
+     * the same square keep the stagger their level chose.
      */
-    val turnGroup: Int get() = ((unit shl 1) or (index and 1)) and 3
+    val turnGroup: Int get() = unit and 3
 
     /** Which of its sheet's color schemes this monster is painted in. */
     val colors: MonsterColors get() = MonsterColors.forSlot(index)

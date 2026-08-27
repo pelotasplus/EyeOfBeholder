@@ -232,13 +232,12 @@ class MonstersHuntingTest {
     }
 
     /**
-     * A pair placed side by side do not act together. Their group is their
-     * record's own split by whether their slot is odd, so the two clerics —
-     * slots 16 and 17 — take their turns a beat apart, and only one of them
-     * answers any given turn.
+     * A pack a level places as one unit acts together. The two clerics share a
+     * unit, so they share a turn group and take their step on the same beat
+     * rather than sliding after the party one and then the other a delay later.
      */
     @Test
-    fun `two monsters placed together take their turns apart`() {
+    fun `a pack in one unit takes its turn together`() {
         val world = world(
             at = Location(13, 8),
             facing = Direction.SOUTH,
@@ -247,14 +246,14 @@ class MonstersHuntingTest {
         ).rousedBy(CLERIC)
 
         val groups = world.monsters.map { it.turnGroup }
-        assertEquals(2, groups.toSet().size, "the pair share a turn group")
+        assertEquals(1, groups.toSet().size, "the pair are not in one turn group")
 
         val itsTurn = turn().begun(world, walking, group = groups.first())
         val whoMoved = itsTurn.monsters.filter { after ->
             world.monsters.first { it.index == after.index }.block != after.block
         }
 
-        assertEquals(1, whoMoved.size, "both moved on one group's turn")
+        assertEquals(2, whoMoved.size, "the pair did not step together")
     }
 
     /**
