@@ -29,6 +29,9 @@ data class GameState(
     val champions: List<Champion> = emptyList(),
     val monsters: List<MonsterInstance> = emptyList(),
     val flags: GameFlags = GameFlags(),
+
+    /** Whether a script has forbidden the party to sleep where they are. */
+    val preventRest: Boolean = false,
     /**
      * Every item in the game in one table, the dungeon's and the party's
      * alike, because everything that can hold one names it by its slot here:
@@ -785,6 +788,16 @@ data class GameState(
      * past raising at ten below are what the panel already reads off the
      * number, so taking it away is the whole of the change.
      */
+    /** [whose] the fuller for eating [by], up to a full stomach. */
+    fun championFed(whose: PartySlot, by: Int): GameState {
+        val who = champions.getOrNull(whose.index) ?: return this
+        return copy(
+            champions = champions.toMutableList().also {
+                it[whose.index] = who.copy(food = Food((who.food.value + by).coerceAtMost(FULL_STOMACH)))
+            },
+        )
+    }
+
     fun championHurt(whose: PartySlot, by: Int): GameState {
         if (by <= 0) return this
         val who = champions.getOrNull(whose.index) ?: return this
@@ -1028,6 +1041,9 @@ data class GameState(
 
         /** How often the thing a monster only might carry actually drops. */
         private const val ONE_TIME_IN_TEN = 10
+
+        /** As full as a champion's stomach goes. */
+        private const val FULL_STOMACH = 100
 
         /** What a pile of somebody's bones is, as the item table counts kinds. */
         private val BONES = ItemTypeId(33)

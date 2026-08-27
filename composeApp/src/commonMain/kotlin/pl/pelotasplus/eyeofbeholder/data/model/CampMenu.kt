@@ -36,7 +36,7 @@ data class CampMenu(
             title = "Camp:",
             titleLeft = MENU_TITLE_LEFT,
             entries = menuLines(
-                MenuChoice.NotYet("Rest Party"),
+                MenuChoice.RestParty,
                 MenuChoice.NotYet("Memorize Spells"),
                 MenuChoice.NotYet("Pray for Spells"),
                 MenuChoice.NotYet("Scribe Scrolls"),
@@ -58,6 +58,20 @@ data class CampMenu(
                     MenuChoice.Toggle(it, preferences.isOn(it))
                 },
                 leaving = MenuChoice.OpenCamp,
+            ),
+        )
+
+        /**
+         * The party asleep, counting the hours. The only thing to click is the
+         * way out, which wakes them where they are rather than undoing the
+         * hours already slept.
+         */
+        fun resting(hours: Int) = CampMenu(
+            title = "Resting party.",
+            titleLeft = MENU_TITLE_LEFT,
+            entries = menuLines(
+                MenuChoice.HoursRested(hours),
+                leaving = MenuChoice.StopResting,
             ),
         )
 
@@ -180,6 +194,13 @@ sealed class MenuChoice(val label: String) {
 
     data class OpenSlots(val saving: Boolean) : MenuChoice(if (saving) "Save Game" else "Load Game")
     data class UseSlot(val slot: Int, val saving: Boolean) : MenuChoice("")
+
+    data object RestParty : MenuChoice("Rest Party")
+
+    /** The line that counts the hours away; there is nothing to do with it. */
+    data class HoursRested(val hours: Int) : MenuChoice("Hours rested: $hours")
+
+    data object StopResting : MenuChoice("Stop")
 
     data class NotYet(val what: String) : MenuChoice(what)
 }

@@ -488,6 +488,14 @@ class LevelScriptRunner(
 
                 is ClearFlag.GlobalFlag -> state = state.globalFlagCleared(FlagBit(token.flag))
 
+                // The two are the wrong way round, and it is the original's
+                // doing: its "set" leaves the party free to sleep, and its
+                // "remove" is what forbids it. So a dangerous stretch of floor
+                // says the party cannot rest by removing the flag, and the safe
+                // ground after says they can by setting it.
+                is SetFlag.PreventRest -> state = state.copy(preventRest = false)
+                is ClearFlag.Party -> state = state.copy(preventRest = true)
+
                 is NewLevelOrMonster.ChangeLevel -> return stop(
                     ChangeLevel(
                         level = token.level,
