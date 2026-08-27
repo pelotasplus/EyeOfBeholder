@@ -16,6 +16,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.CampMenu
 import pl.pelotasplus.eyeofbeholder.data.model.CarrySlot
 import pl.pelotasplus.eyeofbeholder.data.model.Champion
 import pl.pelotasplus.eyeofbeholder.data.model.PartySlot
+import pl.pelotasplus.eyeofbeholder.data.model.PaletteIndex
 import pl.pelotasplus.eyeofbeholder.data.model.CharacterSheet
 import pl.pelotasplus.eyeofbeholder.data.model.OpenSheet
 import pl.pelotasplus.eyeofbeholder.data.model.SheetChoice
@@ -1013,7 +1014,9 @@ class ViewConeDebugViewModel(
         Logger.d(TAG) { "$whose swings with $hand: ${struck.blow}" }
         if (struck.blow == Blow.StillRecovering) return
 
+        val before = _state.value.game.champions
         _state.update { it.copy(game = struck.world) }
+        announceAnyLevelGained(before, struck.world.champions)
         Logger.d(TAG) { "Roused: ${struck.world.monsters.filter { m -> m.provoked }.map { m -> m.index }}" }
 
         // The blow is heard whether or not it lands. What a landed one looks
@@ -1529,13 +1532,31 @@ class ViewConeDebugViewModel(
         say(ItemMessages.taken(names.of(item, itemTypes)))
     }
 
-    private fun say(line: String) {
+    private fun say(line: String, ink: PaletteIndex = ScriptSpeech.DEFAULT_INK) {
         _state.update {
             it.copy(
-                messages = (it.messages + PlayField.Message(line, ScriptSpeech.DEFAULT_INK))
+                messages = (it.messages + PlayField.Message(line, ink))
                     .takeLast(MESSAGES_KEPT),
             )
         }
+    }
+
+    /**
+     * Whoever has just climbed a level says so and is heard.
+     *
+     * A multi-class champion says it once however many of their classes came up
+     * together, which is what the line is: they gained a level, not a level in
+     * something.
+     */
+    private fun announceAnyLevelGained(was: List<Champion>, now: List<Champion>) {
+        val climbed = now.filterIndexed { slot, champion ->
+            val before = was.getOrNull(slot) ?: return@filterIndexed false
+            champion.levels.zip(before.levels).any { (after, then) -> after.level > then.level }
+        }
+        if (climbed.isEmpty()) return
+
+        climbed.forEach { say("${it.name} has gained a level.", LEVEL_GAINED_INK) }
+        viewModelScope.launch { playTrack(LEVEL_GAINED) }
     }
 
     /**
@@ -2611,6 +2632,8 @@ class ViewConeDebugViewModel(
 
         private val WALL_BUMP = TrackIndex(29)
         private val EAT = TrackIndex(9)
+        private val LEVEL_GAINED = TrackIndex(23)
+        private val LEVEL_GAINED_INK = ScriptSpeech.inkOf(1)
         private val DOOR_BUTTON = TrackIndex(6)
 
         /** And under 32: a weapon swung, whether or not it finds anything. */

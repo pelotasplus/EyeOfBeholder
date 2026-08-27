@@ -1,5 +1,6 @@
 package pl.pelotasplus.eyeofbeholder.data
 
+import kotlinx.coroutines.runBlocking
 import pl.pelotasplus.eyeofbeholder.data.model.Abilities
 import pl.pelotasplus.eyeofbeholder.data.model.Ability
 import pl.pelotasplus.eyeofbeholder.data.model.ArmorClass
@@ -21,6 +22,8 @@ import pl.pelotasplus.eyeofbeholder.data.model.PortraitId
 import pl.pelotasplus.eyeofbeholder.data.model.XpPoints
 import pl.pelotasplus.eyeofbeholder.data.model.earning
 import pl.pelotasplus.eyeofbeholder.data.model.partyEarns
+import pl.pelotasplus.eyeofbeholder.data.repository.OriginalSaveRepositoryImpl
+import pl.pelotasplus.eyeofbeholder.data.repository.ResourceRepositoryImpl
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -225,5 +228,67 @@ class GainingExperienceTest {
         assertEquals(xp(4_500), after.champions[0].levels.first().experience)
         assertEquals(xp(4_500), after.champions[1].levels.first().experience)
         assertEquals(xp(0), after.champions[2].levels.first().experience, "the fallen one still earned")
+    }
+
+    // --- the party the game ships with ---------------------------------------
+
+    private val quickStart: List<Champion> by lazy {
+        runBlocking {
+            OriginalSaveRepositoryImpl(ResourceRepositoryImpl())
+                .loadOriginalSave(OriginalSaveRepositoryImpl.QUICK_START)
+                .getOrThrow().party.filter { it.inTheParty }
+        }
+    }
+
+    /**
+     * Where the party start, which is what says how far off a level is. The
+     * numbers are the save's own: the paladin and the fighter-thief begin at
+     * six, the cleric and the mage at seven.
+     */
+    @Test
+    fun `the party the game ships with start where the save puts them`() {
+        assertEquals(
+            listOf(listOf(6), listOf(6, 6), listOf(7), listOf(7)),
+            quickStart.map { who -> who.levels.map { it.level } },
+        )
+    }
+
+    /**
+     * The paladin is the one closest to a level: six thousand short of the
+     * seventy-five his table asks for a seventh. Enough of a kill and he has
+     * it — which is the moment the game says so out loud.
+     */
+    @Test
+    fun `the paladin climbs once he is worth the seventy-five thousand`() {
+        val paladin = quickStart.first { it.characterClass == CharacterClass.PALADIN }
+        assertEquals(xp(69_000), paladin.levels.first().experience, "not where the save leaves him")
+        assertEquals(xp(75_000), ClassProgression.AS_A_PALADIN.neededFor(7))
+
+        assertEquals(
+            6,
+            paladin.earning(points = xp(5_999), dice = worstRoll).levels.first().level,
+            "he climbed a level short",
+        )
+        assertEquals(
+            7,
+            paladin.earning(points = xp(6_000), dice = worstRoll).levels.first().level,
+            "he did not climb on reaching it",
+        )
+    }
+
+    /**
+     * A multi-class climbs its classes apart. The fighter-thief's halves both
+     * sit at thirty-four and a half thousand, but a thief's seventh level costs
+     * forty thousand and a fighter's sixty-four — so the thief in him comes up
+     * first, on a share that leaves the fighter where he was.
+     */
+    @Test
+    fun `a multi-class brings its classes up one at a time`() {
+        val both = quickStart.first { it.characterClass == CharacterClass.FIGHTER_THIEF }
+
+        // split two ways, so it takes eleven thousand to put 5,500 on each half
+        val after = both.earning(points = xp(11_000), dice = worstRoll)
+
+        assertEquals(listOf(6, 7), after.levels.map { it.level }, "the wrong half climbed")
     }
 }
