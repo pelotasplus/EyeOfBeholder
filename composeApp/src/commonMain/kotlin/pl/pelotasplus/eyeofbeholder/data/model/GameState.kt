@@ -802,6 +802,21 @@ data class GameState(
      * past raising at ten below are what the panel already reads off the
      * number, so taking it away is the whole of the change.
      */
+    /**
+     * The world a little further from its last meal: everyone still standing
+     * is one emptier.
+     *
+     * Time is what makes a party hungry rather than walking — standing still
+     * empties them at the same rate — and an empty stomach only costs anything
+     * once they lie down to sleep on it.
+     */
+    fun hungrier(): GameState = copy(
+        champions = champions.map {
+            if (!it.inTheParty || it.deadForGood || it.food.value <= 0) it
+            else it.copy(food = Food(it.food.value - 1))
+        },
+    )
+
     /** [whose] the fuller for eating [by], up to a full stomach. */
     fun championFed(whose: PartySlot, by: Int): GameState {
         val who = champions.getOrNull(whose.index) ?: return this

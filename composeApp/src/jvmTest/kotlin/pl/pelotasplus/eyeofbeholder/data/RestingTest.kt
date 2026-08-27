@@ -15,6 +15,10 @@ import pl.pelotasplus.eyeofbeholder.data.model.PartySlot
 import pl.pelotasplus.eyeofbeholder.data.model.PartyState
 import pl.pelotasplus.eyeofbeholder.data.model.Rest
 import pl.pelotasplus.eyeofbeholder.data.model.Resting
+import pl.pelotasplus.eyeofbeholder.data.model.anybodyCanStillMend
+import pl.pelotasplus.eyeofbeholder.data.model.anybodyStillHurt
+import pl.pelotasplus.eyeofbeholder.data.model.anybodyStarving
+import pl.pelotasplus.eyeofbeholder.data.model.starvedADay
 import pl.pelotasplus.eyeofbeholder.data.model.HOURS_A_MENDED_POINT
 import pl.pelotasplus.eyeofbeholder.data.model.sleptAnHour
 import pl.pelotasplus.eyeofbeholder.data.model.isBesideTheParty
@@ -210,7 +214,7 @@ class RestingTest {
 
         val who = assertIs<Rest.Slept>(slept).world.champions.first()
         assertEquals(0, who.food.value)
-        assertEquals(18, who.hitPoints.current, "ten food is two stretches and no more")
+        assertEquals(34, who.hitPoints.current, "ten food is two stretches and no more")
     }
 
     @Test
@@ -232,7 +236,7 @@ class RestingTest {
 
         val after = begun.sleptAnHour(HOURS_A_MENDED_POINT)
 
-        assertEquals(18, after.champions.first().hitPoints.current)
+        assertEquals(26, after.champions.first().hitPoints.current)
         assertEquals(95, after.champions.first().food.value)
     }
 
@@ -242,6 +246,106 @@ class RestingTest {
         val after = world(champion(100, HitPoints(19, 20))).sleptAnHour(HOURS_A_MENDED_POINT)
 
         assertEquals(20, after.champions.first().hitPoints.current, "mended past full")
+    }
+
+    /**
+     * The three things a rest can end as, which are what the party are told.
+     * Hurt with an empty stomach is not the same as rested, and saying so is
+     * the difference between a party who know to go and eat and one who think
+     * they are well.
+     */
+    @Test
+    fun `hurt with nothing to eat is not the same as rested`() {
+        val rested = world(champion(100, HitPoints(20, 20)))
+        assertTrue(!rested.anybodyStillHurt, "nobody is hurt")
+
+        val starving = world(champion(0, HitPoints(5, 20)))
+        assertTrue(starving.anybodyStillHurt, "they are hurt")
+        assertTrue(!starving.anybodyCanStillMend, "they cannot mend on an empty stomach")
+
+        val fed = world(champion(100, HitPoints(5, 20)))
+        assertTrue(fed.anybodyStillHurt && fed.anybodyCanStillMend, "they can mend")
+    }
+
+    /** A rest that mends nothing because there is no food leaves them hurt. */
+    @Test
+    fun `a starving party wake no better than they lay down`() {
+        val hungry = world(champion(0, HitPoints(5, 20)))
+
+        val slept = assertIs<Rest.Slept>(resting().rest(hungry)).world
+
+        assertEquals(5, slept.champions.first().hitPoints.current, "mended on no food")
+        assertTrue(slept.anybodyStillHurt && !slept.anybodyCanStillMend)
+    }
+
+    // --- starving through a rest ----------------------------------------------
+
+    /**
+     * Sleeping on an empty stomach costs rather than mends: a day of it is a
+     * hit point gone. It is the one thing a rest takes away, which is why it is
+     * asked for before it is done.
+     */
+    @Test
+    fun `a day asleep on an empty stomach costs a hit point`() {
+        val hungry = world(champion(0, HitPoints(10, 20)))
+
+        val aDayOn = hungry.starvedADay()
+
+        assertEquals(9, aDayOn.champions.first().hitPoints.current)
+    }
+
+    /** A full stomach sleeps through the same day untouched. */
+    @Test
+    fun `a fed champion does not starve`() {
+        val fed = world(champion(100, HitPoints(10, 20)))
+
+        assertEquals(10, fed.starvedADay().champions.first().hitPoints.current)
+    }
+
+    /**
+     * Starving cannot carry a champion past raising: at ten below they are as
+     * far gone as hunger takes them, and a party left sleeping does not grind
+     * them any further.
+     */
+    @Test
+    fun `starving stops at the point past raising`() {
+        val gone = world(champion(0, HitPoints(Champion.BEYOND_RAISING, 20)))
+
+        assertEquals(
+            Champion.BEYOND_RAISING,
+            gone.starvedADay().champions.first().hitPoints.current,
+        )
+    }
+
+    // --- growing hungry with the hours --------------------------------------
+
+    /**
+     * Time empties a stomach, and standing still empties it as surely as
+     * walking. It costs nothing on its own — an empty one is only paid for by
+     * sleeping on it.
+     */
+    @Test
+    fun `time alone makes the party hungrier`() {
+        val fed = world(champion(100, HitPoints(20, 20)))
+
+        val later = fed.hungrier()
+
+        assertEquals(99, later.champions.first().food.value)
+        assertEquals(20, later.champions.first().hitPoints.current, "growing hungry hurt them")
+    }
+
+    /** An empty stomach cannot be emptied further. */
+    @Test
+    fun `hunger stops at nothing left`() {
+        val empty = world(champion(0, HitPoints(20, 20)))
+
+        assertEquals(0, empty.hungrier().champions.first().food.value)
+    }
+
+    @Test
+    fun `an empty stomach is what counts as starving`() {
+        assertTrue(world(champion(0, HitPoints(20, 20))).anybodyStarving, "empty is starving")
+        assertTrue(!world(champion(5, HitPoints(20, 20))).anybodyStarving, "five is not")
     }
 
     @Test

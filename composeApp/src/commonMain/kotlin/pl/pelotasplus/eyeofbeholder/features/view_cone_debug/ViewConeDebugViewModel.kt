@@ -5,6 +5,7 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import co.touchlab.kermit.Logger
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -79,6 +80,11 @@ import pl.pelotasplus.eyeofbeholder.data.model.Debugging
 import pl.pelotasplus.eyeofbeholder.data.model.Preferences
 import pl.pelotasplus.eyeofbeholder.data.model.Rest
 import pl.pelotasplus.eyeofbeholder.data.model.Resting
+import pl.pelotasplus.eyeofbeholder.data.model.anybodyCanStillMend
+import pl.pelotasplus.eyeofbeholder.data.model.anybodyStillHurt
+import pl.pelotasplus.eyeofbeholder.data.model.anybodyStarving
+import pl.pelotasplus.eyeofbeholder.data.model.starvedADay
+import pl.pelotasplus.eyeofbeholder.data.model.HOURS_A_STARVED_POINT
 import pl.pelotasplus.eyeofbeholder.data.model.HOURS_A_MENDED_POINT
 import pl.pelotasplus.eyeofbeholder.data.model.sleptAnHour
 import pl.pelotasplus.eyeofbeholder.data.model.SoundBank
@@ -223,6 +229,12 @@ class ViewConeDebugViewModel(
 
     /** How long they have slept this rest, so waking early can say so. */
     private var hoursSlept = 0
+
+    /** The starving question, while one is waiting to be answered. */
+    private var sleepingOnHungry: CompletableDeferred<Boolean>? = null
+
+    /** The clock the party grow hungry on. */
+    private var hungering: Job? = null
 
     /** Whatever is being heard, so that the next thing can take its place. */
     private var sounding: PlayingSound? = null
@@ -377,6 +389,7 @@ class ViewConeDebugViewModel(
                 savedGames.load(SaveSlot.AUTOSAVE).getOrNull()
             }
             if (resumed == null) resumeNothing() else resume(resumed)
+            keepThemHungry()
 
             onVmpSelected(
                 name = resumed?.let { "LEVEL${it.level}.INF" } ?: level ?: DEFAULT_LEVEL,
@@ -693,7 +706,21 @@ class ViewConeDebugViewModel(
         sleeping = viewModelScope.launch {
             showMenu(CampMenu.resting(hoursSlept))
 
-            while (resting.anybodyStillMending(_state.value.game)) {
+            while (_state.value.game.anybodyStillHurt) {
+                val world = _state.value.game
+
+                // Nothing more to be had from lying here: nobody can mend and
+                // nobody is going hungry for it either.
+                if (!world.anybodyCanStillMend && !world.anybodyStarving) break
+
+                // Sleeping on an empty stomach costs rather than mends, so it
+                // is asked for rather than assumed — and asked again each
+                // stretch, so a rest left running never quietly eats a party.
+                if (world.anybodyStarving) {
+                    if (!askWhetherToSleepOnHungry()) break
+                    showMenu(CampMenu.resting(hoursSlept))
+                }
+
                 delay(AN_HOUR_OF_SLEEP.inMilliseconds)
 
                 // The floor does not hold still while the party sleep: the
@@ -713,7 +740,13 @@ class ViewConeDebugViewModel(
                 }
 
                 hoursSlept += HOURS_A_MENDED_POINT
-                _state.update { it.copy(game = it.game.sleptAnHour(HOURS_A_MENDED_POINT)) }
+                _state.update {
+                    var slept = it.game.sleptAnHour(HOURS_A_MENDED_POINT)
+                    // A day on an empty stomach costs a hit point, and a day is
+                    // three of these stretches rather than one.
+                    if (hoursSlept % HOURS_A_STARVED_POINT == 0) slept = slept.starvedADay()
+                    it.copy(game = slept)
+                }
                 showMenu(CampMenu.resting(hoursSlept))
             }
 
@@ -721,14 +754,60 @@ class ViewConeDebugViewModel(
         }
     }
 
+    /**
+     * The party growing hungry as time passes, which nothing else winds.
+     *
+     * It is time and not walking that empties a stomach, so this runs from the
+     * moment there is a party — but not while they sleep, where a rest counts
+     * its own meals off at its own rate.
+     */
+    private fun keepThemHungry() {
+        if (hungering?.isActive == true) return
+
+        hungering = viewModelScope.launch {
+            while (true) {
+                delay(A_MEAL_DIGESTED.inMilliseconds)
+                if (sleeping?.isActive == true) continue
+
+                _state.update { it.copy(game = it.game.hungrier()) }
+                drawWords()
+            }
+        }
+    }
+
+    /**
+     * Puts the starving question up and waits for its answer, which is the one
+     * moment a rest asks anything of the player.
+     */
+    private suspend fun askWhetherToSleepOnHungry(): Boolean {
+        val asked = CompletableDeferred<Boolean>()
+        sleepingOnHungry = asked
+        showMenu(CampMenu.starving())
+
+        return asked.await().also { sleepingOnHungry = null }
+    }
+
     /** The party up again, however the rest ended. */
     private suspend fun wakeUp(hours: Int) {
         val clock = sleeping
         sleeping = null
+        sleepingOnHungry = null
         clock?.cancel()
 
         showMenu(null)
-        say(if (hours > 0) "Hours rested: $hours" else FULLY_RESTED)
+
+        // What to say is what actually happened. Nobody hurt is a party fully
+        // rested; hurt with nothing left to eat is a party that cannot mend at
+        // all, and telling them they are rested would be a plain lie.
+        val world = _state.value.game
+        say(
+            when {
+                !world.anybodyStillHurt -> FULLY_RESTED
+                !world.anybodyCanStillMend -> STARVING
+                hours > 0 -> "Hours rested: $hours"
+                else -> FULLY_RESTED
+            }
+        )
         renderViewPort()
     }
 
@@ -752,8 +831,16 @@ class ViewConeDebugViewModel(
 
             MenuChoice.RestParty -> onRest()
 
-            // The hours already slept are kept: waking early is not undoing them.
-            MenuChoice.StopResting -> wakeUp(hoursSlept)
+            // The hours already slept are kept: waking early is not undoing
+            // them. Said to a starving party's question, it is the answer no.
+            MenuChoice.StopResting -> {
+                val asked = sleepingOnHungry
+                if (asked == null) wakeUp(hoursSlept) else asked.complete(false)
+            }
+
+            MenuChoice.KeepResting -> {
+                sleepingOnHungry?.complete(true)
+            }
             is MenuChoice.HoursRested -> Unit
 
             is MenuChoice.OpenSlots -> showSlots(choice.saving)
@@ -1070,7 +1157,13 @@ class ViewConeDebugViewModel(
             tickNow = 0
             lastTurnLine.clear()
 
+            // The party's own step winds this clock too, so most of the time it
+            // runs there is no fight at all. Only one that had something in it
+            // is worth saying is over.
+            var anybodyFought = false
+
             while (stillFighting()) {
+                anybodyFought = anybodyFought || _state.value.game.monsters.any { it.provoked }
                 delay(GameState.CLOCK_STEP.inMilliseconds)
 
                 tickNow += GameState.CLOCK_STEP.value
@@ -1198,7 +1291,7 @@ class ViewConeDebugViewModel(
                 if (moved) drawViewPort()
             }
 
-            Logger.d(TAG) { "The fight is over" }
+            if (anybodyFought) Logger.d(TAG) { "The fight is over" }
         }
     }
 
@@ -2637,9 +2730,13 @@ class ViewConeDebugViewModel(
         /** How long an hour of sleep takes to watch. */
         private val AN_HOUR_OF_SLEEP = Ticks(3)
 
+        /** How long a champion takes to want another meal. */
+        private val A_MEAL_DIGESTED = Ticks(1080)
+
         private const val CANNOT_REST_HERE = "You do not feel it is safe to rest here."
         private const val MONSTERS_ARE_NEAR = "You can't rest here, monsters are near."
         private const val FULLY_RESTED = "All characters are fully rested."
+        private const val STARVING = "Your party is starving."
 
         private val WALL_BUMP = TrackIndex(29)
         private val EAT = TrackIndex(9)

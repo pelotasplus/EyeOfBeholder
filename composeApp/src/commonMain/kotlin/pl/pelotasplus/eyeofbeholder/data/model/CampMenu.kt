@@ -75,6 +75,19 @@ data class CampMenu(
             ),
         )
 
+        /**
+         * Asked when the party sleep on empty stomachs, because from here on
+         * the sleep costs them rather than mends them.
+         */
+        fun starving() = CampMenu(
+            title = "Your party is starving.",
+            titleLeft = MENU_TITLE_LEFT,
+            entries = menuLines(
+                MenuChoice.KeepResting,
+                leaving = MenuChoice.StopResting,
+            ),
+        )
+
         fun gameOptions() = CampMenu(
             title = "Game Options:",
             titleLeft = MENU_TITLE_LEFT,
@@ -201,6 +214,9 @@ sealed class MenuChoice(val label: String) {
     data class HoursRested(val hours: Int) : MenuChoice("Hours rested: $hours")
 
     data object StopResting : MenuChoice("Stop")
+
+    /** Sleep on, hungry, knowing what it costs. */
+    data object KeepResting : MenuChoice("Continue resting")
 
     data class NotYet(val what: String) : MenuChoice(what)
 }

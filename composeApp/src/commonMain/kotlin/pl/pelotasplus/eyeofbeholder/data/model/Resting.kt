@@ -71,8 +71,7 @@ class Resting(
      * Whether anybody is still hurt and has the food to mend, which is what
      * keeps a rest going.
      */
-    fun anybodyStillMending(world: GameState): Boolean =
-        world.champions.any { it.wouldMendBySleeping }
+    fun anybodyStillMending(world: GameState): Boolean = world.anybodyCanStillMend
 
     /**
      * The world after the monsters have had their few turns, which is what the
@@ -129,9 +128,39 @@ fun GameState.sleptAnHour(hours: Int = 1): GameState {
     return copy(champions = champions.map { it.sleptAStep() })
 }
 
+/** Whether anybody is hurt at all, whether or not they can do anything about it. */
+val GameState.anybodyStillHurt: Boolean get() = champions.any { it.stillHurt }
+
+/** Whether anybody still standing has run out of food. */
+val GameState.anybodyStarving: Boolean
+    get() = champions.any { it.inTheParty && !it.dead && it.food.value <= 0 }
+
+/**
+ * A day of sleep on an empty stomach, which costs a hit point.
+ *
+ * Only sleeping starves a champion — walking about on nothing does not — and
+ * somebody already past raising is past being starved as well.
+ */
+fun GameState.starvedADay(): GameState = copy(
+    champions = champions.map {
+        val starving = it.inTheParty && !it.dead && it.food.value <= 0 &&
+            it.hitPoints.current > Champion.BEYOND_RAISING
+        if (!starving) it else it.copy(
+            hitPoints = it.hitPoints.copy(current = it.hitPoints.current - 1),
+        )
+    },
+)
+
+/** Whether anybody is hurt and has the food to mend it, which is what a rest needs. */
+val GameState.anybodyCanStillMend: Boolean get() = champions.any { it.wouldMendBySleeping }
+
+/** Hurt, and standing to know it. */
+private val Champion.stillHurt: Boolean
+    get() = inTheParty && !dead && hitPoints.current < hitPoints.max
+
 /** Whether a champion can sleep and has hurt for the sleep to mend. */
 val Champion.wouldMendBySleeping: Boolean
-    get() = inTheParty && !dead && food.value > 0 && hitPoints.current < hitPoints.max
+    get() = stillHurt && food.value > 0
 
 /** A champion one stretch of sleep on: hurt mended if there is any, and food eaten. */
 private fun Champion.sleptAStep(): Champion {
@@ -150,6 +179,9 @@ private const val WITHIN_REACH = 1
 /** How long a stretch of sleep is: what mending and hunger both come round on. */
 const val HOURS_A_MENDED_POINT = 8
 
+/** How long an empty stomach takes to cost a hit point. */
+const val HOURS_A_STARVED_POINT = 24
+
 /**
  * What a stretch of sleep mends.
  *
@@ -160,7 +192,7 @@ const val HOURS_A_MENDED_POINT = 8
  * can carry away from full health, so it mends a stretch's worth at a time
  * instead. Put this back to one when the clerics can do their part.
  */
-private const val POINTS_MENDED_A_STRETCH = HOURS_A_MENDED_POINT
+private const val POINTS_MENDED_A_STRETCH = HOURS_A_MENDED_POINT * 2
 
 /** What that stretch of sleep costs each champion in food. */
 private const val FOOD_A_STEP = 5
