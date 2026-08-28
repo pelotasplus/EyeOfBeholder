@@ -17,10 +17,38 @@ data class CampMenu(
     val entries: List<MenuEntry>,
     /** The slot being named, which takes the keyboard while it is. */
     val naming: Naming? = null,
+
+    /**
+     * The box this one is drawn in. The menus proper fill the panel; a question
+     * put to the player is a smaller box set into the middle of it, so the
+     * answer is read where it was asked rather than across the whole screen.
+     */
+    val left: Int = LEFT,
+    val top: Int = TOP,
+    val width: Int = WIDTH,
+    val height: Int = HEIGHT,
+
+    /**
+     * What is written across the box above its lines, a line to an entry.
+     * A menu says everything in its lines and has none of this; a question
+     * needs the room to ask.
+     */
+    val says: List<String> = emptyList(),
+    val saysLeft: Int = 0,
+    val saysTop: Int = 0,
+
+    /**
+     * What this one is drawn on top of, if anything.
+     *
+     * A question put to a sleeping party is a small box set into the resting
+     * one rather than a screen of its own: the hours stay legible above it,
+     * and answering rubs the question out and leaves them there.
+     */
+    val over: CampMenu? = null,
 ) {
     /** A click means nothing while a name is being typed; the keys have it. */
     fun clicked(x: Int, y: Int): MenuChoice? =
-        if (naming != null) null else entries.firstOrNull { it.contains(x, y) }?.choice
+        if (naming != null) null else entries.firstOrNull { it.contains(x - left, y - top) }?.choice
 
     fun rowOf(slot: Int): MenuEntry = entries[slot]
 
@@ -62,34 +90,60 @@ data class CampMenu(
         )
 
         /**
-         * The party asleep, counting the hours. The only thing to click is the
-         * way out, which wakes them where they are rather than undoing the
-         * hours already slept.
+         * The party asleep, counting the hours away.
+         *
+         * Nothing on it can be clicked, because nothing on it is a button:
+         * anything the player does at all wakes them, which is why there is no
+         * way out drawn in the corner.
          */
         fun resting(hours: Int) = CampMenu(
             title = "Resting party.",
-            titleLeft = MENU_TITLE_LEFT,
-            entries = menuLines(
-                MenuChoice.HoursRested(hours),
-                leaving = MenuChoice.StopResting,
-            ),
+            titleLeft = REST_TITLE_LEFT,
+            entries = emptyList(),
+            says = listOf("Hours rested: $hours"),
+            saysLeft = REST_TITLE_LEFT,
+            saysTop = FIRST_LINE_TOP,
         )
 
         /**
          * Asked when the party sleep on empty stomachs, because from here on
          * the sleep costs them rather than mends them.
          *
-         * The title is short because the box is: it is as wide as the panel a
-         * menu is drawn in, and a sentence runs off the end of it. What the
-         * choice is stays in the lines under it, which have the width.
+         * A question rather than a menu, and drawn as one: a smaller box set
+         * into the panel, the question written across it in the lines it was
+         * written in, and Yes and No side by side underneath. Every number
+         * here is transcribed.
          */
-        fun starving() = CampMenu(
-            title = "Starving:",
-            titleLeft = MENU_TITLE_LEFT,
-            entries = menuLines(
-                MenuChoice.KeepResting,
-                leaving = MenuChoice.StopResting,
+        fun starving(hours: Int) = CampMenu(
+            title = "",
+            titleLeft = 0,
+            over = resting(hours),
+            left = ASKED_LEFT,
+            top = ASKED_TOP,
+            width = ASKED_WIDTH,
+            height = ASKED_HEIGHT,
+            says = listOf(
+                "Your party is",
+                "starving. Do you",
+                "wish to continue",
+                "resting?",
             ),
+            saysLeft = ASKED_TEXT_LEFT,
+            saysTop = ASKED_TEXT_TOP,
+            entries = listOf(
+                answer(MenuChoice.KeepResting, ASKED_YES_LEFT),
+                answer(MenuChoice.StopResting, ASKED_NO_LEFT),
+            ),
+        )
+
+        /** One of the two answers, side by side under the question. */
+        private fun answer(choice: MenuChoice, left: Int) = MenuEntry(
+            label = choice.label,
+            left = left,
+            top = ASKED_ANSWER_TOP,
+            width = ASKED_ANSWER_WIDTH,
+            height = LINE_HEIGHT,
+            choice = choice,
         )
 
         fun gameOptions() = CampMenu(
@@ -165,6 +219,21 @@ data class CampMenu(
         private const val LINE_HEIGHT = 14
 
         private const val MENU_TITLE_LEFT = 5
+
+        /** Where the resting box writes its title and its count of the hours. */
+        private const val REST_TITLE_LEFT = 8
+
+        // The box a question is asked in, and the two answers under it.
+        private const val ASKED_LEFT = 8
+        private const val ASKED_TOP = 20
+        private const val ASKED_WIDTH = 160
+        private const val ASKED_HEIGHT = 56
+        private const val ASKED_TEXT_LEFT = 8
+        private const val ASKED_TEXT_TOP = 4
+        private const val ASKED_ANSWER_TOP = 37
+        private const val ASKED_ANSWER_WIDTH = 32
+        private const val ASKED_YES_LEFT = 8
+        private const val ASKED_NO_LEFT = 120
         private const val MENU_X = 12
         private const val MENU_WIDTH = 158
         private const val LEAVE_X = 128
@@ -217,10 +286,10 @@ sealed class MenuChoice(val label: String) {
     /** The line that counts the hours away; there is nothing to do with it. */
     data class HoursRested(val hours: Int) : MenuChoice("Hours rested: $hours")
 
-    data object StopResting : MenuChoice("Stop")
+    /** The two answers a starving party give, which is all a rest ever asks. */
+    data object KeepResting : MenuChoice("Yes")
 
-    /** Sleep on, hungry, knowing what it costs. */
-    data object KeepResting : MenuChoice("Continue resting")
+    data object StopResting : MenuChoice("No")
 
     data class NotYet(val what: String) : MenuChoice(what)
 }

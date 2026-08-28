@@ -192,7 +192,15 @@ const val HOURS_A_STARVED_POINT = 24
  * can carry away from full health, so it mends a stretch's worth at a time
  * instead. Put this back to one when the clerics can do their part.
  */
-private const val POINTS_MENDED_A_STRETCH = HOURS_A_MENDED_POINT * 2
+private const val POINTS_MENDED_A_STRETCH = HOURS_A_MENDED_POINT * 4
 
-/** What that stretch of sleep costs each champion in food. */
-private const val FOOD_A_STEP = 5
+/**
+ * What that stretch of sleep costs each champion in food.
+ *
+ * The other half of the same workaround. What the game means by a rest is
+ * bounded by the food it eats, so mending faster without eating slower only
+ * moves where the party run out — and one who joins the party with eight food
+ * to their name cannot mend at all on the game's own rate. Put this back to
+ * five along with the mending above.
+ */
+private const val FOOD_A_STEP = 2

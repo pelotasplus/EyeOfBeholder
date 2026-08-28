@@ -1069,6 +1069,22 @@ class ViewPortGoldenTest {
     fun `the game options menu`() =
         checkGolden("camp-game-options", menuOver(CampMenu.gameOptions()))
 
+    /**
+     * The party asleep. It fills the panel like a menu and has nothing on it
+     * to click, since anything the player does wakes them.
+     */
+    @Test
+    fun `the resting party box`() =
+        checkGolden("camp-resting", menuOver(CampMenu.resting(hours = 16)))
+
+    /**
+     * And the one question a rest asks, which is a smaller box set into the
+     * panel with the two answers side by side under it.
+     */
+    @Test
+    fun `the starving question`() =
+        checkGolden("camp-starving", menuOver(CampMenu.starving(hours = 16)))
+
     /** Three slots used and three not, the way the list reads. */
     @Test
     fun `the load game slots`() =

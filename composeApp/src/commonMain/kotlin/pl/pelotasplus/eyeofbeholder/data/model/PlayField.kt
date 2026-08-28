@@ -330,19 +330,33 @@ class PlayField(
     private fun drawMenu(menu: CampMenu) {
         val font = menuFont ?: font ?: return
 
-        drawMenuBox(CampMenu.LEFT, CampMenu.TOP, CampMenu.WIDTH, CampMenu.HEIGHT)
+        menu.over?.let(::drawMenu)
+
+        drawMenuBox(menu.left, menu.top, menu.width, menu.height)
         write(
             text = menu.title,
             font = font,
-            left = CampMenu.LEFT + menu.titleLeft,
-            top = CampMenu.TOP + CampMenu.TITLE_TOP,
+            left = menu.left + menu.titleLeft,
+            top = menu.top + CampMenu.TITLE_TOP,
             colour = MENU_TITLE,
         )
 
+        // What the box says for itself, a line at a time down from where it
+        // starts. A menu says nothing here and only draws its lines.
+        menu.says.forEachIndexed { line, said ->
+            write(
+                text = said,
+                font = font,
+                left = menu.left + menu.saysLeft,
+                top = menu.top + menu.saysTop + line * font.height,
+                colour = MENU_LABEL,
+            )
+        }
+
         menu.entries.forEachIndexed { row, entry ->
             drawMenuBox(
-                left = CampMenu.LEFT + entry.left,
-                top = CampMenu.TOP + entry.top,
+                left = menu.left + entry.left,
+                top = menu.top + entry.top,
                 width = entry.width,
                 height = entry.height,
             )
@@ -351,17 +365,17 @@ class PlayField(
             write(
                 text = naming?.typed ?: entry.label,
                 font = font,
-                left = CampMenu.LEFT + entry.labelLeft,
-                top = CampMenu.TOP + entry.labelTop,
+                left = menu.left + entry.labelLeft,
+                top = menu.top + entry.labelTop,
                 colour = if (naming == null) MENU_LABEL else BEING_TYPED,
             )
 
             // the caret sits where the next letter will land
             if (naming != null) {
-                val caret = CampMenu.LEFT + entry.labelLeft + font.widthOf(naming.typed)
+                val caret = menu.left + entry.labelLeft + font.widthOf(naming.typed)
                 for (y in 0 until font.height) {
                     for (x in 0 until font.width) {
-                        draw(caret + x, CampMenu.TOP + entry.labelTop + y, palette.colors[CARET.value])
+                        draw(caret + x, menu.top + entry.labelTop + y, palette.colors[CARET.value])
                     }
                 }
             }

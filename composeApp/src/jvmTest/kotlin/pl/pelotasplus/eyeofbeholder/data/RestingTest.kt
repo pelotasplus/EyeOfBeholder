@@ -200,8 +200,8 @@ class RestingTest {
 
         val who = assertIs<Rest.Slept>(slept).world.champions.first()
         assertEquals(20, who.hitPoints.current, "not fully mended")
-        // five short of full: one stretch mends it, and eats one meal doing so
-        assertEquals(95, who.food.value, "a stretch of sleep costs five food")
+        // one stretch carries them the last five, and eats one meal doing it
+        assertEquals(98, who.food.value, "a stretch of sleep costs a meal")
     }
 
     /**
@@ -210,11 +210,12 @@ class RestingTest {
      */
     @Test
     fun `food running out stops the mending`() {
-        val slept = resting().rest(world(champion(10, HitPoints(2, 40))))
+        // hurt far past what the food can mend, so the food is what runs out
+        val slept = resting().rest(world(champion(4, HitPoints(2, 400))))
 
         val who = assertIs<Rest.Slept>(slept).world.champions.first()
         assertEquals(0, who.food.value)
-        assertEquals(34, who.hitPoints.current, "ten food is two stretches and no more")
+        assertEquals(66, who.hitPoints.current, "four food is two stretches and no more")
     }
 
     @Test
@@ -232,12 +233,13 @@ class RestingTest {
      */
     @Test
     fun `a stretch of sleep mends a stretch's worth and eats one meal`() {
-        val begun = world(champion(100, HitPoints(10, 40)))
+        // a wide gap to mend, so the stretch is not cut short by full health
+        val begun = world(champion(100, HitPoints(10, 100)))
 
         val after = begun.sleptAnHour(HOURS_A_MENDED_POINT)
 
-        assertEquals(26, after.champions.first().hitPoints.current)
-        assertEquals(95, after.champions.first().food.value)
+        assertEquals(42, after.champions.first().hitPoints.current)
+        assertEquals(98, after.champions.first().food.value)
     }
 
     /** However much a stretch mends, it never mends past full. */

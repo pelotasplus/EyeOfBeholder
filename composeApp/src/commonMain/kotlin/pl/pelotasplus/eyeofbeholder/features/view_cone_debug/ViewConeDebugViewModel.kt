@@ -264,6 +264,16 @@ class ViewConeDebugViewModel(
             return
         }
 
+        // Anything at all wakes a sleeping party — there is no way out drawn on
+        // the box because everything is one. A question put to them while they
+        // sleep is its own box and answers for itself, so it is left alone.
+        if (sleeping?.isActive == true && sleepingOnHungry == null &&
+            event.isTheirOwnDoing && event !is Event.Initialize
+        ) {
+            viewModelScope.launch { wakeUp(hoursSlept) }
+            return
+        }
+
         // an open menu owns the screen: the party do not walk about behind it
         val menu = _state.value.menu
         if (menu != null && event !is Event.Initialize) {
@@ -784,7 +794,7 @@ class ViewConeDebugViewModel(
     private suspend fun askWhetherToSleepOnHungry(): Boolean {
         val asked = CompletableDeferred<Boolean>()
         sleepingOnHungry = asked
-        showMenu(CampMenu.starving())
+        showMenu(CampMenu.starving(hoursSlept))
 
         return asked.await().also { sleepingOnHungry = null }
     }
