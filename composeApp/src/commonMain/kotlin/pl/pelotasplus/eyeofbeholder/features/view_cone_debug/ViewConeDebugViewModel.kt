@@ -234,8 +234,11 @@ class ViewConeDebugViewModel(
     /** The starving question, while one is waiting to be answered. */
     private var sleepingOnHungry: CompletableDeferred<Boolean>? = null
 
-    /** The clock the party grow hungry on. */
-    private var hungering: Job? = null
+    /** Where the party were standing when the view was last drawn. */
+    private var wasStandingOn: Location? = null
+
+    /** Squares covered since the party last ate into their stores. */
+    private var stepsSinceAMeal = 0
 
     /** Whatever is being heard, so that the next thing can take its place. */
     private var sounding: PlayingSound? = null
@@ -400,7 +403,6 @@ class ViewConeDebugViewModel(
                 savedGames.load(SaveSlot.AUTOSAVE).getOrNull()
             }
             if (resumed == null) resumeNothing() else resume(resumed)
-            keepThemHungry()
 
             onVmpSelected(
                 name = resumed?.let { "LEVEL${it.level}.INF" } ?: level ?: DEFAULT_LEVEL,
@@ -784,24 +786,20 @@ class ViewConeDebugViewModel(
     }
 
     /**
-     * The party growing hungry as time passes, which nothing else winds.
+     * The party growing hungry as they go.
      *
-     * It is time and not walking that empties a stomach, so this runs from the
-     * moment there is a party — but not while they sleep, where a rest counts
-     * its own meals off at its own rate.
+     * The original counts this off a clock, a mouthful a minute of play, which
+     * suited a game nobody left running. A tab left open is not that: a party
+     * stood still in an empty corridor would starve while nobody was even
+     * looking at them. So it is the walking that empties a stomach here, and a
+     * party who go nowhere keep what they have.
      */
-    private fun keepThemHungry() {
-        if (hungering?.isActive == true) return
+    private fun theyWalkedASquare() {
+        stepsSinceAMeal++
+        if (stepsSinceAMeal < STEPS_TO_A_MEAL) return
 
-        hungering = viewModelScope.launch {
-            while (true) {
-                delay(A_MEAL_DIGESTED.inMilliseconds)
-                if (sleeping?.isActive == true) continue
-
-                _state.update { it.copy(game = it.game.hungrier()) }
-                drawWords()
-            }
-        }
+        stepsSinceAMeal = 0
+        _state.update { it.copy(game = it.game.hungrier()) }
     }
 
     /** Puts a question to a sleeping party and waits for its answer. */
@@ -2427,6 +2425,12 @@ class ViewConeDebugViewModel(
             it.copy(game = mapped, visited = mapped.visited(floor))
         }
 
+        // Every square they cover is a square nearer their next meal. Turning
+        // on the spot is not covering one, and neither is standing still.
+        val standing = Location(party.position.x, party.position.y)
+        if (wasStandingOn != null && wasStandingOn != standing) theyWalkedASquare()
+        wasStandingOn = standing
+
         viewConeRepository.renderPosition(
             items = _state.value.game.items,
             monsters = _state.value.game.monsters,
@@ -2749,8 +2753,8 @@ class ViewConeDebugViewModel(
         /** How long an hour of sleep takes to watch. */
         private val AN_HOUR_OF_SLEEP = Ticks(3)
 
-        /** How long a champion takes to want another meal. */
-        private val A_MEAL_DIGESTED = Ticks(1080)
+        /** How far the party walk on one mouthful. Tuned rather than transcribed. */
+        private const val STEPS_TO_A_MEAL = 20
 
         private const val CANNOT_REST_HERE = "You do not feel it is safe to rest here."
         private const val MONSTERS_ARE_NEAR = "You can't rest here, monsters are near."

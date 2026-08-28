@@ -348,15 +348,14 @@ class RestingTest {
         )
     }
 
-    // --- growing hungry with the hours --------------------------------------
+    // --- growing hungry as they go ------------------------------------------
 
     /**
-     * Time empties a stomach, and standing still empties it as surely as
-     * walking. It costs nothing on its own — an empty one is only paid for by
-     * sleeping on it.
+     * Walking empties a stomach, and it costs nothing on its own — an empty
+     * one is only paid for by sleeping on it.
      */
     @Test
-    fun `time alone makes the party hungrier`() {
+    fun `covering ground makes the party hungrier`() {
         val fed = world(champion(100, HitPoints(20, 20)))
 
         val later = fed.hungrier()

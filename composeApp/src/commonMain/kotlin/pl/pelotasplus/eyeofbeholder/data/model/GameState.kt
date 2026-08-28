@@ -806,9 +806,9 @@ data class GameState(
      * The world a little further from its last meal: everyone still standing
      * is one emptier.
      *
-     * Time is what makes a party hungry rather than walking — standing still
-     * empties them at the same rate — and an empty stomach only costs anything
-     * once they lie down to sleep on it.
+     * Walking is what makes a party hungry: standing still costs them nothing,
+     * and an empty stomach only costs anything once they lie down to sleep on
+     * it.
      */
     fun hungrier(): GameState = copy(
         champions = champions.map {
