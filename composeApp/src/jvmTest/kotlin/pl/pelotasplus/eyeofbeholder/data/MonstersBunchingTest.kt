@@ -8,6 +8,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.Location
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterInstance
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterPathing
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterSize
+import pl.pelotasplus.eyeofbeholder.data.model.MonsterSlot
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterStepping
 import pl.pelotasplus.eyeofbeholder.data.model.MonstersTurn
 import pl.pelotasplus.eyeofbeholder.data.model.PartyState
@@ -68,12 +69,12 @@ class MonstersBunchingTest {
 
         return world.copy(
             monsters = wolves.mapIndexed { index, (at, place) ->
-                one.copy(index = index, block = at.asBlock, place = place)
+                one.copy(index = MonsterSlot(index), location = at, place = place)
             },
         )
     }
 
-    private fun GameState.wolf(index: Int) = monsters.first { it.index == index }
+    private fun GameState.wolf(index: Int) = monsters.first { it.index == MonsterSlot(index) }
 
     private fun MonsterInstance.sizeOfItsKind() =
         kinds.first { it.id == type.value }.size
@@ -166,7 +167,7 @@ class MonstersBunchingTest {
                 party = PartyState(Location(18, 13), Direction.SOUTH),
                 monsters = world.monsters.map { it.copy(direction = Direction.NORTH) },
             )
-        }.rousedBy(0).rousedBy(1)
+        }.rousedBy(MonsterSlot(0)).rousedBy(MonsterSlot(1))
 
         val hunting = MonsterPathing(stepping = stepping(), kinds = kinds)
         val after = generateSequence(world) { MonstersTurn(kinds).begun(it, hunting) }

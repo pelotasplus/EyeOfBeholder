@@ -26,9 +26,9 @@ sealed interface Blow {
      */
     data object Unable : Blow
 
-    data class Missed(val monster: Int) : Blow
+    data class Missed(val monster: MonsterSlot) : Blow
 
-    data class Hit(val monster: Int, val damage: Int) : Blow
+    data class Hit(val monster: MonsterSlot, val damage: Damage) : Blow
 }
 
 /**

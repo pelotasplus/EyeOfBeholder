@@ -7,6 +7,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.GameState
 import pl.pelotasplus.eyeofbeholder.data.model.Location
 import pl.pelotasplus.eyeofbeholder.data.model.Maz
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterInstance
+import pl.pelotasplus.eyeofbeholder.data.model.MonsterSlot
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterTypeId
 import pl.pelotasplus.eyeofbeholder.data.model.PaletteIndex
 import pl.pelotasplus.eyeofbeholder.data.model.PartyState
@@ -294,9 +295,9 @@ class SavedGameRoundTripTest {
 
     private fun monsters(onLevel: Int) = listOf(0, 1).map { slot ->
         MonsterInstance(
-            index = slot,
+            index = MonsterSlot(slot),
             unit = 0,
-            block = onLevel * 32 + slot,
+            location = Location(x = slot, y = onLevel),
             place = SquarePlace.MIDDLE,
             direction = Direction.SOUTH,
             type = MonsterTypeId(onLevel),

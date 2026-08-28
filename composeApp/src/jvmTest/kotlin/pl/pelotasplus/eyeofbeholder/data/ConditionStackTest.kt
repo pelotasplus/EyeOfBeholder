@@ -15,6 +15,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.LevelScriptRunner
 import pl.pelotasplus.eyeofbeholder.data.model.Location
 import pl.pelotasplus.eyeofbeholder.data.model.MessageId
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterInstance
+import pl.pelotasplus.eyeofbeholder.data.model.MonsterSlot
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterTypeId
 import pl.pelotasplus.eyeofbeholder.data.model.PartyState
 import pl.pelotasplus.eyeofbeholder.data.model.Race
@@ -406,9 +407,9 @@ class ConditionStackTest {
     }
 
     private fun monsterOn(at: Location) = MonsterInstance(
-        index = 0,
+        index = MonsterSlot(0),
         unit = 0,
-        block = (at.y shl 5) or at.x,
+        location = at,
         place = SquarePlace.MIDDLE,
         direction = Direction.NORTH,
         type = MonsterTypeId(0),

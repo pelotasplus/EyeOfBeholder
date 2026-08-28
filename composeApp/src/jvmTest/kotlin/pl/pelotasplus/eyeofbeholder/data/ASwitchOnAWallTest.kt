@@ -98,7 +98,7 @@ class ASwitchOnAWallTest {
     @Test
     fun `it will not shut a door with something standing in it`() {
         val opened = thrown(world())
-        val standing = level.monsterInstances.first().copy(block = doorway.asBlock)
+        val standing = level.monsterInstances.first().copy(location = doorway)
 
         assertTrue(
             thrown(opened, monsters = listOf(standing)).theDoor().isOpen,

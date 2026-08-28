@@ -36,25 +36,26 @@ data class ItemNames(private val names: List<String>) {
         if (known.isNotEmpty()) return known
 
         val value = item.value
+        val kind = types?.kindOf(item) ?: return looksLike
 
-        return when ((types?.get(item.type)?.extraProperties ?: 0) and KIND) {
+        return when (kind) {
             in NUMBER_IS_A_BONUS -> when {
                 value == 0 -> looksLike
                 value < 0 -> "$value Cursed $looksLike"
                 else -> "+$value $looksLike"
             }
 
-            MAGE_SCROLL -> named(MAGE_SCROLL_NAME, spellNames, value)
-            CLERIC_SCROLL -> named(CLERIC_SCROLL_NAME, spellNames, value)
-            POTION -> named(POTION_NAME, potionEffects, value)
-            RING -> named(RING_NAME, ringEffects, value)
+            ItemKind.MAGE_SCROLL -> named(MAGE_SCROLL_NAME, spellNames, value)
+            ItemKind.CLERIC_SCROLL -> named(CLERIC_SCROLL_NAME, spellNames, value)
+            ItemKind.POTION -> named(POTION_NAME, potionEffects, value)
+            ItemKind.RING -> named(RING_NAME, ringEffects, value)
 
             // One wand goes by its effect alone. The game keeps a word of its
             // own for that one — "Stick" — which the English text never
             // reaches, so whether it is meant to read "Stick of Starfire" or
             // just "Starfire" is not settled; this is the latter, which is
             // what the reverse-engineered engine produces.
-            WAND -> if (value == GOES_BY_ITS_EFFECT) {
+            ItemKind.WAND -> if (value == GOES_BY_ITS_EFFECT) {
                 wandEffects.getOrNull(value).orEmpty()
             } else {
                 named(WAND_NAME, wandEffects, value)
@@ -71,16 +72,13 @@ data class ItemNames(private val names: List<String>) {
     }
 
     private companion object {
-        const val KIND = 0x7F
-
         /** The kinds whose value is a plain bonus: weapons and armour. */
-        val NUMBER_IS_A_BONUS = 0..3
-
-        const val MAGE_SCROLL = 9
-        const val CLERIC_SCROLL = 10
-        const val POTION = 14
-        const val RING = 16
-        const val WAND = 18
+        val NUMBER_IS_A_BONUS = setOf(
+            ItemKind.ARMOUR,
+            ItemKind.SWUNG_BY_HAND,
+            ItemKind.THROWN,
+            ItemKind.A_LAUNCHER,
+        )
 
         /** The one wand called by what it does rather than by what it is. */
         const val GOES_BY_ITS_EFFECT = 5
@@ -142,6 +140,14 @@ data class ItemDefinitions(
 /** The lines the game writes along the bottom when things are moved about. */
 object ItemMessages {
     fun taken(name: String) = "$name taken."
+
+    /**
+     * What a monster's blow took, which nobody gets to pick up again. The
+     * champion is named and the thing is theirs, so the line is worded the way
+     * the game words it rather than as a thing that happened to an item.
+     */
+    fun ruined(whose: String, sex: Sex?, name: String) =
+        "$whose has lost ${if (sex == Sex.FEMALE) "her" else "his"} $name."
 
     const val WILL_NOT_GO_THERE = "You can't put that item there."
 

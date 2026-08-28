@@ -43,6 +43,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.THROWN_CPS
 import pl.pelotasplus.eyeofbeholder.data.model.HandRecovering
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterInstance
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterPose
+import pl.pelotasplus.eyeofbeholder.data.model.MonsterSlot
 import pl.pelotasplus.eyeofbeholder.data.model.NpcId
 import pl.pelotasplus.eyeofbeholder.data.model.NpcMeeting
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterPathing
@@ -218,7 +219,7 @@ class ViewConeDebugViewModel(
     private var tickNow = 0
 
     /** The last thing said about each monster's turn, so it is not said twice. */
-    private val lastTurnLine = mutableMapOf<Int, String>()
+    private val lastTurnLine = mutableMapOf<MonsterSlot, String>()
     private var stepsTaken = 0
     private var goingRight = true
 
@@ -1238,7 +1239,8 @@ class ViewConeDebugViewModel(
                     .coerceAtLeast(0)
 
                 var landed = emptyList<MonstersTurn.Struck>()
-                var swungAndMissed = emptyList<Int>()
+                var ruined = emptyList<MonstersTurn.Ruined>()
+                var swungAndMissed = emptyList<MonsterSlot>()
                 var roused = emptyList<MonsterInstance>()
                 var walked = emptyList<MonsterInstance>()
                 var took = emptyList<String>()
@@ -1267,6 +1269,7 @@ class ViewConeDebugViewModel(
                         if (landing.isNotEmpty()) {
                             val taken = monstersTurn().landed(world, landing)
                             landed = taken.struck
+                            ruined = taken.ruined
                             swungAndMissed = taken.missed
                             world = taken.world
                         }
@@ -1274,7 +1277,7 @@ class ViewConeDebugViewModel(
 
                     if (theirTurn.isNotEmpty()) {
                         val already = world.monsters.filter { it.striking != null }.map { it.index }
-                        val stood = world.monsters.associate { it.index to it.block }
+                        val stood = world.monsters.associate { it.index to it.location }
                         val was = world.monsters.associateBy { it.index }
 
                         theirTurn.forEach { group ->
@@ -1290,7 +1293,7 @@ class ViewConeDebugViewModel(
                             it.striking != null && it.index !in already
                         }
                         walked = world.monsters.filter {
-                            stood[it.index]?.let { at -> at != it.block } == true
+                            stood[it.index]?.let { at -> at != it.location } == true
                         }
 
                         took = world.monsters
@@ -1315,7 +1318,8 @@ class ViewConeDebugViewModel(
                 // stops with the fight, and a splat left when it did would
                 // stay on the face until something else started it.
                 if (landed.isNotEmpty()) letTheDamageFade()
-                swungAndMissed.forEach { slot -> Logger.d(TAG) { "$tickNow  m$slot misses" } }
+                ruined.forEach { sayWhatWasRuined(it) }
+                swungAndMissed.forEach { slot -> Logger.d(TAG) { "$tickNow  m${slot.value} misses" } }
                 took.forEach { line -> Logger.d(TAG) { line } }
 
                 roused.forEach { monster ->
@@ -1364,7 +1368,7 @@ class ViewConeDebugViewModel(
     ): String? {
         val did = when {
             after.striking != null && before.striking == null -> "SWINGS"
-            before.block != after.block -> "steps "
+            before.location != after.location -> "steps "
             before.direction != after.direction -> "turns "
             before.place != after.place -> "shifts"
             else -> "waits "
@@ -1401,8 +1405,24 @@ class ViewConeDebugViewModel(
         return debugging.monstersMayWalk.value && monsters.any { !it.standingBy }
     }
 
+    /**
+     * The line for a thing a monster's blow destroyed.
+     *
+     * Read after the world has lost it: a slot is emptied rather than the
+     * thing itself unmade, so it is still there to be named.
+     */
+    private fun sayWhatWasRuined(lost: MonstersTurn.Ruined) {
+        val world = _state.value.game
+        val names = itemNames ?: return
+        val item = world.item(lost.what) ?: return
+        val whose = world.championIn(lost.whose) ?: return
+
+        say(ItemMessages.ruined(whose.name, whose.sex, names.of(item, itemTypes)))
+    }
+
     private fun monstersTurn() = MonstersTurn(
         kinds = _state.value.inf?.subLevels?.getOrNull(_state.value.subLevel)?.monsters.orEmpty(),
+        itemTypes = itemTypes,
         stepping = stepping(),
     )
 

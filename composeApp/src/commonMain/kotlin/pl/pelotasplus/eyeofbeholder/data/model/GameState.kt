@@ -413,7 +413,7 @@ data class GameState(
     /** Every monster standing on [from] moved to [to], facing as it did. */
     fun monstersMovedFrom(from: Location, to: Location): GameState = copy(
         monsters = monsters.map {
-            if (it.x == from.x && it.y == from.y) it.copy(block = to.asBlock) else it
+            if (it.x == from.x && it.y == from.y) it.copy(location = to) else it
         },
     )
 
@@ -749,7 +749,7 @@ data class GameState(
         dice: Dice = Dice.random,
     ): GameState {
         val taken = monsters.map { it.index }.toSet()
-        val slot = (0 until MONSTER_SLOTS).firstOrNull { it !in taken }
+        val slot = (0 until MONSTER_SLOTS).map(::MonsterSlot).firstOrNull { it !in taken }
 
         return when {
             spawn.location == party.position -> this
@@ -771,11 +771,11 @@ data class GameState(
      * long way — nothing left in it is ever read, and the slot it frees is the
      * next slot a script's conjuring takes.
      */
-    fun monsterHurt(slot: Int, by: Int): GameState {
+    fun monsterHurt(slot: MonsterSlot, by: Damage): GameState {
         val hit = monsters.firstOrNull { it.index == slot } ?: return this
 
         if (!hit.couldBeHurt) {
-            Logger.w(TAG) { "Monster $slot was never rolled for, so nothing can hurt it" }
+            Logger.w(TAG) { "Monster ${slot.value} was never rolled for, so nothing can hurt it" }
             return this
         }
 
@@ -852,14 +852,14 @@ data class GameState(
         )
     }
 
-    fun championHurt(whose: PartySlot, by: Int): GameState {
-        if (by <= 0) return this
+    fun championHurt(whose: PartySlot, by: Damage): GameState {
+        if (!by.landed) return this
         val who = champions.getOrNull(whose.index) ?: return this
 
         return copy(
             champions = champions.toMutableList().also {
                 it[whose.index] = who.copy(
-                    hitPoints = who.hitPoints.copy(current = who.hitPoints.current - by),
+                    hitPoints = who.hitPoints.copy(current = who.hitPoints.current - by.points),
                 )
             },
             // A second blow before the first has faded shows its own number
@@ -870,7 +870,7 @@ data class GameState(
     }
 
     /** What is showing on that champion's portrait, if anything. */
-    fun damageShownOn(whose: PartySlot): Int? =
+    fun damageShownOn(whose: PartySlot): Damage? =
         showingDamage.firstOrNull { it.whose == whose }?.amount
 
     /** The world with every splat that much nearer to going. */
@@ -889,22 +889,22 @@ data class GameState(
      * ends the conversation for both. Anything already fighting, or minding
      * its own business for a reason of its own, is not touched.
      */
-    fun rousedBy(slot: Int) = copy(
+    fun rousedBy(slot: MonsterSlot) = copy(
         monsters = monsters.map {
             if (it.index == slot || it.standingBy) it.copy(provoked = true) else it
         },
     )
 
     /** The world with those monsters a frame further through their swing. */
-    fun monstersStriking(slots: List<Int>) = copy(
+    fun monstersStriking(slots: List<MonsterSlot>) = copy(
         monsters = monsters.map { if (it.index in slots) it.swingingOn() else it },
     )
 
     /** The world with one monster standing somewhere else, facing [way]. */
-    fun monsterMoved(slot: Int, to: Location, way: Direction, place: SquarePlace) = copy(
+    fun monsterMoved(slot: MonsterSlot, to: Location, way: Direction, place: SquarePlace) = copy(
         monsters = monsters.map {
             if (it.index == slot) {
-                it.copy(block = to.asBlock, direction = way, place = place)
+                it.copy(location = to, direction = way, place = place)
             } else {
                 it
             }
@@ -912,17 +912,17 @@ data class GameState(
     )
 
     /** The world with one monster further round its own loop of looking about. */
-    fun monsterStrayed(slot: Int, straying: Straying) = copy(
+    fun monsterStrayed(slot: MonsterSlot, straying: Straying) = copy(
         monsters = monsters.map { if (it.index == slot) it.copy(straying = straying) else it },
     )
 
     /** The world with one monster standing somewhere else on its own square. */
-    fun monsterShifted(slot: Int, place: SquarePlace) = copy(
+    fun monsterShifted(slot: MonsterSlot, place: SquarePlace) = copy(
         monsters = monsters.map { if (it.index == slot) it.copy(place = place) else it },
     )
 
     /** The same for a squareful of them, standing aside for one arriving. */
-    fun monstersShifted(places: Map<Int, SquarePlace>): GameState {
+    fun monstersShifted(places: Map<MonsterSlot, SquarePlace>): GameState {
         if (places.isEmpty()) return this
 
         return copy(
@@ -938,14 +938,14 @@ data class GameState(
      * Turning is all it does with the turn. It cannot also swing, because
      * swinging is only ever at the square it was already facing.
      */
-    fun monsterTurned(slot: Int, way: Direction) = copy(
+    fun monsterTurned(slot: MonsterSlot, way: Direction) = copy(
         monsters = monsters.map {
             if (it.index == slot) it.copy(direction = way) else it
         },
     )
 
     /** The world with those monsters turned to face where they are told. */
-    fun monstersTurnedToFace(ways: List<Pair<Int, Direction>>): GameState {
+    fun monstersTurnedToFace(ways: List<Pair<MonsterSlot, Direction>>): GameState {
         if (ways.isEmpty()) return this
         val turning = ways.toMap()
 

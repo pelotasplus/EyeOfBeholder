@@ -44,7 +44,7 @@ class PlayField(
         /** What that hand's last swing came to, while the slot is still saying. */
         reporting: (PartySlot, CarrySlot) -> WhatTheBlowCameTo? = { _, _ -> null },
         /** What that champion has just been hit for, while it is still showing. */
-        hurt: (PartySlot) -> Int? = { null },
+        hurt: (PartySlot) -> Damage? = { null },
     ): PlayField {
         // Something held up over the view is read off a champion's own page,
         // that being the one place a thing being carried can be clicked, so the
@@ -403,7 +403,7 @@ class PlayField(
         carrying: (ItemIndex) -> Item?,
         recovering: (PartySlot, CarrySlot) -> Boolean,
         reporting: (PartySlot, CarrySlot) -> WhatTheBlowCameTo?,
-        hurt: (PartySlot) -> Int?,
+        hurt: (PartySlot) -> Damage?,
     ) {
         championBoxes.forEachIndexed { slot, box ->
             val champion = party.getOrNull(slot)?.takeIf { it.inTheParty } ?: return@forEachIndexed
@@ -438,7 +438,7 @@ class PlayField(
         carrying: (ItemIndex) -> Item?,
         recovering: (Int) -> Boolean,
         reporting: (Int) -> WhatTheBlowCameTo?,
-        hurt: Int?,
+        hurt: Damage?,
     ) {
         portraits?.let { sheet ->
             val face = faceOf(champion.portrait, sheet, metPortraits) ?: return@let
@@ -531,7 +531,7 @@ class PlayField(
      * The one thing that says they were hit at all. Hit points move too, but a
      * bar creeping down is not something anybody notices mid-fight.
      */
-    private fun drawTheDamage(damage: Int, box: ChampionBox) {
+    private fun drawTheDamage(damage: Damage, box: ChampionBox) {
         val font = font ?: return
         val thrown = thrown ?: return
 
@@ -542,7 +542,7 @@ class PlayField(
             top = box.splatTop,
         )
 
-        val shown = "$damage"
+        val shown = "${damage.points}"
         write(
             text = shown,
             font = font,

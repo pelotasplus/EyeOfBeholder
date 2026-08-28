@@ -9,6 +9,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.Champion
 import pl.pelotasplus.eyeofbeholder.data.model.ChampionFlags
 import pl.pelotasplus.eyeofbeholder.data.model.ClassLevel
 import pl.pelotasplus.eyeofbeholder.data.model.XpPoints
+import pl.pelotasplus.eyeofbeholder.data.model.Damage
 import pl.pelotasplus.eyeofbeholder.data.model.DamageShown
 import pl.pelotasplus.eyeofbeholder.data.model.Dice
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
@@ -19,6 +20,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.Inf
 import pl.pelotasplus.eyeofbeholder.data.model.ItemIndex
 import pl.pelotasplus.eyeofbeholder.data.model.Location
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterPose
+import pl.pelotasplus.eyeofbeholder.data.model.MonsterSlot
 import pl.pelotasplus.eyeofbeholder.data.model.MonstersTurn
 import pl.pelotasplus.eyeofbeholder.data.model.PartySlot
 import pl.pelotasplus.eyeofbeholder.data.model.PartyState
@@ -88,7 +90,7 @@ class MonstersStrikingBackTest {
         maz = level.subLevels[0].maz,
         kinds = kinds,
         dice = everyDieHighest,
-    ).rousedBy(16)
+    ).rousedBy(MonsterSlot(16))
 
     private val everyDieHighest = Dice { times, pips, modifier -> times * pips + modifier }
     private val everyDieLowest = Dice { times, _, modifier -> times + modifier }
@@ -123,7 +125,7 @@ class MonstersStrikingBackTest {
     fun `each roused monster in reach strikes once`() {
         val taken = swungThrough(world())
 
-        assertEquals(listOf(16, 17), taken.struck.map { it.monster }.sorted())
+        assertEquals(listOf(16, 17), taken.struck.map { it.monster.value }.sorted())
     }
 
     /**
@@ -135,9 +137,10 @@ class MonstersStrikingBackTest {
         val before = world()
         val taken = swungThrough(before)
 
-        taken.struck.forEach { assertEquals(16, it.damage, "2d8 at its worst is 16") }
+        taken.struck.forEach { assertEquals(Damage(16), it.damage, "2d8 at its worst is 16") }
 
-        val hurt = taken.struck.groupBy { it.at }.mapValues { (_, blows) -> blows.sumOf { it.damage } }
+        val hurt = taken.struck.groupBy { it.at }
+            .mapValues { (_, blows) -> blows.sumOf { it.damage.points } }
         hurt.forEach { (whose, damage) ->
             assertEquals(
                 before.championIn(whose)!!.hitPoints.current - damage,
@@ -155,7 +158,7 @@ class MonstersStrikingBackTest {
     fun `a natural twenty lands however good the armour`() {
         val armoured = world(List(6) { champion(armour = -8) })
 
-        assertTrue(swungThrough(armoured).struck.all { it.damage > 0 })
+        assertTrue(swungThrough(armoured).struck.all { it.damage.landed })
         assertEquals(emptyList(), swungThrough(armoured, everyDieLowest).struck)
     }
 
@@ -171,7 +174,7 @@ class MonstersStrikingBackTest {
         val taken = swungThrough(armoured, everyDieLowest)
 
         assertEquals(emptyList(), taken.struck)
-        assertEquals(listOf(16, 17), taken.missed.sorted())
+        assertEquals(listOf(16, 17), taken.missed.map { it.value }.sorted())
 
         assertTrue(
             taken.world.champions.all { it.hitPoints.current == it.hitPoints.max },
@@ -314,7 +317,11 @@ class MonstersStrikingBackTest {
         val midSwing = world().let { w ->
             w.copy(
                 monsters = w.monsters.map {
-                    if (it.index == 16) it.copy(striking = MonsterPose.ATTACK_A) else it.copy(striking = null)
+                    if (it.index == MonsterSlot(16)) {
+                        it.copy(striking = MonsterPose.ATTACK_A)
+                    } else {
+                        it.copy(striking = null)
+                    }
                 },
             )
         }
@@ -360,9 +367,11 @@ class MonstersStrikingBackTest {
     /** A second blow before the first has gone shows its own number, not the sum. */
     @Test
     fun `a fresh blow replaces the one still showing`() {
-        val world = world().championHurt(PartySlot(0), 5).championHurt(PartySlot(0), 3)
+        val world = world()
+            .championHurt(PartySlot(0), Damage(5))
+            .championHurt(PartySlot(0), Damage(3))
 
-        assertEquals(3, world.damageShownOn(PartySlot(0)))
+        assertEquals(Damage(3), world.damageShownOn(PartySlot(0)))
         assertEquals(1, world.showingDamage.size)
     }
 

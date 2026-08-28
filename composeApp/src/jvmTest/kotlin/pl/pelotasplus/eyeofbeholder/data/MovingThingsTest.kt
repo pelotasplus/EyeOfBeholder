@@ -7,6 +7,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.GameState
 import pl.pelotasplus.eyeofbeholder.data.model.Location
 import pl.pelotasplus.eyeofbeholder.data.model.ItemTypeId
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterInstance
+import pl.pelotasplus.eyeofbeholder.data.model.MonsterSlot
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterTypeId
 import pl.pelotasplus.eyeofbeholder.data.model.PartyState
 import pl.pelotasplus.eyeofbeholder.data.model.SquarePlace
@@ -73,7 +74,7 @@ class MovingThingsTest {
 
     /** A monster carrying [pocket] as its fixed thing and [weapon] as its chance one. */
     private fun monsterOn(at: Location, pocket: Int = 0, weapon: Int = 0) = MonsterInstance(
-        index = 1, unit = 0, block = at.asBlock, place = SquarePlace.NORTH_WEST,
+        index = MonsterSlot(1), unit = 0, location = at, place = SquarePlace.NORTH_WEST,
         direction = Direction.NORTH, type = MonsterTypeId(0), gfxIndex = 0,
         mode = 0, pause = 0, weapon = weapon, pocketItem = pocket,
     )

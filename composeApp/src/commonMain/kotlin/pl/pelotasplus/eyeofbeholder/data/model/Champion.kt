@@ -338,6 +338,16 @@ value class PortraitId(val value: Int)
 @Serializable
 data class HitPoints(val current: Int, val max: Int)
 
+/**
+ * Hit points taken off by one blow, which champions and monsters lose alike.
+ * Nothing heals by dealing a negative one: none is none.
+ */
+@Serializable
+@JvmInline
+value class Damage(val points: Int) {
+    val landed: Boolean get() = points > 0
+}
+
 /** Lower is better, which is why it is not an Int. */
 @JvmInline
 @Serializable

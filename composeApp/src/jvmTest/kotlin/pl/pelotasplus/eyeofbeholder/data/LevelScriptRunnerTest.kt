@@ -6,6 +6,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.GameState
 import pl.pelotasplus.eyeofbeholder.data.model.MessageId
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterInstance
+import pl.pelotasplus.eyeofbeholder.data.model.MonsterSlot
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterTypeId
 import pl.pelotasplus.eyeofbeholder.data.model.LevelScriptRunner
 import pl.pelotasplus.eyeofbeholder.data.model.Location
@@ -720,14 +721,15 @@ class LevelScriptRunnerTest {
 
     @Test
     fun `a spawn takes the lowest free slot, which is what decides its colors`() {
-        val alreadyThere = MonsterInstance.spawnedBy(spawnAt(Location(1, 1)), slot = 0)
+        val alreadyThere =
+            MonsterInstance.spawnedBy(spawnAt(Location(1, 1)), slot = MonsterSlot(0))
 
         val world = runFully(
             0 to spawnAt(Location(5, 6)),
             world = party().copy(monsters = listOf(alreadyThere)),
         ).state
 
-        assertEquals(listOf(0, 1), world.monsters.map { it.index })
+        assertEquals(listOf(MonsterSlot(0), MonsterSlot(1)), world.monsters.map { it.index })
     }
 
     @Test

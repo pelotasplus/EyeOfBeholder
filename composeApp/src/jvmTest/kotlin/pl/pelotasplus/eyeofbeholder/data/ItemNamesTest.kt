@@ -2,9 +2,11 @@ package pl.pelotasplus.eyeofbeholder.data
 
 import kotlinx.coroutines.runBlocking
 import pl.pelotasplus.eyeofbeholder.data.model.Item
+import pl.pelotasplus.eyeofbeholder.data.model.ItemKind
 import pl.pelotasplus.eyeofbeholder.data.model.ItemMessages
 import pl.pelotasplus.eyeofbeholder.data.model.ItemNames
 import pl.pelotasplus.eyeofbeholder.data.model.ItemTypes
+import pl.pelotasplus.eyeofbeholder.data.model.Sex
 import pl.pelotasplus.eyeofbeholder.data.repository.ItemTypesRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.ItemsRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.OriginalSaveRepositoryImpl
@@ -101,17 +103,17 @@ class ItemNamesTest {
     fun `a scroll is named by the spell written on it`() {
         assertEquals(
             "Mage Scroll of fireball",
-            names.of(dungeonOfKind(MAGE_SCROLL).copy(value = 12), types),
+            names.of(dungeonOfKind(ItemKind.MAGE_SCROLL).copy(value = 12), types),
         )
         assertEquals(
             "Cleric Scroll of cure light wounds",
-            names.of(dungeonOfKind(CLERIC_SCROLL).copy(value = 34), types),
+            names.of(dungeonOfKind(ItemKind.CLERIC_SCROLL).copy(value = 34), types),
         )
     }
 
     /** The first thing in the dungeon of a given kind, taken as identified. */
-    private fun dungeonOfKind(kind: Int): Item = dungeon.items
-        .first { (types[it.type]?.extraProperties ?: 0) and KIND == kind }
+    private fun dungeonOfKind(kind: ItemKind): Item = dungeon.items
+        .first { types.kindOf(it) == kind }
         .let { it.copy(flags = it.flags or IDENTIFIED) }
 
     /** Whatever the name table has, an unidentified thing goes by its look. */
@@ -128,6 +130,15 @@ class ItemNamesTest {
         .first { names[it.nameUnidentified] == name }
         .let { it.copy(flags = it.flags or IDENTIFIED) }
 
+    /** A thing a blow took is reported as the champion's loss, and by name. */
+    @Test
+    fun `what a blow destroyed says whose it was`() {
+        val sword = names.of(dungeonNamed("Long Sword"), types)
+
+        assertEquals("Anselm has lost his Long Sword.", ItemMessages.ruined("Anselm", Sex.MALE, sword))
+        assertEquals("Ileria has lost her Long Sword.", ItemMessages.ruined("Ileria", Sex.FEMALE, sword))
+    }
+
     @Test
     fun `what is picked up says so`() {
         assertEquals("Lock picks taken.", ItemMessages.taken(names.of(carried(1, 1), types)))
@@ -135,10 +146,5 @@ class ItemNamesTest {
 
     private companion object {
         const val IDENTIFIED = 0x40
-
-        /** The low seven bits of an item type's extra properties. */
-        const val KIND = 0x7F
-        const val MAGE_SCROLL = 9
-        const val CLERIC_SCROLL = 10
     }
 }

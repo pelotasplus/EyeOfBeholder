@@ -10,6 +10,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.HitPoints
 import pl.pelotasplus.eyeofbeholder.data.model.Inf
 import pl.pelotasplus.eyeofbeholder.data.model.Location
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterInstance
+import pl.pelotasplus.eyeofbeholder.data.model.MonsterSlot
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterStepping
 import pl.pelotasplus.eyeofbeholder.data.model.PartySlot
 import pl.pelotasplus.eyeofbeholder.data.model.PartyState
@@ -92,7 +93,9 @@ class RestingTest {
         return placed.copy(
             party = PartyState(at, Direction.NORTH),
             champions = party.toList(),
-            monsters = monstersOn.mapIndexed { i, on -> one.copy(index = i, block = on.asBlock) },
+            monsters = monstersOn.mapIndexed { i, on ->
+                one.copy(index = MonsterSlot(i), location = on)
+            },
             preventRest = forbidden,
         )
     }

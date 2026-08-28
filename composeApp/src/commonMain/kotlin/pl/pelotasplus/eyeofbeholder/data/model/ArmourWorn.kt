@@ -22,7 +22,7 @@ fun ItemTypes.armourClassOf(champion: Champion, items: List<Item>): ArmorClass {
         val kind = this[item.type] ?: return@forEach
 
         if (!usableBy(champion, item)) return@forEach
-        if (kind.extraProperties and WHAT_KIND_OF_THING != 0) return@forEach
+        if (kind.extraProperties.kind != ItemKind.ARMOUR) return@forEach
         if (slot.isAHand && item.type.value !in SHIELDS) return@forEach
 
         armour += kind.armorClass
@@ -34,7 +34,7 @@ fun ItemTypes.armourClassOf(champion: Champion, items: List<Item>): ArmorClass {
     if ((champion.worn(CarrySlot.WORN_ARMOUR, items)?.value ?: 0) == 0) {
         armour -= CarrySlot.RINGS
             .mapNotNull { champion.worn(it, items) }
-            .filter { (this[it.type]?.extraProperties ?: 0) and WHAT_KIND_OF_THING == 0 }
+            .filter { kindOf(it) == ItemKind.ARMOUR }
             .maxOfOrNull { it.value }
             ?: 0
     }
@@ -62,14 +62,6 @@ private val DEXTERITY = listOf(
 
 /** A champion in nothing at all, standing still. */
 private const val UNARMOURED = 10
-
-/**
- * The low bits of an item's extra properties say what kind of thing it is,
- * and armour is the kind that is nothing else. Anything that answers to one —
- * a weapon, a potion, something to read — is not worn for protection whatever
- * else it claims about itself.
- */
-private const val WHAT_KIND_OF_THING = 0x7F
 
 /** The two kinds of thing a hand can hold that turn a blow. */
 private val SHIELDS = listOf(27, 57)

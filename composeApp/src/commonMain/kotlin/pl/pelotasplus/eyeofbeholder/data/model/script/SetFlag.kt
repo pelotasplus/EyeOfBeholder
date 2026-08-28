@@ -2,6 +2,7 @@ package pl.pelotasplus.eyeofbeholder.data.model.script
 
 import pl.pelotasplus.eyeofbeholder.data.ByteReader
 import pl.pelotasplus.eyeofbeholder.data.model.FlagBit
+import pl.pelotasplus.eyeofbeholder.data.model.MonsterSlot
 
 /**
  * Sets a game state flag. Opcode 0xF7.
@@ -23,7 +24,7 @@ sealed class SetFlag : ScriptToken {
     data class LevelFlag(val bit: FlagBit) : SetFlag()         // type = -17 (0xEF)
     data class GlobalFlag(val bit: FlagBit) : SetFlag()        // type = -16 (0xF0)
     data class MonsterFlag(
-        val monsterId: Int,
+        val monsterId: MonsterSlot,
         val bit: FlagBit
     ) : SetFlag() {                                            // type = -13 (0xF3)
         companion object {
@@ -48,7 +49,7 @@ sealed class SetFlag : ScriptToken {
                 -17 -> LevelFlag(FlagBit(reader.readU8()))     // 0xEF - level flag
                 -16 -> GlobalFlag(FlagBit(reader.readU8()))    // 0xF0 - global flag
                 -13 -> MonsterFlag(                            // 0xF3 - monster flag
-                    monsterId = reader.readU8(),
+                    monsterId = MonsterSlot(reader.readU8()),
                     bit = FlagBit(reader.readU8())
                 )
                 -28 -> DialogResult                            // 0xE4 - event/dialog

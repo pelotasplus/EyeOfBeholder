@@ -3,6 +3,7 @@ package pl.pelotasplus.eyeofbeholder.data.model
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import pl.pelotasplus.eyeofbeholder.data.model.script.CreateMonster
+import kotlin.jvm.JvmInline
 
 /**
  * One live monster placed on a level, parsed from the INF file's Block B
@@ -17,7 +18,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.script.CreateMonster
  *   ones the file lists is whichever the party entered by. The same record is
  *   therefore a different creature in each — level 3's type 0 is a gelatinous
  *   cube read by its first sublevel and a worker ant by its second.
- * @property block Packed maze square: x = block and 0x1F, y = block shr 5
+ * @property location Which square it stands on
  * @property direction Which way the monster faces
  * @property type Index into [SubLevel.monsters] (the species' stats)
  * @property gfxIndex Index into [SubLevel.monsterGfx] (which sprite sheet)
@@ -31,9 +32,11 @@ import pl.pelotasplus.eyeofbeholder.data.model.script.CreateMonster
  */
 @Serializable
 data class MonsterInstance(
-    val index: Int,
+    val index: MonsterSlot,
     val unit: Int,
-    val block: Int,
+    @SerialName("block")
+    @Serializable(with = LocationAsAPackedBlock::class)
+    val location: Location,
     @SerialName("pos")
     @Serializable(with = SquarePlaceAsTheGameWritesIt::class)
     val place: SquarePlace,
@@ -71,8 +74,8 @@ data class MonsterInstance(
 ) {
     /** What it does with a turn nobody has provoked it into taking. */
     val whatItDoes: MonsterMode get() = MonsterMode.of(mode)
-    val x: Int get() = block and 0x1F
-    val y: Int get() = block shr 5
+    val x: Int get() = location.x
+    val y: Int get() = location.y
 
     /**
      * Which of the four groups takes its turn with this one.
@@ -86,7 +89,7 @@ data class MonsterInstance(
     val turnGroup: Int get() = unit and 3
 
     /** Which of its sheet's color schemes this monster is painted in. */
-    val colors: MonsterColors get() = MonsterColors.forSlot(index)
+    val colors: MonsterColors get() = MonsterColors.forSlot(index.value)
 
     /**
      * Whether anybody has said how much this one can take. One that has not
@@ -111,8 +114,8 @@ data class MonsterInstance(
      * The same monster [by] hit points worse off, showing it, and no longer
      * willing to be talked to.
      */
-    fun hurt(by: Int) = copy(
-        hitPoints = hitPoints.copy(current = hitPoints.current - by),
+    fun hurt(by: Damage) = copy(
+        hitPoints = hitPoints.copy(current = hitPoints.current - by.points),
         struck = true,
         provoked = true,
     )
@@ -213,11 +216,11 @@ data class MonsterInstance(
          * The monster a script's [CreateMonster] asks for, in a free [slot],
          * belonging to the sublevel it was conjured in.
          */
-        fun spawnedBy(spawn: CreateMonster, slot: Int, subLevel: Int = 0) = MonsterInstance(
+        fun spawnedBy(spawn: CreateMonster, slot: MonsterSlot, subLevel: Int = 0) = MonsterInstance(
             subLevel = subLevel,
             index = slot,
             unit = spawn.unit,
-            block = (spawn.location.y shl 5) or spawn.location.x,
+            location = spawn.location,
             place = spawn.place,
             direction = spawn.direction,
             type = spawn.type,
@@ -242,5 +245,13 @@ data class MonsterInstance(
  */
 fun MonsterInstance.named(on: SubLevel): String {
     val sprite = on.monsterGfx.getOrNull(gfxIndex)?.name ?: "no sprite $gfxIndex"
-    return "$sprite kind ${type.value} m$index on ${x}x$y"
+    return "$sprite kind ${type.value} m${index.value} on ${x}x$y"
 }
+
+/**
+ * Which of the world's monster records one is. The file numbers them and a
+ * save keeps the numbers, so a slot outlives the monster standing in it.
+ */
+@Serializable
+@JvmInline
+value class MonsterSlot(val value: Int)

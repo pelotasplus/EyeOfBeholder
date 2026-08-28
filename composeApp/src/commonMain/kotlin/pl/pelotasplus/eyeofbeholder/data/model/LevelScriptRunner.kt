@@ -920,8 +920,8 @@ class LevelScriptRunner(
                 is Conditional.OnBash.ItemExtraProperties -> push(
                     ConditionValue.of(
                         state.item(used ?: ItemIndex(ItemIndex.NOTHING))
-                            ?.let { itemTypes?.get(it.type)?.extraProperties }
-                            ?.and(WHAT_KIND_OF_THING)
+                            ?.let { itemTypes?.kindOf(it) }
+                            ?.value
                             ?: 0,
                     ),
                 )
@@ -1090,13 +1090,6 @@ class LevelScriptRunner(
 
         const val NOT_WRITTEN = "!!! NOT WRITTEN:"
         const val BANNER = "!!! ============================================"
-
-        /**
-         * The low bits of an item's extra properties, which say what kind of
-         * thing it is. A script asking a wall what was used on it is asking
-         * this: one is a weapon swung by hand.
-         */
-        private const val WHAT_KIND_OF_THING = 0x7F
 
         /** How long a door rests at each of the positions it slides through. */
         val DOOR_STEP = Ticks(5)

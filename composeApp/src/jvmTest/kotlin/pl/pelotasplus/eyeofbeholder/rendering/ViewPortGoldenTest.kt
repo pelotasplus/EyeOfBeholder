@@ -9,6 +9,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.Champion
 import pl.pelotasplus.eyeofbeholder.data.model.CharacterSheet
 import pl.pelotasplus.eyeofbeholder.data.model.OpenSheet
 import pl.pelotasplus.eyeofbeholder.data.model.Preferences
+import pl.pelotasplus.eyeofbeholder.data.model.Damage
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.GameState
 import pl.pelotasplus.eyeofbeholder.data.model.Inf
@@ -17,6 +18,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.ItemIndex
 import pl.pelotasplus.eyeofbeholder.data.repository.ItemTypesRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.model.Maz
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterInstance
+import pl.pelotasplus.eyeofbeholder.data.model.MonsterSlot
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterPose
 import pl.pelotasplus.eyeofbeholder.data.model.NpcId
 import pl.pelotasplus.eyeofbeholder.data.model.NpcMeeting
@@ -290,7 +292,7 @@ class ViewPortGoldenTest {
 
                 monsters.map {
                     if (it.index == joined.index) it.copy(place = SquarePlace.NORTH_WEST) else it
-                } + joined.copy(index = 29, place = SquarePlace.SOUTH_EAST)
+                } + joined.copy(index = MonsterSlot(29), place = SquarePlace.SOUTH_EAST)
             },
         )
 
@@ -938,7 +940,7 @@ class ViewPortGoldenTest {
             partyOver(
                 level = "LEVEL4.INF", x = 15, y = 11,
                 reported = mapOf(
-                    (0 to 0) to WhatTheBlowCameTo.Damage(7),
+                    (0 to 0) to WhatTheBlowCameTo.TookOff(Damage(7)),
                     (1 to 0) to WhatTheBlowCameTo.Missed,
                     (2 to 0) to WhatTheBlowCameTo.CannotReach,
                 ),
@@ -974,7 +976,7 @@ class ViewPortGoldenTest {
             "party-panel-splattered",
             partyOver(
                 level = "LEVEL4.INF", x = 15, y = 11,
-                splattered = mapOf(0 to 3, 1 to 12, 2 to 127),
+                splattered = mapOf(0 to Damage(3), 1 to Damage(12), 2 to Damage(127)),
             ),
         )
 
@@ -1161,7 +1163,7 @@ class ViewPortGoldenTest {
         /** And what a hand's swing came to, while its slot is still saying. */
         reported: Map<Pair<Int, Int>, WhatTheBlowCameTo> = emptyMap(),
         /** What a champion has just been hit for, while it still shows. */
-        splattered: Map<Int, Int> = emptyMap(),
+        splattered: Map<Int, Damage> = emptyMap(),
         /** Somebody met in the dungeon, and which place they take. */
         joinedBy: Champion? = null,
         joiningAt: Int = 5,

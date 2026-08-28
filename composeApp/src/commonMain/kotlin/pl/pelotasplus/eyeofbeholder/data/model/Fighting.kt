@@ -94,12 +94,12 @@ class Fighting(
      * is added and the whole thing is floored at nothing, so a weak champion
      * with a small knife does no healing.
      */
-    private fun damageOf(weapon: Item?, champion: Champion, kind: MonsterProperty?): Int {
+    private fun damageOf(weapon: Item?, champion: Champion, kind: MonsterProperty?): Damage {
         val rolled = weapon?.let { itemTypes[it.type]?.damageAgainst(kind, dice) }
             ?: dice.roll(1, 2, 0)
 
         val plus = weapon?.value ?: 0
-        return (rolled + champion.abilities.strengthDamageBonus + plus).coerceAtLeast(0)
+        return Damage((rolled + champion.abilities.strengthDamageBonus + plus).coerceAtLeast(0))
     }
 
     /**

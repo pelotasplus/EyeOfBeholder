@@ -15,7 +15,7 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class DamageShown(
     val whose: PartySlot,
-    val amount: Int,
+    val amount: Damage,
     val ticksLeft: Int,
 ) {
     companion object {

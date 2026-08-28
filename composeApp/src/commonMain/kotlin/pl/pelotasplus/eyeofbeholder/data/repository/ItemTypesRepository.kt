@@ -2,6 +2,7 @@ package pl.pelotasplus.eyeofbeholder.data.repository
 
 import co.touchlab.kermit.Logger
 import pl.pelotasplus.eyeofbeholder.data.ByteReader
+import pl.pelotasplus.eyeofbeholder.data.model.ItemProperties
 import pl.pelotasplus.eyeofbeholder.data.model.ItemType
 import pl.pelotasplus.eyeofbeholder.data.model.ItemTypes
 
@@ -49,7 +50,7 @@ class ItemTypesRepositoryImpl(
                 dmgNumPipsL = reader.readI8(),
                 dmgIncL = reader.readI8(),
                 unk1 = reader.readU8(),
-                extraProperties = reader.readU16LE(),
+                extraProperties = ItemProperties(reader.readU16LE()),
             )
         }
 

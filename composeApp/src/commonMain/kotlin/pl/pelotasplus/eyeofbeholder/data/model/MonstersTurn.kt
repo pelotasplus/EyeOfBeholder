@@ -11,6 +11,10 @@ package pl.pelotasplus.eyeofbeholder.data.model
 class MonstersTurn(
     private val kinds: List<MonsterProperty>,
     private val dice: Dice = Dice.random,
+    // What a champion carries is only perishable by its kind, so nothing is
+    // ruined by a monster on a turn taken without the table that says which
+    // kinds those are.
+    private val itemTypes: ItemTypes? = null,
     // Shifting feet to reach the party is not walking across the floor, so a
     // monster does it whether or not the floor lets it walk. Kept apart from
     // [MonsterPathing] for that reason.
@@ -27,11 +31,20 @@ class MonstersTurn(
     data class Taken(
         val struck: List<Struck>,
         val world: GameState,
-        val missed: List<Int> = emptyList(),
+        val missed: List<MonsterSlot> = emptyList(),
+        val ruined: List<Ruined> = emptyList(),
     )
 
     /** One monster's blow at one champion. */
-    data class Struck(val monster: Int, val at: PartySlot, val damage: Int, val heard: TrackIndex?)
+    data class Struck(
+        val monster: MonsterSlot,
+        val at: PartySlot,
+        val damage: Damage,
+        val heard: TrackIndex?,
+    )
+
+    /** Something a blow destroyed, which is gone rather than dropped. */
+    data class Ruined(val whose: PartySlot, val what: ItemIndex)
 
     /**
      * Every monster that can reach the party starts its swing.
@@ -249,24 +262,71 @@ class MonstersTurn(
      * Whom each reaches is worked out now rather than when the arm went back,
      * so a party who have turned on the spot are hit as they now stand.
      */
-    fun landed(world: GameState, byWhom: List<Int>): Taken {
+    fun landed(world: GameState, byWhom: List<MonsterSlot>): Taken {
         var after = world
         val struck = mutableListOf<Struck>()
-        val missed = mutableListOf<Int>()
+        val missed = mutableListOf<MonsterSlot>()
+        val ruined = mutableListOf<Ruined>()
 
         world.monsters.filter { it.index in byWhom }.forEach { monster ->
             val blow = strike(after, monster) ?: return@forEach
 
-            if (blow.damage <= 0) {
+            if (!blow.damage.landed) {
                 missed += monster.index
                 return@forEach
             }
 
             struck += blow
+
+            // What it ruins, it ruins on the way in: a champion the same blow
+            // finishes still loses it.
+            ruins(after, monster, blow.at)?.let {
+                after = it.first
+                ruined += it.second
+            }
+
             after = after.championHurt(blow.at, blow.damage)
         }
 
-        return Taken(struck, after, missed)
+        return Taken(struck, after, missed, ruined)
+    }
+
+    /**
+     * What one landed blow destroys of the champion's, and the world without
+     * it, or null where nothing goes.
+     *
+     * Three blows in four of a monster that ruins things: the fourth spares
+     * whatever it would have taken. Where it starts looking is random and it
+     * takes the first perishable thing from there, so nothing about a slot
+     * makes it safer than any other — a sword in the hand goes as readily as
+     * one at the bottom of the pack.
+     */
+    private fun ruins(
+        world: GameState,
+        monster: MonsterInstance,
+        whose: PartySlot,
+    ): Pair<GameState, Ruined>? {
+        val kind = kinds.firstOrNull { it.id == monster.type.value } ?: return null
+        if (!kind.ruinsSomethingItHits) return null
+        val types = itemTypes ?: return null
+        if (dice.roll(1, IN_FOUR, 0) == IN_FOUR) return null
+
+        val champion = world.championIn(whose) ?: return null
+        val from = dice.roll(1, CarrySlot.ALL_OF_THEM, -1)
+
+        repeat(CarrySlot.ALL_OF_THEM) { step ->
+            val slot = CarrySlot((from + step) % CarrySlot.ALL_OF_THEM)
+            val held = champion.carrying.getOrNull(slot.index) ?: return@repeat
+            val item = world.item(held) ?: return@repeat
+            if (!types.perishes(item)) return@repeat
+
+            // Told what the champion now carry, so that armour eaten off them
+            // is armour they no longer have the benefit of.
+            val without = world.carrying(whose, slot, ItemIndex(ItemIndex.NOTHING), types)
+            return without to Ruined(whose, held)
+        }
+
+        return null
     }
 
     /** Whether its arm gets to the party, which its kind's size has a say in. */
@@ -295,7 +355,12 @@ class MonstersTurn(
 
         // A monster is heard swinging whether or not it connects, which is the
         // one sound a monster has ever been given.
-        return Struck(monster.index, whom, damage, TrackIndex(kind.sound1).takeIf { kind.sound1 > 0 })
+        return Struck(
+            monster = monster.index,
+            at = whom,
+            damage = Damage(damage),
+            heard = TrackIndex(kind.sound1).takeIf { kind.sound1 > 0 },
+        )
     }
 
     /**
@@ -310,6 +375,9 @@ class MonstersTurn(
     private companion object {
         /** A twenty lands on anything, however well armoured. */
         const val NATURALLY_ALWAYS = 20
+
+        /** How often a monster that ruins things does: three of these. */
+        const val IN_FOUR = 4
     }
 }
 

@@ -3,6 +3,7 @@ package pl.pelotasplus.eyeofbeholder.data.model
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import pl.pelotasplus.eyeofbeholder.data.ByteReader
+import kotlin.jvm.JvmInline
 
 /**
  * One item, wherever it happens to be: lying somewhere on a square, or in one
@@ -164,7 +165,7 @@ data class ItemTypes(private val types: List<ItemType>) {
      * numbered from one. Below zero it is a map instead.
      */
     fun whatIsOn(item: Item): OnAParchment? {
-        if (kindOf(item) != SOMETHING_TO_READ) return null
+        if (kindOf(item) != ItemKind.SOMETHING_TO_READ) return null
 
         return if (item.value >= 0) {
             OnAParchment.Writing(DialogueTextId(item.value + 1))
@@ -177,16 +178,25 @@ data class ItemTypes(private val types: List<ItemType>) {
      * Whether this is swung rather than thrown or fired. A thrown or fired one
      * leaves the hand and is a piece of its own; nothing launches anything yet.
      */
-    fun isSwungByHand(item: Item): Boolean = kindOf(item) == SWUNG_BY_HAND
+    fun isSwungByHand(item: Item): Boolean = kindOf(item) == ItemKind.SWUNG_BY_HAND
 
     /** Whether this is something a champion eats — rations, however fresh. */
     fun isEaten(item: Item): Boolean = item.type == RATIONS
 
     /** Which horn this is, if it is one: a horn is blown rather than swung. */
     fun hornBlown(item: Item): Horn? =
-        if (kindOf(item) != A_HORN) null else Horn.of(item.value)
+        if (kindOf(item) != ItemKind.A_HORN) null else Horn.of(item.value)
 
-    private fun kindOf(item: Item): Int = (this[item.type]?.extraProperties ?: 0) and KIND
+    /**
+     * Whether a monster that ruins what it hits can ruin this one.
+     *
+     * A bit of its own rather than anything read off what the thing is: the
+     * table marks each kind perishable or not, and that mark is asked about
+     * nowhere else in the game.
+     */
+    fun perishes(item: Item): Boolean = this[item.type]?.extraProperties?.perishes == true
+
+    fun kindOf(item: Item): ItemKind? = this[item.type]?.extraProperties?.kind
 
     /**
      * Whether a champion may strike with what is in [hand], the other hand
@@ -216,7 +226,7 @@ data class ItemTypes(private val types: List<ItemType>) {
 
         // a weapon in the shield hand must be one that asks for no hand in
         // particular; anything that is not a weapon is only a question of class
-        if (kind in WIELDED && hands != 0) return false
+        if (kind in ItemKind.WIELDED && hands != 0) return false
 
         return allows(champion, second)
     }
@@ -268,23 +278,84 @@ data class ItemTypes(private val types: List<ItemType>) {
         const val FIRST_HAND = 0
         const val BOTH_HANDS = 2
 
-        /** The low seven bits of an item's extra properties say what kind it is. */
-        const val KIND = 0x7F
-
-        /** The kinds that count as being wielded rather than merely carried. */
-        val WIELDED = 1..3
-
-        /** Letters, notes and maps. */
-        const val SOMETHING_TO_READ = 11
-
-        /** A weapon that stays in the hand, as against a thrown or fired one. */
-        const val SWUNG_BY_HAND = 1
-
         /** The one type a champion eats. Its value is the food it restores. */
         val RATIONS = ItemTypeId(31)
+    }
+}
 
-        /** Blown rather than swung, and its value says which of the four it is. */
-        const val A_HORN = 19
+/**
+ * What kind of thing an item is, and whether a monster's blow can ruin one.
+ * Both are written into the one word ITEMTYPE.DAT ends each record with.
+ */
+@JvmInline
+value class ItemProperties(private val written: Int) {
+
+    /** Null for a number the game's own table never uses. */
+    val kind: ItemKind? get() = ItemKind.of(written and KIND)
+
+    val perishes: Boolean get() = written and PERISHES != 0
+
+    private companion object {
+        const val KIND = 0x7F
+        const val PERISHES = 0x80
+    }
+}
+
+/**
+ * What kind of thing an item is, which settles a good deal about it: whether
+ * it can be wielded, whether it is read or eaten or blown, and what its value
+ * counts. The numbers are the game's own, and 17 is one it does not use.
+ */
+enum class ItemKind(val value: Int) {
+    /** Worn for protection: armour, a cloak, a helmet, bracers, a shield. */
+    ARMOUR(0),
+
+    /** A weapon that stays in the hand, as against a thrown or fired one. */
+    SWUNG_BY_HAND(1),
+
+    /** Thrown or shot: a dagger, a dart, a spear, an arrow. */
+    THROWN(2),
+
+    /** What one of those is shot from: a bow, a sling. */
+    A_LAUNCHER(3),
+
+    /** Carried for its own sake — a coin, an amulet, the lock picks. */
+    AN_ODDMENT(4),
+
+    SPELLBOOK(5),
+    HOLY_SYMBOL(6),
+
+    /** Rations, however fresh. */
+    FOOD(7),
+
+    /** A set of bones, which is a dead champion waiting to be raised. */
+    BONES(8),
+
+    MAGE_SCROLL(9),
+    CLERIC_SCROLL(10),
+
+    /** Letters, notes and maps. */
+    SOMETHING_TO_READ(11),
+
+    /** The stone shapes a puzzle is made of. */
+    A_STONE_SHAPE(12),
+
+    KEY(13),
+    POTION(14),
+    GEM(15),
+    RING(16),
+    WAND(18),
+
+    /** Blown rather than swung, and its value says which of the four it is. */
+    A_HORN(19),
+
+    AMULET(20);
+
+    companion object {
+        fun of(value: Int): ItemKind? = entries.firstOrNull { it.value == value }
+
+        /** The kinds that count as being wielded rather than merely carried. */
+        val WIELDED = setOf(SWUNG_BY_HAND, THROWN, A_LAUNCHER)
     }
 }
 
@@ -303,7 +374,6 @@ data class ItemTypes(private val types: List<ItemType>) {
  * @property dmgNumPipsL Damage die size vs large creatures
  * @property dmgIncL Damage bonus vs large creatures
  * @property unk1 Unknown field
- * @property extraProperties Additional item properties flags
  */
 data class ItemType(
     val invFlags: Int,
@@ -318,5 +388,5 @@ data class ItemType(
     val dmgNumPipsL: Int,
     val dmgIncL: Int,
     val unk1: Int,
-    val extraProperties: Int
+    val extraProperties: ItemProperties,
 )

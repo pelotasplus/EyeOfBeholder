@@ -31,7 +31,8 @@ sealed class WhatTheBlowCameTo(val lines: List<String>, val theArmDidSomething: 
         else HandRecovering.REPORTING
 
     /** How much was taken off, which is the only outcome that is not a word. */
-    class Damage(amount: Int) : WhatTheBlowCameTo(listOf("$amount"), theArmDidSomething = true)
+    class TookOff(amount: Damage) :
+        WhatTheBlowCameTo(listOf("${amount.points}"), theArmDidSomething = true)
 
     data object Missed : WhatTheBlowCameTo(listOf("MISS"), theArmDidSomething = true)
 
@@ -55,7 +56,7 @@ sealed class WhatTheBlowCameTo(val lines: List<String>, val theArmDidSomething: 
     companion object {
         /** What the slot says about a blow, or nothing for one it has nothing to say about. */
         fun of(blow: Blow): WhatTheBlowCameTo? = when (blow) {
-            is Blow.Hit -> Damage(blow.damage)
+            is Blow.Hit -> TookOff(blow.damage)
             is Blow.Missed -> Missed
 
             // Swinging at an empty square is a miss like any other: the

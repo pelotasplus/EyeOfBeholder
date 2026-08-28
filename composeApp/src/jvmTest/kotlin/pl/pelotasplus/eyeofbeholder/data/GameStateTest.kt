@@ -8,6 +8,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.ItemIconId
 import pl.pelotasplus.eyeofbeholder.data.model.ItemIndex
 import pl.pelotasplus.eyeofbeholder.data.model.ItemNameId
 import pl.pelotasplus.eyeofbeholder.data.model.ItemTypeId
+import pl.pelotasplus.eyeofbeholder.data.model.Damage
 import pl.pelotasplus.eyeofbeholder.data.model.DamageShown
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.GameState
@@ -18,6 +19,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.Maz
 import pl.pelotasplus.eyeofbeholder.data.model.WallByte
 import pl.pelotasplus.eyeofbeholder.data.model.WallSide
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterInstance
+import pl.pelotasplus.eyeofbeholder.data.model.MonsterSlot
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterTypeId
 import pl.pelotasplus.eyeofbeholder.data.model.PartyState
 import pl.pelotasplus.eyeofbeholder.data.model.SquarePlace
@@ -162,9 +164,9 @@ class GameStateTest {
     )
 
     private fun monster(slot: Int) = MonsterInstance(
-        index = slot,
+        index = MonsterSlot(slot),
         unit = 0,
-        block = 0,
+        location = Location(0, 0),
         place = SquarePlace.MIDDLE,
         direction = Direction.SOUTH,
         type = MonsterTypeId(0),
@@ -187,7 +189,7 @@ class GameStateTest {
         val scriptEnded = world.copy(
             party = PartyState(Location(2, 1), Direction.EAST),
             recovering = listOf(HandRecovering(whose, CarrySlot(0), ticksLeft = 18, came = null)),
-            showingDamage = listOf(DamageShown(whose, 5, 18)),
+            showingDamage = listOf(DamageShown(whose, Damage(5), 18)),
         )
         // the clock emptied both while the speech waited to be read
         val live = world.copy(recovering = emptyList(), showingDamage = emptyList())

@@ -166,7 +166,7 @@ class BreakingTheWindowTest {
 
         assertEquals(
             listOf(16, 17),
-            angered.monsters.filter { it.provoked }.map { it.index }.sorted(),
+            angered.monsters.filter { it.provoked }.map { it.index.value }.sorted(),
         )
     }
 

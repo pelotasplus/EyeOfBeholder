@@ -1,12 +1,14 @@
 package pl.pelotasplus.eyeofbeholder.data
 
 import kotlinx.coroutines.runBlocking
+import pl.pelotasplus.eyeofbeholder.data.model.Damage
 import pl.pelotasplus.eyeofbeholder.data.model.Dice
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.GameState
 import pl.pelotasplus.eyeofbeholder.data.model.Inf
 import pl.pelotasplus.eyeofbeholder.data.model.LevelScriptRunner
 import pl.pelotasplus.eyeofbeholder.data.model.Location
+import pl.pelotasplus.eyeofbeholder.data.model.MonsterSlot
 import pl.pelotasplus.eyeofbeholder.data.model.PartyState
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptEvent
 import pl.pelotasplus.eyeofbeholder.data.repository.CpsRepositoryImpl
@@ -53,8 +55,8 @@ class MonstersThatCanDieTest {
     private val theApproach = Location(13, 9)
 
     /** The two of them, by the slots the level's file puts them in. */
-    private val firstCleric = 16
-    private val secondCleric = 17
+    private val firstCleric = MonsterSlot(16)
+    private val secondCleric = MonsterSlot(17)
 
     private val kinds get() = level.subLevels[0].monsters
 
@@ -101,7 +103,7 @@ class MonstersThatCanDieTest {
 
     @Test
     fun `damage short of killing leaves it standing`() {
-        val hurt = world().monsterHurt(firstCleric, by = 71)
+        val hurt = world().monsterHurt(firstCleric, by = Damage(71))
 
         assertEquals(1, hurt.monsters.first { it.index == firstCleric }.hitPoints.current)
         assertEquals(72, hurt.monsters.first { it.index == firstCleric }.hitPoints.max)
@@ -114,12 +116,12 @@ class MonstersThatCanDieTest {
      */
     @Test
     fun `enough damage kills it and the square stops counting it`() {
-        val dead = world().monsterHurt(firstCleric, by = 72)
+        val dead = world().monsterHurt(firstCleric, by = Damage(72))
 
         assertNull(dead.monsters.firstOrNull { it.index == firstCleric })
         assertEquals(1, dead.monstersOn(theyStand))
 
-        val both = dead.monsterHurt(secondCleric, by = 100)
+        val both = dead.monsterHurt(secondCleric, by = Damage(100))
         assertEquals(0, both.monstersOn(theyStand))
     }
 
@@ -134,7 +136,7 @@ class MonstersThatCanDieTest {
         ).arrivingAt(level = 5, places = level.monsterInstances)
 
         assertTrue(unrolled.monsters.none { it.couldBeHurt })
-        assertEquals(2, unrolled.monsterHurt(firstCleric, by = 999).monstersOn(theyStand))
+        assertEquals(2, unrolled.monsterHurt(firstCleric, by = Damage(999)).monstersOn(theyStand))
     }
 
     /**
@@ -144,7 +146,7 @@ class MonstersThatCanDieTest {
      */
     @Test
     fun `coming back finds them as hurt as they were left`() {
-        val hurt = world().monsterHurt(firstCleric, by = 71).monsterHurt(secondCleric, by = 72)
+        val hurt = world().monsterHurt(firstCleric, by = Damage(71)).monsterHurt(secondCleric, by = Damage(72))
 
         val returned = hurt.leaving(5).arrivingAt(
             level = 5,
@@ -179,8 +181,8 @@ class MonstersThatCanDieTest {
     @Test
     fun `the clerics are silent once they are dead`() {
         val dead = world()
-            .monsterHurt(firstCleric, by = 72)
-            .monsterHurt(secondCleric, by = 72)
+            .monsterHurt(firstCleric, by = Damage(72))
+            .monsterHurt(secondCleric, by = Damage(72))
 
         assertEquals(emptyList(), approached(dead).beats)
     }
@@ -188,7 +190,7 @@ class MonstersThatCanDieTest {
     /** One of them left alive is enough to hold the scene open. */
     @Test
     fun `one of them left alive still speaks`() {
-        val half = world().monsterHurt(firstCleric, by = 72)
+        val half = world().monsterHurt(firstCleric, by = Damage(72))
 
         assertTrue(approached(half).beats.isNotEmpty())
     }

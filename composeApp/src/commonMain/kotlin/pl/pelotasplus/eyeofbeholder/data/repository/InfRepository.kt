@@ -16,6 +16,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.TriggerFlags
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterDecorationSetId
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterGfx
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterInstance
+import pl.pelotasplus.eyeofbeholder.data.model.MonsterSlot
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterTypeId
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterProperty
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterSize
@@ -515,7 +516,7 @@ class InfRepositoryImpl(
             val monsterIndex = reader.readU8()
             if (monsterIndex != 0xFF) {
                 val unit = reader.readU8()
-                val block = reader.readU16LE()
+                val at = Location.ofBlock(reader.readU16LE())
 
                 val place = SquarePlace.of(reader.readU8())
                 val dir = reader.readU8()
@@ -528,13 +529,13 @@ class InfRepositoryImpl(
 
                 val weapon = reader.readU16LE()
                 val pocketItem = reader.readU16LE()
-                Logger.d(TAG) { "Monster index $idx -> monsterIndex $monsterIndex unit $unit block $block $place facing $dir type $type" }
+                Logger.d(TAG) { "Monster index $idx -> monsterIndex $monsterIndex unit $unit at ${at.x}x${at.y} $place facing $dir type $type" }
 
                 monsters.add(
                     MonsterInstance(
-                        index = monsterIndex,
+                        index = MonsterSlot(monsterIndex),
                         unit = unit,
-                        block = block,
+                        location = at,
                         place = place,
                         direction = Direction.entries[dir and 3],
                         type = MonsterTypeId(type),

@@ -156,7 +156,7 @@ private fun ToggleWall.toggleWallInWords() = when (this) {
 private fun SetFlag.setFlagInWords() = when (this) {
     is SetFlag.LevelFlag -> "set level flag ${bit.index}"
     is SetFlag.GlobalFlag -> "set global flag ${bit.index}"
-    is SetFlag.MonsterFlag -> "set flag ${bit.index} on monster $monsterId"
+    is SetFlag.MonsterFlag -> "set flag ${bit.index} on monster ${monsterId.value}"
     SetFlag.DialogResult -> "set the answer given"
     SetFlag.PreventRest -> "let the party rest here"
     is SetFlag.Unknown -> "set a flag, kind $type"

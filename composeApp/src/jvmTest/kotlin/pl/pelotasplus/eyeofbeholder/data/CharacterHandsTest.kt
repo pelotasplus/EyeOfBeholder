@@ -8,6 +8,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.Item
 import pl.pelotasplus.eyeofbeholder.data.model.ItemIconId
 import pl.pelotasplus.eyeofbeholder.data.model.ItemIndex
 import pl.pelotasplus.eyeofbeholder.data.model.ItemNameId
+import pl.pelotasplus.eyeofbeholder.data.model.ItemProperties
 import pl.pelotasplus.eyeofbeholder.data.model.ItemType
 import pl.pelotasplus.eyeofbeholder.data.model.ItemTypeId
 import pl.pelotasplus.eyeofbeholder.data.model.ItemTypes
@@ -147,7 +148,7 @@ class CharacterHandsTest {
         dmgNumPipsL = 0,
         dmgIncL = 0,
         unk1 = 0,
-        extraProperties = 0,
+        extraProperties = ItemProperties(0),
     )
 
     private fun itemOfType(type: Int) = Item(

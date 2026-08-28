@@ -8,6 +8,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.Location
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterInstance
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterProperty
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterSize
+import pl.pelotasplus.eyeofbeholder.data.model.MonsterSlot
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterStepping
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterTypeId
 import pl.pelotasplus.eyeofbeholder.data.model.PartyState
@@ -65,9 +66,9 @@ class MonsterSteppingTest {
     private fun stepping(kinds: List<MonsterProperty> = this.kinds) =
         MonsterStepping(level = 5, subLevel = sub, kinds = kinds)
 
-    private fun GameState.monster(slot: Int) = monsters.first { it.index == slot }
+    private fun GameState.monster(slot: MonsterSlot) = monsters.first { it.index == slot }
 
-    private val aCleric = 16
+    private val aCleric = MonsterSlot(16)
 
     @Test
     fun `a wall refuses the step`() {
@@ -193,7 +194,11 @@ class MonsterSteppingTest {
                     SquarePlace.SOUTH_WEST,
                     SquarePlace.SOUTH_EAST,
                 ).mapIndexed { at, corner ->
-                    one.copy(index = 20 + at, block = Location(12, 8).asBlock, place = corner)
+                    one.copy(
+                        index = MonsterSlot(20 + at),
+                        location = Location(12, 8),
+                        place = corner,
+                    )
                 } + one,
             )
         }
@@ -214,8 +219,16 @@ class MonsterSteppingTest {
             val one = world.monster(aCleric)
             world.copy(
                 monsters = listOf(
-                    one.copy(index = 20, block = Location(12, 8).asBlock, place = SquarePlace.NORTH_WEST),
-                    one.copy(index = 21, block = Location(12, 8).asBlock, place = SquarePlace.NORTH_EAST),
+                    one.copy(
+                        index = MonsterSlot(20),
+                        location = Location(12, 8),
+                        place = SquarePlace.NORTH_WEST,
+                    ),
+                    one.copy(
+                        index = MonsterSlot(21),
+                        location = Location(12, 8),
+                        place = SquarePlace.NORTH_EAST,
+                    ),
                     one,
                 ),
             )
@@ -244,9 +257,9 @@ class MonsterSteppingTest {
             world.copy(
                 monsters = listOf(
                     one.copy(
-                        index = 20,
+                        index = MonsterSlot(20),
                         type = MonsterTypeId(1),
-                        block = Location(12, 8).asBlock,
+                        location = Location(12, 8),
                         place = SquarePlace.MIDDLE,
                     ),
                     one,
@@ -264,5 +277,5 @@ class MonsterSteppingTest {
         assertEquals(MonsterStepping.Stepped.Refused, stepped)
     }
 
-    private fun MonsterInstance.at(x: Int, y: Int) = copy(block = Location(x, y).asBlock)
+    private fun MonsterInstance.at(x: Int, y: Int) = copy(location = Location(x, y))
 }

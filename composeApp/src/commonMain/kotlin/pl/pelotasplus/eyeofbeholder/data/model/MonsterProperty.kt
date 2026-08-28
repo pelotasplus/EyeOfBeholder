@@ -94,9 +94,21 @@ data class MonsterProperty(
      */
     val comesInSideways: Boolean get() = capsFlags and COMES_IN_SIDEWAYS != 0
 
+    /**
+     * Whether a blow of its ruins something the champion was carrying.
+     *
+     * Not the thing it was struck with and not the thing worn: one slot of the
+     * twenty-seven, found by starting somewhere at random and taking the first
+     * that holds anything of the perishable kind. So a pack full of them
+     * shields the armour that would otherwise go, and a champion carrying one
+     * loses that one however deep it is buried.
+     */
+    val ruinsSomethingItHits: Boolean get() = capsFlags and RUINS_WHAT_IT_HITS != 0
+
     private companion object {
         const val LARGE = 0x01
         const val HITS_AS_IT_MOVES = 0x08
+        const val RUINS_WHAT_IT_HITS = 0x80
         const val COMES_IN_SIDEWAYS = 0x200
         const val OPENS_DOORS = 0x1000
     }

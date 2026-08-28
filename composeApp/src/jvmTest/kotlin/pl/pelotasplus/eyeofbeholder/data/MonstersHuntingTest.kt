@@ -8,6 +8,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.Location
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterInstance
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterPathing
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterPose
+import pl.pelotasplus.eyeofbeholder.data.model.MonsterSlot
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterStepping
 import pl.pelotasplus.eyeofbeholder.data.model.MonstersTurn
 import pl.pelotasplus.eyeofbeholder.data.model.PartyState
@@ -66,7 +67,7 @@ class MonstersHuntingTest {
 
         val moved = placed.monsters
             .filter { alone && it.index == CLERIC || !alone }
-            .map { it.copy(block = at.asBlock, direction = facing) }
+            .map { it.copy(location = at, direction = facing) }
 
         return placed.copy(monsters = moved)
     }
@@ -250,7 +251,7 @@ class MonstersHuntingTest {
 
         val itsTurn = turn().begun(world, walking, group = groups.first())
         val whoMoved = itsTurn.monsters.filter { after ->
-            world.monsters.first { it.index == after.index }.block != after.block
+            world.monsters.first { it.index == after.index }.location != after.location
         }
 
         assertEquals(2, whoMoved.size, "the pair did not step together")
@@ -362,6 +363,6 @@ class MonstersHuntingTest {
     }
 
     private companion object {
-        const val CLERIC = 16
+        val CLERIC = MonsterSlot(16)
     }
 }

@@ -22,6 +22,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.Inf
 import pl.pelotasplus.eyeofbeholder.data.model.ItemIndex
 import pl.pelotasplus.eyeofbeholder.data.model.ItemTypes
 import pl.pelotasplus.eyeofbeholder.data.model.Location
+import pl.pelotasplus.eyeofbeholder.data.model.MonsterSlot
 import pl.pelotasplus.eyeofbeholder.data.model.PartySlot
 import pl.pelotasplus.eyeofbeholder.data.model.PartyState
 import pl.pelotasplus.eyeofbeholder.data.model.PortraitId
@@ -76,8 +77,8 @@ class StrikingAMonsterTest {
      * stands in the south-west, on the party's left, and slot 16 in the
      * south-east, on their right.
      */
-    private val onTheLeft = 17
-    private val onTheRight = 16
+    private val onTheLeft = MonsterSlot(17)
+    private val onTheRight = MonsterSlot(16)
 
     private fun fighter(level: Int = 1, strength: Int = 10) = Champion(
         name = "Anselm",
@@ -216,11 +217,11 @@ class StrikingAMonsterTest {
         val struck = fighting(alwaysTwenty).strike(before, PartySlot(0), CarrySlot(0))
 
         val hit = assertIs<Blow.Hit>(struck.blow)
-        assertTrue(hit.damage > 0, "a landed blow that does nothing is not a landed blow")
+        assertTrue(hit.damage.landed, "a landed blow that does nothing is not a landed blow")
 
         val was = before.monsters.first { it.index == hit.monster }.hitPoints.current
         val now = struck.world.monsters.first { it.index == hit.monster }.hitPoints.current
-        assertEquals(was - hit.damage, now)
+        assertEquals(was - hit.damage.points, now)
     }
 
     /**
@@ -399,7 +400,7 @@ class StrikingAMonsterTest {
         val hit = assertIs<Blow.Hit>(struck.blow)
 
         val said = struck.world.reportIn(PartySlot(0), CarrySlot(0))
-        assertEquals(listOf("${hit.damage}"), said?.lines)
+        assertEquals(listOf("${hit.damage.points}"), said?.lines)
     }
 
     /** A miss says so in a word, on the same splash of blood. */

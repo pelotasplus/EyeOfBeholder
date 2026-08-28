@@ -9,6 +9,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.Location
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterInstance
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterPathing
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterProperty
+import pl.pelotasplus.eyeofbeholder.data.model.MonsterSlot
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterStepping
 import pl.pelotasplus.eyeofbeholder.data.model.PartyState
 import pl.pelotasplus.eyeofbeholder.data.model.SquarePlace
@@ -68,7 +69,7 @@ class MonsterPathingTest {
 
         val one = placed.monsters.first { it.index == CLERIC }
         return placed.copy(
-            monsters = listOf(one.copy(block = at.asBlock, direction = facing)),
+            monsters = listOf(one.copy(location = at, direction = facing)),
         )
     }
 
@@ -82,7 +83,7 @@ class MonsterPathingTest {
     /** The same world with more of the same kind standing on [at]. */
     private fun GameState.crowdedOn(at: Location, vararg places: SquarePlace) = copy(
         monsters = monsters + places.mapIndexed { index, place ->
-            theCleric().copy(index = 20 + index, block = at.asBlock, place = place)
+            theCleric().copy(index = MonsterSlot(20 + index), location = at, place = place)
         },
     )
 
@@ -328,7 +329,7 @@ class MonsterPathingTest {
         val after = (stepped as MonsterStepping.Stepped.Moved).world
         assertEquals(
             SquarePlace.SOUTH_EAST,
-            after.monsters.first { it.index == 20 }.place,
+            after.monsters.first { it.index == MonsterSlot(20) }.place,
             "the one already there did not stand aside",
         )
         assertEquals(
@@ -377,6 +378,6 @@ class MonsterPathingTest {
     }
 
     private companion object {
-        const val CLERIC = 16
+        val CLERIC = MonsterSlot(16)
     }
 }

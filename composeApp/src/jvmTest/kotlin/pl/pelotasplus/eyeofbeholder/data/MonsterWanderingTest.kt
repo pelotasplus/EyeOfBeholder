@@ -8,6 +8,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.Location
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterInstance
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterMode
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterPathing
+import pl.pelotasplus.eyeofbeholder.data.model.MonsterSlot
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterStepping
 import pl.pelotasplus.eyeofbeholder.data.model.MonstersTurn
 import pl.pelotasplus.eyeofbeholder.data.model.PartyState
@@ -64,7 +65,7 @@ class MonsterWanderingTest {
         kinds = inf.subLevels[0].monsters,
     )
 
-    private fun GameState.at(slot: Int) = monsters.first { it.index == slot }
+    private fun GameState.at(slot: MonsterSlot) = monsters.first { it.index == slot }
 
     private fun SubLevel.openAhead(world: GameState, level: Int, of: MonsterInstance): Boolean {
         val ahead = of.direction.oneStepFrom(Location(of.x, of.y))
@@ -82,10 +83,17 @@ class MonsterWanderingTest {
         val world = world(inf, 3)
         val sub = inf.subLevels[0]
 
-        listOf(23 to MonsterMode.FOLLOWING_RIGHT, 24 to MonsterMode.FOLLOWING_LEFT)
+        listOf(
+            MonsterSlot(23) to MonsterMode.FOLLOWING_RIGHT,
+            MonsterSlot(24) to MonsterMode.FOLLOWING_LEFT,
+        )
             .forEach { (slot, expected) ->
                 val before = world.at(slot)
-                assertEquals(expected, before.whatItDoes, "level 3's slot $slot is not a patrol")
+                assertEquals(
+                    expected,
+                    before.whatItDoes,
+                    "level 3's slot ${slot.value} is not a patrol",
+                )
 
                 val after = MonstersTurn(sub.monsters)
                     .begun(world, walking(inf, 3))
