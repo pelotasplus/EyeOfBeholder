@@ -160,7 +160,7 @@ private fun ViewConeDebugContent(
 
                 // not one of the game's keys: the bench's, for swinging the
                 // whole front rank without clicking each slot in turn
-                if (event.key == Key.One) {
+                if (event.key == Key.Spacebar) {
                     onFrontRankStrike()
                     return@onKeyEvent true
                 }
