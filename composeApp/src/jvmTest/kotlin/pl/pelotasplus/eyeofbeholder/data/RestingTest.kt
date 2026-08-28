@@ -219,6 +219,34 @@ class RestingTest {
         assertEquals(66, who.hitPoints.current, "four food is two stretches and no more")
     }
 
+    /**
+     * Being down is not being past mending. A champion at nothing left is
+     * unconscious rather than gone, and a rest brings them round — only ten
+     * below is past what sleep can do. Read the other way, a party carrying
+     * somebody at nothing left are told they are fully rested and left to
+     * carry them.
+     */
+    @Test
+    fun `a champion at nothing left is mended by sleeping`() {
+        val down = world(champion(100, HitPoints(0, 82)))
+
+        assertTrue(down.anybodyStillHurt, "nobody is hurt with one of them at nothing")
+
+        val woken = assertIs<Rest.Slept>(resting().rest(down)).world.champions.first()
+        assertEquals(82, woken.hitPoints.current, "sleep left them where they lay")
+    }
+
+    /** Past raising is past a bed, though: that wants a cleric. */
+    @Test
+    fun `a champion past raising is not mended by sleeping`() {
+        val gone = world(champion(100, HitPoints(Champion.BEYOND_RAISING, 82)))
+
+        assertTrue(!gone.anybodyStillHurt, "a rest counted somebody past raising as mendable")
+
+        val woken = assertIs<Rest.Slept>(resting().rest(gone)).world.champions.first()
+        assertEquals(Champion.BEYOND_RAISING, woken.hitPoints.current)
+    }
+
     @Test
     fun `eating fills a stomach and no further`() {
         val fed = world(champion(80, HitPoints(20, 20))).championFed(PartySlot(0), by = 50)

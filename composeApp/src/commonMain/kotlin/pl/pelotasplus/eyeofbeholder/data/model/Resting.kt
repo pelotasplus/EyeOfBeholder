@@ -133,7 +133,7 @@ val GameState.anybodyStillHurt: Boolean get() = champions.any { it.stillHurt }
 
 /** Whether anybody still standing has run out of food. */
 val GameState.anybodyStarving: Boolean
-    get() = champions.any { it.inTheParty && !it.dead && it.food.value <= 0 }
+    get() = champions.any { it.inTheParty && !it.deadForGood && it.food.value <= 0 }
 
 /**
  * Whether anybody's last mouthful went in the stretch between this world and
@@ -153,7 +153,7 @@ fun GameState.somebodyRanOutOfFood(after: GameState): Boolean =
  */
 fun GameState.starvedADay(): GameState = copy(
     champions = champions.map {
-        val starving = it.inTheParty && !it.dead && it.food.value <= 0 &&
+        val starving = it.inTheParty && !it.deadForGood && it.food.value <= 0 &&
             it.hitPoints.current > Champion.BEYOND_RAISING
         if (!starving) it else it.copy(
             hitPoints = it.hitPoints.copy(current = it.hitPoints.current - 1),
@@ -164,9 +164,15 @@ fun GameState.starvedADay(): GameState = copy(
 /** Whether anybody is hurt and has the food to mend it, which is what a rest needs. */
 val GameState.anybodyCanStillMend: Boolean get() = champions.any { it.wouldMendBySleeping }
 
-/** Hurt, and standing to know it. */
+/**
+ * Hurt, and near enough alive to mend.
+ *
+ * Being down is not being past mending: a champion at nothing left is
+ * unconscious rather than gone, and sleep brings them round. Only somebody
+ * past raising is beyond what a rest can do — which takes a cleric, not a bed.
+ */
 private val Champion.stillHurt: Boolean
-    get() = inTheParty && !dead && hitPoints.current < hitPoints.max
+    get() = inTheParty && !deadForGood && hitPoints.current < hitPoints.max
 
 /** Whether a champion can sleep and has hurt for the sleep to mend. */
 val Champion.wouldMendBySleeping: Boolean
@@ -174,7 +180,7 @@ val Champion.wouldMendBySleeping: Boolean
 
 /** A champion one stretch of sleep on: hurt mended if there is any, and food eaten. */
 private fun Champion.sleptAStep(): Champion {
-    if (!inTheParty || dead || food.value <= 0) return this
+    if (!inTheParty || deadForGood || food.value <= 0) return this
     return copy(
         hitPoints = hitPoints.copy(
             current = (hitPoints.current + POINTS_MENDED_A_STRETCH).coerceAtMost(hitPoints.max),
