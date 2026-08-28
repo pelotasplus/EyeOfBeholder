@@ -55,6 +55,26 @@ class GameStateTest {
         assertEquals(placed + conjured, returned.monsters, "the conjured one is still there")
     }
 
+    /**
+     * A level is one map however the party come back to it. Which sublevel is
+     * showing depends on the walls in sight, so a map kept per sublevel is
+     * handed back blank to a party who come in by another door.
+     */
+    @Test
+    fun `a level walked twice keeps the one map`() {
+        val mapped = world
+            .visiting(6, Location(3, 4))
+            .leaving(6)
+            .arrivingAt(5, emptyList())
+            .visiting(5, Location(9, 9))
+            .leaving(5)
+            .arrivingAt(6, emptyList())
+            .visiting(6, Location(3, 5))
+
+        assertEquals(setOf(Location(3, 4), Location(3, 5)), mapped.visited(6))
+        assertEquals(setOf(Location(9, 9)), mapped.visited(5), "the floor above was lost")
+    }
+
     @Test
     fun `each level is remembered on its own`() {
         val onSix = monster(slot = 0)

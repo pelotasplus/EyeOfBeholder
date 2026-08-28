@@ -120,8 +120,8 @@ class SavedGameRoundTripTest {
      */
     @Test
     fun `the map the party made comes back with the game`() = runBlocking {
-        val here = GameState.Floor(level = 5, subLevel = 0)
-        val elsewhere = GameState.Floor(level = 6, subLevel = 1)
+        val here = 5
+        val elsewhere = 6
         val mapped = world
             .visiting(here, Location(10, 8))
             .visiting(here, Location(10, 7))
@@ -199,7 +199,7 @@ class SavedGameRoundTripTest {
             on = 5,
         )
 
-        assertEquals(emptySet(), loaded.visited(GameState.Floor(5, 0)))
+        assertEquals(emptySet(), loaded.visited(5))
     }
 
     /**

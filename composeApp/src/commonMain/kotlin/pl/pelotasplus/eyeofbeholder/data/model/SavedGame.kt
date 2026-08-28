@@ -83,17 +83,10 @@ data class SavedWorld(
     val visited: List<VisitedFloor> = emptyList(),
 )
 
-/**
- * One floor, and what the party have seen of it.
- *
- * A map keyed by the floor would say the same thing, but a two-part key would
- * have to be flattened into a JSON string and parsed back, so the floor is
- * written out as a value — the same way [ChangedWall] writes its face.
- */
+/** One floor, and what the party have seen of it. */
 @Serializable
 data class VisitedFloor(
     val level: Int,
-    val subLevel: Int,
     val squares: Set<Location>,
 )
 

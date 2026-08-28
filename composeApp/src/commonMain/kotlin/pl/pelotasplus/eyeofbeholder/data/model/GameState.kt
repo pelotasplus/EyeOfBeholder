@@ -98,20 +98,25 @@ data class GameState(
     val showingDamage: List<DamageShown> = emptyList(),
 
     /**
-     * The squares the party have stood on, floor by floor, which is what the
+     * The squares the party have stood on, level by level, which is what the
      * little map draws. Kept with the world rather than beside it so that a
      * game picked up again is picked up mapped.
+     *
+     * A level is mapped whole rather than a sublevel at a time. Which sublevel
+     * is showing is decided by the walls in sight and changes as the party
+     * walk, so keeping a map per sublevel splits one floor into several and
+     * hands back a blank one to a party who come in by a different door.
      */
-    val visited: Map<Floor, Set<Location>> = emptyMap(),
+    val visited: Map<Int, Set<Location>> = emptyMap(),
 
 ) {
 
-    /** What the party have seen of [floor]. */
-    fun visited(floor: Floor): Set<Location> = visited[floor].orEmpty()
+    /** What the party have seen of [level]. */
+    fun visited(level: Int): Set<Location> = visited[level].orEmpty()
 
-    /** The world with [at] on [floor] counted as seen. */
-    fun visiting(floor: Floor, at: Location): GameState =
-        copy(visited = visited + (floor to (visited(floor) + at)))
+    /** The world with [at] on [level] counted as seen. */
+    fun visiting(level: Int, at: Location): GameState =
+        copy(visited = visited + (level to (visited(level) + at)))
 
     /** What is in [slot], or null for an empty hand or pack slot. */
     fun item(slot: ItemIndex): Item? =
@@ -1060,9 +1065,6 @@ data class GameState(
     /** One face of one square of one level. */
     data class WallAt(val level: Int, val at: Location, val side: WallSide)
 
-    /** One floor of the dungeon: a level, and which of its sublevels. */
-    data class Floor(val level: Int, val subLevel: Int)
-
     /**
      * A stack after something joined it or left it: the world as it now
      * stands, and which item the slot holding the stack should name.
@@ -1086,9 +1088,7 @@ data class GameState(
         changedWalls = changedWalls.map { (where, to) ->
             ChangedWall(where.level, where.at, where.side, to)
         },
-        visited = visited.map { (floor, squares) ->
-            VisitedFloor(floor.level, floor.subLevel, squares)
-        },
+        visited = visited.map { (level, squares) -> VisitedFloor(level, squares) },
     )
 
     companion object {
@@ -1140,8 +1140,10 @@ data class GameState(
             changedWalls = saved.changedWalls.associate {
                 WallAt(it.level, it.at, it.side) to it.to
             },
-            visited = saved.visited.associate {
-                Floor(it.level, it.subLevel) to it.squares
+            // A save from when a map was kept per sublevel has a row for each
+            // of them, and they are one floor's map between them.
+            visited = saved.visited.groupBy { it.level }.mapValues { (_, rows) ->
+                rows.flatMapTo(mutableSetOf()) { it.squares }
             },
         )
 

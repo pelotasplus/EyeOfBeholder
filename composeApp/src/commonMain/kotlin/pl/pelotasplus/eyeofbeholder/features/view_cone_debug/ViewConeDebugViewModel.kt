@@ -2439,10 +2439,9 @@ class ViewConeDebugViewModel(
         val sub = followTheWalls(inf, wallAt)
         val sublevel = inf.subLevels[sub]
 
-        val floor = GameState.Floor(level, sub)
         _state.update {
-            val mapped = it.game.visiting(floor, party.position)
-            it.copy(game = mapped, visited = mapped.visited(floor))
+            val mapped = it.game.visiting(level, party.position)
+            it.copy(game = mapped, visited = mapped.visited(level))
         }
 
         // Every square they cover is a square nearer their next meal. Turning
