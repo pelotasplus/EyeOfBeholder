@@ -26,6 +26,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
+import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
@@ -111,6 +112,9 @@ fun ViewConeDebugScreen(
         onUseClick = { x, y ->
             viewModel.onEvent(ViewConeDebugViewModel.Event.UsedWhatIsAt(x, y))
         },
+        onFrontRankStrike = {
+            viewModel.onEvent(ViewConeDebugViewModel.Event.FrontRankStrikes)
+        },
         onTyping = { viewModel.onEvent(ViewConeDebugViewModel.Event.Typed(it)) },
         showingMap = showingMap,
     )
@@ -124,6 +128,7 @@ private fun ViewConeDebugContent(
     onDialogAnswer: (DialogAnswer) -> Unit = {},
     onViewClick: (x: Int, y: Int) -> Unit = { _, _ -> },
     onUseClick: (x: Int, y: Int) -> Unit = { _, _ -> },
+    onFrontRankStrike: () -> Unit = {},
     onTyping: (Typing) -> Unit = {},
     showingMap: Boolean = true,
 ) {
@@ -150,6 +155,13 @@ private fun ViewConeDebugContent(
                 // while a save is being named the keys spell rather than steer
                 if (state.menu?.naming != null) {
                     typingFor(event.key, event.utf16CodePoint.toChar())?.let(onTyping)
+                    return@onKeyEvent true
+                }
+
+                // not one of the game's keys: the bench's, for swinging the
+                // whole front rank without clicking each slot in turn
+                if (event.key == Key.One) {
+                    onFrontRankStrike()
                     return@onKeyEvent true
                 }
 

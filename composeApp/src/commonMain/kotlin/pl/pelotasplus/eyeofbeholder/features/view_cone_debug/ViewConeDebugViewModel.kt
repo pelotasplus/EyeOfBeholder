@@ -340,6 +340,7 @@ class ViewConeDebugViewModel(
             Event.StrafeRight -> onStrafe(left = false)
             Event.RotateRight -> onRotateRight()
             Event.RotateLeft -> onRotateLeft()
+            Event.FrontRankStrikes -> theFrontRankStrikes()
 
             // there is nothing to type into with no menu open
             is Event.Typed -> Unit
@@ -1121,6 +1122,24 @@ class ViewConeDebugViewModel(
         )
     }
 
+    /**
+     * Everybody who can reach swings at once, which no button in the game does.
+     *
+     * A fight is fought a hand at a time, and clicking four slots to see what
+     * one round comes to is most of the time it takes to test one. This is the
+     * bench's own key: it asks each hand of the front rank to swing, and each
+     * refuses on its own terms — a hand still coming back to rest, a shield, a
+     * champion who is down.
+     */
+    private fun theFrontRankStrikes() {
+        _state.value.game.champions.indices
+            .map(::PartySlot)
+            .filter { it.inTheFrontRank }
+            .forEach { whose ->
+                repeat(CarrySlot.HANDS) { hand -> strike(whose, CarrySlot(hand)) }
+            }
+    }
+
     /** [whose] swings what is in [hand] at whatever stands in front of the party. */
     private fun strike(whose: PartySlot, hand: CarrySlot) {
         val inf = _state.value.inf ?: return
@@ -1133,7 +1152,8 @@ class ViewConeDebugViewModel(
         ).strike(_state.value.game, whose, hand)
 
         Logger.d(TAG) { "$whose swings with $hand: ${struck.blow}" }
-        if (struck.blow == Blow.StillRecovering) return
+        // Neither of these is a swing, so nothing is heard and nothing moves.
+        if (struck.blow == Blow.StillRecovering || struck.blow == Blow.Unable) return
 
         val before = _state.value.game.champions
         _state.update { it.copy(game = struck.world) }
@@ -2648,6 +2668,9 @@ class ViewConeDebugViewModel(
         data object StrafeRight : Event()
         data object RotateRight : Event()
         data object RotateLeft : Event()
+
+        /** The bench's own: every hand of the front rank swings at once. */
+        data object FrontRankStrikes : Event()
         data object Camp : Event()
 
         /** A key press, while a save is being named. */
