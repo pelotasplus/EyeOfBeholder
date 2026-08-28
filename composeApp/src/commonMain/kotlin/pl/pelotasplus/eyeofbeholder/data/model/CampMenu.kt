@@ -106,15 +106,34 @@ data class CampMenu(
         )
 
         /**
+         * Asked as the party lie down hurt: a rest runs until they are mended,
+         * and that is a long time to have agreed to by accident.
+         */
+        fun stillInjured(hours: Int) = asked(
+            hours = hours,
+            says = listOf("Someone is still", "injured. Rest", "until healed?"),
+        )
+
+        /**
          * Asked when the party sleep on empty stomachs, because from here on
          * the sleep costs them rather than mends them.
-         *
-         * A question rather than a menu, and drawn as one: a smaller box set
-         * into the panel, the question written across it in the lines it was
-         * written in, and Yes and No side by side underneath. Every number
-         * here is transcribed.
          */
-        fun starving(hours: Int) = CampMenu(
+        fun starving(hours: Int) = asked(
+            hours = hours,
+            says = listOf(
+                "Your party is",
+                "starving. Do you",
+                "wish to continue",
+                "resting?",
+            ),
+        )
+
+        /**
+         * A question put to a sleeping party: a smaller box set into the
+         * resting one, the question written across it and Yes and No side by
+         * side underneath. Every number here is transcribed.
+         */
+        private fun asked(hours: Int, says: List<String>) = CampMenu(
             title = "",
             titleLeft = 0,
             over = resting(hours),
@@ -122,12 +141,7 @@ data class CampMenu(
             top = ASKED_TOP,
             width = ASKED_WIDTH,
             height = ASKED_HEIGHT,
-            says = listOf(
-                "Your party is",
-                "starving. Do you",
-                "wish to continue",
-                "resting?",
-            ),
+            says = says,
             saysLeft = ASKED_TEXT_LEFT,
             saysTop = ASKED_TEXT_TOP,
             entries = listOf(

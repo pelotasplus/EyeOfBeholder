@@ -1078,12 +1078,17 @@ class ViewPortGoldenTest {
         checkGolden("camp-resting", menuOver(CampMenu.resting(hours = 16)))
 
     /**
-     * And the one question a rest asks, which is a smaller box set into the
-     * panel with the two answers side by side under it.
+     * The questions a rest asks, each a smaller box set into the resting one
+     * with the two answers side by side under it — the hours stay legible
+     * above, which is what says the party are still asleep behind it.
      */
     @Test
     fun `the starving question`() =
         checkGolden("camp-starving", menuOver(CampMenu.starving(hours = 16)))
+
+    @Test
+    fun `the still injured question`() =
+        checkGolden("camp-still-injured", menuOver(CampMenu.stillInjured(hours = 0)))
 
     /** Three slots used and three not, the way the list reads. */
     @Test

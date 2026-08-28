@@ -719,6 +719,17 @@ class ViewConeDebugViewModel(
         sleeping = viewModelScope.launch {
             showMenu(CampMenu.resting(hoursSlept))
 
+            // A rest runs until the party are mended, which is a long time to
+            // have agreed to by accident — so lying down hurt is asked about
+            // before any of it passes, and asked once.
+            if (_state.value.game.anybodyStillHurt &&
+                !asking(CampMenu.stillInjured(hoursSlept))
+            ) {
+                wakeUp(hoursSlept)
+                return@launch
+            }
+            showMenu(CampMenu.resting(hoursSlept))
+
             while (_state.value.game.anybodyStillHurt) {
                 val world = _state.value.game
 
@@ -763,7 +774,7 @@ class ViewConeDebugViewModel(
                 // somebody a hit point — not on every stretch, which would put
                 // the question up faster than the party could answer it.
                 if (before.somebodyRanOutOfFood(slept) || anybodyWasStarved) {
-                    if (!askWhetherToSleepOnHungry()) break
+                    if (!asking(CampMenu.starving(hoursSlept))) break
                     showMenu(CampMenu.resting(hoursSlept))
                 }
             }
@@ -793,14 +804,11 @@ class ViewConeDebugViewModel(
         }
     }
 
-    /**
-     * Puts the starving question up and waits for its answer, which is the one
-     * moment a rest asks anything of the player.
-     */
-    private suspend fun askWhetherToSleepOnHungry(): Boolean {
+    /** Puts a question to a sleeping party and waits for its answer. */
+    private suspend fun asking(question: CampMenu): Boolean {
         val asked = CompletableDeferred<Boolean>()
         sleepingOnHungry = asked
-        showMenu(CampMenu.starving(hoursSlept))
+        showMenu(question)
 
         return asked.await().also { sleepingOnHungry = null }
     }
