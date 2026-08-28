@@ -370,8 +370,12 @@ class LevelScriptRunner(
         // than a line on the bar could carry.
         fun notYet(token: ScriptToken, what: String, instead: String) {
             Logger.w(TAG) {
-                "Level $level ${state.party.position.x}x${state.party.position.y}, " +
-                    "${script[index].offset}: $token is not implemented; $instead"
+                gap(
+                    where = "level $level ${state.party.position.x}x${state.party.position.y}",
+                    at = script[index].offset,
+                    token = token,
+                    instead = instead,
+                )
             }
             stage.notImplemented("$what is not written yet, $instead")
         }
@@ -1029,7 +1033,12 @@ class LevelScriptRunner(
                 // not the branch the game would have taken.
                 else -> {
                     Logger.w(TAG) {
-                        "Level $level: condition $token is not implemented; taken as true"
+                        gap(
+                            where = "level $level, a condition",
+                            at = null,
+                            token = token,
+                            instead = "taken as true, so the script may take the wrong branch",
+                        )
                     }
                     stage.notImplemented("a question the script asked is not written yet")
                     push(ConditionValue.TRUE)
@@ -1042,6 +1051,23 @@ class LevelScriptRunner(
     private companion object {
         const val TAG = "LevelScriptRunner"
         const val MAX_STEPS = 200
+
+        /**
+         * A gap in the interpreter, written so it can be found.
+         *
+         * The runner narrates every instruction it runs, so a warning among
+         * them is a needle in a haystack — and a gap is the one line worth
+         * stopping at. It is banged out on its own line and marked with a word
+         * nothing else in the log uses, which is what makes it greppable and
+         * what makes it catch the eye of somebody only scrolling.
+         */
+        fun gap(where: String, at: ScriptOffset?, token: Any, instead: String): String {
+            val place = if (at == null) where else "$where, ${at.value}"
+            return "\n$BANNER\n$NOT_WRITTEN $token\n  at $place\n  meanwhile: $instead\n$BANNER"
+        }
+
+        const val NOT_WRITTEN = "!!! NOT WRITTEN:"
+        const val BANNER = "!!! ============================================"
 
         /**
          * The low bits of an item's extra properties, which say what kind of
