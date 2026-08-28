@@ -136,6 +136,16 @@ val GameState.anybodyStarving: Boolean
     get() = champions.any { it.inTheParty && !it.dead && it.food.value <= 0 }
 
 /**
+ * Whether anybody's last mouthful went in the stretch between this world and
+ * [after] — the moment a party become a starving one, which is the moment
+ * worth telling them about.
+ */
+fun GameState.somebodyRanOutOfFood(after: GameState): Boolean =
+    champions.zip(after.champions).any { (was, now) ->
+        was.food.value > 0 && now.food.value <= 0
+    }
+
+/**
  * A day of sleep on an empty stomach, which costs a hit point.
  *
  * Only sleeping starves a champion — walking about on nothing does not — and

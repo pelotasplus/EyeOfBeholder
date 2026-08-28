@@ -19,6 +19,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.anybodyCanStillMend
 import pl.pelotasplus.eyeofbeholder.data.model.anybodyStillHurt
 import pl.pelotasplus.eyeofbeholder.data.model.anybodyStarving
 import pl.pelotasplus.eyeofbeholder.data.model.starvedADay
+import pl.pelotasplus.eyeofbeholder.data.model.somebodyRanOutOfFood
 import pl.pelotasplus.eyeofbeholder.data.model.HOURS_A_MENDED_POINT
 import pl.pelotasplus.eyeofbeholder.data.model.sleptAnHour
 import pl.pelotasplus.eyeofbeholder.data.model.isBesideTheParty
@@ -342,6 +343,27 @@ class RestingTest {
         val empty = world(champion(0, HitPoints(20, 20)))
 
         assertEquals(0, empty.hungrier().champions.first().food.value)
+    }
+
+    /**
+     * The question is put when a party *become* starving, not for as long as
+     * they are: asking on every stretch would put it up faster than anybody
+     * could answer it. So the moment worth catching is the last mouthful going
+     * in, which happens once for each champion.
+     */
+    @Test
+    fun `running out of food is a moment and not a state`() {
+        val fed = world(champion(2, HitPoints(5, 400)))
+        val empty = fed.sleptAnHour(HOURS_A_MENDED_POINT)
+
+        assertTrue(fed.somebodyRanOutOfFood(empty), "their last mouthful went unnoticed")
+        assertTrue(empty.anybodyStarving, "they are starving now")
+
+        // and the stretch after that is not another moment, only more of it
+        assertTrue(
+            !empty.somebodyRanOutOfFood(empty.sleptAnHour(HOURS_A_MENDED_POINT)),
+            "it counted an empty stomach as emptying again",
+        )
     }
 
     @Test

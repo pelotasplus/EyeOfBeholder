@@ -84,6 +84,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.anybodyCanStillMend
 import pl.pelotasplus.eyeofbeholder.data.model.anybodyStillHurt
 import pl.pelotasplus.eyeofbeholder.data.model.anybodyStarving
 import pl.pelotasplus.eyeofbeholder.data.model.starvedADay
+import pl.pelotasplus.eyeofbeholder.data.model.somebodyRanOutOfFood
 import pl.pelotasplus.eyeofbeholder.data.model.HOURS_A_STARVED_POINT
 import pl.pelotasplus.eyeofbeholder.data.model.HOURS_A_MENDED_POINT
 import pl.pelotasplus.eyeofbeholder.data.model.sleptAnHour
@@ -725,14 +726,6 @@ class ViewConeDebugViewModel(
                 // nobody is going hungry for it either.
                 if (!world.anybodyCanStillMend && !world.anybodyStarving) break
 
-                // Sleeping on an empty stomach costs rather than mends, so it
-                // is asked for rather than assumed — and asked again each
-                // stretch, so a rest left running never quietly eats a party.
-                if (world.anybodyStarving) {
-                    if (!askWhetherToSleepOnHungry()) break
-                    showMenu(CampMenu.resting(hoursSlept))
-                }
-
                 delay(AN_HOUR_OF_SLEEP.inMilliseconds)
 
                 // The floor does not hold still while the party sleep: the
@@ -752,14 +745,27 @@ class ViewConeDebugViewModel(
                 }
 
                 hoursSlept += HOURS_A_MENDED_POINT
-                _state.update {
-                    var slept = it.game.sleptAnHour(HOURS_A_MENDED_POINT)
-                    // A day on an empty stomach costs a hit point, and a day is
-                    // three of these stretches rather than one.
-                    if (hoursSlept % HOURS_A_STARVED_POINT == 0) slept = slept.starvedADay()
-                    it.copy(game = slept)
-                }
+
+                val before = _state.value.game
+                var slept = before.sleptAnHour(HOURS_A_MENDED_POINT)
+
+                // A day on an empty stomach costs a hit point, and a day is
+                // three of these stretches rather than one.
+                val aDayGone = hoursSlept % HOURS_A_STARVED_POINT == 0
+                val starved = if (!aDayGone) slept else slept.starvedADay()
+                val anybodyWasStarved = starved.champions != slept.champions
+                slept = starved
+
+                _state.update { it.copy(game = slept) }
                 showMenu(CampMenu.resting(hoursSlept))
+
+                // Asked when a stomach empties, and again on each day it costs
+                // somebody a hit point — not on every stretch, which would put
+                // the question up faster than the party could answer it.
+                if (before.somebodyRanOutOfFood(slept) || anybodyWasStarved) {
+                    if (!askWhetherToSleepOnHungry()) break
+                    showMenu(CampMenu.resting(hoursSlept))
+                }
             }
 
             wakeUp(hoursSlept)
