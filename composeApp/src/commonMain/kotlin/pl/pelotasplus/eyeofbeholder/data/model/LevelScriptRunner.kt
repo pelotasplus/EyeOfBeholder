@@ -33,6 +33,8 @@ import pl.pelotasplus.eyeofbeholder.data.model.script.ToggleWall
 import pl.pelotasplus.eyeofbeholder.data.model.script.Turn
 import pl.pelotasplus.eyeofbeholder.data.model.script.UpdateScreen
 import pl.pelotasplus.eyeofbeholder.data.model.script.Wait
+import pl.pelotasplus.eyeofbeholder.data.model.script.inWords
+import pl.pelotasplus.eyeofbeholder.data.model.script.xy
 import kotlin.jvm.JvmInline
 
 /**
@@ -312,7 +314,7 @@ class LevelScriptRunner(
         if (trigger == null) {
             if (here.isNotEmpty()) {
                 Logger.d(TAG) {
-                    "Trigger at $position ignores $event, " +
+                    "The trigger on ${position.xy} ignores $event, " +
                         "flags ${here.map { it.flags.raw.toHexString() }}"
                 }
             }
@@ -320,10 +322,14 @@ class LevelScriptRunner(
         }
 
         Logger.d(TAG) {
-            "Running trigger at $position for $event from offset ${trigger.script.offset}"
+            "$event on ${position.xy} runs the script at ${trigger.script.offset.value}"
         }
         return runScript(trigger.script.offset, state, stage, triggers, depth, event, used).also { result ->
-            Logger.d(TAG) { "Script from ${trigger.script.offset} left ${result.state.party}" }
+            Logger.d(TAG) {
+                val party = result.state.party
+                "The script at ${trigger.script.offset.value} left the party " +
+                    "on ${party.position.xy} facing ${party.facing}"
+            }
         }
     }
 
@@ -371,9 +377,9 @@ class LevelScriptRunner(
         fun notYet(token: ScriptToken, what: String, instead: String) {
             Logger.w(TAG) {
                 gap(
-                    where = "level $level ${state.party.position.x}x${state.party.position.y}",
+                    where = "level $level ${state.party.position.xy}",
                     at = script[index].offset,
-                    token = token,
+                    token = token.inWords(),
                     instead = instead,
                 )
             }
@@ -386,9 +392,13 @@ class LevelScriptRunner(
                 return stop()
             }
 
-            Logger.d(TAG) { "  ${script[index].offset} ${script[index].token}" }
+            val step = script[index]
 
-            when (val token = script[index].token) {
+            // A condition is logged once it has an answer, so that the line
+            // asking it is the line saying which way the script went.
+            if (step.token !is Eval) Logger.d(TAG) { "  ${step.offset.value}  ${step.token.inWords()}" }
+
+            when (val token = step.token) {
                 End -> return stop()
 
                 // Nothing to return to ends the script, the way the engine
@@ -423,11 +433,10 @@ class LevelScriptRunner(
                     // a true condition falls through, a false one jumps
                     val condition = evaluate(token.tokens, state, dialogAnswer, event, used, stage)
                     Logger.d(TAG) {
-                        if (condition.isTrue) {
-                            "    condition true, carrying on"
-                        } else {
-                            "    condition false, jumping to ${token.goto}"
-                        }
+                        val went =
+                            if (condition.isTrue) "yes, carrying on"
+                            else "no, jumping to ${token.goto.value}"
+                        "  ${step.offset.value}  ${token.inWords()}  ->  $went"
                     }
                     if (!condition.isTrue) {
                         index = script.indexOfFirst { it.offset == token.goto }
@@ -1043,7 +1052,7 @@ class LevelScriptRunner(
                         gap(
                             where = "level $level, a condition",
                             at = null,
-                            token = token,
+                            token = token.inWords(),
                             instead = "taken as true, so the script may take the wrong branch",
                         )
                     }
@@ -1068,7 +1077,7 @@ class LevelScriptRunner(
          * nothing else in the log uses, which is what makes it greppable and
          * what makes it catch the eye of somebody only scrolling.
          */
-        fun gap(where: String, at: ScriptOffset?, token: Any, instead: String): String {
+        fun gap(where: String, at: ScriptOffset?, token: String, instead: String): String {
             val place = if (at == null) where else "$where, ${at.value}"
             return "\n$BANNER\n$NOT_WRITTEN $token\n  at $place\n  meanwhile: $instead\n$BANNER"
         }
