@@ -12,6 +12,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.PaletteIndex
 import pl.pelotasplus.eyeofbeholder.data.model.PartyState
 import pl.pelotasplus.eyeofbeholder.data.model.SquarePlace
 import pl.pelotasplus.eyeofbeholder.data.model.PlayField
+import pl.pelotasplus.eyeofbeholder.data.model.Preferences
 import pl.pelotasplus.eyeofbeholder.data.model.SavedGame
 import pl.pelotasplus.eyeofbeholder.data.model.WallByte
 import pl.pelotasplus.eyeofbeholder.data.model.WallSide
@@ -113,11 +114,6 @@ class SavedGameRoundTripTest {
     }
 
     /**
-     * The wall a script opened is still open, and the one it did not is still
-     * shut — restoring the overrides but not the mazes would pass the first
-     * of those and fail the second.
-     */
-    /**
      * What the party have mapped comes back with them, floor by floor —
      * otherwise a game picked up again is picked up in the dark, and the
      * corridors already walked have to be walked again to see them.
@@ -149,6 +145,43 @@ class SavedGameRoundTripTest {
         assertEquals(setOf(Location(1, 2)), loaded.visited(elsewhere), "another floor was lost")
     }
 
+    /**
+     * What the player chose comes back too. Turning the sound off and the bars
+     * into numbers is something they said once and should not have to say
+     * again every time the game is picked up.
+     */
+    @Test
+    fun `what the player chose comes back with the game`() = runBlocking {
+        val chosen = Preferences(sounds = false, barGraphs = false)
+
+        repository.save(
+            slot = SaveSlot.numbered.first(),
+            description = "LEVEL5",
+            savedAt = 1_754_000_000_000,
+            level = 5,
+            champions = champions,
+            world = world,
+            preferences = chosen,
+        ).getOrThrow()
+
+        assertEquals(chosen, repository.load(SaveSlot.numbered.first()).getOrThrow().preferences)
+    }
+
+    /** A save written before they were kept comes back with what the game starts on. */
+    @Test
+    fun `a save from before the preferences reads as the game's own`() = runBlocking {
+        repository.save(
+            slot = SaveSlot.numbered.first(),
+            description = "LEVEL5",
+            savedAt = 1_754_000_000_000,
+            level = 5,
+            champions = champions,
+            world = world,
+        ).getOrThrow()
+
+        assertEquals(Preferences(), repository.load(SaveSlot.numbered.first()).getOrThrow().preferences)
+    }
+
     /** A save written before there was a map reads as one nobody has drawn. */
     @Test
     fun `a save from before the map reads as unmapped`() = runBlocking {
@@ -169,6 +202,11 @@ class SavedGameRoundTripTest {
         assertEquals(emptySet(), loaded.visited(GameState.Floor(5, 0)))
     }
 
+    /**
+     * The wall a script opened is still open, and the one it did not is still
+     * shut — restoring the overrides but not the mazes would pass the first
+     * of those and fail the second.
+     */
     @Test
     fun `walls a script changed come back changed`() = runBlocking {
         val restored = restore()

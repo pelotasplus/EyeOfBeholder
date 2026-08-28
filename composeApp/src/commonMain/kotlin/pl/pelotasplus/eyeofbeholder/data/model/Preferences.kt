@@ -1,5 +1,7 @@
 package pl.pelotasplus.eyeofbeholder.data.model
 
+import kotlinx.serialization.Serializable
+
 /**
  * What the game lets the player choose, which lives under Camp → Preferences.
  *
@@ -7,10 +9,11 @@ package pl.pelotasplus.eyeofbeholder.data.model
  * line says "Sounds are ON", and clicking it makes it say OFF. That is why
  * there is no separate label — the line is the whole of it.
  *
- * These are the player's, not the party's, so they are no part of a saved
- * game. Nothing writes them down yet either, so they last as long as the tab
- * does.
+ * These are the player's rather than the party's, and they are saved all the
+ * same: coming back to a game with the sound on again, or the numbers turned
+ * back into bars, is the game forgetting something the player said.
  */
+@Serializable
 data class Preferences(
     /**
      * Nothing plays yet, so this is a switch with nothing behind it. It is

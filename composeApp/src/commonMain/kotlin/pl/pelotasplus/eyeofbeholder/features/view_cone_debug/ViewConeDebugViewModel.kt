@@ -409,6 +409,7 @@ class ViewConeDebugViewModel(
                 game = GameState.restoredFrom(saved.world, on = saved.level)
                     .copy(champions = saved.champions),
                 messages = saved.messages,
+                preferences = saved.preferences,
             )
         }
 
@@ -469,6 +470,7 @@ class ViewConeDebugViewModel(
                 champions = roster,
                 world = _state.value.game,
                 messages = _state.value.messages,
+                preferences = _state.value.preferences,
             ).onFailure { Logger.e(it) { "Could not autosave" } }
         }
     }
@@ -914,6 +916,7 @@ class ViewConeDebugViewModel(
             champions = roster,
             world = _state.value.game,
             messages = _state.value.messages,
+            preferences = _state.value.preferences,
         ).onFailure { Logger.e(it) { "Could not save" } }
 
         showMenu(null)

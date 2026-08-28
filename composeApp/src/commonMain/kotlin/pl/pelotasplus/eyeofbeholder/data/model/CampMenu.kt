@@ -78,9 +78,13 @@ data class CampMenu(
         /**
          * Asked when the party sleep on empty stomachs, because from here on
          * the sleep costs them rather than mends them.
+         *
+         * The title is short because the box is: it is as wide as the panel a
+         * menu is drawn in, and a sentence runs off the end of it. What the
+         * choice is stays in the lines under it, which have the width.
          */
         fun starving() = CampMenu(
-            title = "Your party is starving.",
+            title = "Starving:",
             titleLeft = MENU_TITLE_LEFT,
             entries = menuLines(
                 MenuChoice.KeepResting,

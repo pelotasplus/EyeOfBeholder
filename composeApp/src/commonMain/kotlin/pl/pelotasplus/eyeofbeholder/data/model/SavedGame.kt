@@ -40,6 +40,12 @@ data class SavedGame(
      * are the last thing that happened, and losing them loses the thread.
      */
     val messages: List<PlayField.Message> = emptyList(),
+
+    /**
+     * What the player chose under Camp. A save written before these were kept
+     * has none, and comes back with whatever the game starts with.
+     */
+    val preferences: Preferences = Preferences(),
 ) {
     companion object {
         /**

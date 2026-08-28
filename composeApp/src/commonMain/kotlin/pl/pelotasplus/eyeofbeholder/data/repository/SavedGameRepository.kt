@@ -5,6 +5,7 @@ import kotlinx.serialization.json.Json
 import pl.pelotasplus.eyeofbeholder.data.model.Champion
 import pl.pelotasplus.eyeofbeholder.data.model.GameState
 import pl.pelotasplus.eyeofbeholder.data.model.PlayField
+import pl.pelotasplus.eyeofbeholder.data.model.Preferences
 import pl.pelotasplus.eyeofbeholder.data.model.SavedGame
 
 /**
@@ -31,6 +32,7 @@ interface SavedGameRepository {
         champions: List<Champion>,
         world: GameState,
         messages: List<PlayField.Message> = emptyList(),
+        preferences: Preferences = Preferences(),
     ): Result<SavedGame>
 
     suspend fun erase(slot: SaveSlot): Result<Unit>
@@ -68,6 +70,7 @@ class SavedGameRepositoryImpl(
         champions: List<Champion>,
         world: GameState,
         messages: List<PlayField.Message>,
+        preferences: Preferences,
     ): Result<SavedGame> = runCatching {
         SavedGame(
             description = description,
@@ -77,6 +80,7 @@ class SavedGameRepositoryImpl(
             champions = champions,
             world = world.saved(),
             messages = messages,
+            preferences = preferences,
         ).also { store.write(slot, json.encodeToString(it)) }
     }
 
