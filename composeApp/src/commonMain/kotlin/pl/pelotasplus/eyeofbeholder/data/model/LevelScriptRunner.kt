@@ -703,9 +703,15 @@ class LevelScriptRunner(
                 // keeps track of yet.
                 is Launcher -> notYet(token, "a thing thrown", "nothing is put in flight")
 
-                // Turning the party is an instruction of its own as well as one
-                // of the wall opcodes, and the other kind turns what is already
-                // in flight.
+                // A quarter turn at a time, and by rather than to: a spinner
+                // sends the party round from wherever they came in facing.
+                is Turn.TurnParty -> {
+                    stage.takesTheParty()
+                    state = state.partyTurnedTo(state.party.facing.turnedBy(token.dir))
+                }
+
+                // The other kind turns what is already in flight, which
+                // nothing here keeps track of yet.
                 is Turn -> notYet(token, "turning", "nothing turns")
 
                 // The things on a square carried to another, on this level or

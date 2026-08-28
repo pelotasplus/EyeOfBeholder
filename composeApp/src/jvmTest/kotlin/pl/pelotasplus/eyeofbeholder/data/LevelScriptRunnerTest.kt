@@ -39,6 +39,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.script.ScriptOffset
 import pl.pelotasplus.eyeofbeholder.data.model.script.ScriptToken
 import pl.pelotasplus.eyeofbeholder.data.model.script.SetWall
 import pl.pelotasplus.eyeofbeholder.data.model.script.Teleport
+import pl.pelotasplus.eyeofbeholder.data.model.script.Turn
 import pl.pelotasplus.eyeofbeholder.data.model.script.UpdateScreen
 import pl.pelotasplus.eyeofbeholder.data.model.script.Wait
 import kotlinx.coroutines.runBlocking
@@ -284,6 +285,41 @@ class LevelScriptRunnerTest {
             facing = Direction.NORTH,
         )
         assertEquals(Direction.EAST, run.state.party.facing)
+    }
+
+    /**
+     * A spinner turns the party by a quarter rather than to a bearing, so
+     * where they end up facing depends on the way they walked in.
+     */
+    @Test
+    fun `a turn of a quarter is counted from the way the party face`() {
+        listOf(
+            Direction.NORTH to Direction.EAST,
+            Direction.WEST to Direction.NORTH,
+        ).forEach { (walkedInFacing, leavesFacing) ->
+            val run = runFully(
+                0 to Turn.TurnParty(1),
+                10 to End,
+                facing = walkedInFacing,
+            )
+            assertEquals(leavesFacing, run.state.party.facing)
+        }
+    }
+
+    @Test
+    fun `a turn the other way is counted the same`() {
+        val run = runFully(0 to Turn.TurnParty(-1), 10 to End, facing = Direction.NORTH)
+        assertEquals(Direction.WEST, run.state.party.facing)
+    }
+
+    /** A script that spins the party is one the party cannot walk out of. */
+    @Test
+    fun `a script that spins the party takes them`() {
+        val stage = RecordingStage()
+
+        runFully(0 to Turn.TurnParty(2), 10 to End, stage = stage)
+
+        assertTrue(stage.tookTheParty)
     }
 
     /** The clerics are addressed face to face, before they are drawn. */
