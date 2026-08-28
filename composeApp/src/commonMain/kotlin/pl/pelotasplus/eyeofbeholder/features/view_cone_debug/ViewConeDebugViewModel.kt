@@ -2775,8 +2775,16 @@ class ViewConeDebugViewModel(
         /** How long an hour of sleep takes to watch. */
         private val AN_HOUR_OF_SLEEP = Ticks(3)
 
-        /** How far the party walk on one mouthful. Tuned rather than transcribed. */
-        private const val STEPS_TO_A_MEAL = 20
+        /**
+         * How far the party walk on one mouthful.
+         *
+         * The original spends a point of food a minute of play whatever the
+         * party are doing — reading, fighting, standing still — which comes to
+         * a full stomach every hour and a half at the table. Only walking
+         * counts here, and a minute of the original's walking is about this
+         * many squares, so this is that minute with the idle time taken out.
+         */
+        private const val STEPS_TO_A_MEAL = 100
 
         private const val CANNOT_REST_HERE = "You do not feel it is safe to rest here."
         private const val MONSTERS_ARE_NEAR = "You can't rest here, monsters are near."
