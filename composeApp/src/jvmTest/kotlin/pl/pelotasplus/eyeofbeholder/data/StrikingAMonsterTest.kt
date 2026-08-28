@@ -276,6 +276,34 @@ class StrikingAMonsterTest {
         }
     }
 
+    /**
+     * A champion knocked down does not swing. Their slots are already drawn
+     * barred over to say so, and until this the bars were the only thing
+     * stopping them: the click went straight past and they fought on at
+     * nothing left.
+     */
+    @Test
+    fun `somebody down does not swing`() {
+        val down = world(listOf(fighter().copy(hitPoints = HitPoints(0, 20)), fighter()))
+
+        val struck = fighting(alwaysTwenty).strike(down, PartySlot(0), CarrySlot(0))
+
+        assertEquals(Blow.Unable, struck.blow)
+        assertEquals(down.monsters, struck.world.monsters, "they hurt something anyway")
+        assertTrue(
+            !struck.world.isRecovering(PartySlot(0), CarrySlot(0)),
+            "a swing that never happened cost them the wait for one",
+        )
+    }
+
+    /** And the one beside them, who is on their feet, still can. */
+    @Test
+    fun `the one beside them still swings`() {
+        val down = world(listOf(fighter().copy(hitPoints = HitPoints(0, 20)), fighter()))
+
+        assertIs<Blow.Hit>(fighting(alwaysTwenty).strike(down, PartySlot(1), CarrySlot(0)).blow)
+    }
+
     /** A blow that does not land pays nobody. */
     @Test
     fun `missing earns no experience`() {

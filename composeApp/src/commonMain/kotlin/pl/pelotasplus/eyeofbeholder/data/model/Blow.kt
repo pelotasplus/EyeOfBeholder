@@ -19,6 +19,13 @@ sealed interface Blow {
     /** The hand has not come back to rest since the last swing. */
     data object StillRecovering : Blow
 
+    /**
+     * The champion is in no state to swing — down, or held where they stand.
+     * Their slots are drawn barred over, and this is the same answer given to
+     * anything that asks them to strike anyway.
+     */
+    data object Unable : Blow
+
     data class Missed(val monster: Int) : Blow
 
     data class Hit(val monster: Int, val damage: Int) : Blow

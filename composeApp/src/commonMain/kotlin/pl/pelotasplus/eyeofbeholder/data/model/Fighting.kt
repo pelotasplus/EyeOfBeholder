@@ -70,6 +70,13 @@ class Fighting(
         if (!whose.inTheFrontRank) return Blow.OutOfReach
 
         val champion = world.championIn(whose) ?: return Blow.Nothing
+
+        // Somebody down, or held where they stand, does not swing. Their slots
+        // are drawn barred over to say so, and this is the same answer to
+        // anything that asks them anyway — a click on the bars, or a key that
+        // sets the whole front rank going.
+        if (!champion.canAct) return Blow.Unable
+
         val target = inReach(world, whose) ?: return Blow.Nothing
         val kind = kinds.firstOrNull { it.id == target.type.value }
 
