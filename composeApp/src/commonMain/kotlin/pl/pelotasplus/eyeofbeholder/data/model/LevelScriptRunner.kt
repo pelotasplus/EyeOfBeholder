@@ -936,6 +936,13 @@ class LevelScriptRunner(
                             ?: 0
                     )
                 )
+                // A square asked about without a face named is asked about its
+                // north one, which is the face a square's own record starts
+                // with. It is the same question as asking for side zero.
+                is Conditional.GetWallNumber -> push(
+                    ConditionValue.of(state.wallByte(level, token.location, WallSide.NORTH).value)
+                )
+
                 is Conditional.GetLevelFlag -> push(state.isLevelFlagSet(level, token.bit))
                 is Conditional.GetGlobalFlag -> push(state.isGlobalFlagSet(token.bit))
                 is Conditional.GetPartyDirection ->

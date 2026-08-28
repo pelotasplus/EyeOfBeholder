@@ -643,6 +643,34 @@ class LevelScriptRunnerTest {
         assertEquals(changeToLevel(5), outcome)
     }
 
+    /**
+     * A square asked about with no face named is asked about its north one,
+     * which is the face a square's record starts with. Two of level 2's
+     * puzzles ask this way about walls they are about to open, so reading a
+     * different face would open them at the wrong moment.
+     */
+    @Test
+    fun `a square asked about without a face is asked about its north one`() {
+        val there = Location(9, 8)
+
+        val outcome = run(
+            0 to SetWall.OneSide(there, WallSide.NORTH, WallByte(26)),
+            10 to SetWall.OneSide(there, WallSide.SOUTH, WallByte(44)),
+            20 to Eval(
+                listOf(
+                    Conditional.GetWallNumber(there),
+                    Conditional.ImmediateShort(26),
+                    Conditional.Equals,
+                ),
+                goto = ScriptOffset(40),
+            ),
+            30 to changeLevelToken(5),
+            40 to changeLevelToken(9),
+        )
+
+        assertEquals(changeToLevel(5), outcome, "it read a face other than the north one")
+    }
+
     // --- what a script leaves behind ----------------------------------------
 
     @Test
