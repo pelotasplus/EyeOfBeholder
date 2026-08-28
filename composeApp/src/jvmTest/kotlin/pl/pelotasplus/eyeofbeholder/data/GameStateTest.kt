@@ -223,4 +223,34 @@ class GameStateTest {
         assertEquals(0, world.championsCarrying(ItemTypeId(46), worth = 1), "a worth nobody holds")
         assertEquals(0, world.championsCarrying(ItemTypeId(2), worth = 4), "a kind nobody holds")
     }
+
+    /**
+     * Half the question may be left open. Asking for a kind at any worth is
+     * how a script asks whether anybody is carrying a spellbook at all, and
+     * nothing in the game is worth minus one, so reading it as a value would
+     * answer nobody every time.
+     */
+    @Test
+    fun `a question can leave the worth or the kind open`() {
+        val world = world.copy(
+            items = listOf(
+                thing(0, 0),
+                thing(type = 46, worth = 4),
+                thing(type = 29, worth = 7),
+            ),
+            champions = listOf(carrying(1), carrying(2)),
+        )
+
+        assertEquals(
+            1,
+            world.championsCarrying(ItemTypeId(29), worth = GameState.ANYTHING),
+            "a spellbook of any worth was not found",
+        )
+        assertEquals(
+            2,
+            world.championsCarrying(ItemTypeId(GameState.ANYTHING), worth = GameState.ANYTHING),
+            "everybody carrying anything at all",
+        )
+        assertEquals(1, world.championsCarrying(ItemTypeId(GameState.ANYTHING), worth = 4))
+    }
 }

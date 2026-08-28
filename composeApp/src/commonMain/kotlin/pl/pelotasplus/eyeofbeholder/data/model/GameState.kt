@@ -822,12 +822,18 @@ data class GameState(
      *
      * Champions, not things: somebody carrying three of them counts once. A
      * puzzle asks this to see whether the party between them hold what it
-     * wants — four of one key, one each — and it counts anywhere a champion
-     * can put a thing, hands and pack and what is worn alike.
+     * wants — a piece each, or one spellbook anywhere among them — and it
+     * counts every slot a champion can fill, hands and pack and worn alike.
+     *
+     * Either half of the question may be left open with [ANYTHING], which asks
+     * only about the other: any value of one kind, or any kind of one value.
      */
     fun championsCarrying(ofType: ItemTypeId, worth: Int): Int = champions.count { champion ->
         champion.inTheParty && champion.carrying.any { slot ->
-            item(slot)?.let { it.type == ofType && it.value == worth } == true
+            item(slot)?.let {
+                (ofType.value == ANYTHING || it.type == ofType) &&
+                    (worth == ANYTHING || it.value == worth)
+            } == true
         }
     }
 
@@ -1090,6 +1096,9 @@ data class GameState(
 
         /** How often the thing a monster only might carry actually drops. */
         private const val ONE_TIME_IN_TEN = 10
+
+        /** Left open in a question about a thing, asking nothing of that half. */
+        const val ANYTHING = -1
 
         /** As full as a champion's stomach goes. */
         private const val FULL_STOMACH = 100
