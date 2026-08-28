@@ -664,8 +664,9 @@ class ViewPort(
         mirrored: Boolean,
         scaleSteps: ScaleSteps,
         struck: Boolean = false,
+        named: String = "",
     ) {
-        Logger.d(TAG) { "drawMonster block=$blockIndex at=$place mirrored=$mirrored scale=$scaleSteps" }
+        Logger.d(TAG) { "drawMonster $named, $place, mirrored=$mirrored, scale=$scaleSteps" }
 
         val icon = frame.shrunk(scaleSteps)
 

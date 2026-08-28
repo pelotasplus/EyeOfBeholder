@@ -13,6 +13,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.DistanceFromParty
 import pl.pelotasplus.eyeofbeholder.data.model.FloorReach
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterInstance
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterSheet
+import pl.pelotasplus.eyeofbeholder.data.model.named
 import pl.pelotasplus.eyeofbeholder.data.model.Door
 import pl.pelotasplus.eyeofbeholder.data.model.DoorIndex
 import pl.pelotasplus.eyeofbeholder.data.model.SubLevel
@@ -581,6 +582,7 @@ class ViewConeRepositoryImpl(
                         mirrored = facing.mirrored && monster.striking == null,
                         scaleSteps = block.scaleSteps,
                         struck = monster.struck,
+                        named = monster.named(sublevel),
                     )
                 }
             }

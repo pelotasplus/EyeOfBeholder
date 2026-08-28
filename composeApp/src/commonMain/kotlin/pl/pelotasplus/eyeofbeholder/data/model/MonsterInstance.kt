@@ -229,3 +229,18 @@ data class MonsterInstance(
         )
     }
 }
+
+/**
+ * A monster the way a log line should name it: the sprite sheet it is drawn
+ * from, the species of that sheet it is, the slot it lives in, and the square
+ * it stands on.
+ *
+ * The first three are needed to tell one from another — a sheet holds several
+ * species, a species is drawn on one sheet, and two of the same species stand
+ * apart only by their slot — and the square is what a reader has in front of
+ * them on screen.
+ */
+fun MonsterInstance.named(on: SubLevel): String {
+    val sprite = on.monsterGfx.getOrNull(gfxIndex)?.name ?: "no sprite $gfxIndex"
+    return "$sprite kind ${type.value} m$index on ${x}x$y"
+}
