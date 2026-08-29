@@ -117,4 +117,75 @@ class DrinkingAPotionTest {
         assertEquals(100, world(hurt = 0, fed = 1).championSated(first).champions[0].food.value)
         assertEquals(100, world(hurt = 0, fed = 99).championSated(first).champions[0].food.value)
     }
+
+    // --- being poisoned -------------------------------------------------------
+
+    /**
+     * The bit is the game's, and one of the three troubles the flag word
+     * already carried: two is poisoned, four paralysed, eight turned to stone.
+     */
+    @Test
+    fun `poison is the second bit of the flag word`() {
+        val inTheParty = ChampionFlags(0x01)
+        val poisoned = inTheParty.poisoned(true)
+
+        assertEquals(0x03, poisoned.value, "the bit the game writes, and nothing else touched")
+        assertEquals(true, poisoned.poisoned)
+        assertEquals(true, poisoned.inTheParty)
+        assertEquals(0x01, poisoned.poisoned(false).value, "and clearing puts the word back")
+    }
+
+    /** It is one of the troubles, which is what makes a champion worth curing. */
+    @Test
+    fun `poison counts as being in trouble`() {
+        assertEquals(true, ChampionFlags(0x01).poisoned(true).inTrouble)
+        assertEquals(false, ChampionFlags(0x01).inTrouble)
+    }
+
+    /** A poisoned champion fights on: it is not one of the troubles that stops them. */
+    @Test
+    fun `poison does not stop a champion acting`() {
+        assertEquals(true, world(hurt = 0).championPoisoned(first).champions[0].canAct)
+    }
+
+    /**
+     * A second bite does not start it again. The game refuses to refresh it,
+     * so being bitten twice is no worse than being bitten once.
+     */
+    @Test
+    fun `poisoning somebody already poisoned changes nothing`() {
+        val once = world(hurt = 0).championPoisoned(first)
+        val twice = once.championPoisoned(first)
+
+        assertEquals(once, twice)
+    }
+
+    @Test
+    fun `curing takes it away and leaves them in the party`() {
+        val cured = world(hurt = 0).championPoisoned(first).championPoisoned(first, yes = false)
+
+        assertEquals(false, cured.champions[0].poisoned)
+        assertEquals(true, cured.champions[0].inTheParty)
+    }
+
+    @Test
+    fun `who is poisoned is asked of the whole party`() {
+        val world = world(hurt = 0)
+
+        assertEquals(emptyList(), world.poisoned)
+        assertEquals(listOf(first), world.championPoisoned(first).poisoned)
+    }
+
+    /**
+     * It takes nothing more from somebody who is already down. The hold does
+     * not let go — nothing washes it out of them — but a clock that kept
+     * biting a body would never stop, and never says it had stopped either.
+     */
+    @Test
+    fun `the poison stops taking from the dead`() {
+        val down = world(hurt = 20).championPoisoned(first)
+
+        assertEquals(true, down.champions[0].poisoned, "it still has hold of them")
+        assertEquals(emptyList(), down.poisoned, "but there is nothing more to take")
+    }
 }

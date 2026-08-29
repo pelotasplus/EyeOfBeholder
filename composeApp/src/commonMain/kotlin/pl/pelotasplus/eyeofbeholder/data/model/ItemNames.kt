@@ -171,3 +171,12 @@ object ItemMessages {
     /** A gem, a key, a set of bones, the lock picks. */
     const val NOT_USED_THIS_WAY = "This item is not used in this way."
 }
+
+/** What is said about a champion rather than about a thing. Transcribed. */
+object ChampionMessages {
+    /** Said once, when the venom takes hold. */
+    fun isPoisoned(whose: String) = "$whose is poisoned!"
+
+    /** And said again every time it costs them something. */
+    fun feelsThePoison(whose: String) = "$whose feels the effects of poison!"
+}

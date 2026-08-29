@@ -1167,6 +1167,8 @@ class ViewPortGoldenTest {
         /** Somebody met in the dungeon, and which place they take. */
         joinedBy: Champion? = null,
         joiningAt: Int = 5,
+        /** Which of them the venom has hold of, by the place they stand in. */
+        poisoned: List<Int> = emptyList(),
     ): BufferedImage = runBlocking {
         val resources = ResourceRepositoryImpl()
         val cps = CpsRepositoryImpl(resources)
@@ -1188,10 +1190,12 @@ class ViewPortGoldenTest {
                 hitPoints = champion.hitPoints.copy(current = hurtTo[hurt++]),
             )
 
-            if (lendingTo?.first != slot) hurtChampion else hurtChampion.copy(
+            val lent = if (lendingTo?.first != slot) hurtChampion else hurtChampion.copy(
                 carrying = hurtChampion.carrying.toMutableList()
                     .also { it[1] = lendingTo.second },
             )
+
+            if (slot in poisoned) lent.poisoned(true) else lent
         }.let { standing ->
             if (joinedBy == null) standing
             else standing.mapIndexed { slot, champion ->
@@ -1396,6 +1400,19 @@ class ViewPortGoldenTest {
                 joinedBy = INSAL.joiningAs,
                 joiningAt = 4,
             ),
+        )
+
+    /**
+     * A poisoned champion is written in red, which is the only sign of it on
+     * the party's boxes: the same red the game gives all three of the troubles
+     * it draws that way, and the reason the second and fourth names here look
+     * unlike the first and third.
+     */
+    @Test
+    fun `party panel with two of them poisoned`() =
+        checkGolden(
+            "party-panel-poisoned",
+            partyOver(level = "LEVEL4.INF", x = 15, y = 11, poisoned = listOf(1, 3)),
         )
 
     /** @param messages the level's own message ids, each with the ink to write it in. */

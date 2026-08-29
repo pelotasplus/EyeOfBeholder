@@ -65,6 +65,8 @@ import pl.pelotasplus.eyeofbeholder.data.model.ItemIndex
 import pl.pelotasplus.eyeofbeholder.data.model.WallAction
 import pl.pelotasplus.eyeofbeholder.data.model.doesWhenClicked
 import pl.pelotasplus.eyeofbeholder.data.model.inTheFrontRank
+import pl.pelotasplus.eyeofbeholder.data.model.ChampionMessages
+import pl.pelotasplus.eyeofbeholder.data.model.Damage
 import pl.pelotasplus.eyeofbeholder.data.model.ItemKind
 import pl.pelotasplus.eyeofbeholder.data.model.ItemMessages
 import pl.pelotasplus.eyeofbeholder.data.model.Potion
@@ -217,6 +219,9 @@ class ViewConeDebugViewModel(
      * a step that never finishes is a party that can never move again.
      */
     private var stepStillRunning = 0
+
+    /** How long until the venom takes its next bite out of everyone it has. */
+    private var untilPoisonBites = 0
     private var pulse = TeleporterPulse.AS_LAID_OUT
     private var tickNow = 0
 
@@ -668,15 +673,6 @@ class ViewConeDebugViewModel(
         }
     }
 
-    /**
-     * A champion eats what is put down on the plate laid on their belongings
-     * page, the fuller for its worth in food, and the food gone from the hand.
-     * Rotten food is worth nothing and so is not eaten.
-     *
-     * The plate is the whole of it. Food was once eaten by being held over a
-     * champion's face as well, which made carrying it past one to put it away
-     * impossible: the click that opens their page was the click that ate it.
-     */
     /** Food offered on the plate, which is food being carried. */
     private fun eatFromHand(whose: PartySlot, food: Item) =
         eat(whose, food) { it.handEmptied() }
@@ -712,20 +708,23 @@ class ViewConeDebugViewModel(
             // Vitality fills the stomach outright rather than adding to it.
             Potion.VITALITY -> _state.update { it.copy(game = it.game.championSated(whose)) }
 
+            Potion.CURE_POISON ->
+                _state.update { it.copy(game = it.game.championPoisoned(whose, yes = false)) }
+
+            // Drinking the poison is being poisoned, which is the same thing a
+            // spider does and works itself off the same way.
+            Potion.POISON -> {
+                _state.update { it.copy(game = it.game.championPoisoned(whose)) }
+                sayOf(whose, ChampionMessages::isPoisoned)
+            }
+
             // These want a champion to carry something they do not carry yet:
             // a strength that wears off, a speed, whether they can be seen,
             // and being poisoned at all. The bottle still empties.
             //
-            // Curing poison is one of them rather than a thing already done.
-            // The dungeon poisons: the spider on the first floor does, and so
-            // do the ants and the wasps further down — their table says so in
-            // a bit nothing reads yet. So there is something to cure and no
-            // way to be in need of it, which is a gap and not an absence.
             Potion.GIANT_STRENGTH,
-            Potion.POISON,
             Potion.SPEED,
             Potion.INVISIBILITY,
-            Potion.CURE_POISON,
             null -> Logger.w(TAG) {
                 "Nothing is written for a potion of ${what ?: "value ${potion.value}"}"
             }
@@ -740,9 +739,12 @@ class ViewConeDebugViewModel(
     }
 
     /**
-     * [consume] is where the food goes from, and is the only difference
-     * between the two ways of eating: the hand holds what the world is
-     * carrying, a pocket holds what a champion is.
+     * A champion the fuller for eating [food], and the food gone. Rotten food
+     * is worth nothing and so is not eaten.
+     *
+     * [consume] is where it goes from, and is the only difference between the
+     * two ways of eating: the hand holds what the world is carrying, a pocket
+     * holds what a champion is.
      */
     private fun eat(whose: PartySlot, food: Item, consume: (GameState) -> GameState) {
         if (food.value < 0) {
@@ -1394,7 +1396,16 @@ class ViewConeDebugViewModel(
                 stepStillRunning = (stepStillRunning - GameState.CLOCK_STEP.value)
                     .coerceAtLeast(0)
 
+                // The venom works on its own clock, not the monsters': it goes
+                // on biting long after whatever bit them is dead, and it is
+                // why this clock keeps running with nothing else left to do.
+                untilPoisonBites -= GameState.CLOCK_STEP.value
+                val poisonBites = untilPoisonBites <= 0
+                if (poisonBites) untilPoisonBites = POISON_BITES.value
+
                 var landed = emptyList<MonstersTurn.Struck>()
+                var poisoned = emptyList<PartySlot>()
+                var bitten = emptyList<PartySlot>()
                 var ruined = emptyList<MonstersTurn.Ruined>()
                 var swungAndMissed = emptyList<MonsterSlot>()
                 var roused = emptyList<MonsterInstance>()
@@ -1427,6 +1438,7 @@ class ViewConeDebugViewModel(
                             landed = taken.struck
                             ruined = taken.ruined
                             swungAndMissed = taken.missed
+                            poisoned = taken.poisoned
                             world = taken.world
                         }
                     }
@@ -1461,6 +1473,14 @@ class ViewConeDebugViewModel(
                             }
                     }
 
+                    // What the venom takes, it takes from everyone it has hold
+                    // of at once, and takes the same from each: a flat five,
+                    // rolled for by nobody and saved against by nobody.
+                    if (poisonBites) {
+                        bitten = world.poisoned
+                        bitten.forEach { world = world.championHurt(it, POISON_TAKES) }
+                    }
+
                     moved = world.somethingMoved(state.game)
                     state.copy(game = world)
                 }
@@ -1473,8 +1493,14 @@ class ViewConeDebugViewModel(
                 // clock that takes it off again is not this one: this one
                 // stops with the fight, and a splat left when it did would
                 // stay on the face until something else started it.
-                if (landed.isNotEmpty()) letTheDamageFade()
+                if (landed.isNotEmpty() || bitten.isNotEmpty()) letTheDamageFade()
                 ruined.forEach { sayWhatWasRuined(it) }
+
+                // Being poisoned is said once, when it takes hold; what it
+                // costs is said every time it costs anything, which is the
+                // only sign the player gets that it is still working.
+                poisoned.forEach { whose -> sayOf(whose, ChampionMessages::isPoisoned) }
+                bitten.forEach { whose -> sayOf(whose, ChampionMessages::feelsThePoison) }
                 swungAndMissed.forEach { slot -> Logger.d(TAG) { "$tickNow  m${slot.value} misses" } }
                 took.forEach { line -> Logger.d(TAG) { line } }
 
@@ -1555,6 +1581,11 @@ class ViewConeDebugViewModel(
      */
     private fun stillFighting(): Boolean {
         val monsters = _state.value.game.monsters
+
+        // Poison outlasts whatever gave it: this clock is the only thing that
+        // winds it, so it has to keep running for a party standing perfectly
+        // still in an empty corridor with somebody quietly dying on it.
+        if (_state.value.game.poisoned.isNotEmpty()) return true
 
         if (monsters.any { it.provoked } || stepStillRunning > 0) return true
 
@@ -1673,13 +1704,6 @@ class ViewConeDebugViewModel(
     }
 
     /**
-     * Counts the swung hands back to rest, and redraws as each comes back so
-     * the grid over it lifts.
-     *
-     * The same shape as the door clock, and for the same reason: the party are
-     * free while it runs.
-     */
-    /**
      * Takes the splat off a champion's portrait once its moment has passed.
      *
      * The same countdown the weapon hands report on, and the same length:
@@ -1699,6 +1723,13 @@ class ViewConeDebugViewModel(
         }
     }
 
+    /**
+     * Counts the swung hands back to rest, and redraws as each comes back so
+     * the grid over it lifts.
+     *
+     * The same shape as the door clock, and for the same reason: the party are
+     * free while it runs.
+     */
     private fun keepHandsRecovering() {
         if (recoveringHands?.isActive == true) return
 
@@ -1853,6 +1884,11 @@ class ViewConeDebugViewModel(
         if (item == null) return
 
         say(ItemMessages.taken(names.of(item, itemTypes)))
+    }
+
+    /** A line about one champion, which wants their name in it. */
+    private fun sayOf(whose: PartySlot, line: (String) -> String) {
+        _state.value.game.championIn(whose)?.let { say(line(it.name)) }
     }
 
     private fun say(line: String, ink: PaletteIndex = ScriptSpeech.DEFAULT_INK) {
@@ -2485,14 +2521,6 @@ class ViewConeDebugViewModel(
     }
 
     /**
-     * Turns the script's drawing instructions into something the play field can
-     * put on screen.
-     *
-     * Speakers are packed four to a file, and the instruction's x and y name the
-     * corner to cut out — x in units of eight pixels, as the file counts
-     * them — and its rect says which of the two places it goes.
-     */
-    /**
      * Whoever the party have run into, standing in the view while they speak.
      *
      * They are not one of the pictures a level names: everybody the dungeon
@@ -2511,6 +2539,14 @@ class ViewConeDebugViewModel(
         )
     }
 
+    /**
+     * Turns the script's drawing instructions into something the play field can
+     * put on screen.
+     *
+     * Speakers are packed four to a file, and the instruction's x and y name the
+     * corner to cut out — x in units of eight pixels, as the file counts
+     * them — and its rect says which of the two places it goes.
+     */
     private suspend fun sceneFor(
         scene: List<Dialog>,
         text: String,
@@ -2991,6 +3027,14 @@ class ViewConeDebugViewModel(
 
         /** What a bottle being emptied sounds like. */
         private val DRINK = TrackIndex(10)
+
+        /**
+         * How often the venom takes its bite, and how much. Both transcribed:
+         * a flat five, nothing rolled and no saving throw, every 546 ticks —
+         * which is about half a minute of playing.
+         */
+        private val POISON_BITES = Ticks(546)
+        private val POISON_TAKES = Damage(5)
 
         /** And under 32: a weapon swung, whether or not it finds anything. */
         private val SWING = TrackIndex(32)

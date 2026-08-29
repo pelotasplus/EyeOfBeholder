@@ -105,8 +105,15 @@ data class MonsterProperty(
      */
     val ruinsSomethingItHits: Boolean get() = capsFlags and RUINS_WHAT_IT_HITS != 0
 
+    /**
+     * Whether a blow of its poisons whoever it lands on. The spider on the
+     * first floor does, and so do the ants and the wasps further down.
+     */
+    val poisonsWhatItHits: Boolean get() = capsFlags and POISONS != 0
+
     private companion object {
         const val LARGE = 0x01
+        const val POISONS = 0x10
         const val HITS_AS_IT_MOVES = 0x08
         const val RUINS_WHAT_IT_HITS = 0x80
         const val COMES_IN_SIDEWAYS = 0x200

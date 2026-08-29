@@ -400,18 +400,6 @@ data class GameState(
     )
 
     /**
-     * Another thing like the one in [copyOf], put down at [place] on a square.
-     *
-     * A script does not describe what it makes; it points at something the
-     * world already holds and asks for another like it. The copy goes into
-     * the first slot of the table that holds nothing, which is what all the
-     * spare slots in a save are for — and if every one of them is taken the
-     * table simply grows, so a level can never quietly stop making things.
-     *
-     * Nothing is made when there is nothing to copy, and the world comes back
-     * unchanged.
-     */
-    /**
      * The things lying on [from] carried over to [to]: all of them, or only
      * those of [ofType]. A lever that makes a key appear does this, taking it
      * from a square off the edge of the map where it was kept.
@@ -457,6 +445,18 @@ data class GameState(
         return world
     }
 
+    /**
+     * Another thing like the one in [copyOf], put down at [place] on a square.
+     *
+     * A script does not describe what it makes; it points at something the
+     * world already holds and asks for another like it. The copy goes into
+     * the first slot of the table that holds nothing, which is what all the
+     * spare slots in a save are for — and if every one of them is taken the
+     * table simply grows, so a level can never quietly stop making things.
+     *
+     * Nothing is made when there is nothing to copy, and the world comes back
+     * unchanged.
+     */
     fun itemCopied(
         copyOf: ItemIndex,
         level: Int,
@@ -589,8 +589,7 @@ data class GameState(
      * Puts the party on [level], as they left it if they have been before, and
      * as its file [places] it if they have not. [maz] is that file's walls,
      * which everything a script has not changed still comes from.
-     */
-    /**
+     *
      * @param subLevel the one being entered, which the monsters the file lists
      *   take as their own — they are read by whichever sublevel's tables the
      *   party arrive under, and are a different creature under each.
@@ -760,8 +759,9 @@ data class GameState(
      * use it evicts whichever monster stands farthest from the party, killing
      * it if it still lives. Nothing dies here, so a full world drops the
      * spawn instead.
+     *
+     * @param subLevel the one the party are in, which a new monster joins.
      */
-    /** @param subLevel the one the party are in, which a new monster joins. */
     fun monsterCreated(
         spawn: CreateMonster,
         subLevel: Int = 0,
@@ -821,13 +821,6 @@ data class GameState(
     val anythingFlashing: Boolean get() = monsters.any { it.struck }
 
     /**
-     * The world with one champion [by] hit points worse off.
-     *
-     * Nothing else happens to them here: going down at nothing left and being
-     * past raising at ten below are what the panel already reads off the
-     * number, so taking it away is the whole of the change.
-     */
-    /**
      * The world a little further from its last meal: everyone still standing
      * is one emptier.
      *
@@ -862,7 +855,35 @@ data class GameState(
         }
     }
 
-    /** [whose] the fuller for eating [by], up to a full stomach. */
+    /**
+     * [whose] poisoned, or cured of it.
+     *
+     * Poisoning somebody already poisoned does nothing rather than starting
+     * again: the game refuses to refresh it, so a second bite from the same
+     * spider is not a second dose to be worked off.
+     */
+    fun championPoisoned(whose: PartySlot, yes: Boolean = true): GameState {
+        val who = champions.getOrNull(whose.index) ?: return this
+        if (who.poisoned == yes) return this
+
+        return copy(
+            champions = champions.toMutableList().also { it[whose.index] = who.poisoned(yes) },
+        )
+    }
+
+    /**
+     * Everyone the poison is still working on, in the order they stand.
+     *
+     * The dead are not among them. The venom keeps its hold — nothing washes
+     * it out of somebody who is raised later — but it takes nothing more from
+     * them, and this is what is asked both to hurt them and to decide whether
+     * the clock has anything left to do.
+     */
+    val poisoned: List<PartySlot>
+        get() = champions.indices
+            .map(::PartySlot)
+            .filter { champions[it.index].let { who -> who.poisoned && who.inTheParty && !who.dead } }
+
     /** [whose] with a full stomach outright, which is what vitality does. */
     fun championSated(whose: PartySlot): GameState {
         val who = champions.getOrNull(whose.index) ?: return this
@@ -873,6 +894,7 @@ data class GameState(
         )
     }
 
+    /** [whose] the fuller for eating [by], up to a full stomach. */
     fun championFed(whose: PartySlot, by: Int): GameState {
         val who = champions.getOrNull(whose.index) ?: return this
         return copy(
@@ -902,6 +924,13 @@ data class GameState(
         )
     }
 
+    /**
+     * The world with one champion [by] hit points worse off.
+     *
+     * Nothing else happens to them here: going down at nothing left and being
+     * past raising at ten below are what the panel already reads off the
+     * number, so taking it away is the whole of the change.
+     */
     fun championHurt(whose: PartySlot, by: Damage): GameState {
         if (!by.landed) return this
         val who = champions.getOrNull(whose.index) ?: return this

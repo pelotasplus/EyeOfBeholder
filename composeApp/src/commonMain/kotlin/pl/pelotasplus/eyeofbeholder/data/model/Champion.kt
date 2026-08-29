@@ -59,6 +59,11 @@ data class Champion(
     /** Held or paralysed: still standing, but able to do nothing about it. */
     val heldFast: Boolean get() = flags.heldFast
 
+    /** Whether something venomous has got them and nothing has cured it. */
+    val poisoned: Boolean get() = flags.poisoned
+
+    fun poisoned(yes: Boolean) = copy(flags = flags.poisoned(yes))
+
     /**
      * Which classes this champion counts as when an item asks who may hold
      * it — a fighter/thief counts as both, and may hold whatever either of
@@ -136,11 +141,22 @@ value class ChampionFlags(val value: Int) {
     /** The two of the troubles that leave a champion unable to use their hands. */
     val heldFast: Boolean get() = value and HELD_FAST != 0
 
+    /**
+     * Poisoned, which takes a little off them again and again until it is
+     * cured. It is not one of the troubles that stops them acting — a poisoned
+     * champion fights on, and dies of it if nobody sees to them.
+     */
+    val poisoned: Boolean get() = value and POISONED != 0
+
+    fun poisoned(yes: Boolean) =
+        ChampionFlags(if (yes) value or POISONED else value and POISONED.inv())
+
     private companion object {
         const val IN_THE_PARTY = 0x01
         const val TROUBLE = 0x0E
-        const val PETRIFIED = 0x08
+        const val POISONED = 0x02
         const val HELD_FAST = 0x0C
+        const val PETRIFIED = 0x08
     }
 }
 
