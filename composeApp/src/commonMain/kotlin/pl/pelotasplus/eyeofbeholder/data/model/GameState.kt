@@ -747,13 +747,18 @@ data class GameState(
      * picture of one on it, which is why nothing opens it and why forcing it
      * is what it takes. What it becomes is a real doorway on both faces of the
      * square — one without a button, since the door it replaces never had one
-     * to press — and it is still shut, so that it can be seen to swing.
+     * to press.
+     *
+     * It takes its frame already a step open, and never stands shut in it. A
+     * stuck door is drawn resting a little above its threshold, so a doorway
+     * put there shut would drop that much before it rose, and the first thing
+     * forcing a door would be seen to do is close it.
      */
     fun forcedOutOfItsFrame(level: Int, at: Location, side: WallSide): GameState {
         val door = Maz.WallType.Door(
             doorIndex = DoorIndex(if (wallByte(level, at, side) == FIRST_KIND) 0 else 1),
             hasButton = false,
-            state = 0,
+            state = 1,
         )
 
         return listOf(side, side.opposite).fold(this) { world, face ->

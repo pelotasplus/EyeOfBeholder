@@ -19,6 +19,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.Trigger
 import pl.pelotasplus.eyeofbeholder.data.model.TriggerFlags
 import pl.pelotasplus.eyeofbeholder.data.model.WallAction
 import pl.pelotasplus.eyeofbeholder.data.model.WallSide
+import pl.pelotasplus.eyeofbeholder.data.model.doorPanelTop
 import pl.pelotasplus.eyeofbeholder.data.model.script.CloseDoor
 import pl.pelotasplus.eyeofbeholder.data.model.script.End
 import pl.pelotasplus.eyeofbeholder.data.model.script.OpenDoor
@@ -153,11 +154,15 @@ class WorkingAWallTest {
 
     /**
      * Level 2's stuck door bars 8x3 on both faces. Forced, it becomes a real
-     * doorway there — shut, so that it can be seen to swing — and one with no
-     * button, the wall it replaces having had none to press.
+     * doorway there on both of them, with no button, the wall it replaces
+     * having had none to press.
+     *
+     * It arrives a step open rather than shut. A doorway put there shut would
+     * hang lower than the picture it replaced, so forcing a door would be seen
+     * to shut it before anything else.
      */
     @Test
-    fun `a forced door becomes a doorway that is still shut`() {
+    fun `a forced door takes its frame already opening`() {
         val stuck = Location(8, 3)
         val world = world("LEVEL2.INF", on = 2, at = stuck)
 
@@ -171,8 +176,33 @@ class WorkingAWallTest {
         listOf(WallSide.NORTH, WallSide.SOUTH).forEach { face ->
             val door = forced.wall(2, stuck, face)
             assertTrue(door is Maz.WallType.Door, "$face is not a doorway: $door")
-            assertEquals(0, door.state, "$face should still be shut")
+            assertEquals(1, door.state, "$face should be a step open")
             assertTrue(!door.hasButton, "$face was given a button")
+        }
+    }
+
+    /**
+     * The half of it that can be seen: where the panel is drawn before the
+     * shove and after it. A stuck door rests a little above its threshold, so
+     * the doorway that replaces it has to start higher again — the first thing
+     * it does is rise.
+     */
+    @Test
+    fun `a forced door rises from where the stuck one hung`() {
+        val panel = 60
+
+        (0..2).forEach { size ->
+            val hung = doorPanelTop(size, panel, opened = 0, stuck = true)
+            val forced = doorPanelTop(size, panel, opened = 1, stuck = false)
+
+            assertTrue(
+                forced < hung,
+                "at size $size a forced door starts at $forced, below the stuck $hung",
+            )
+            assertTrue(
+                doorPanelTop(size, panel, opened = 0, stuck = false) > hung,
+                "a shut doorway hangs lower than the stuck door, which is why not to use it",
+            )
         }
     }
 
