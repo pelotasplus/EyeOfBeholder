@@ -2735,6 +2735,7 @@ class ViewConeDebugViewModel(
             pulse = pulse,
             fromTheBottomUp = _state.value.game.fromTheBottomUp,
             holding = _state.value.game.inHand.takeIf { it.isSomething },
+            inFlight = _state.value.game.inFlight,
         ).onSuccess { viewPort ->
             drawn = viewPort
             paint(viewPort, sublevel.palette)

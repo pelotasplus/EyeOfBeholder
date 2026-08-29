@@ -775,8 +775,38 @@ class ViewPort(
     }
 
 
+    /**
+     * Something crossing a square rather than lying on it.
+     *
+     * A thing in the air is not stood on the floor and is not placed like one.
+     * It comes down the middle of the square at the height of the party's
+     * eyes, centred on that point both ways rather than resting its feet on a
+     * baseline, and only its size changes as it nears — which is the whole of
+     * the effect of something being thrown at you.
+     */
+    fun drawInFlight(icon: Cps.ItemIcon, blockIndex: Int, scaleSteps: ScaleSteps) {
+        var shape = icon
+        repeat(scaleSteps.value) { shape = scaleDown(shape) }
+
+        val spot = blockSpot(blockIndex, ViewPlace.MIDDLE)
+
+        drawIcon(
+            shape,
+            ScreenX(spot.x + 88 - shape.w / 2),
+            ScreenY(EYE_LEVEL - shape.h / 2),
+            fadeSteps = scaleSteps,
+        )
+    }
+
     companion object {
         private const val TAG = "ViewPort"
+
+        /**
+         * How high up the view a thing in flight is drawn, which is the same
+         * however far off it is: a bolt comes at head height down the corridor
+         * rather than rising out of the floor as it nears.
+         */
+        private const val EYE_LEVEL = 44
 
         /**
          * Paint walls the renderer could not draw bright red rather than

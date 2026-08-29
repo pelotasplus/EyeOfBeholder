@@ -37,8 +37,13 @@ class Flight(
         data class AMonster(val slot: MonsterSlot, val by: Damage) : Hurt
     }
 
-    /** Moves every projectile on by one square. */
-    fun onward(world: GameState): Moved {
+    /**
+     * Everything in the air, [ticks] further on.
+     *
+     * Most turns of the clock move nothing: a thing takes several of them to
+     * cross one square, and the ones in between are only it getting there.
+     */
+    fun onward(world: GameState, ticks: Int = GameState.CLOCK_STEP.value): Moved {
         if (world.inFlight.isEmpty()) return Moved(world)
 
         var carried = world
@@ -47,7 +52,14 @@ class Flight(
         val stillGoing = mutableListOf<Projectile>()
 
         world.inFlight.forEach { flying ->
-            val next = stepped(carried, flying)
+            val waited = flying.copy(untilNextSquare = flying.untilNextSquare - ticks)
+
+            if (waited.untilNextSquare > 0) {
+                stillGoing += waited
+                return@forEach
+            }
+
+            val next = stepped(carried, waited)
 
             if (next == null) {
                 carried = landed(carried, flying)
@@ -95,6 +107,7 @@ class Flight(
         return flying.copy(
             at = onto,
             squaresLeft = flying.squaresLeft - 1,
+            untilNextSquare = Projectile.ACROSS_A_SQUARE,
             leaving = false,
         )
     }

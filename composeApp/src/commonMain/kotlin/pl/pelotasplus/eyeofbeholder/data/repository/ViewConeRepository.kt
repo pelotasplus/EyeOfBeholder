@@ -24,6 +24,8 @@ import pl.pelotasplus.eyeofbeholder.data.model.ViewWindow
 import pl.pelotasplus.eyeofbeholder.data.model.WallSet
 import pl.pelotasplus.eyeofbeholder.data.model.getWall
 import pl.pelotasplus.eyeofbeholder.data.model.ItemIndex
+import pl.pelotasplus.eyeofbeholder.data.model.Projectile
+import pl.pelotasplus.eyeofbeholder.data.model.ScaleSteps
 import pl.pelotasplus.eyeofbeholder.data.model.SquarePlace
 import pl.pelotasplus.eyeofbeholder.data.model.itemScaleStepsAt
 import pl.pelotasplus.eyeofbeholder.data.model.nudgeOf
@@ -93,6 +95,8 @@ interface ViewConeRepository {
         fromTheBottomUp: List<ItemIndex> = items.indices.map(::ItemIndex),
         /** What the party carry, so the view can say where putting it would leave it. */
         holding: ItemIndex? = null,
+        /** Whatever is crossing the floor rather than lying on it. */
+        inFlight: List<Projectile> = emptyList(),
     ): Result<ViewPort>
 }
 
@@ -105,6 +109,7 @@ class ViewConeRepositoryImpl(
     private var smallItemIcons: Cps? = null
     private var largeItemIcons: Cps? = null
     private var decorationShapes: Cps? = null
+    private var thrownShapes: Cps? = null
     private val monsterSheetCache = mutableMapOf<String, MonsterSheet>()
 
     private suspend fun getSmallItemIcons(): Cps {
@@ -116,6 +121,16 @@ class ViewConeRepositoryImpl(
     private suspend fun getLargeItemIcons(): Cps {
         return largeItemIcons ?: cpsRepository.loadCps("ITEML1.CPS").getOrThrow().also {
             largeItemIcons = it
+        }
+    }
+
+    /**
+     * The sheet everything in flight is cut from: thrown weapons in rows along
+     * one side of it, and the four conjured bolts in a column of their own.
+     */
+    private suspend fun getThrownShapes(): Cps {
+        return thrownShapes ?: cpsRepository.loadCps("THROWN.CPS").getOrThrow().also {
+            thrownShapes = it
         }
     }
 
@@ -137,6 +152,7 @@ class ViewConeRepositoryImpl(
         pulse: TeleporterPulse,
         fromTheBottomUp: List<ItemIndex>,
         holding: ItemIndex?,
+        inFlight: List<Projectile>,
     ): Result<ViewPort> {
         Logger.d(TAG) { "Render position $playerX x $playerY level ${sublevel.level}"}
 
@@ -152,6 +168,14 @@ class ViewConeRepositoryImpl(
         val monsterSheets = loadMonsterSheets(sublevel)
         val teleporters = teleportersInView(Location(playerX, playerY), direction, wallAt)
         val decorations = if (teleporters.isEmpty()) null else getDecorations()
+
+        // Only fetched when there is something to draw with it: nothing is in
+        // the air on most frames, and the sheet is a whole screen of pixels.
+        val bolt = if (inFlight.none { it.what == null }) {
+            null
+        } else {
+            getThrownShapes().cut(BOLT_X, BOLT_Y, BOLT_WIDTH, BOLT_HEIGHT)
+        }
         val windows = viewWindows(sublevel, playerX, playerY, direction, wallAt)
 
         // Data-driven wall rendering using the viewSlots table
@@ -163,7 +187,11 @@ class ViewConeRepositoryImpl(
             when (wallPosition) {
                 11, 18, 23 -> {
                     val relY = if (wallPosition == 11) -3 else if (wallPosition == 18) -2 else -1
-                    drawItemsAtRow(relY, viewPort, items, fromTheBottomUp, smallIcons, largeIcons, sublevel, playerX, playerY, direction, windows, wallAt)
+                    drawItemsAtRow(
+                        relY, viewPort, items, fromTheBottomUp, smallIcons, largeIcons,
+                        sublevel, playerX, playerY, direction, windows, wallAt,
+                        inFlight = inFlight, bolt = bolt,
+                    )
                     drawMonstersAtRow(relY, viewPort, monsters, monsterSheets, sublevel, playerX, playerY, direction, windows)
                     drawTeleportersAtRow(relY, viewPort, teleporters, decorations, pulse, windows)
                 }
@@ -372,6 +400,8 @@ class ViewConeRepositoryImpl(
         direction: Direction,
         windows: List<ViewWindow>,
         wallAt: (Location, WallSide) -> Maz.WallType,
+        inFlight: List<Projectile>,
+        bolt: Cps.ItemIcon?,
     ) {
         val dim = when (relativeY) {
             -3 -> 0
@@ -405,6 +435,19 @@ class ViewConeRepositoryImpl(
                     blockIndex = block.blockIndex, dim = dim,
                     partyFacing = direction,
                 )
+
+                // After what lies on the square: a bolt crossing a floor
+                // passes in front of whatever is dropped on it.
+                if (bolt != null && inFlight.any {
+                        it.what == null &&
+                            it.at.x == playerX + dx &&
+                            it.at.y == playerY + dy
+                    }
+                ) {
+                    // Shrunk the way anything else on that row is: the row's
+                    // dim counts up as it nears, the shrinking counts down.
+                    viewPort.drawInFlight(bolt, block.blockIndex, ScaleSteps(NEAREST_DIM - dim))
+                }
             }
         }
     }
@@ -609,6 +652,22 @@ class ViewConeRepositoryImpl(
 
     companion object {
         private const val TAG = "ViewConeRepository"
+
+        /**
+         * Where the conjured bolt is cut from `THROWN.CPS`, transcribed rather
+         * than measured off the sheet.
+         *
+         * The thrown weapons are cut in rows of four columns; the four bolts
+         * sit past them in a column of their own, thirty-two apart. This is
+         * the first of that column, which is the one a trap throws.
+         */
+        const val BOLT_X = 64
+        const val BOLT_Y = 0
+        const val BOLT_WIDTH = 48
+        const val BOLT_HEIGHT = 32
+
+        /** The dim of the row the party stand on, which everything shrinks from. */
+        private const val NEAREST_DIM = 3
 
         /** The row a monster has to be on for its arm to be in the fight. */
         private const val NEXT_TO_THE_PARTY = -1

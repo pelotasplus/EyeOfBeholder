@@ -1083,7 +1083,11 @@ data class GameState(
      * through it they are, only whether the next one is refused.
      */
     fun somethingMoved(was: GameState): Boolean =
-        monsters != was.monsters || champions != was.champions
+        monsters != was.monsters ||
+            champions != was.champions ||
+            // A bolt crossing an empty corridor moves nothing else at all, and
+            // without this it would cross it without being drawn once.
+            inFlight != was.inFlight
 
     /** Whether any monster is part way through its own swing. */
     val anythingSwinging: Boolean get() = monsters.any { it.striking != null }

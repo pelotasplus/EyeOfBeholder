@@ -34,6 +34,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.OnAParchment
 import pl.pelotasplus.eyeofbeholder.data.model.Naming
 import pl.pelotasplus.eyeofbeholder.data.model.PaletteIndex
 import pl.pelotasplus.eyeofbeholder.data.model.PartyState
+import pl.pelotasplus.eyeofbeholder.data.model.Projectile
 import pl.pelotasplus.eyeofbeholder.data.model.SquarePlace
 import pl.pelotasplus.eyeofbeholder.data.model.THROWN_CPS
 import pl.pelotasplus.eyeofbeholder.data.model.WhatTheBlowCameTo
@@ -1415,6 +1416,37 @@ class ViewPortGoldenTest {
             partyOver(level = "LEVEL4.INF", x = 15, y = 11, poisoned = listOf(1, 3)),
         )
 
+    /**
+     * A trap's bolt coming up the corridor, one square away and three.
+     *
+     * It is drawn down the middle of the square at the height of the party's
+     * eyes rather than stood on the floor, and only its size says how far off
+     * it is — so the pair of these is what shows it approaching.
+     */
+    @Test
+    fun `a bolt in the air one square off`() =
+        checkGolden("bolt-one-square-off", aBoltInFlight("LEVEL2.INF", 3, 11, Direction.NORTH, 1))
+
+    /**
+     * And one crossing the view rather than coming down it. There is one
+     * picture of a burst and it is drawn the same way round whichever way it
+     * is going, so what says it is passing is where it is, not how it looks.
+     */
+    @Test
+    fun `a bolt crossing the view from the side`() =
+        checkGolden(
+            "bolt-from-the-side",
+            aBoltInFlight(
+                "LEVEL2.INF", 3, 12, Direction.NORTH,
+                boltAt = Location(4, 10),
+                going = Direction.WEST,
+            ),
+        )
+
+    @Test
+    fun `a bolt in the air three squares off`() =
+        checkGolden("bolt-three-squares-off", aBoltInFlight("LEVEL2.INF", 3, 11, Direction.NORTH, 3))
+
     /** @param messages the level's own message ids, each with the ink to write it in. */
     private fun messagesOver(
         level: String,
@@ -1766,6 +1798,49 @@ class ViewPortGoldenTest {
                 instead(at, side)?.let { Maz.WallType.of(it) }
                     ?: sublevel.maz.square(at).getWall(side)
             },
+        ).getOrThrow()
+    }
+
+    /**
+     * A bolt in the air on the square [squaresOff] ahead of the party, which
+     * is the only thing this draws that is not standing on a floor.
+     */
+    private fun aBoltInFlight(
+        level: String,
+        x: Int,
+        y: Int,
+        direction: Direction,
+        squaresOff: Int = 0,
+        boltAt: Location? = null,
+        going: Direction? = null,
+    ): ViewPort = runBlocking {
+        val repository = repository()
+        val inf = repository.loadLevel(level).getOrThrow()
+        val sublevel = inf.subLevels[inf.subLevelAt(0, x, y, direction)]
+
+        val at = boltAt ?: run {
+            var walked = Location(x, y)
+            repeat(squaresOff) { walked = direction.oneStepFrom(walked) }
+            walked
+        }
+
+        repository.renderPosition(
+            items = dungeonItems,
+            monsters = emptyList(),
+            sublevel = sublevel,
+            playerX = x,
+            playerY = y,
+            direction = direction,
+            inFlight = listOf(
+                Projectile(
+                    what = null,
+                    at = at,
+                    place = SquarePlace.MIDDLE,
+                    going = going
+                        ?: Direction.entries[(direction.ordinal + 2) % Direction.entries.size],
+                    thrownBy = Projectile.Thrower.TheLevel,
+                ),
+            ),
         ).getOrThrow()
     }
 

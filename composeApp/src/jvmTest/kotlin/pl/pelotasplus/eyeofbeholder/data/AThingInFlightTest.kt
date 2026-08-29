@@ -72,8 +72,13 @@ class AThingInFlightTest {
         ).state
     }
 
-    /** One square of flight for everything in the air. */
+    /** A whole square's worth of flight, so a step here is a square. */
     private fun onward(world: GameState): Flight.Moved =
+        Flight(sublevel = level.subLevels[0], level = 2)
+            .onward(world, ticks = Projectile.ACROSS_A_SQUARE)
+
+    /** One turn of the world's clock, which is not a whole square. */
+    private fun oneTick(world: GameState): Flight.Moved =
         Flight(sublevel = level.subLevels[0], level = 2).onward(world)
 
     @Test
@@ -217,6 +222,33 @@ class AThingInFlightTest {
         val taken = HEARTY - world.champions[0].hitPoints.current
 
         assertTrue(taken in TRAP_LEVELS..(TRAP_LEVELS * 6), "a fireball took $taken, which is not 5d6")
+    }
+
+    /**
+     * A square takes several turns of the clock, not one. The game moves what
+     * is in the air every three ticks and walks it through a square in two of
+     * those, and a bolt that crossed a square per tick would be down the
+     * corridor before the eye caught it.
+     */
+    @Test
+    fun `a square takes more than one turn of the clock`() {
+        var world = fire(standingAt(Location(4, 11)), lever, ScriptEvent.WALL_CLICKED)
+        val startedAt = world.inFlight.single().at
+
+        val crossed = buildList {
+            repeat(Projectile.ACROSS_A_SQUARE / GameState.CLOCK_STEP.value) {
+                val moved = oneTick(world)
+                world = moved.world
+                addAll(moved.flewOnto)
+            }
+        }
+
+        assertEquals(1, crossed.size, "it crossed more than one square in a square's worth of ticks")
+        assertEquals(
+            Direction.SOUTH.oneStepFrom(startedAt),
+            crossed.single(),
+            "it did not end up one square along",
+        )
     }
 
     /** And it stops when it has hit something rather than flying on. */

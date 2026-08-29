@@ -46,6 +46,15 @@ data class Projectile(
     val harm: Harm = Harm.ofAThrownThing,
 
     /**
+     * Ticks still to run before it is over the next square.
+     *
+     * A thing in flight is not on the clock the rest of the world is: it
+     * crosses a square in its own time, and counting down to the next one is
+     * what keeps it from crossing a corridor faster than the eye follows it.
+     */
+    val untilNextSquare: Int = ACROSS_A_SQUARE,
+
+    /**
      * Whether it is still on the square it was loosed from.
      *
      * The first step is always allowed. A thing fired from inside a wall — a
@@ -111,6 +120,14 @@ data class Projectile(
     companion object {
         /** How many squares anything loosed will cross before it drops. */
         const val REACH = 12
+
+        /**
+         * How long a thing takes to cross one square.
+         *
+         * The game moves what is in the air every three ticks and walks it
+         * through a square in two of those moves, so a square is six.
+         */
+        const val ACROSS_A_SQUARE = 6
 
         /**
          * How far a burst carries, which is as far as the corridor goes: it is
