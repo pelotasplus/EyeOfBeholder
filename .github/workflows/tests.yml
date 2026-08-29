@@ -1,0 +1,87 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Compile and test
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      # The web targets are the ones a JVM-only run cannot speak for: a value
+      # class without its `kotlin.jvm.JvmInline` import compiles on the JVM and
+      # nowhere else.
+      - name: Compile every target the runner can build
+        run: ./gradlew compileKotlinJvm compileTestKotlinJvm compileKotlinWasmJs compileKotlinJs
+
+      # The game data is not in the repository, and most of the suite reads it.
+      # What is left is found rather than listed, so a test added tomorrow is
+      # run or reported without anybody remembering to edit this file.
+      - name: Work out which tests can run without the game data
+        id: subset
+        run: |
+          grep -rL ResourceRepositoryImpl composeApp/src/jvmTest/kotlin --include='*Test.kt' \
+            | sed 's|.*/kotlin/||; s|/|.|g; s|\.kt$||' \
+            | sort > /tmp/runnable.txt
+          grep -rl ResourceRepositoryImpl composeApp/src/jvmTest/kotlin --include='*Test.kt' \
+            | sort > /tmp/needs-game-data.txt
+          echo "count=$(wc -l < /tmp/runnable.txt)" >> "$GITHUB_OUTPUT"
+          echo "skipped=$(wc -l < /tmp/needs-game-data.txt)" >> "$GITHUB_OUTPUT"
+
+      - name: Run them
+        run: |
+          # No filters at all would run the whole suite rather than none of it.
+          if [ ! -s /tmp/runnable.txt ]; then
+            echo "Every test reads the game data; there is nothing to run here." >&2
+            exit 1
+          fi
+          filters=()
+          while read -r test; do filters+=(--tests "$test"); done < /tmp/runnable.txt
+          ./gradlew :composeApp:jvmTest "${filters[@]}"
+
+      # A run that tested a third of the suite must not read as a run that
+      # tested all of it, so it says so on the summary either way.
+      - name: Say what was not run
+        if: always()
+        run: |
+          {
+            echo "### Tests"
+            echo
+            echo "Ran **${{ steps.subset.outputs.count }}** test classes."
+            echo
+            echo "**${{ steps.subset.outputs.skipped }}** were not run: they read the"
+            echo "original game data, which is not in the repository. Among them are"
+            echo "the golden-image rendering tests, so nothing here speaks for how the"
+            echo "game looks. Run \`./gradlew :composeApp:jvmTest\` locally for those."
+            echo
+            echo "<details><summary>Not run</summary>"
+            echo
+            echo '```'
+            cat /tmp/needs-game-data.txt
+            echo '```'
+            echo
+            echo "</details>"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: test-results
+          path: composeApp/build/reports/tests/jvmTest/
