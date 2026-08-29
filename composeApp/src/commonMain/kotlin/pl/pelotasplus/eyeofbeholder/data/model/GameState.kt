@@ -169,6 +169,26 @@ data class GameState(
     }
 
     /**
+     * The world with one of a champion's slots emptied and what was in it put
+     * nowhere, which is [handEmptied] for a thing already put away.
+     *
+     * The two are separate because the hand is not a slot: what is being
+     * carried is the world's, not any champion's, so a thing used out of a
+     * pocket has to be taken out of that pocket and off the table both.
+     */
+    fun slotEmptied(champion: PartySlot, slot: CarrySlot): GameState {
+        val who = champions.getOrNull(champion.index) ?: return this
+        val what = who.holding(slot)
+        if (!what.isSomething) return this
+
+        return copy(
+            items = items.mapIndexed { at, item ->
+                if (at == what.value) item.copy(location = Item.NOWHERE) else item
+            },
+        ).carrying(champion, slot, ItemIndex(ItemIndex.NOTHING))
+    }
+
+    /**
      * The world with what lies on a square put nowhere — everything on it, or
      * only the things of one kind.
      */

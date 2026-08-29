@@ -676,13 +676,30 @@ class ViewConeDebugViewModel(
      * champion's face as well, which made carrying it past one to put it away
      * impossible: the click that opens their page was the click that ate it.
      */
-    private fun eat(whose: PartySlot, food: Item) {
+    /** Food offered on the plate, which is food being carried. */
+    private fun eatFromHand(whose: PartySlot, food: Item) =
+        eat(whose, food) { it.handEmptied() }
+
+    /**
+     * Food used where it sits, which is the game's own way: rations already
+     * put away are eaten by the champion whose pocket they came out of.
+     */
+    private fun eatFromSlot(whose: PartySlot, slot: CarrySlot, food: Item) =
+        eat(whose, food) { it.slotEmptied(whose, slot) }
+
+    /**
+     * [consume] is where the food goes from, and is the only difference
+     * between the two ways of eating: the hand holds what the world is
+     * carrying, a pocket holds what a champion is.
+     */
+    private fun eat(whose: PartySlot, food: Item, consume: (GameState) -> GameState) {
         if (food.value < 0) {
             say("That food is rotten.")
+            drawWords()
             return
         }
 
-        _state.update { it.copy(game = it.game.championFed(whose, food.value).handEmptied()) }
+        _state.update { it.copy(game = consume(it.game.championFed(whose, food.value))) }
         viewModelScope.launch { playTrack(EAT) }
         renderViewPort()
     }
@@ -1126,6 +1143,13 @@ class ViewConeDebugViewModel(
         if (horn != null) {
             say(horn.sounds)
             viewModelScope.launch { playTrack(horn.heardAs) }
+        }
+
+        // Rations are eaten out of the pocket they are in, by whoever's pocket
+        // it is. That is the game's own way of eating and wants nothing held:
+        // the plate is for food being carried, this is for food put away.
+        if (held != null && itemTypes?.isEaten(held) == true) {
+            eatFromSlot(whose, slot.slot, held)
         }
 
         // A hand is offered the swing whatever is in it, and what is in it
@@ -1909,7 +1933,7 @@ class ViewConeDebugViewModel(
         if (choice == SheetChoice.Eat) {
             _state.value.game.item(_state.value.game.inHand)
                 ?.takeIf { itemTypes?.isEaten(it) == true }
-                ?.let { eat(sheet.slot, it) }
+                ?.let { eatFromHand(sheet.slot, it) }
             return
         }
 
