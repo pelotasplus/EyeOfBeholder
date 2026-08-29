@@ -1409,6 +1409,23 @@ class ViewPortGoldenTest {
         )
 
     /**
+     * The three ways a champion is shown: on their feet, down under a grid,
+     * and past raising with another picture in place of the face. The rest of
+     * the box stays in all three, which is the half worth seeing.
+     */
+    @Test
+    fun `a party with one down and one past raising`() =
+        checkGolden(
+            "party-panel-down",
+            partyOver(
+                level = "LEVEL4.INF",
+                x = 15,
+                y = 11,
+                hurtTo = listOf(78, -3, 20, Champion.BEYOND_RAISING),
+            ),
+        )
+
+    /**
      * A poisoned champion is written in red, which is the only sign of it on
      * the party's boxes: the same red the game gives all three of the troubles
      * it draws that way, and the reason the second and fourth names here look

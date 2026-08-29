@@ -307,4 +307,22 @@ class GameStateTest {
         )
         assertEquals(true, flattened.champions[0].deadForGood)
     }
+
+    /**
+     * Two lines, not one: at nothing a champion is down and can be brought
+     * round, and only ten under it are they past raising.
+     */
+    @Test
+    fun `being down and being past raising are different lines`() {
+        fun at(points: Int) = Champion.NOBODY.copy(
+            flags = ChampionFlags(1),
+            hitPoints = HitPoints(current = points, max = 40),
+        )
+
+        assertEquals(false, at(1).dead, "one point left is still standing")
+        assertEquals(true, at(0).dead, "nothing left is down")
+        assertEquals(false, at(0).deadForGood, "and being down is not past raising")
+        assertEquals(false, at(-9).deadForGood, "one short of it is not past raising")
+        assertEquals(true, at(Champion.BEYOND_RAISING).deadForGood)
+    }
 }

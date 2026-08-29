@@ -440,14 +440,23 @@ class PlayField(
         reporting: (Int) -> WhatTheBlowCameTo?,
         hurt: Damage?,
     ) {
-        portraits?.let { sheet ->
-            val face = faceOf(champion.portrait, sheet, metPortraits) ?: return@let
-            val colours = (if (champion.portrait.value < 0) metPortraits else sheet)
-                ?.palette ?: palette
-            for (y in 0 until face.h) {
-                for (x in 0 until face.w) {
-                    val index = face.pixels[y * face.w + x]
-                    draw(box.portraitLeft + x, box.portraitTop + y, colours.colors[index.value])
+        // Past raising, the face goes and the rest of the box stays.
+        if (champion.deadForGood) {
+            drawOverTheFace(FaceStandIn.DEAD, box)
+        } else {
+            portraits?.let { sheet ->
+                val face = faceOf(champion.portrait, sheet, metPortraits) ?: return@let
+                val colours = (if (champion.portrait.value < 0) metPortraits else sheet)
+                    ?.palette ?: palette
+                for (y in 0 until face.h) {
+                    for (x in 0 until face.w) {
+                        val index = face.pixels[y * face.w + x]
+                        draw(
+                            box.portraitLeft + x,
+                            box.portraitTop + y,
+                            colours.colors[index.value],
+                        )
+                    }
                 }
             }
         }
@@ -462,12 +471,27 @@ class PlayField(
             )
         }
 
+        // Down but not past raising: the face stays, under a grid.
+        if (champion.dead && !champion.deadForGood) drawOverTheFace(FaceStandIn.BEATEN, box)
+
         drawHands(champion, box, carrying, recovering, reporting)
         drawHitPointBar(champion, box)
 
         // Last of all, over the face and the bars alike: it is meant to be the
         // thing a player sees rather than something tucked behind the rest.
         hurt?.let { drawTheDamage(it, box) }
+    }
+
+    private fun drawOverTheFace(standIn: FaceStandIn, box: ChampionBox) {
+        for (y in 0 until FACE_SHAPE) {
+            for (x in 0 until FACE_SHAPE) {
+                val index = decorations.pixels[
+                    (FACE_SHAPES_TOP + y) * decorations.width + standIn.sourceLeft + x,
+                ]
+                if (index.isTransparent) continue
+                draw(box.portraitLeft + x, box.portraitTop + y, palette.colors[index.value])
+            }
+        }
     }
 
     /**
@@ -969,6 +993,9 @@ class PlayField(
 
         /** EoB2 shpX/shpY from gui_drawCompass. */
         private val COMPASS_TARGETS = listOf(114 to 131, 79 to 158, 151 to 158)
+
+        private const val FACE_SHAPES_TOP = 88
+        private const val FACE_SHAPE = 32
     }
 }
 
@@ -983,3 +1010,12 @@ private val Direction.compassColumn: Int
         Direction.SOUTH -> 2
         Direction.WEST -> 3
     }
+
+/**
+ * What goes where a champion's face would, when the face is not the thing to
+ * say. Both sit side by side on one row of DECORATE.CPS.
+ */
+private enum class FaceStandIn(val sourceLeft: Int) {
+    DEAD(0),
+    BEATEN(32),
+}
