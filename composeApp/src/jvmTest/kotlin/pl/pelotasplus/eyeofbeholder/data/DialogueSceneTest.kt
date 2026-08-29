@@ -1,6 +1,8 @@
 package pl.pelotasplus.eyeofbeholder.data
 
 import kotlinx.coroutines.runBlocking
+import org.junit.experimental.categories.Category
+import pl.pelotasplus.eyeofbeholder.NeedsGameData
 import pl.pelotasplus.eyeofbeholder.data.model.DialogueScene
 import pl.pelotasplus.eyeofbeholder.data.model.Font
 import pl.pelotasplus.eyeofbeholder.data.repository.FontRepositoryImpl
@@ -9,6 +11,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
+@Category(NeedsGameData::class)
 class DialogueSceneTest {
 
     private val font: Font = runBlocking {

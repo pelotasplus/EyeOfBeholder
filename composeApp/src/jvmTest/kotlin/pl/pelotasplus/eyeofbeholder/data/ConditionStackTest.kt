@@ -1,6 +1,8 @@
 package pl.pelotasplus.eyeofbeholder.data
 
 import kotlinx.coroutines.runBlocking
+import org.junit.experimental.categories.Category
+import pl.pelotasplus.eyeofbeholder.NeedsGameData
 import pl.pelotasplus.eyeofbeholder.data.model.CharacterClass
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.DialogueTextId
@@ -52,6 +54,7 @@ import kotlin.test.assertTrue
  * stack whatever the first of them turns out to be, and the operand written
  * last is the left-hand side, so `x y less` asks whether y is less than x.
  */
+@Category(NeedsGameData::class)
 class ConditionStackTest {
 
     private val here = Location(3, 4)

@@ -1,6 +1,8 @@
 package pl.pelotasplus.eyeofbeholder.data
 
 import kotlinx.coroutines.runBlocking
+import org.junit.experimental.categories.Category
+import pl.pelotasplus.eyeofbeholder.NeedsGameData
 import pl.pelotasplus.eyeofbeholder.data.model.Champion
 import pl.pelotasplus.eyeofbeholder.data.model.ChampionFlags
 import pl.pelotasplus.eyeofbeholder.data.model.Dice
@@ -38,6 +40,7 @@ import kotlin.test.assertTrue
  * while the cell is unopened, and the moment the meeting is over it reads the
  * party's facing to decide whether to walk them up the corridor.
  */
+@Category(NeedsGameData::class)
 class LettingShornOutTest {
 
     private val resources = ResourceRepositoryImpl()

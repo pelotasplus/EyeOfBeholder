@@ -1,6 +1,8 @@
 package pl.pelotasplus.eyeofbeholder.data
 
 import kotlinx.coroutines.runBlocking
+import org.junit.experimental.categories.Category
+import pl.pelotasplus.eyeofbeholder.NeedsGameData
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.GameState
 import pl.pelotasplus.eyeofbeholder.data.model.Inf
@@ -33,6 +35,7 @@ import kotlin.test.assertTrue
  * Level 5's temple again: the open squares are 12x8 and 13x8, 12x9 through
  * 15x9, and 12x10 and 13x10.
  */
+@Category(NeedsGameData::class)
 class MonstersHuntingTest {
 
     private val resources = ResourceRepositoryImpl()

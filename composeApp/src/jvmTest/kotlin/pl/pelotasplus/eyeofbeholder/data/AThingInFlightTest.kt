@@ -1,6 +1,8 @@
 package pl.pelotasplus.eyeofbeholder.data
 
 import kotlinx.coroutines.runBlocking
+import org.junit.experimental.categories.Category
+import pl.pelotasplus.eyeofbeholder.NeedsGameData
 import pl.pelotasplus.eyeofbeholder.data.model.Champion
 import pl.pelotasplus.eyeofbeholder.data.model.ChampionFlags
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
@@ -36,6 +38,7 @@ import kotlin.test.assertTrue
  * into the niche at 2x10 — the trap does its work further down the corridor
  * than it stands, and the thing in the air is what carries it there.
  */
+@Category(NeedsGameData::class)
 class AThingInFlightTest {
 
     private val resources = ResourceRepositoryImpl()

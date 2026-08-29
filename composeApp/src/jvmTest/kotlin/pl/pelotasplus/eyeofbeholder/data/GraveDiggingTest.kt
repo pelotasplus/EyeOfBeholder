@@ -1,6 +1,8 @@
 package pl.pelotasplus.eyeofbeholder.data
 
 import kotlinx.coroutines.runBlocking
+import org.junit.experimental.categories.Category
+import pl.pelotasplus.eyeofbeholder.NeedsGameData
 import pl.pelotasplus.eyeofbeholder.data.model.DialogAnswer
 import pl.pelotasplus.eyeofbeholder.data.model.CharacterClass
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
@@ -34,6 +36,7 @@ import kotlin.test.assertTrue
  * answer is yes both times. It gives them up once only: the level flag it
  * sets is what stops a party digging the same grave for ever.
  */
+@Category(NeedsGameData::class)
 class GraveDiggingTest {
 
     private val resources = ResourceRepositoryImpl()

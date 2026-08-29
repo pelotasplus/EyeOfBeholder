@@ -1,6 +1,8 @@
 package pl.pelotasplus.eyeofbeholder.data
 
 import kotlinx.coroutines.runBlocking
+import org.junit.experimental.categories.Category
+import pl.pelotasplus.eyeofbeholder.NeedsGameData
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.GameState
 import pl.pelotasplus.eyeofbeholder.data.model.ItemIndex
@@ -32,6 +34,7 @@ import kotlin.test.assertTrue
  * The Skull Key is the shortest of them to reach: it lies on the same floor as
  * three of its own locks.
  */
+@Category(NeedsGameData::class)
 class UnlockingADoorTest {
 
     private val resources = ResourceRepositoryImpl()

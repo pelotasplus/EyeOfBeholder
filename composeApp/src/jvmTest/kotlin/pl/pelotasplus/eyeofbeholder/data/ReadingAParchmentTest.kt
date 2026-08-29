@@ -1,6 +1,8 @@
 package pl.pelotasplus.eyeofbeholder.data
 
 import kotlinx.coroutines.runBlocking
+import org.junit.experimental.categories.Category
+import pl.pelotasplus.eyeofbeholder.NeedsGameData
 import pl.pelotasplus.eyeofbeholder.data.model.DialogueTextId
 import pl.pelotasplus.eyeofbeholder.data.model.Item
 import pl.pelotasplus.eyeofbeholder.data.model.ItemTypes
@@ -22,6 +24,7 @@ import kotlin.test.assertTrue
  * putting that page of TEXT.DAT up. The value counts from zero; the texts are
  * numbered from one.
  */
+@Category(NeedsGameData::class)
 class ReadingAParchmentTest {
 
     private val resources = ResourceRepositoryImpl()

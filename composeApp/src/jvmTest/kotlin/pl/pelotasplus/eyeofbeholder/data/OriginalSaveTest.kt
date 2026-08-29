@@ -1,6 +1,8 @@
 package pl.pelotasplus.eyeofbeholder.data
 
 import kotlinx.coroutines.runBlocking
+import org.junit.experimental.categories.Category
+import pl.pelotasplus.eyeofbeholder.NeedsGameData
 import pl.pelotasplus.eyeofbeholder.data.model.Champion
 import pl.pelotasplus.eyeofbeholder.data.model.CharacterClass
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
@@ -25,6 +27,7 @@ import kotlin.test.assertTrue
  * 345 bytes of fixed layout, and getting one field's width wrong slides
  * everything after it, so the later fields are what actually prove the parse.
  */
+@Category(NeedsGameData::class)
 class OriginalSaveTest {
 
     private val quickStart = runBlocking {

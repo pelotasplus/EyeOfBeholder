@@ -1,6 +1,8 @@
 package pl.pelotasplus.eyeofbeholder.data
 
 import kotlinx.coroutines.runBlocking
+import org.junit.experimental.categories.Category
+import pl.pelotasplus.eyeofbeholder.NeedsGameData
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.GameState
 import pl.pelotasplus.eyeofbeholder.data.model.Inf
@@ -36,6 +38,7 @@ import kotlin.test.assertTrue
  * The forest run at 18x12 through 18x15 is open, which the party walk in the
  * rendering scenes.
  */
+@Category(NeedsGameData::class)
 class MonstersBunchingTest {
 
     private val resources = ResourceRepositoryImpl()

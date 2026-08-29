@@ -1,6 +1,8 @@
 package pl.pelotasplus.eyeofbeholder.data
 
 import kotlinx.coroutines.runBlocking
+import org.junit.experimental.categories.Category
+import pl.pelotasplus.eyeofbeholder.NeedsGameData
 import pl.pelotasplus.eyeofbeholder.data.model.Bearing
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.GameState
@@ -35,6 +37,7 @@ import kotlin.test.assertTrue
  * 11x8, 13x7 and 14x8 are walled on every face, and the temple door at 11x9 is
  * shut.
  */
+@Category(NeedsGameData::class)
 class MonsterPathingTest {
 
     private val resources = ResourceRepositoryImpl()

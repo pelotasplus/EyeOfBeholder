@@ -4,6 +4,8 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.toPixelMap
 import kotlinx.coroutines.runBlocking
+import org.junit.experimental.categories.Category
+import pl.pelotasplus.eyeofbeholder.NeedsGameData
 import pl.pelotasplus.eyeofbeholder.data.model.CampMenu
 import pl.pelotasplus.eyeofbeholder.data.model.Champion
 import pl.pelotasplus.eyeofbeholder.data.model.CharacterSheet
@@ -79,6 +81,7 @@ import kotlin.test.fail
  * To accept an intentional rendering change (or bootstrap missing goldens):
  *   UPDATE_GOLDENS=1 ./gradlew :composeApp:jvmTest
  */
+@Category(NeedsGameData::class)
 class ViewPortGoldenTest {
 
     /**

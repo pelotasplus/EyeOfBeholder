@@ -1,6 +1,8 @@
 package pl.pelotasplus.eyeofbeholder.data
 
 import kotlinx.coroutines.runBlocking
+import org.junit.experimental.categories.Category
+import pl.pelotasplus.eyeofbeholder.NeedsGameData
 import pl.pelotasplus.eyeofbeholder.data.model.DialogAnswer
 import pl.pelotasplus.eyeofbeholder.data.model.DialogueTextId
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
@@ -31,6 +33,7 @@ import kotlin.test.Test
  * script that does nothing on screen can be read instruction by instruction.
  * Change the level and the coordinates to look at another square.
  */
+@Category(NeedsGameData::class)
 class ScriptTraceProbe {
 
     @Test

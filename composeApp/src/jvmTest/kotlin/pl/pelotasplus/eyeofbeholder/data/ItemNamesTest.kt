@@ -1,6 +1,8 @@
 package pl.pelotasplus.eyeofbeholder.data
 
 import kotlinx.coroutines.runBlocking
+import org.junit.experimental.categories.Category
+import pl.pelotasplus.eyeofbeholder.NeedsGameData
 import pl.pelotasplus.eyeofbeholder.data.model.Item
 import pl.pelotasplus.eyeofbeholder.data.model.ItemKind
 import pl.pelotasplus.eyeofbeholder.data.model.ItemMessages
@@ -20,6 +22,7 @@ import kotlin.test.assertEquals
  * The names are the shipped ones, so what a champion's own gear is called is
  * the game's answer and not one written down here.
  */
+@Category(NeedsGameData::class)
 class ItemNamesTest {
 
     private val resources = ResourceRepositoryImpl()

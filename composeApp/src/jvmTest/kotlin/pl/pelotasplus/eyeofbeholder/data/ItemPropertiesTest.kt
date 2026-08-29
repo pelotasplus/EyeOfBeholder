@@ -1,6 +1,8 @@
 package pl.pelotasplus.eyeofbeholder.data
 
 import kotlinx.coroutines.runBlocking
+import org.junit.experimental.categories.Category
+import pl.pelotasplus.eyeofbeholder.NeedsGameData
 import pl.pelotasplus.eyeofbeholder.data.model.Item
 import pl.pelotasplus.eyeofbeholder.data.model.ItemKind
 import pl.pelotasplus.eyeofbeholder.data.model.ItemNames
@@ -25,6 +27,7 @@ import kotlin.test.assertTrue
  * are — a Long Sword is swung, a Dark Moon Key is a key — because the numbers
  * mean nothing on their own and a table read one place out would still parse.
  */
+@Category(NeedsGameData::class)
 class ItemPropertiesTest {
 
     private val resources = ResourceRepositoryImpl()

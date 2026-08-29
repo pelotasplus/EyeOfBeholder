@@ -1,6 +1,8 @@
 package pl.pelotasplus.eyeofbeholder.data
 
 import kotlinx.coroutines.runBlocking
+import org.junit.experimental.categories.Category
+import pl.pelotasplus.eyeofbeholder.NeedsGameData
 import pl.pelotasplus.eyeofbeholder.data.model.SoundBank
 import pl.pelotasplus.eyeofbeholder.data.model.TrackIndex
 import pl.pelotasplus.eyeofbeholder.data.repository.CpsRepositoryImpl
@@ -30,6 +32,7 @@ import kotlin.test.assertTrue
  * track the game plays is a silence a player would notice and a test would
  * not, unless it is this one.
  */
+@Category(NeedsGameData::class)
 class SoundBanksTest {
 
     private val resources = ResourceRepositoryImpl()

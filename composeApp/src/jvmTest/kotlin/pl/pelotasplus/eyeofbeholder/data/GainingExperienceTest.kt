@@ -1,6 +1,8 @@
 package pl.pelotasplus.eyeofbeholder.data
 
 import kotlinx.coroutines.runBlocking
+import org.junit.experimental.categories.Category
+import pl.pelotasplus.eyeofbeholder.NeedsGameData
 import pl.pelotasplus.eyeofbeholder.data.model.Abilities
 import pl.pelotasplus.eyeofbeholder.data.model.Ability
 import pl.pelotasplus.eyeofbeholder.data.model.ArmorClass
@@ -36,6 +38,7 @@ import kotlin.test.assertEquals
  * for the hit points that come with it, a mage at two thousand five hundred on
  * a four-sided one, and a multi-class splits both the experience and the roll.
  */
+@Category(NeedsGameData::class)
 class GainingExperienceTest {
 
     /** Every die comes up its highest, so the hit die roll is the class die. */

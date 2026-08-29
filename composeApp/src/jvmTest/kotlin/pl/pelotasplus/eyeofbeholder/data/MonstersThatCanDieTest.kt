@@ -1,6 +1,8 @@
 package pl.pelotasplus.eyeofbeholder.data
 
 import kotlinx.coroutines.runBlocking
+import org.junit.experimental.categories.Category
+import pl.pelotasplus.eyeofbeholder.NeedsGameData
 import pl.pelotasplus.eyeofbeholder.data.model.Damage
 import pl.pelotasplus.eyeofbeholder.data.model.Dice
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
@@ -35,6 +37,7 @@ import kotlin.test.assertTrue
  *
  * Their kind is 8d8+8, which is 16 hit points at worst and 72 at best.
  */
+@Category(NeedsGameData::class)
 class MonstersThatCanDieTest {
 
     private val resources = ResourceRepositoryImpl()

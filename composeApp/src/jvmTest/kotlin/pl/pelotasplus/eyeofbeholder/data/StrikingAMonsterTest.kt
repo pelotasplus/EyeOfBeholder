@@ -1,6 +1,8 @@
 package pl.pelotasplus.eyeofbeholder.data
 
 import kotlinx.coroutines.runBlocking
+import org.junit.experimental.categories.Category
+import pl.pelotasplus.eyeofbeholder.NeedsGameData
 import pl.pelotasplus.eyeofbeholder.data.model.Abilities
 import pl.pelotasplus.eyeofbeholder.data.model.Ability
 import pl.pelotasplus.eyeofbeholder.data.model.ArmorClass
@@ -51,6 +53,7 @@ import kotlin.test.assertTrue
  * armour class`, where how big a step is and how often it comes is what tells
  * a fighter from a mage. The clerics are armour class 2.
  */
+@Category(NeedsGameData::class)
 class StrikingAMonsterTest {
 
     private val resources = ResourceRepositoryImpl()

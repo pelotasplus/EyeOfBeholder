@@ -1,6 +1,8 @@
 package pl.pelotasplus.eyeofbeholder.rendering
 
 import kotlinx.coroutines.runBlocking
+import org.junit.experimental.categories.Category
+import pl.pelotasplus.eyeofbeholder.NeedsGameData
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.Inf
 import pl.pelotasplus.eyeofbeholder.data.model.Location
@@ -33,6 +35,7 @@ import kotlin.test.assertTrue
  * second sublevel and by neither the first nor anything else, and only its
  * first sublevel defines any doors at all.
  */
+@Category(NeedsGameData::class)
 class SubLevelShowingTest {
 
     @Test

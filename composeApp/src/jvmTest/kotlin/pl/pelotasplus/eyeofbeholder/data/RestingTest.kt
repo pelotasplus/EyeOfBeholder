@@ -1,6 +1,8 @@
 package pl.pelotasplus.eyeofbeholder.data
 
 import kotlinx.coroutines.runBlocking
+import org.junit.experimental.categories.Category
+import pl.pelotasplus.eyeofbeholder.NeedsGameData
 import pl.pelotasplus.eyeofbeholder.data.model.Champion
 import pl.pelotasplus.eyeofbeholder.data.model.ChampionFlags
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
@@ -45,6 +47,7 @@ import kotlin.test.assertTrue
  * out rather than measured — the monsters take their turns first, and the rest
  * is refused if any of them ends up beside the party.
  */
+@Category(NeedsGameData::class)
 class RestingTest {
 
     private val resources = ResourceRepositoryImpl()

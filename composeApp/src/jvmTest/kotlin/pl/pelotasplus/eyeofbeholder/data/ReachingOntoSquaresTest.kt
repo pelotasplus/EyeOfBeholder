@@ -1,6 +1,8 @@
 package pl.pelotasplus.eyeofbeholder.data
 
 import kotlinx.coroutines.runBlocking
+import org.junit.experimental.categories.Category
+import pl.pelotasplus.eyeofbeholder.NeedsGameData
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.GameState
 import pl.pelotasplus.eyeofbeholder.data.model.SquarePlace
@@ -38,6 +40,7 @@ import kotlin.test.assertTrue
  * other: a doorway shows the floor beyond it, so a square behind one is drawn
  * with its contents, but nothing can be put through a shut door.
  */
+@Category(NeedsGameData::class)
 class ReachingOntoSquaresTest {
 
     private val resources = ResourceRepositoryImpl()

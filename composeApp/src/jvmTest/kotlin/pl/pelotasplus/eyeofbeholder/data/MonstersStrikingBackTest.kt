@@ -1,6 +1,8 @@
 package pl.pelotasplus.eyeofbeholder.data
 
 import kotlinx.coroutines.runBlocking
+import org.junit.experimental.categories.Category
+import pl.pelotasplus.eyeofbeholder.NeedsGameData
 import pl.pelotasplus.eyeofbeholder.data.model.Abilities
 import pl.pelotasplus.eyeofbeholder.data.model.Ability
 import pl.pelotasplus.eyeofbeholder.data.model.ArmorClass
@@ -49,6 +51,7 @@ private val A_MONSTER_TURN = pl.pelotasplus.eyeofbeholder.data.model.Ticks(20)
  * 13x9, and their kind strikes once a round for 2d8 at a to-hit number of 13 —
  * so a champion in plate needs to be lucky.
  */
+@Category(NeedsGameData::class)
 class MonstersStrikingBackTest {
 
     private val resources = ResourceRepositoryImpl()

@@ -1,6 +1,8 @@
 package pl.pelotasplus.eyeofbeholder.data
 
 import kotlinx.coroutines.runBlocking
+import org.junit.experimental.categories.Category
+import pl.pelotasplus.eyeofbeholder.NeedsGameData
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.GameState
 import pl.pelotasplus.eyeofbeholder.data.model.Inf
@@ -29,6 +31,7 @@ import kotlin.test.assertTrue
  * noise. Working a switch is not opening a door — it is asking the door to do
  * whatever it is not doing, which is what lets one lever both open and shut.
  */
+@Category(NeedsGameData::class)
 class ASwitchOnAWallTest {
 
     private val resources = ResourceRepositoryImpl()

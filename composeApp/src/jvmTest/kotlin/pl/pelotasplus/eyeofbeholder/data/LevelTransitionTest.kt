@@ -1,6 +1,8 @@
 package pl.pelotasplus.eyeofbeholder.data
 
 import kotlinx.coroutines.runBlocking
+import org.junit.experimental.categories.Category
+import pl.pelotasplus.eyeofbeholder.NeedsGameData
 import pl.pelotasplus.eyeofbeholder.data.model.DialogAnswer
 import pl.pelotasplus.eyeofbeholder.data.model.DialogueTextId
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
@@ -36,6 +38,7 @@ import kotlin.test.assertTrue
  * The Block C trigger map and the script interpreter that moves the party
  * between levels.
  */
+@Category(NeedsGameData::class)
 class LevelTransitionTest {
 
     @Test

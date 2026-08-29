@@ -1,6 +1,8 @@
 package pl.pelotasplus.eyeofbeholder.data
 
 import kotlinx.coroutines.runBlocking
+import org.junit.experimental.categories.Category
+import pl.pelotasplus.eyeofbeholder.NeedsGameData
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.GameState
 import pl.pelotasplus.eyeofbeholder.data.model.Inf
@@ -35,6 +37,7 @@ import kotlin.test.assertTrue
  * they walk. What each ought to do comes from the rule and not from watching
  * it: straight on where the way is open, and a fixed turn where it is not.
  */
+@Category(NeedsGameData::class)
 class MonsterWanderingTest {
 
     private val resources = ResourceRepositoryImpl()

@@ -1,6 +1,8 @@
 package pl.pelotasplus.eyeofbeholder.data
 
 import kotlinx.coroutines.runBlocking
+import org.junit.experimental.categories.Category
+import pl.pelotasplus.eyeofbeholder.NeedsGameData
 import pl.pelotasplus.eyeofbeholder.data.repository.ResourceRepositoryImpl
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -16,6 +18,7 @@ import kotlin.test.assertTrue
  * warrior's sheet is run-length packed where everything else is LCW, and
  * nothing said so until the monster failed to load on level 2.
  */
+@Category(NeedsGameData::class)
 class EveryPackedFileTest {
 
     private val resources = ResourceRepositoryImpl()

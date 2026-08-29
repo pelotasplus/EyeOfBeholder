@@ -1,6 +1,8 @@
 package pl.pelotasplus.eyeofbeholder.data
 
 import kotlinx.coroutines.runBlocking
+import org.junit.experimental.categories.Category
+import pl.pelotasplus.eyeofbeholder.NeedsGameData
 import pl.pelotasplus.eyeofbeholder.data.model.Champion
 import pl.pelotasplus.eyeofbeholder.data.model.ClickedWall
 import pl.pelotasplus.eyeofbeholder.data.model.Dice
@@ -46,6 +48,7 @@ import kotlin.test.assertTrue
  * and level 8 at 12x20, each barring a corridor across both faces of its
  * square.
  */
+@Category(NeedsGameData::class)
 class WorkingAWallTest {
 
     private val resources = ResourceRepositoryImpl()

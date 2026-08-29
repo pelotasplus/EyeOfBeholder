@@ -1,6 +1,8 @@
 package pl.pelotasplus.eyeofbeholder.data
 
 import kotlinx.coroutines.runBlocking
+import org.junit.experimental.categories.Category
+import pl.pelotasplus.eyeofbeholder.NeedsGameData
 import pl.pelotasplus.eyeofbeholder.data.model.DialogueTextId
 import pl.pelotasplus.eyeofbeholder.data.model.Location
 import pl.pelotasplus.eyeofbeholder.data.model.MessageId
@@ -29,6 +31,7 @@ import kotlin.test.assertTrue
  * speech is the mouth itself moving; a button nobody can see would hold the
  * script there for good.
  */
+@Category(NeedsGameData::class)
 class SpeechWithNoButtonTest {
 
     private val speech = ScriptQuestion(

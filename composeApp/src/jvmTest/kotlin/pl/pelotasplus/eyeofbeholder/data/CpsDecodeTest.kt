@@ -1,6 +1,8 @@
 package pl.pelotasplus.eyeofbeholder.data
 
 import kotlinx.coroutines.runBlocking
+import org.junit.experimental.categories.Category
+import pl.pelotasplus.eyeofbeholder.NeedsGameData
 import pl.pelotasplus.eyeofbeholder.data.model.PaletteIndex
 import pl.pelotasplus.eyeofbeholder.data.repository.CpsRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.ResourceRepositoryImpl
@@ -27,6 +29,7 @@ import kotlin.test.fail
  * To accept an intentional change (or bootstrap the file):
  *   UPDATE_GOLDENS=1 ./gradlew :composeApp:jvmTest
  */
+@Category(NeedsGameData::class)
 class CpsDecodeTest {
 
     private val resources = ResourceRepositoryImpl()

@@ -144,6 +144,14 @@ dependencies {
     debugImplementation(compose.uiTooling)
 }
 
+// The game data is not in the repository, so a checkout without it can only
+// run what does not read it. See NeedsGameData.
+tasks.named<Test>("jvmTest") {
+    if (providers.gradleProperty("withoutGameData").isPresent) {
+        useJUnit { excludeCategories("pl.pelotasplus.eyeofbeholder.NeedsGameData") }
+    }
+}
+
 compose.desktop {
     application {
         mainClass = "pl.pelotasplus.eyeofbeholder.MainKt"

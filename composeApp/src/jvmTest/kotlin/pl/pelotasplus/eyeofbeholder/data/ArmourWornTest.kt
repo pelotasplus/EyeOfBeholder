@@ -1,6 +1,8 @@
 package pl.pelotasplus.eyeofbeholder.data
 
 import kotlinx.coroutines.runBlocking
+import org.junit.experimental.categories.Category
+import pl.pelotasplus.eyeofbeholder.NeedsGameData
 import pl.pelotasplus.eyeofbeholder.data.model.Ability
 import pl.pelotasplus.eyeofbeholder.data.model.CarrySlot
 import pl.pelotasplus.eyeofbeholder.data.model.Champion
@@ -22,6 +24,7 @@ import kotlin.test.assertTrue
  * sum when the game was saved. Getting all four back from the dexterity and
  * the gear is a check against that arithmetic and not against ours.
  */
+@Category(NeedsGameData::class)
 class ArmourWornTest {
 
     private val resources = ResourceRepositoryImpl()

@@ -1,6 +1,8 @@
 package pl.pelotasplus.eyeofbeholder.rendering
 
 import kotlinx.coroutines.runBlocking
+import org.junit.experimental.categories.Category
+import pl.pelotasplus.eyeofbeholder.NeedsGameData
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.FloorReach
 import pl.pelotasplus.eyeofbeholder.data.model.ItemIndex
@@ -31,6 +33,7 @@ import kotlin.test.assertTrue
  * of a thing reaches past it. The renderer records what it drew so that the
  * picture can answer for itself.
  */
+@Category(NeedsGameData::class)
 class ItemsOnTheFloorTest {
 
     private val resources = ResourceRepositoryImpl()

@@ -1,6 +1,8 @@
 package pl.pelotasplus.eyeofbeholder.data
 
 import kotlinx.coroutines.runBlocking
+import org.junit.experimental.categories.Category
+import pl.pelotasplus.eyeofbeholder.NeedsGameData
 import pl.pelotasplus.eyeofbeholder.data.model.Champion
 import pl.pelotasplus.eyeofbeholder.data.model.ChampionFlags
 import pl.pelotasplus.eyeofbeholder.data.model.CarrySlot
@@ -45,6 +47,7 @@ import kotlin.test.assertTrue
  * a piece that ends in asking to come along, and one of two answers to what
  * the party say.
  */
+@Category(NeedsGameData::class)
 class MeetingAnNpcTest {
 
     private val resources = ResourceRepositoryImpl()

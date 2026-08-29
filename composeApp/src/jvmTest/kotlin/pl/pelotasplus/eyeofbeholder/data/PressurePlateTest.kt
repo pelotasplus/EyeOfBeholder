@@ -1,6 +1,8 @@
 package pl.pelotasplus.eyeofbeholder.data
 
 import kotlinx.coroutines.runBlocking
+import org.junit.experimental.categories.Category
+import pl.pelotasplus.eyeofbeholder.NeedsGameData
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.GameState
 import pl.pelotasplus.eyeofbeholder.data.model.Item
@@ -45,6 +47,7 @@ import kotlin.test.assertTrue
  * So the plate answers a foot or a weight, and the two are interchangeable —
  * which is the puzzle: something has to stay on it while the party walk away.
  */
+@Category(NeedsGameData::class)
 class PressurePlateTest {
 
     private val resources = ResourceRepositoryImpl()

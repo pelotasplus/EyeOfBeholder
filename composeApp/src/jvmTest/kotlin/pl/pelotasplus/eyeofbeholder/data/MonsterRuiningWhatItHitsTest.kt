@@ -1,6 +1,8 @@
 package pl.pelotasplus.eyeofbeholder.data
 
 import kotlinx.coroutines.runBlocking
+import org.junit.experimental.categories.Category
+import pl.pelotasplus.eyeofbeholder.NeedsGameData
 import pl.pelotasplus.eyeofbeholder.data.model.Abilities
 import pl.pelotasplus.eyeofbeholder.data.model.Ability
 import pl.pelotasplus.eyeofbeholder.data.model.ArmorClass
@@ -54,6 +56,7 @@ import kotlin.test.assertTrue
  * perishable thing from there, so the bottom of the pack is no safer than the
  * hand.
  */
+@Category(NeedsGameData::class)
 class MonsterRuiningWhatItHitsTest {
 
     private val resources = ResourceRepositoryImpl()

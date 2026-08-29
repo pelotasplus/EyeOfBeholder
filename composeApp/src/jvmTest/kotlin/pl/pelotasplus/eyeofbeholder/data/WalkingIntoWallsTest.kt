@@ -1,6 +1,8 @@
 package pl.pelotasplus.eyeofbeholder.data
 
 import kotlinx.coroutines.runBlocking
+import org.junit.experimental.categories.Category
+import pl.pelotasplus.eyeofbeholder.NeedsGameData
 import pl.pelotasplus.eyeofbeholder.data.model.Location
 import pl.pelotasplus.eyeofbeholder.data.model.Maz
 import pl.pelotasplus.eyeofbeholder.data.model.WallByte
@@ -33,6 +35,7 @@ import kotlin.test.assertTrue
  * bytes running from shut to fully open, of which only the last lets anything
  * past.
  */
+@Category(NeedsGameData::class)
 class WalkingIntoWallsTest {
 
     private val resources = ResourceRepositoryImpl()

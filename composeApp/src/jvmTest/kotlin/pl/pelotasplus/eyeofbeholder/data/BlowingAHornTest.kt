@@ -1,6 +1,8 @@
 package pl.pelotasplus.eyeofbeholder.data
 
 import kotlinx.coroutines.runBlocking
+import org.junit.experimental.categories.Category
+import pl.pelotasplus.eyeofbeholder.NeedsGameData
 import pl.pelotasplus.eyeofbeholder.data.model.Horn
 import pl.pelotasplus.eyeofbeholder.data.model.ItemTypes
 import pl.pelotasplus.eyeofbeholder.data.model.TrackIndex
@@ -18,6 +20,7 @@ import kotlin.test.assertNull
  * decides the sound. The game holds one of each, a floor apart: the bellowing
  * one on level 1, the hollow one on level 2, and the other two on level 3.
  */
+@Category(NeedsGameData::class)
 class BlowingAHornTest {
 
     private val resources = ResourceRepositoryImpl()

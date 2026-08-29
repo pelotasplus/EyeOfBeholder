@@ -1,6 +1,8 @@
 package pl.pelotasplus.eyeofbeholder.data
 
 import kotlinx.coroutines.runBlocking
+import org.junit.experimental.categories.Category
+import pl.pelotasplus.eyeofbeholder.NeedsGameData
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.GameState
 import pl.pelotasplus.eyeofbeholder.data.model.Inf
@@ -35,6 +37,7 @@ import kotlin.test.assertTrue
  * window. Its script offers two different answers depending on how it is
  * treated, and one of them is the clerics turning on the party.
  */
+@Category(NeedsGameData::class)
 class BreakingTheWindowTest {
 
     private val resources = ResourceRepositoryImpl()

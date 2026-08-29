@@ -1,6 +1,8 @@
 package pl.pelotasplus.eyeofbeholder.data
 
 import kotlinx.coroutines.runBlocking
+import org.junit.experimental.categories.Category
+import pl.pelotasplus.eyeofbeholder.NeedsGameData
 import pl.pelotasplus.eyeofbeholder.data.model.Champion
 import pl.pelotasplus.eyeofbeholder.data.model.CarrySlot
 import pl.pelotasplus.eyeofbeholder.data.model.InventorySlot
@@ -19,6 +21,7 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /** Which of a champion's slots will take what is being held. */
+@Category(NeedsGameData::class)
 class InventorySlotTest {
 
     private val resources = ResourceRepositoryImpl()

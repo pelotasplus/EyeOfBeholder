@@ -1,6 +1,8 @@
 package pl.pelotasplus.eyeofbeholder.data
 
 import kotlinx.coroutines.runBlocking
+import org.junit.experimental.categories.Category
+import pl.pelotasplus.eyeofbeholder.NeedsGameData
 import pl.pelotasplus.eyeofbeholder.data.model.Champion
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.GameState
@@ -31,6 +33,7 @@ import kotlin.test.assertTrue
  * against numbers written down here: what a shield or a spellbook is for is
  * the game's to say.
  */
+@Category(NeedsGameData::class)
 class CharacterHandsTest {
 
     private val resources = ResourceRepositoryImpl()

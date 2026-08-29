@@ -1,6 +1,8 @@
 package pl.pelotasplus.eyeofbeholder.data
 
 import kotlinx.coroutines.runBlocking
+import org.junit.experimental.categories.Category
+import pl.pelotasplus.eyeofbeholder.NeedsGameData
 import pl.pelotasplus.eyeofbeholder.data.model.entryPoints
 import pl.pelotasplus.eyeofbeholder.data.model.levelFileName
 import pl.pelotasplus.eyeofbeholder.data.model.levelNumber
@@ -16,6 +18,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
+@Category(NeedsGameData::class)
 class LevelEntryPointTest {
 
     private val resources = ResourceRepositoryImpl()

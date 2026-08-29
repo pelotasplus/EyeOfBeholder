@@ -1,6 +1,8 @@
 package pl.pelotasplus.eyeofbeholder.data
 
 import kotlinx.coroutines.runBlocking
+import org.junit.experimental.categories.Category
+import pl.pelotasplus.eyeofbeholder.NeedsGameData
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.FlagBit
 import pl.pelotasplus.eyeofbeholder.data.model.GameState
@@ -37,6 +39,7 @@ import kotlin.test.assertTrue
  * standing still with nothing set would round trip even if half the fields
  * were dropped.
  */
+@Category(NeedsGameData::class)
 class SavedGameRoundTripTest {
 
     private val store = FileSaveStore(createTempDirectory("eob-saves").toFile())

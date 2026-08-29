@@ -1,6 +1,8 @@
 package pl.pelotasplus.eyeofbeholder.data
 
 import kotlinx.coroutines.runBlocking
+import org.junit.experimental.categories.Category
+import pl.pelotasplus.eyeofbeholder.NeedsGameData
 import pl.pelotasplus.eyeofbeholder.data.model.Dice
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.GameState
@@ -42,6 +44,7 @@ import kotlin.test.assertEquals
  * asks whether 3 is more than the roll. Every level rolls for something:
  * whether a wall search turns anything up, whether a fighter forces a door.
  */
+@Category(NeedsGameData::class)
 class DiceInConditionsTest {
 
     private val level = runBlocking {

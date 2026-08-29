@@ -1,6 +1,8 @@
 package pl.pelotasplus.eyeofbeholder.data
 
 import kotlinx.coroutines.runBlocking
+import org.junit.experimental.categories.Category
+import pl.pelotasplus.eyeofbeholder.NeedsGameData
 import pl.pelotasplus.eyeofbeholder.data.model.Dice
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.GameState
@@ -23,6 +25,7 @@ import kotlin.test.assertEquals
  * off the edge of the map, and a lever there moves them onto 16x2 — the store
  * a puzzle draws from. The expected numbers are the level's own.
  */
+@Category(NeedsGameData::class)
 class MovingThingsTest {
 
     private val resources = ResourceRepositoryImpl()
