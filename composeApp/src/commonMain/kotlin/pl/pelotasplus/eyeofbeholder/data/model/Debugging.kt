@@ -54,4 +54,30 @@ class Debugging {
     fun showMap(show: Boolean) {
         _showingMap.value = show
     }
+
+    private val _mapSize = MutableStateFlow(MapSize.NORMAL)
+
+    /** How big that map is drawn. */
+    val mapSize: StateFlow<MapSize> = _mapSize.asStateFlow()
+
+    fun sizeMap(to: MapSize) {
+        _mapSize.value = to
+    }
+
+    /**
+     * How big the little map is drawn, as a side in the 320×200 screen's own
+     * space — so it scales with the window like everything else does.
+     *
+     * The whole 32×32 maze is fitted to whichever box this names, so a bigger
+     * one is a bigger square rather than more of the maze.
+     */
+    enum class MapSize(val side: Int, val reads: String) {
+        SMALL(38, "small"),
+        NORMAL(50, "normal"),
+        LARGE(60, "large"),
+        HUGE(75, "huge");
+
+        /** The next one round, so one control can walk the whole list. */
+        val next: MapSize get() = entries[(ordinal + 1) % entries.size]
+    }
 }

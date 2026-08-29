@@ -78,6 +78,7 @@ private fun DebugMenuPanel(
     val wallsArePassable by debugging.wallsArePassable.collectAsState()
     val monstersMayWalk by debugging.monstersMayWalk.collectAsState()
     val showingMap by debugging.showingMap.collectAsState()
+    val mapSize by debugging.mapSize.collectAsState()
 
     Column(
         modifier = modifier
@@ -111,6 +112,15 @@ private fun DebugMenuPanel(
             modifier = Modifier.fillMaxWidth(),
         ) {
             Text(if (showingMap) "Map: on" else "Map: off")
+        }
+
+        if (showingMap) {
+            Button(
+                onClick = { debugging.sizeMap(mapSize.next) },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text("Map size: ${mapSize.reads}")
+            }
         }
 
         debugDestinations.forEach { destination ->
