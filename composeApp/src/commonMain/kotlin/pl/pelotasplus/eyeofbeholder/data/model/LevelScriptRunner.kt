@@ -750,15 +750,6 @@ class LevelScriptRunner(
     }
 
     /**
-     * A door the script works, set going and then left to it.
-     *
-     * The script does not wait for it. A door takes about a second to travel
-     * and the script that started it usually ends within an instruction or
-     * two, so waiting would mean the party stood still through the one second
-     * the door is worth watching — and a door shut behind them could never be
-     * seen shutting at all.
-     */
-    /**
      * Somebody stepping up to the party, saying their piece and asking to come
      * along.
      *
@@ -855,6 +846,15 @@ class LevelScriptRunner(
         return state.doorSetGoing(level, at, side, opening)
     }
 
+    /**
+     * A door the script works, set going and then left to it.
+     *
+     * The script does not wait for it. A door takes about a second to travel
+     * and the script that started it usually ends within an instruction or
+     * two, so waiting would mean the party stood still through the one second
+     * the door is worth watching — and a door shut behind them could never be
+     * seen shutting at all.
+     */
     private fun doorSent(state: GameState, at: Location, opening: Boolean): GameState {
         val side = state.doorFacing(level, at) ?: run {
             Logger.w(TAG) { "No door at $at to ${if (opening) "open" else "close"}" }

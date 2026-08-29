@@ -516,15 +516,6 @@ class PlayField(
     }
 
     /**
-     * What the swing came to, written where the weapon's icon goes.
-     *
-     * A blow that got somewhere is written on a splash of blood; the two that
-     * report the arm never going anywhere get a box in the colour the
-     * interface warns in. One line sits in the middle of the slot and two
-     * straddle it, and both are centred by the same rule — six pixels a
-     * letter, taken off the middle.
-     */
-    /**
      * A blow a champion has just taken, splashed over their portrait with the
      * number on it.
      *
@@ -552,6 +543,15 @@ class PlayField(
         )
     }
 
+    /**
+     * What the swing came to, written where the weapon's icon goes.
+     *
+     * A blow that got somewhere is written on a splash of blood; the two that
+     * report the arm never going anywhere get a box in the colour the
+     * interface warns in. One line sits in the middle of the slot and two
+     * straddle it, and both are centred by the same rule — six pixels a
+     * letter, taken off the middle.
+     */
     private fun drawTheBlow(came: WhatTheBlowCameTo, box: ChampionBox, hand: Int) {
         val font = font ?: return
         val top = box.handTop(hand)

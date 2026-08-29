@@ -651,8 +651,6 @@ class ViewPort(
      * @param place Where on the block, as the party see it
      * @param mirrored Draw horizontally flipped (for right-facing side poses)
      * @param scaleSteps Number of 2/3 shrink steps for distance
-     */
-    /**
      * @param struck whether it was hit this instant, which is shown by
      *   drawing the whole shape in one colour for a moment.
      */
