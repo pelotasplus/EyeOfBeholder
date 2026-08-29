@@ -26,12 +26,31 @@ class WebAudioSink : AudioSink {
     private var context: WebAudioContext? = null
     private val playing = mutableSetOf<WebAudioVoice>()
 
+    /**
+     * Whether anything has been played from inside one of the player's own
+     * events yet.
+     *
+     * Kept here rather than read back off the context, because the context
+     * saying it is running is not the same as it having sounded: one built
+     * inside the event says so from the moment it exists, which would skip the
+     * very thing that has to happen.
+     */
+    private var hasSounded = false
+
     init {
         whenTheUserTouchesThePage { wake() }
     }
 
     override fun play(clip: PcmClip, volume: Volume, loop: Boolean): PlayingSound {
         val audio = context() ?: return NotPlaying
+
+        // A clip started into a sleeping speaker is not heard and does not
+        // fail, which is the whole difficulty here. Every clip says what state
+        // the speaker was in, so three different silences can be told apart:
+        // nothing asked for, asked for into a speaker that was asleep, and
+        // asked for and started with nothing coming out.
+        Logger.d(TAG) { "Playing ${clip.samples.size} samples into a ${audio.state} speaker" }
+        if (!audio.isRunning) wake()
 
         return runCatching {
             val voice = audio.voice(clip.samples, clip.sampleRate, volume.gain, loop)
@@ -67,11 +86,18 @@ class WebAudioSink : AudioSink {
      */
     override fun wake() {
         val audio = context() ?: return
-        if (audio.isRunning) return
+
+        // A speaker left alone is put back to sleep, so this asks every time
+        // rather than settling the question once: what was true when the level
+        // started is not what is true ten minutes into it. Finding it asleep
+        // means the waking has to be done again from the top.
+        if (!audio.isRunning) hasSounded = false
+        if (hasSounded) return
 
         runCatching {
             audio.resume()
             audio.voice(SILENCE, SILENCE_RATE, gain = 0f, loop = false).start()
+            hasSounded = true
         }.onFailure { Logger.w(TAG, it) { "Could not wake the speaker" } }
     }
 
@@ -113,8 +139,11 @@ internal interface WebAudioContext {
     fun voice(samples: ShortArray, sampleRate: Int, gain: Float, loop: Boolean): WebAudioVoice
     fun resume()
 
+    /** What the browser calls the speaker's state, for saying so in a log. */
+    val state: String
+
     /** Whether the speaker is up, as opposed to built but still held shut. */
-    val isRunning: Boolean
+    val isRunning: Boolean get() = state == "running"
 }
 
 internal interface WebAudioVoice {

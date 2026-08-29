@@ -56,7 +56,7 @@ private class JsWebAudioContext : WebAudioContext {
         context.resume()
     }
 
-    override val isRunning: Boolean get() = context.state == "running"
+    override val state: String get() = context.state
 
     private companion object {
         const val FULL_SCALE = 32768f

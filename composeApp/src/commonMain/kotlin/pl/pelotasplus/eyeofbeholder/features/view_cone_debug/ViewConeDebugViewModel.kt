@@ -2149,14 +2149,30 @@ class ViewConeDebugViewModel(
      * own bank, and the same number is a different recording from one floor to
      * the next. A bank that has nothing under that number is not a fault —
      * the forest has no voice for someone who is not out there.
+     *
+     * There are four ways of playing nothing, and from outside they all look
+     * the same: a speaker working perfectly and a track nobody rendered are
+     * both silence. Each says which one it was, so the difference can be read
+     * rather than guessed at.
      */
     private suspend fun playTrack(track: TrackIndex, volume: Volume = Volume.FULL) {
-        if (!_state.value.preferences.sounds) return
+        if (!_state.value.preferences.sounds) {
+            Logger.d(TAG) { "Not playing $track: sounds are switched off" }
+            return
+        }
 
-        val inf = _state.value.inf ?: return
-        val bank = inf.subLevels.getOrNull(_state.value.subLevel)?.sound ?: return
+        val inf = _state.value.inf ?: run {
+            Logger.d(TAG) { "Not playing $track: no level loaded" }
+            return
+        }
+        val bank = inf.subLevels.getOrNull(_state.value.subLevel)?.sound ?: run {
+            Logger.d(TAG) { "Not playing $track: sublevel has no sound bank" }
+            return
+        }
 
-        val clip = soundRepository.clip(SoundBank(bank), track).getOrNull() ?: return
+        val clip = soundRepository.clip(SoundBank(bank), track)
+            .onFailure { Logger.d(TAG) { "Not playing $track: $bank has nothing under it" } }
+            .getOrNull() ?: return
 
         // One effect at a time. The chip the banks were written for had nine
         // voices and a new program took them over, so nothing could pile up on
