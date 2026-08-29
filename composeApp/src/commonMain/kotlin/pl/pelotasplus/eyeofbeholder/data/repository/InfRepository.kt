@@ -547,10 +547,13 @@ class InfRepositoryImpl(
                     )
                 )
             } else {
-                Logger.d(TAG) { "Monster index $idx -> skip" }
                 reader.skip(13)
             }
         }
+
+        // The table is a fixed thirty slots and a level fills a handful of
+        // them, so the empty ones are counted rather than listed.
+        Logger.d(TAG) { "${monsters.size} of 30 monster slots filled" }
         return monsters
     }
 
