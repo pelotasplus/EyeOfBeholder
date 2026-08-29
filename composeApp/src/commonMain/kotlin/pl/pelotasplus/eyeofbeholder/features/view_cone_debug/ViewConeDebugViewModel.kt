@@ -668,9 +668,13 @@ class ViewConeDebugViewModel(
     }
 
     /**
-     * A champion eats what is held over their face, the fuller for its worth
-     * in food, and the food gone from the hand. Rotten food is worth nothing
-     * and so is not eaten.
+     * A champion eats what is put down on the plate laid on their belongings
+     * page, the fuller for its worth in food, and the food gone from the hand.
+     * Rotten food is worth nothing and so is not eaten.
+     *
+     * The plate is the whole of it. Food was once eaten by being held over a
+     * champion's face as well, which made carrying it past one to put it away
+     * impossible: the click that opens their page was the click that ate it.
      */
     private fun eat(whose: PartySlot, food: Item) {
         if (food.value < 0) {
@@ -981,15 +985,13 @@ class ViewConeDebugViewModel(
             val face = championBoxes.indexOfFirst { it.showsFaceAt(x, y) }
             if (face >= 0) {
                 val whose = PartySlot(face)
+                // A click on the face is the way onto the page, and only that,
+                // whatever is being carried at the time. The game asks nothing
+                // about the hand here — a face is not somewhere a thing is
+                // used — and while it did, food could not be carried past a
+                // champion to be put away: offering it was eating it.
                 if (_state.value.game.championIn(whose) != null) {
-                    // A champion offered food in hand eats it; otherwise a click
-                    // on the face is the way onto their page.
-                    val held = _state.value.game.item(_state.value.game.inHand)
-                    if (held != null && itemTypes?.isEaten(held) == true) {
-                        eat(whose, held)
-                    } else {
-                        showSheet(CharacterSheet(whose))
-                    }
+                    showSheet(CharacterSheet(whose))
                 }
                 return
             }
