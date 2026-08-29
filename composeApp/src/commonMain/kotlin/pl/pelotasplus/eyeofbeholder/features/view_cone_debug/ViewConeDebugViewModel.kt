@@ -1089,13 +1089,12 @@ class ViewConeDebugViewModel(
             viewModelScope.launch { playTrack(horn.heardAs) }
         }
 
-        // An empty hand is a fist, and a champion swings it like anything else
-        // — so the hand is what decides this, not what is in it.
-        if (horn == null &&
-            slot.slot.isAHand && (held == null || itemTypes?.isSwungByHand(held) == true)
-        ) {
-            strike(whose, slot.slot)
-        }
+        // A hand is offered the swing whatever is in it, and what is in it
+        // decides — an empty one is a fist and swings like anything else, a
+        // shield or a set of lock picks is not a thing to hit with and says so.
+        // That is one rule and it lives in one place, because the key that sets
+        // the whole front rank going comes at it from somewhere else.
+        if (slot.slot.isAHand) strike(whose, slot.slot)
 
         // And whatever it was, the wall in front of the party is asked what it
         // makes of it. That is how a window is broken: not by pointing at it,
@@ -1153,8 +1152,13 @@ class ViewConeDebugViewModel(
         ).strike(_state.value.game, whose, hand)
 
         Logger.d(TAG) { "$whose swings with $hand: ${struck.blow}" }
-        // Neither of these is a swing, so nothing is heard and nothing moves.
-        if (struck.blow == Blow.StillRecovering || struck.blow == Blow.Unable) return
+        // None of these is a swing, so nothing is heard and nothing moves.
+        if (struck.blow == Blow.StillRecovering ||
+            struck.blow == Blow.Unable ||
+            struck.blow == Blow.NotAWeapon
+        ) {
+            return
+        }
 
         val before = _state.value.game.champions
         _state.update { it.copy(game = struck.world) }

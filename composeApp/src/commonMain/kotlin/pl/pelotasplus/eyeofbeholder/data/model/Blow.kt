@@ -26,6 +26,16 @@ sealed interface Blow {
      */
     data object Unable : Blow
 
+    /**
+     * What the hand holds is not a thing to hit with — a shield, lock picks, a
+     * gem. An empty hand is not one of these: a fist swings like anything else.
+     *
+     * The original sorts a hand by what kind of thing is in it and only three
+     * kinds are swung; the rest are worn, drunk, read or blown, and answering a
+     * request to swing one is a line of text rather than a blow.
+     */
+    data object NotAWeapon : Blow
+
     data class Missed(val monster: MonsterSlot) : Blow
 
     data class Hit(val monster: MonsterSlot, val damage: Damage) : Blow

@@ -66,11 +66,12 @@ sealed class WhatTheBlowCameTo(val lines: List<String>, val theArmDidSomething: 
 
             Blow.OutOfReach -> CannotReach
 
-            // Neither of these is a swing, so neither costs the hand a wait
-            // nor has anything to report: one never started, and the other is
-            // the last one still finishing.
+            // None of these is a swing, so none costs the hand a wait nor has
+            // anything to report: one never started, one is the last one still
+            // finishing, and one was never a thing to hit with.
             Blow.Unable -> null
             Blow.StillRecovering -> null
+            Blow.NotAWeapon -> null
         }
     }
 }

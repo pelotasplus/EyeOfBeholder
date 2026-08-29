@@ -20,6 +20,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.HandRecovering
 import pl.pelotasplus.eyeofbeholder.data.model.HitPoints
 import pl.pelotasplus.eyeofbeholder.data.model.Inf
 import pl.pelotasplus.eyeofbeholder.data.model.ItemIndex
+import pl.pelotasplus.eyeofbeholder.data.model.ItemKind
 import pl.pelotasplus.eyeofbeholder.data.model.ItemTypes
 import pl.pelotasplus.eyeofbeholder.data.model.Location
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterSlot
@@ -30,6 +31,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.needsToHit
 import pl.pelotasplus.eyeofbeholder.data.repository.CpsRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.DecRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.InfRepositoryImpl
+import pl.pelotasplus.eyeofbeholder.data.repository.ItemsRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.ItemTypesRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.MazRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.PalRepositoryImpl
@@ -114,6 +116,10 @@ class StrikingAMonsterTest {
     private val alwaysOne = Dice { times, _, modifier -> times + modifier }
 
     private fun fighting(dice: Dice) = Fighting(itemTypes, kinds, dice)
+
+    private val dungeon = runBlocking {
+        ItemsRepositoryImpl(resources).loadItems().getOrThrow()
+    }
 
     // --- what a champion needs to roll ---------------------------------------
 
@@ -314,6 +320,71 @@ class StrikingAMonsterTest {
     }
 
     // --- the hand coming back to rest ----------------------------------------
+
+    // --- what a hand may swing -----------------------------------------------
+
+    /**
+     * The original sorts a hand by the kind of thing in it, and only three of
+     * the twenty kinds are swung: the one that stays in the hand, the one that
+     * is thrown, and the one that is fired from. Everything else is worn,
+     * drunk, read or blown, and asking it to strike answers with a line of
+     * text rather than a blow.
+     *
+     * [holding] takes the first thing in the dungeon of [kind] and puts it in
+     * the first champion's first hand.
+     */
+    private fun holding(kind: ItemKind): GameState {
+        val thing = dungeon.items.firstOrNull { itemTypes.kindOf(it) == kind }
+        assertTrue(thing != null, "the dungeon holds nothing of kind $kind")
+
+        val world = world()
+
+        // Slot zero of the table is what an empty hand points at, so nothing
+        // real may live there.
+        val table = world.items.ifEmpty { listOf(thing) }
+        val at = ItemIndex(table.size)
+
+        return world.copy(
+            items = table + thing,
+            champions = world.champions.mapIndexed { slot, champion ->
+                if (slot != 0) champion
+                else champion.copy(carrying = champion.carrying.toMutableList().also { it[0] = at })
+            },
+        )
+    }
+
+    @Test
+    fun `a shield is not a thing to hit with`() {
+        val struck = fighting(alwaysTwenty).strike(holding(ItemKind.ARMOUR), PartySlot(0), CarrySlot(0))
+
+        assertEquals(Blow.NotAWeapon, struck.blow)
+        assertTrue(
+            !struck.world.isRecovering(PartySlot(0), CarrySlot(0)),
+            "a swing that never happened cost the hand the wait for one",
+        )
+    }
+
+    /** And the lock picks, which are carried rather than wielded. */
+    @Test
+    fun `lock picks are not a thing to hit with either`() {
+        val struck =
+            fighting(alwaysTwenty).strike(holding(ItemKind.AN_ODDMENT), PartySlot(0), CarrySlot(0))
+
+        assertEquals(Blow.NotAWeapon, struck.blow)
+    }
+
+    /**
+     * An empty hand is not one of those. A fist swings like anything else and
+     * rolls 1d2, which is the one case where nothing in the hand is the point
+     * rather than the problem.
+     */
+    @Test
+    fun `a bare hand swings and hurts`() {
+        val struck = fighting(alwaysTwenty).strike(world(), PartySlot(0), CarrySlot(0))
+
+        val hit = assertIs<Blow.Hit>(struck.blow, "an empty hand is a fist")
+        assertTrue(hit.damage.points > 0, "a fist that lands takes something off")
+    }
 
     /**
      * A weapon is not swung as fast as the mouse can be clicked: the hand is
