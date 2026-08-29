@@ -234,3 +234,20 @@ the history instead.
   and nothing more, which is the argument for doing it and the reason it keeps
   not being done.
 
+- **A champion dead for good still looks like themselves.** Below nothing a
+  champion is lying there dying, and at ten below they are past raising — and
+  the game draws that. At exactly ten below the portrait is not tinted or
+  crossed out but replaced: a different picture goes in the box and nothing
+  else is drawn over it, no name and no bar. Between the two, above ten below
+  but under one, the face stays and a grid is hatched across it.
+
+  Both are cut from `DECORATE.CPS`, which is already loaded for the teleporter
+  blobs — the dead one at nought by eighty-eight, the grid beside it at
+  thirty-two, both thirty-two square. So there is no new art to find, only two
+  rectangles and the rule that the box holds nothing else once the first of
+  them is in it.
+
+  It only became reachable when a blow was given a floor under it: a champion
+  who could be driven to minus twenty-seven never matched minus ten exactly,
+  and the picture would have sat there unused.
+
