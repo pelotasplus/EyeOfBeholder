@@ -254,6 +254,61 @@ class AThingInFlightTest {
         )
     }
 
+    /**
+     * Being down is not being out of the way.
+     *
+     * A burst takes everybody in the party whether or not they are conscious,
+     * which is how somebody already lying at nothing is finished off — the
+     * game asks only that they are in the party, not that they are awake.
+     */
+    @Test
+    fun `a burst finishes off somebody already down`() {
+        val down = standingAt(Location(3, 10)).copy(
+            champions = List(6) { slot ->
+                Champion.NOBODY.copy(
+                    name = "One",
+                    flags = ChampionFlags(IN_THE_PARTY),
+                    // The first of them is already at nothing left.
+                    hitPoints = if (slot == 0) HitPoints(0, HEARTY) else HitPoints(HEARTY, HEARTY),
+                )
+            },
+        )
+
+        var world = fire(down, lever, ScriptEvent.WALL_CLICKED)
+        repeat(3) { world = onward(world).world }
+
+        assertTrue(
+            world.champions[0].hitPoints.current < 0,
+            "a fireball went round somebody who was already down",
+        )
+    }
+
+    /**
+     * And it stops at past raising, because there is nothing further to take —
+     * not because a burst is careful about where it goes.
+     */
+    @Test
+    fun `a burst cannot take somebody past being dead for good`() {
+        val gone = standingAt(Location(3, 10)).copy(
+            champions = List(6) {
+                Champion.NOBODY.copy(
+                    name = "One",
+                    flags = ChampionFlags(IN_THE_PARTY),
+                    hitPoints = HitPoints(Champion.BEYOND_RAISING, HEARTY),
+                )
+            },
+        )
+
+        var world = fire(gone, lever, ScriptEvent.WALL_CLICKED)
+        repeat(3) { world = onward(world).world }
+
+        assertEquals(
+            Champion.BEYOND_RAISING,
+            world.champions[0].hitPoints.current,
+            "a body was hurt past being dead for good",
+        )
+    }
+
     /** And it stops when it has hit something rather than flying on. */
     @Test
     fun `it stops once it has hit`() {

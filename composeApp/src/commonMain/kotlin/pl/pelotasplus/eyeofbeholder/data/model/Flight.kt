@@ -134,18 +134,28 @@ class Flight(
 
         if (flying.at != world.party.position) return emptyList()
 
-        val standing = world.champions.indices
+        // Being down is not being out of the way. A burst takes everybody in
+        // the party, awake or not, and is what finishes off somebody already
+        // lying there — only being past raising puts a champion beyond it,
+        // and a burst does not even ask that much.
+        val there = world.champions.indices
             .map(::PartySlot)
-            .filter { world.championIn(it)?.dead == false }
+            .filter { world.championIn(it)?.inTheParty == true }
 
-        if (standing.isEmpty()) return emptyList()
+        val canBeHurt = if (flying.harm.everybody) {
+            there
+        } else {
+            there.filter { world.championIn(it)?.deadForGood == false }
+        }
+
+        if (canBeHurt.isEmpty()) return emptyList()
 
         // A burst takes the whole square and is rolled for each of them; a
         // thrown thing finds one of them and stops there.
         val struck = if (flying.harm.everybody) {
-            standing
+            canBeHurt
         } else {
-            listOfNotNull(standing.getOrNull(dice.roll(1, standing.size, -1)))
+            listOfNotNull(canBeHurt.getOrNull(dice.roll(1, canBeHurt.size, -1)))
         }
 
         return struck.map { Hurt.AChampion(it, damageOf(world, flying, null)) }

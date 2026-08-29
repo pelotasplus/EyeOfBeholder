@@ -2,6 +2,7 @@ package pl.pelotasplus.eyeofbeholder.data
 
 import pl.pelotasplus.eyeofbeholder.data.model.Champion
 import pl.pelotasplus.eyeofbeholder.data.model.ChampionFlags
+import pl.pelotasplus.eyeofbeholder.data.model.Damage
 import pl.pelotasplus.eyeofbeholder.data.model.Dice
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.Food
@@ -177,15 +178,32 @@ class DrinkingAPotionTest {
     }
 
     /**
-     * It takes nothing more from somebody who is already down. The hold does
-     * not let go — nothing washes it out of them — but a clock that kept
-     * biting a body would never stop, and never says it had stopped either.
+     * Being down is no escape from it. Somebody lying there unconscious goes
+     * on being poisoned and the venom is perfectly able to finish them, which
+     * is the whole reason a party carry the cure.
      */
     @Test
-    fun `the poison stops taking from the dead`() {
+    fun `the poison goes on working on somebody unconscious`() {
         val down = world(hurt = 20).championPoisoned(first)
 
-        assertEquals(true, down.champions[0].poisoned, "it still has hold of them")
-        assertEquals(emptyList(), down.poisoned, "but there is nothing more to take")
+        assertEquals(true, down.champions[0].dead, "the champion is not actually down")
+        assertEquals(listOf(first), down.poisoned, "the poison let go of somebody it had")
+    }
+
+    /**
+     * It stops at past raising, and not because the hold lets go — nothing
+     * washes it out of somebody waiting to be raised — but because there is
+     * nothing further to take, and a clock that kept biting a body would never
+     * stop and never say it had.
+     */
+    @Test
+    fun `the poison stops once there is nothing further to take`() {
+        val gone = world(hurt = 20).championPoisoned(first).let {
+            it.championHurt(first, Damage(500))
+        }
+
+        assertEquals(true, gone.champions[0].poisoned, "it still has hold of them")
+        assertEquals(true, gone.champions[0].deadForGood, "they are not past raising")
+        assertEquals(emptyList(), gone.poisoned, "but there is nothing more to take")
     }
 }

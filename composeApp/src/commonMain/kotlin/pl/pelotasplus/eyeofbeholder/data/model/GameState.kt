@@ -910,15 +910,23 @@ data class GameState(
     /**
      * Everyone the poison is still working on, in the order they stand.
      *
-     * The dead are not among them. The venom keeps its hold — nothing washes
-     * it out of somebody who is raised later — but it takes nothing more from
-     * them, and this is what is asked both to hurt them and to decide whether
-     * the clock has anything left to do.
+     * Being down is no escape from it: somebody lying there unconscious goes
+     * on being poisoned, and the venom is perfectly capable of finishing them.
+     * Only being past raising ends it — not because the hold lets go, since
+     * nothing washes it out of somebody waiting to be raised, but because
+     * there is nothing further to take.
+     *
+     * This is asked both to hurt them and to decide whether the clock has
+     * anything left to do, which is why it has to stop somewhere.
      */
     val poisoned: List<PartySlot>
         get() = champions.indices
             .map(::PartySlot)
-            .filter { champions[it.index].let { who -> who.poisoned && who.inTheParty && !who.dead } }
+            .filter {
+                champions[it.index].let { who ->
+                    who.poisoned && who.inTheParty && !who.deadForGood
+                }
+            }
 
     /** [whose] with a full stomach outright, which is what vitality does. */
     fun championSated(whose: PartySlot): GameState {
