@@ -1164,23 +1164,54 @@ class ViewConeDebugViewModel(
      *
      * A fight is fought a hand at a time, and clicking four slots to see what
      * one round comes to is most of the time it takes to test one. This is the
-     * bench's own key: it asks each hand of the front rank to swing, and each
-     * refuses on its own terms — a hand still coming back to rest, a shield, a
-     * champion who is down.
+     * bench's own key, and it stands in for those four clicks: each hand of
+     * the front rank is asked to swing and then to take what it holds to
+     * whatever is in front, which is the pair of questions one click asks.
+     *
+     * Each still refuses on its own terms — a hand still coming back to rest,
+     * a shield, a champion who is down — so this adds a way in and no rules.
+     * What it does not do is say the lines a click says about a thing that is
+     * not used that way: those answer somebody who pointed at one slot, and
+     * four of them at once would be noise rather than an answer.
      */
     private fun theFrontRankStrikes() {
         _state.value.game.champions.indices
             .map(::PartySlot)
             .filter { it.inTheFrontRank }
             .forEach { whose ->
-                repeat(CarrySlot.HANDS) { hand -> strike(whose, CarrySlot(hand)) }
+                repeat(CarrySlot.HANDS) { slot ->
+                    val hand = CarrySlot(slot)
+
+                    // Swinging at a thing and taking a thing to it are two
+                    // different questions, and a barrel only answers the
+                    // second: it is broken by what is brought to it rather
+                    // than by being hit at. A click on a hand asks both, so a
+                    // key standing in for those clicks asks both too.
+                    //
+                    // Only for a hand that actually went, though. A shield or
+                    // an arm still coming back to rest took nothing to the
+                    // wall, and asking on its behalf would run the wall's
+                    // script once for every hand that did nothing.
+                    if (strike(whose, hand)) {
+                        _state.value.game.championIn(whose)?.let {
+                            usedOnTheWallAhead(whose, it.holding(hand))
+                        }
+                    }
+                }
             }
     }
 
-    /** [whose] swings what is in [hand] at whatever stands in front of the party. */
-    private fun strike(whose: PartySlot, hand: CarrySlot) {
-        val inf = _state.value.inf ?: return
-        val types = itemTypes ?: return
+    /**
+     * [whose] swings what is in [hand] at whatever stands in front of the party.
+     *
+     * @return whether the arm actually went. A hand that was refused — still
+     *   coming back to rest, holding something that is not swung, belonging to
+     *   somebody who is down — did nothing, and a caller deciding what a swing
+     *   leads on to wants to know that.
+     */
+    private fun strike(whose: PartySlot, hand: CarrySlot): Boolean {
+        val inf = _state.value.inf ?: return false
+        val types = itemTypes ?: return false
 
         val struck = Fighting(
             itemTypes = types,
@@ -1194,7 +1225,7 @@ class ViewConeDebugViewModel(
             struck.blow == Blow.Unable ||
             struck.blow == Blow.NotAWeapon
         ) {
-            return
+            return false
         }
 
         val before = _state.value.game.champions
@@ -1210,6 +1241,7 @@ class ViewConeDebugViewModel(
         letTheDamageFade()
         letTheFlashFade()
         keepTheFightGoing()
+        return true
     }
 
     /**
