@@ -46,9 +46,16 @@ data class CampMenu(
      */
     val over: CampMenu? = null,
 ) {
-    /** A click means nothing while a name is being typed; the keys have it. */
+    /**
+     * While a name is being typed the slots are deaf — clicking another row
+     * would take the caret off a half-typed word — but the rest of the screen
+     * is not. Cancel especially: it is the only way out a mouse has, and
+     * without it the naming can only be left from the keyboard.
+     */
     fun clicked(x: Int, y: Int): MenuChoice? =
-        if (naming != null) null else entries.firstOrNull { it.contains(x - left, y - top) }?.choice
+        entries.firstOrNull { it.contains(x - left, y - top) }
+            ?.choice
+            ?.takeUnless { naming != null && it is MenuChoice.UseSlot }
 
     fun rowOf(slot: Int): MenuEntry = entries[slot]
 
