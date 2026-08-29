@@ -34,6 +34,8 @@ import pl.pelotasplus.eyeofbeholder.data.model.OnAParchment
 import pl.pelotasplus.eyeofbeholder.data.model.Naming
 import pl.pelotasplus.eyeofbeholder.data.model.PaletteIndex
 import pl.pelotasplus.eyeofbeholder.data.model.PartyState
+import pl.pelotasplus.eyeofbeholder.data.model.Burst
+import pl.pelotasplus.eyeofbeholder.data.model.Dice
 import pl.pelotasplus.eyeofbeholder.data.model.Projectile
 import pl.pelotasplus.eyeofbeholder.data.model.SquarePlace
 import pl.pelotasplus.eyeofbeholder.data.model.THROWN_CPS
@@ -1415,6 +1417,90 @@ class ViewPortGoldenTest {
             "party-panel-poisoned",
             partyOver(level = "LEVEL4.INF", x = 15, y = 11, poisoned = listOf(1, 3)),
         )
+
+    /**
+     * A fireball going off two squares up the corridor, frozen at three
+     * moments of its burning.
+     *
+     * The sparks are thrown by dice, so the dice here are fixed rather than
+     * rolled: a burst rendered from a clock would be a different picture every
+     * run and could never be compared with anything.
+     */
+    private fun aBurst(afterTurns: Int): ViewPort = runBlocking {
+        val repository = repository()
+        val inf = repository.loadLevel("LEVEL2.INF").getOrThrow()
+        val sublevel = inf.subLevels[inf.subLevelAt(0, 3, 12, Direction.NORTH)]
+
+        var burst = Burst.of(Location(3, 10), seededDice())
+        repeat(afterTurns) { burst = burst.onward(steps = 1) }
+
+        repository.renderPosition(
+            items = dungeonItems,
+            monsters = emptyList(),
+            sublevel = sublevel,
+            playerX = 3,
+            playerY = 12,
+            direction = Direction.NORTH,
+            bursting = listOf(burst),
+        ).getOrThrow()
+    }
+
+    /**
+     * Dice that roll differently every time but the same on every run.
+     *
+     * A burst is thirty-five sparks thrown at random, so real dice would draw
+     * a different picture each run and there would be nothing to compare; dice
+     * that always land the same would throw all thirty-five to one pixel and
+     * there would be nothing to look at. These are neither.
+     */
+    private fun seededDice(): Dice {
+        var seed = 1L
+        return Dice { times, pips, modifier ->
+            var total = modifier
+            repeat(times) {
+                seed = (seed * 6364136223846793005L + 1442695040888963407L)
+                total += ((seed ushr 33) % pips).toInt() + 1
+            }
+            total
+        }
+    }
+
+    /**
+     * And one that went off on the party themselves, which is a different
+     * throw: half again as many sparks, three times as hard, and much less of
+     * it upward — so it sprays across the view rather than arcing down it.
+     */
+    private fun aBurstOnTheParty(afterTurns: Int): ViewPort = runBlocking {
+        val repository = repository()
+        val inf = repository.loadLevel("LEVEL2.INF").getOrThrow()
+        val sublevel = inf.subLevels[inf.subLevelAt(0, 3, 12, Direction.NORTH)]
+
+        var burst = Burst.of(Location(3, 12), seededDice(), inYourFace = true)
+        repeat(afterTurns) { burst = burst.onward(steps = 1) }
+
+        repository.renderPosition(
+            items = dungeonItems,
+            monsters = emptyList(),
+            sublevel = sublevel,
+            playerX = 3,
+            playerY = 12,
+            direction = Direction.NORTH,
+            bursting = listOf(burst),
+        ).getOrThrow()
+    }
+
+    @Test
+    fun `a fireball going off on the party themselves`() =
+        checkGolden("burst-in-your-face", aBurstOnTheParty(16))
+
+    @Test
+    fun `a fireball at the moment it goes off`() = checkGolden("burst-at-once", aBurst(2))
+
+    @Test
+    fun `a fireball a few moments into burning`() = checkGolden("burst-burning", aBurst(16))
+
+    @Test
+    fun `a fireball nearly spent`() = checkGolden("burst-nearly-out", aBurst(32))
 
     /**
      * A trap's bolt coming up the corridor, one square away and three.

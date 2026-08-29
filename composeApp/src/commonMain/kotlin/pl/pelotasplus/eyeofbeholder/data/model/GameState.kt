@@ -50,6 +50,12 @@ data class GameState(
     val inFlight: List<Projectile> = emptyList(),
 
     /**
+     * The fireballs going off this instant, which are not saved either: one
+     * lasts about as long as it takes to read this.
+     */
+    val bursting: List<Burst> = emptyList(),
+
+    /**
      * What the player is holding, which is the mouse cursor itself. It belongs to nobody in the party: it has been picked up out of
      * a hand or off the floor and not yet put anywhere.
      */
@@ -1087,7 +1093,8 @@ data class GameState(
             champions != was.champions ||
             // A bolt crossing an empty corridor moves nothing else at all, and
             // without this it would cross it without being drawn once.
-            inFlight != was.inFlight
+            inFlight != was.inFlight ||
+            bursting != was.bursting
 
     /** Whether any monster is part way through its own swing. */
     val anythingSwinging: Boolean get() = monsters.any { it.striking != null }

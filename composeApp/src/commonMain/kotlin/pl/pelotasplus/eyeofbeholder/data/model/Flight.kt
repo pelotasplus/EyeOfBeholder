@@ -62,7 +62,7 @@ class Flight(
             val next = stepped(carried, waited)
 
             if (next == null) {
-                carried = landed(carried, flying)
+                carried = burstIfItWould(landed(carried, waited), waited)
                 return@forEach
             }
 
@@ -73,7 +73,7 @@ class Flight(
             if (struck.isNotEmpty()) {
                 hurt += struck
                 struck.forEach { carried = struckDown(carried, it) }
-                carried = landed(carried, next)
+                carried = burstIfItWould(landed(carried, next), next)
                 return@forEach
             }
 
@@ -169,6 +169,22 @@ class Flight(
         is Hurt.AMonster -> world.monsterHurt(hurt.slot, hurt.by)
         is Hurt.AChampion -> world.championHurt(hurt.slot, hurt.by)
     }
+
+    /**
+     * A thing that goes off, going off where it stopped.
+     *
+     * It bursts whether it was stopped by somebody or by a wall — a fireball
+     * that reaches the end of a corridor still explodes against it.
+     */
+    private fun burstIfItWould(world: GameState, flying: Projectile): GameState =
+        if (!flying.harm.everybody) world
+        else world.copy(
+            bursting = world.bursting + Burst.of(
+                at = flying.at,
+                dice = dice,
+                inYourFace = flying.at == world.party.position,
+            ),
+        )
 
     /**
      * Where a projectile is now, as far as the floor is concerned. A conjured

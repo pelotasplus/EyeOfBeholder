@@ -219,3 +219,18 @@ the history instead.
   deleted: they keep their slot's items and the party's own table has to let go
   of them without the item table losing what they carried, which is the only
   part of this worth being careful about.
+
+- **Which of the eighteen the renderer is drawing into is a bare Int.** A
+  square in the maze is a `Location` and an absolute thing; where that square
+  lands on screen is a slot in the view cone, means nothing without knowing
+  where the party stand and which way they face, and is passed everywhere as
+  `blockIndex: Int`. It is exactly the sort of small integer space the rest of
+  the codebase gives a type to — palette indices, tile indices, scale steps —
+  and there is nothing to stop one being handed where a maze coordinate was
+  meant, or the other way about.
+
+  Eleven declarations and about fifty uses, across the viewport, the view
+  windows, the block table and the repository that drives them. It is a rename
+  and nothing more, which is the argument for doing it and the reason it keeps
+  not being done.
+

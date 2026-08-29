@@ -798,6 +798,35 @@ class ViewPort(
         )
     }
 
+    /**
+     * A fireball going off, which is drawn a pixel at a time.
+     *
+     * The sparks are told apart from everything else drawn here by having no
+     * picture at all: each is one lit pixel, put where the sums say it is.
+     * They are as far off as the square they burst on, so the walls between
+     * take them the same way they take anything else standing there.
+     */
+    fun drawBurst(
+        burst: Burst,
+        blockIndex: Int,
+        howFarOff: DistanceFromParty,
+        shrunkBy: Int,
+    ) {
+        val middle = blockSpot(blockIndex, ViewPlace.MIDDLE).x + 88
+
+        at(howFarOff, hiddenByCloserThings = true) {
+            burst.sparks.forEach { spark ->
+                val colour = spark.colour ?: return@forEach
+
+                draw(
+                    ScreenX(middle + (spark.x shr 6 shr shrunkBy)),
+                    ScreenY(Burst.FROM_THE_TOP + (spark.y shr 6 shr shrunkBy)),
+                    palette.colorOrTransparent(colour),
+                )
+            }
+        }
+    }
+
     companion object {
         private const val TAG = "ViewPort"
 

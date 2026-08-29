@@ -38,6 +38,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.DialogueText
 import pl.pelotasplus.eyeofbeholder.data.model.DamageShown
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.Blow
+import pl.pelotasplus.eyeofbeholder.data.model.Burst
 import pl.pelotasplus.eyeofbeholder.data.model.Fighting
 import pl.pelotasplus.eyeofbeholder.data.model.THROWN_CPS
 import pl.pelotasplus.eyeofbeholder.data.model.HandRecovering
@@ -204,6 +205,7 @@ class ViewConeDebugViewModel(
     /** Counting whatever hands have swung back to rest. */
     private var recoveringHands: Job? = null
     private var fadingDamage: Job? = null
+    private var burning: Job? = null
 
     /** Taking the silhouette off whatever was struck. */
     private var fading: Job? = null
@@ -1501,6 +1503,7 @@ class ViewConeDebugViewModel(
                         struckInFlight = flown.hurt
                     }
 
+
                     moved = world.somethingMoved(state.game)
                     state.copy(game = world)
                 }
@@ -1526,6 +1529,8 @@ class ViewConeDebugViewModel(
                     Logger.d(TAG) { "$tickNow  something flew onto $where" }
                     runTriggersAt(where, ScriptEvent.SOMETHING_FLEW_IN)
                 }
+
+                if (_state.value.game.bursting.isNotEmpty()) letTheBurstsBurn()
 
                 struckInFlight.forEach { hit ->
                     Logger.d(TAG) { "$tickNow  in flight: $hit" }
@@ -1623,8 +1628,9 @@ class ViewConeDebugViewModel(
         if (_state.value.game.poisoned.isNotEmpty()) return true
 
         // And a thing in the air has to come down, whether or not anybody is
-        // fighting over it.
+        // fighting over it — and a burst has to finish burning.
         if (_state.value.game.inFlight.isNotEmpty()) return true
+        if (_state.value.game.bursting.isNotEmpty()) return true
 
         if (monsters.any { it.provoked } || stepStillRunning > 0) return true
 
@@ -1748,6 +1754,37 @@ class ViewConeDebugViewModel(
      * The same countdown the weapon hands report on, and the same length:
      * both hang on one timer.
      */
+    /**
+     * Burns the bursts down on a clock of their own, faster than the world's.
+     *
+     * A fireball is over in a third of a second, which is three turns of the
+     * world's clock and so three pictures of it — a blink rather than an
+     * explosion. On its own clock it gets a dozen, and the same third of a
+     * second buys something worth watching.
+     */
+    private fun letTheBurstsBurn() {
+        if (burning?.isActive == true) return
+
+        burning = viewModelScope.launch {
+            viewModelScope.launch { playTrack(BURSTING) }
+
+            while (_state.value.game.bursting.isNotEmpty()) {
+                delay(Burst.A_FRAME)
+
+                _state.update { state ->
+                    state.copy(
+                        game = state.game.copy(
+                            bursting = state.game.bursting
+                                .map { it.onward() }
+                                .filter { it.burning },
+                        ),
+                    )
+                }
+                drawViewPort()
+            }
+        }
+    }
+
     private fun letTheDamageFade() {
         if (fadingDamage?.isActive == true) return
 
@@ -2736,6 +2773,7 @@ class ViewConeDebugViewModel(
             fromTheBottomUp = _state.value.game.fromTheBottomUp,
             holding = _state.value.game.inHand.takeIf { it.isSomething },
             inFlight = _state.value.game.inFlight,
+            bursting = _state.value.game.bursting,
         ).onSuccess { viewPort ->
             drawn = viewPort
             paint(viewPort, sublevel.palette)
@@ -3088,6 +3126,9 @@ class ViewConeDebugViewModel(
 
         /** Something being loosed down a corridor, whoever loosed it. */
         private val LOOSED = TrackIndex(11)
+
+        /** And what it sounds like arriving. */
+        private val BURSTING = TrackIndex(35)
 
         /** How long a struck monster is drawn as a silhouette. */
         private val FLASH = Ticks(2)

@@ -1,6 +1,7 @@
 package pl.pelotasplus.eyeofbeholder.data.repository
 
 import co.touchlab.kermit.Logger
+import pl.pelotasplus.eyeofbeholder.data.model.Burst
 import pl.pelotasplus.eyeofbeholder.data.model.Cps
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.Inf
@@ -97,6 +98,8 @@ interface ViewConeRepository {
         holding: ItemIndex? = null,
         /** Whatever is crossing the floor rather than lying on it. */
         inFlight: List<Projectile> = emptyList(),
+        /** And whatever is going off on one. */
+        bursting: List<Burst> = emptyList(),
     ): Result<ViewPort>
 }
 
@@ -153,6 +156,7 @@ class ViewConeRepositoryImpl(
         fromTheBottomUp: List<ItemIndex>,
         holding: ItemIndex?,
         inFlight: List<Projectile>,
+        bursting: List<Burst>,
     ): Result<ViewPort> {
         Logger.d(TAG) { "Render position $playerX x $playerY level ${sublevel.level}"}
 
@@ -190,7 +194,7 @@ class ViewConeRepositoryImpl(
                     drawItemsAtRow(
                         relY, viewPort, items, fromTheBottomUp, smallIcons, largeIcons,
                         sublevel, playerX, playerY, direction, windows, wallAt,
-                        inFlight = inFlight, bolt = bolt,
+                        inFlight = inFlight, bolt = bolt, bursting = bursting,
                     )
                     drawMonstersAtRow(relY, viewPort, monsters, monsterSheets, sublevel, playerX, playerY, direction, windows)
                     drawTeleportersAtRow(relY, viewPort, teleporters, decorations, pulse, windows)
@@ -298,6 +302,14 @@ class ViewConeRepositoryImpl(
             partyFacing = direction,
         )
 
+        // A burst on the party's own square is not on any of the squares they
+        // are looking at, so it is not drawn with them: it goes in front of
+        // the whole view, dead centre and at its full size, because it is
+        // going off around them rather than somewhere down the corridor.
+        bursting
+            .filter { it.inYourFace }
+            .forEach { viewPort.drawBurst(it, blockIndex = OWN_SQUARE, howFarOff = HERE, shrunkBy = 0) }
+
         holding?.let { slot ->
             items.getOrNull(slot.value)?.let { held ->
                 whereItWouldLand(viewPort, held, slot, smallIcons, largeIcons, direction)
@@ -402,6 +414,7 @@ class ViewConeRepositoryImpl(
         wallAt: (Location, WallSide) -> Maz.WallType,
         inFlight: List<Projectile>,
         bolt: Cps.ItemIcon?,
+        bursting: List<Burst>,
     ) {
         val dim = when (relativeY) {
             -3 -> 0
@@ -448,6 +461,26 @@ class ViewConeRepositoryImpl(
                     // dim counts up as it nears, the shrinking counts down.
                     viewPort.drawInFlight(bolt, block.blockIndex, ScaleSteps(NEAREST_DIM - dim))
                 }
+
+                // And a burst on it, which is in front of everything on the
+                // square and behind every wall nearer than it.
+                bursting
+                    .filter {
+                        !it.inYourFace &&
+                            it.at.x == playerX + dx &&
+                            it.at.y == playerY + dy
+                    }
+                    .forEach { burst ->
+                        viewPort.drawBurst(
+                            burst,
+                            blockIndex = block.blockIndex,
+                            howFarOff = DistanceFromParty.standingOnSquare(
+                                block.relativeX,
+                                block.relativeY,
+                            ),
+                            shrunkBy = NEAREST_DIM - dim,
+                        )
+                    }
             }
         }
     }
@@ -668,6 +701,16 @@ class ViewConeRepositoryImpl(
 
         /** The dim of the row the party stand on, which everything shrinks from. */
         private const val NEAREST_DIM = 3
+
+        /**
+         * The middle of the three view slots on the party's own row, which is
+         * the square they are standing on. The other two of that row are the
+         * squares either side, and the game draws a burst on neither.
+         */
+        private const val OWN_SQUARE = 16
+
+        /** Nothing is nearer than the square you are standing on. */
+        private val HERE = DistanceFromParty.standingOnSquare(0, 0)
 
         /** The row a monster has to be on for its arm to be in the fight. */
         private const val NEXT_TO_THE_PARTY = -1
