@@ -2391,7 +2391,14 @@ class ViewConeDebugViewModel(
             scriptHasTheParty = true
         }
 
-        override suspend fun play(track: TrackIndex) = playTrack(track)
+        /**
+         * A script's sound outlives the script. Triggers are run in a job the
+         * next step cancels, and a lever thrown on the way past would lose its
+         * click halfway through being fetched.
+         */
+        override suspend fun play(track: TrackIndex) {
+            viewModelScope.launch { playTrack(track) }
+        }
 
         /**
          * The box a question would be asked in, with no question in it: the
