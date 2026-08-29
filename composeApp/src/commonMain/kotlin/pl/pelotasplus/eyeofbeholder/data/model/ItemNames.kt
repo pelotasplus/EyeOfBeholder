@@ -153,4 +153,21 @@ object ItemMessages {
 
     /** Only the small shapes fit on a shelf set into a wall. */
     const val TOO_LARGE_TO_FIT = "The item is too large to fit."
+
+    /**
+     * What a hand says when it is asked to use what it holds and that is not
+     * something to be used that way. Transcribed, and the three of them are
+     * the whole of what the game says about it.
+     *
+     * The first is a warning rather than a refusal: it is said and then
+     * whatever was going to happen happens anyway, so a fighter told they
+     * cannot use the lock picks still takes them to the wall in front.
+     */
+    fun cannotUse(whose: String) = "$whose can not use this item."
+
+    /** Armour, a ring: worn, and doing its work by being worn. */
+    const val WORKS_BY_BEING_WORN = "This item automatically used when worn."
+
+    /** A gem, a key, a set of bones, the lock picks. */
+    const val NOT_USED_THIS_WAY = "This item is not used in this way."
 }

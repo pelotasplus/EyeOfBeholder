@@ -65,6 +65,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.ItemIndex
 import pl.pelotasplus.eyeofbeholder.data.model.WallAction
 import pl.pelotasplus.eyeofbeholder.data.model.doesWhenClicked
 import pl.pelotasplus.eyeofbeholder.data.model.inTheFrontRank
+import pl.pelotasplus.eyeofbeholder.data.model.ItemKind
 import pl.pelotasplus.eyeofbeholder.data.model.ItemMessages
 import pl.pelotasplus.eyeofbeholder.data.model.ItemNames
 import pl.pelotasplus.eyeofbeholder.data.model.ItemTypes
@@ -1078,6 +1079,42 @@ class ViewConeDebugViewModel(
             }
             return
         }
+
+        // Whether this champion is of a class that may use the thing at all.
+        // It is said and then ignored: the game warns and lets them try, so a
+        // fighter told they cannot use the lock picks still takes them to the
+        // wall in front and the wall still answers.
+        var said = false
+        if (held != null && itemTypes?.isUsableBy(champion, held) == false) {
+            say(ItemMessages.cannotUse(champion.name))
+            said = true
+        }
+
+        // And what kind of thing it is, for the two kinds that have nothing to
+        // do but be told about. Everything else either does something below or
+        // is a kind nothing here has been written for yet, which is not the
+        // same as the game having a line about it.
+        val aboutTheKind = when (held?.let { itemTypes?.kindOf(it) }) {
+            ItemKind.ARMOUR, ItemKind.RING -> ItemMessages.WORKS_BY_BEING_WORN
+
+            ItemKind.AN_ODDMENT,
+            ItemKind.BONES,
+            ItemKind.A_STONE_SHAPE,
+            ItemKind.KEY,
+            ItemKind.GEM -> ItemMessages.NOT_USED_THIS_WAY
+
+            else -> null
+        }
+        aboutTheKind?.let {
+            say(it)
+            said = true
+        }
+
+        // Nothing below is bound to draw — a swing that was refused does not,
+        // and neither does a wall with nothing to say — so what has just been
+        // written is put up here rather than left for the next thing that
+        // happens to repaint.
+        if (said) drawWords()
 
         // A horn is blown rather than swung, and blowing it is heard. What the
         // sound is for is the wall's business, asked for below like any other

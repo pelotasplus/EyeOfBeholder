@@ -267,7 +267,15 @@ data class ItemTypes(private val types: List<ItemType>) {
     /** Whether an item is for a champion of this class at all. */
     fun usableBy(champion: Champion, item: Item?) = allows(champion, item)
 
-    /** Nothing in a hand is something anyone may do. */
+    /** Nothing in a hand is something anyone may do.
+     * Whether [champion] is of a class that may use [item] at all.
+     *
+     * The game says so and then lets them try anyway: the line about it is a
+     * warning, not a refusal, and what the thing was being taken to still
+     * happens.
+     */
+    fun isUsableBy(champion: Champion, item: Item?): Boolean = allows(champion, item)
+
     private fun allows(champion: Champion, item: Item?): Boolean {
         if (item == null) return true
         val allowed = this[item.type]?.allowedClasses ?: return false
