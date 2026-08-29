@@ -32,7 +32,33 @@ data class NpcMeeting(
 
     /** Who they are, if they are let along. */
     val joiningAs: Champion,
+
+    /** What they ask first, where coming along is not the first question. */
+    val freeing: Freeing? = null,
 ) {
+    /**
+     * The question one of them opens with, before joining is ever raised.
+     *
+     * Insal's whole meeting is the offer to come along. Shorn is shut in a
+     * cell and asks only to be let out of it; whether he then goes along is
+     * decided by a toss once he is free, and half the time he thanks the party
+     * and leaves. Turning him down is answered by nobody — he simply stays
+     * where he is.
+     */
+    data class Freeing(
+        /** His piece, which ends in asking to be let out. */
+        val asks: DialogueTextId,
+
+        val doIt: String,
+        val leaveIt: String,
+
+        /** What he says on the half of the tosses where he goes his own way. */
+        val goesInstead: DialogueTextId,
+
+        /** Remembers that the cell was dealt with, so it is not opened twice. */
+        val remembers: FlagBit,
+    )
+
     /**
      * Where somebody's picture is cut from the sheet the meetings share, and
      * how big they are. Transcribed from the game rather than measured off the
@@ -63,11 +89,15 @@ data class NpcMeeting(
         /**
          * The three the dungeon has, by the number a script calls for.
          *
-         * Only the first is written out: the other two open with a speech of
-         * their own and a choice that is not about joining at all — one of
-         * them decides it at random — and neither is a meeting of this shape.
+         * The middle one is still missing: it opens on a speech of its own and
+         * the choice it puts is not about joining at all, so it is not a
+         * meeting of this shape.
          */
-        fun called(npc: NpcId): NpcMeeting? = if (npc.value == 0) IN_THE_CRYPT else null
+        fun called(npc: NpcId): NpcMeeting? = when (npc.value) {
+            0 -> IN_THE_CRYPT
+            2 -> IN_THE_CELL
+            else -> null
+        }
 
         /** The one bit of a champion's flag word that says they are here. */
         private const val IN_THE_PARTY = 0x01
@@ -118,6 +148,47 @@ data class NpcMeeting(
             refused = DialogueTextId(2),
             standing = Standing(sourceTop = 0, width = 40, height = 57),
             joiningAs = INSAL,
+        )
+
+        private val SHORN = Champion(
+            name = "Shorn",
+            portrait = PortraitId(-3),
+            abilities = Abilities(
+                strength = Ability(current = 15, max = 15),
+                strengthPercentile = Ability(current = 0, max = 0),
+                intelligence = Ability(current = 14, max = 14),
+                wisdom = Ability(current = 13, max = 13),
+                dexterity = Ability(current = 14, max = 14),
+                constitution = Ability(current = 13, max = 13),
+                charisma = Ability(current = 16, max = 16),
+            ),
+            hitPoints = HitPoints(current = 40, max = 40),
+            armorClass = ArmorClass(10),
+            food = Food(100),
+            race = Race.DWARF,
+            sex = Sex.MALE,
+            characterClass = CharacterClass.CLERIC,
+            alignment = Alignment.LAWFUL_NEUTRAL,
+            levels = listOf(ClassLevel(level = 8, experience = XpPoints(137008))),
+            carrying = CarrySlot.NOTHING_IN_ANY,
+            flags = ChampionFlags(IN_THE_PARTY),
+        )
+
+        private val IN_THE_CELL = NpcMeeting(
+            npc = NpcId(2),
+            heardAs = TrackIndex(55),
+            asks = DialogueTextId(102),
+            agrees = DialogueTextId(103),
+            refused = DialogueTextId(104),
+            standing = Standing(sourceTop = 57, width = 48, height = 43),
+            joiningAs = SHORN,
+            freeing = Freeing(
+                asks = DialogueTextId(8),
+                doIt = "release him",
+                leaveIt = "leave",
+                goesInstead = DialogueTextId(9),
+                remembers = FlagBit(3),
+            ),
         )
 
         /** The sheet every one of them is cut from while they speak. */

@@ -771,6 +771,64 @@ class LevelScriptRunner(
         stage.show(state)
         stage.play(meeting.heardAs)
 
+        val freeing = meeting.freeing ?: return joining(meeting, state, stage)
+
+        return freed(freeing, meeting, state, stage)
+    }
+
+    /**
+     * Being let out of a cell, which is a question of its own and only
+     * sometimes leads to the other one.
+     *
+     * Left where he is, he says nothing — but the party are turned to face
+     * north, which is the only word the script gets back: it reads their
+     * facing straight afterwards and walks them up the corridor unless it
+     * finds them turned. Freed, a toss decides whether he comes along at all,
+     * and either way the cell is remembered as dealt with.
+     */
+    private suspend fun freed(
+        freeing: NpcMeeting.Freeing,
+        meeting: NpcMeeting,
+        state: GameState,
+        stage: ScriptStage,
+    ): GameState {
+        val release = stage.ask(
+            ScriptQuestion(
+                textId = freeing.asks,
+                buttons = emptyList(),
+                words = listOf(freeing.doIt, freeing.leaveIt),
+                scene = emptyList(),
+                met = meeting.npc,
+            ),
+        ) == DialogAnswer.forButton(0)
+
+        if (!release) return state.partyTurnedTo(Direction.NORTH)
+
+        val opened = state.globalFlagSet(freeing.remembers)
+
+        if (dice.roll(1, 2, -1) == 1) {
+            stage.ask(
+                ScriptQuestion(
+                    textId = freeing.goesInstead,
+                    buttons = emptyList(),
+                    words = listOf(DialogueScene.OK),
+                    scene = emptyList(),
+                    waitsToBeRead = true,
+                    met = meeting.npc,
+                ),
+            )
+            return opened
+        }
+
+        return joining(meeting, opened, stage)
+    }
+
+    /** Being asked along, and what follows from the answer. */
+    private suspend fun joining(
+        meeting: NpcMeeting,
+        state: GameState,
+        stage: ScriptStage,
+    ): GameState {
         val letThemAlong = stage.ask(
             ScriptQuestion(
                 textId = meeting.asks,
