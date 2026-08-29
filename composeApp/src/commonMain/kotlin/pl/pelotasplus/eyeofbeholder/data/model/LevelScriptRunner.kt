@@ -699,9 +699,13 @@ class LevelScriptRunner(
                 is Damage -> notYet(token, "damage", "nobody is hurt")
 
                 // A dart from a wall, or the bolt a trap throws down a
-                // corridor. Both are things put in flight, which nothing here
-                // keeps track of yet.
-                is Launcher -> notYet(token, "a thing thrown", "nothing is put in flight")
+                // corridor. The corner it starts in is the game's own table,
+                // read by the way it is going and which of the two sides of
+                // that way the trap sits on.
+                is Launcher -> {
+                    state = loosed(token, state)
+                    stage.play(LOOSED)
+                }
 
                 // A quarter turn at a time, and by rather than to: a spinner
                 // sends the party round from wherever they came in facing.
@@ -902,6 +906,46 @@ class LevelScriptRunner(
         val opening = onItsWay?.let { !it.opening } ?: door.isShut
 
         return state.doorSetGoing(level, at, side, opening)
+    }
+
+    /**
+     * A trap loosing something down a corridor.
+     *
+     * A thrown item is a real one and is copied out of the table, so it can be
+     * picked up where it lands; a conjured bolt is not, and leaves nothing
+     * behind. Either way what the script has done is put a thing in the air —
+     * where it goes and what it meets is the flight's business, not the
+     * script's, and the script carries straight on without waiting.
+     */
+    private fun loosed(token: Launcher, state: GameState): GameState {
+        val place = SquarePlace.of(
+            LOOSED_FROM.getOrElse(token.dir * 2 + token.dirOffset) { 0 },
+        )
+
+        val loosed = when (token) {
+            // A burst goes until it meets something rather than running out
+            // of speed, and takes the whole square it bursts on. Nobody cast
+            // it, so its strength is the one the game gives a trap.
+            is Launcher.MagicObject -> Projectile(
+                what = null,
+                at = token.location,
+                place = place,
+                going = Direction.entries[token.dir % Direction.entries.size],
+                squaresLeft = Projectile.UNTIL_IT_HITS,
+                thrownBy = Projectile.Thrower.TheLevel,
+                harm = Projectile.Harm.ofABurst(Projectile.trapStrength(level)),
+            )
+
+            is Launcher.PhysicalItem -> Projectile(
+                what = ItemIndex(token.itemId),
+                at = token.location,
+                place = place,
+                going = Direction.entries[token.dir % Direction.entries.size],
+                thrownBy = Projectile.Thrower.TheLevel,
+            )
+        }
+
+        return state.copy(inFlight = state.inFlight + loosed)
     }
 
     /**
@@ -1131,6 +1175,17 @@ class LevelScriptRunner(
     private companion object {
         const val TAG = "LevelScriptRunner"
         const val MAX_STEPS = 200
+
+        /**
+         * Which corner of its square a trap looses from, by the way it is
+         * firing and which side of that way it is built into. Transcribed from
+         * the game rather than worked out: a trap fires from the side of the
+         * corridor it is in, not from the middle of it.
+         */
+        val LOOSED_FROM = listOf(2, 3, 0, 2, 1, 0, 3, 1)
+
+        /** What anything being loosed down a corridor sounds like. */
+        val LOOSED = TrackIndex(11)
 
         /**
          * A gap in the interpreter, written so it can be found.

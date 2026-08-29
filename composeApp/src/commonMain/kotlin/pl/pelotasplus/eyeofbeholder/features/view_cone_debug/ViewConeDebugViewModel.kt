@@ -108,6 +108,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.TeleporterPulse
 import pl.pelotasplus.eyeofbeholder.data.model.Ticks
 import pl.pelotasplus.eyeofbeholder.data.model.ViewPort
 import pl.pelotasplus.eyeofbeholder.data.model.levelNumber
+import pl.pelotasplus.eyeofbeholder.data.model.Flight
 import pl.pelotasplus.eyeofbeholder.data.model.canBeReachedOnto
 import pl.pelotasplus.eyeofbeholder.data.model.canBeWalkedOnto
 import pl.pelotasplus.eyeofbeholder.data.model.speakerFrom
@@ -1412,6 +1413,8 @@ class ViewConeDebugViewModel(
                 var walked = emptyList<MonsterInstance>()
                 var took = emptyList<String>()
                 var moved = false
+                var flewOnto = emptyList<Location>()
+                var struckInFlight = emptyList<Flight.Hurt>()
 
                 // Settled before the world is touched: an update that loses a
                 // race runs its block again, and the way round a corner would
@@ -1481,6 +1484,23 @@ class ViewConeDebugViewModel(
                         bitten.forEach { world = world.championHurt(it, POISON_TAKES) }
                     }
 
+                    // Whatever is in the air crosses one more square. What it
+                    // flew onto is kept rather than acted on: each of those
+                    // squares has its script to run, and running one is not
+                    // something to do while holding the world still.
+                    state.inf?.subLevels?.getOrNull(state.subLevel)?.let { here ->
+                        val flown = Flight(
+                            sublevel = here,
+                            level = levelNumber(state.inf.name),
+                            itemTypes = itemTypes,
+                            kinds = here.monsters,
+                        ).onward(world)
+
+                        world = flown.world
+                        flewOnto = flown.flewOnto
+                        struckInFlight = flown.hurt
+                    }
+
                     moved = world.somethingMoved(state.game)
                     state.copy(game = world)
                 }
@@ -1493,8 +1513,23 @@ class ViewConeDebugViewModel(
                 // clock that takes it off again is not this one: this one
                 // stops with the fight, and a splat left when it did would
                 // stay on the face until something else started it.
-                if (landed.isNotEmpty() || bitten.isNotEmpty()) letTheDamageFade()
+                if (landed.isNotEmpty() || bitten.isNotEmpty() || struckInFlight.isNotEmpty()) {
+                    letTheDamageFade()
+                }
                 ruined.forEach { sayWhatWasRuined(it) }
+
+                // A square something has just flown over gets its say. This is
+                // how a trap reaches further than it stands: the bolt is what
+                // travels, and each square it crosses is asked what it makes
+                // of that.
+                flewOnto.forEach { where ->
+                    Logger.d(TAG) { "$tickNow  something flew onto $where" }
+                    runTriggersAt(where, ScriptEvent.SOMETHING_FLEW_IN)
+                }
+
+                struckInFlight.forEach { hit ->
+                    Logger.d(TAG) { "$tickNow  in flight: $hit" }
+                }
 
                 // Being poisoned is said once, when it takes hold; what it
                 // costs is said every time it costs anything, which is the
@@ -1586,6 +1621,10 @@ class ViewConeDebugViewModel(
         // winds it, so it has to keep running for a party standing perfectly
         // still in an empty corridor with somebody quietly dying on it.
         if (_state.value.game.poisoned.isNotEmpty()) return true
+
+        // And a thing in the air has to come down, whether or not anybody is
+        // fighting over it.
+        if (_state.value.game.inFlight.isNotEmpty()) return true
 
         if (monsters.any { it.provoked } || stepStillRunning > 0) return true
 
@@ -3045,6 +3084,9 @@ class ViewConeDebugViewModel(
 
         /** And under 32: a weapon swung, whether or not it finds anything. */
         private val SWING = TrackIndex(32)
+
+        /** Something being loosed down a corridor, whoever loosed it. */
+        private val LOOSED = TrackIndex(11)
 
         /** How long a struck monster is drawn as a silhouette. */
         private val FLASH = Ticks(2)

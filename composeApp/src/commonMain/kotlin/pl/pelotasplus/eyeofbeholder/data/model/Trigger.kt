@@ -25,6 +25,15 @@ enum class ScriptEvent(val mask: Int) {
     /** Something was taken off it again. */
     ITEM_TAKEN(8),
 
+    /**
+     * Something in flight crossed onto the square.
+     *
+     * It fires once per square entered, for the square entered, and it is how
+     * a trap does its work further down the corridor than it stands: a
+     * fireball loosed at one end sets off whatever it passes over on the way.
+     */
+    SOMETHING_FLEW_IN(0x10),
+
     /** The wall facing the party was clicked, wherever the party stand. */
     WALL_CLICKED(0x40),
 

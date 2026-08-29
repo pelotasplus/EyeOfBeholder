@@ -41,6 +41,15 @@ data class GameState(
     val items: List<Item> = emptyList(),
 
     /**
+     * Whatever is crossing the floor rather than lying on it.
+     *
+     * A save does not carry these — [saved] does not ask for them — so a game
+     * put down while a fireball is halfway along a corridor comes back with it
+     * landed rather than still coming.
+     */
+    val inFlight: List<Projectile> = emptyList(),
+
+    /**
      * What the player is holding, which is the mouse cursor itself. It belongs to nobody in the party: it has been picked up out of
      * a hand or off the floor and not yet put anywhere.
      */
@@ -468,6 +477,27 @@ data class GameState(
             overrides.applyTo(it).copy(location = at, level = level, place = place)
         }
         return made?.world ?: this
+    }
+
+    /**
+     * One thing picked up off wherever it was and put down at [at].
+     *
+     * Used a square at a time by whatever is in flight: a thing crossing a
+     * corridor is not drawn specially, it is simply lying on a different
+     * square each time it is asked about.
+     */
+    fun itemLandedAt(which: ItemIndex, level: Int, at: Location, place: SquarePlace): GameState {
+        if (item(which) == null) return this
+
+        return copy(
+            items = items.mapIndexed { slot, item ->
+                if (slot == which.value) {
+                    item.copy(location = at, level = level, place = place)
+                } else {
+                    item
+                }
+            },
+        )
     }
 
     /**
@@ -935,11 +965,16 @@ data class GameState(
         if (!by.landed) return this
         val who = champions.getOrNull(whose.index) ?: return this
 
+        // Below nothing is where a champion lies dying rather than standing,
+        // and ten below is as far down as it goes: past that they are dead
+        // for good, and there is no deader. A blow big enough to take them
+        // further is simply a blow that killed them.
+        val left = (who.hitPoints.current - by.points)
+            .coerceAtLeast(Champion.BEYOND_RAISING)
+
         return copy(
             champions = champions.toMutableList().also {
-                it[whose.index] = who.copy(
-                    hitPoints = who.hitPoints.copy(current = who.hitPoints.current - by.points),
-                )
+                it[whose.index] = who.copy(hitPoints = who.hitPoints.copy(current = left))
             },
             // A second blow before the first has faded shows its own number
             // rather than the two added up.

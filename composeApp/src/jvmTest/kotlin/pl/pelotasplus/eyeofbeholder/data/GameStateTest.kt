@@ -12,6 +12,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.Damage
 import pl.pelotasplus.eyeofbeholder.data.model.DamageShown
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.GameState
+import pl.pelotasplus.eyeofbeholder.data.model.HitPoints
 import pl.pelotasplus.eyeofbeholder.data.model.HandRecovering
 import pl.pelotasplus.eyeofbeholder.data.model.Location
 import pl.pelotasplus.eyeofbeholder.data.model.PartySlot
@@ -274,5 +275,36 @@ class GameStateTest {
             "everybody carrying anything at all",
         )
         assertEquals(1, world.championsCarrying(ItemTypeId(GameState.ANYTHING), worth = 4))
+    }
+
+    /**
+     * Below nothing is a champion lying there dying, and the panel shows the
+     * negative because that is what the game shows. Ten below is the floor:
+     * a blow that would take somebody further has simply killed them, and a
+     * fireball big enough to read minus twenty-seven is a bug rather than a
+     * worse death.
+     */
+    @Test
+    fun `a blow cannot take a champion further down than dead for good`() {
+        val one = PartySlot(0)
+        val world = GameState(
+            party = PartyState(Location(1, 1), Direction.NORTH),
+            champions = listOf(
+                Champion.NOBODY.copy(
+                    name = "One",
+                    flags = ChampionFlags(1),
+                    hitPoints = HitPoints(current = 5, max = 40),
+                ),
+            ),
+        )
+
+        val flattened = world.championHurt(one, Damage(500))
+
+        assertEquals(
+            Champion.BEYOND_RAISING,
+            flattened.champions[0].hitPoints.current,
+            "a champion was hurt past being dead for good",
+        )
+        assertEquals(true, flattened.champions[0].deadForGood)
     }
 }

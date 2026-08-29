@@ -1,0 +1,170 @@
+package pl.pelotasplus.eyeofbeholder.data.model
+
+/**
+ * Everything in flight, moved on one square.
+ *
+ * A projectile crosses a square at a time rather than sliding between them,
+ * so this is the whole of its travelling: it is asked for repeatedly by
+ * whatever is running the clock, and each answer is one square further on.
+ *
+ * @param sublevel the walls as this floor draws them, which is what says
+ *   whether a thing may pass a face at all.
+ * @param level which floor it is, for the item it leaves lying when it stops.
+ */
+class Flight(
+    private val sublevel: SubLevel,
+    private val level: Int,
+    private val itemTypes: ItemTypes? = null,
+    private val kinds: List<MonsterProperty> = emptyList(),
+    private val dice: Dice = Dice.random,
+) {
+    /**
+     * What one step came to: the world after it, the squares something flew
+     * onto, and whatever it hurt on the way.
+     *
+     * [flewOnto] is kept because a script has to be run for each of them, and
+     * running a script is not this class's business — it moves things and says
+     * where they went.
+     */
+    data class Moved(
+        val world: GameState,
+        val flewOnto: List<Location> = emptyList(),
+        val hurt: List<Hurt> = emptyList(),
+    )
+
+    sealed interface Hurt {
+        data class AChampion(val slot: PartySlot, val by: Damage) : Hurt
+        data class AMonster(val slot: MonsterSlot, val by: Damage) : Hurt
+    }
+
+    /** Moves every projectile on by one square. */
+    fun onward(world: GameState): Moved {
+        if (world.inFlight.isEmpty()) return Moved(world)
+
+        var carried = world
+        val flewOnto = mutableListOf<Location>()
+        val hurt = mutableListOf<Hurt>()
+        val stillGoing = mutableListOf<Projectile>()
+
+        world.inFlight.forEach { flying ->
+            val next = stepped(carried, flying)
+
+            if (next == null) {
+                carried = landed(carried, flying)
+                return@forEach
+            }
+
+            flewOnto += next.at
+            carried = carriedAlong(carried, next)
+
+            val struck = whatItHit(carried, next)
+            if (struck.isNotEmpty()) {
+                hurt += struck
+                struck.forEach { carried = struckDown(carried, it) }
+                carried = landed(carried, next)
+                return@forEach
+            }
+
+            if (next.squaresLeft <= 0) {
+                carried = landed(carried, next)
+            } else {
+                stillGoing += next
+            }
+        }
+
+        return Moved(carried.copy(inFlight = stillGoing), flewOnto, hurt)
+    }
+
+    /**
+     * The projectile one square along, or null where the wall stops it.
+     *
+     * The square it is leaving cannot stop it. A trap fires out of the
+     * masonry it is built into, and asking that masonry's permission would
+     * mean nothing ever left the wall it came from.
+     */
+    private fun stepped(world: GameState, flying: Projectile): Projectile? {
+        val onto = flying.going.oneStepFrom(flying.at)
+
+        if (onto.x !in 0 until sublevel.maz.width || onto.y !in 0 until sublevel.maz.height) {
+            return null
+        }
+
+        val face = world.wall(level, onto, flying.going.wallSideFacingBack)
+        if (!flying.leaving && !sublevel.canBeReachedOnto(face)) return null
+
+        return flying.copy(
+            at = onto,
+            squaresLeft = flying.squaresLeft - 1,
+            leaving = false,
+        )
+    }
+
+    /**
+     * Whoever the projectile ran into on the square it has just crossed onto,
+     * which is nobody on an empty one.
+     *
+     * The monsters on the square take it; failing them the party do, if they
+     * are standing there. Nothing aims — the thing is already in the air, and
+     * who it finds is where it went.
+     */
+    private fun whatItHit(world: GameState, flying: Projectile): List<Hurt> {
+        val monsters = world.monsters.filter {
+            it.x == flying.at.x && it.y == flying.at.y && it.couldBeHurt
+        }
+
+        if (monsters.isNotEmpty()) {
+            val struck = if (flying.harm.everybody) monsters else monsters.take(1)
+            return struck.map {
+                Hurt.AMonster(it.index, damageOf(world, flying, kinds.getOrNull(it.type.value)))
+            }
+        }
+
+        if (flying.at != world.party.position) return emptyList()
+
+        val standing = world.champions.indices
+            .map(::PartySlot)
+            .filter { world.championIn(it)?.dead == false }
+
+        if (standing.isEmpty()) return emptyList()
+
+        // A burst takes the whole square and is rolled for each of them; a
+        // thrown thing finds one of them and stops there.
+        val struck = if (flying.harm.everybody) {
+            standing
+        } else {
+            listOfNotNull(standing.getOrNull(dice.roll(1, standing.size, -1)))
+        }
+
+        return struck.map { Hurt.AChampion(it, damageOf(world, flying, null)) }
+    }
+
+    /** What the thing does where it lands, which is what kind of thing it is. */
+    private fun damageOf(world: GameState, flying: Projectile, kind: MonsterProperty?): Damage {
+        flying.harm.dice?.let { own ->
+            val rolled = dice.roll(own.times, own.pips, own.base) * flying.harm.times
+            return Damage(rolled.coerceAtLeast(0))
+        }
+
+        val what = flying.what?.let { world.item(it) }
+        val rolled = what?.let { itemTypes?.get(it.type)?.damageAgainst(kind, dice) }
+            ?: dice.roll(1, 6, 0)
+
+        return Damage((rolled * flying.harm.times).coerceAtLeast(0))
+    }
+
+    private fun struckDown(world: GameState, hurt: Hurt): GameState = when (hurt) {
+        is Hurt.AMonster -> world.monsterHurt(hurt.slot, hurt.by)
+        is Hurt.AChampion -> world.championHurt(hurt.slot, hurt.by)
+    }
+
+    /**
+     * Where a projectile is now, as far as the floor is concerned. A conjured
+     * bolt is on no floor at all and leaves nothing behind it.
+     */
+    private fun carriedAlong(world: GameState, flying: Projectile): GameState =
+        flying.what?.let { world.itemLandedAt(it, level, flying.at, flying.place) } ?: world
+
+    /** A projectile that has stopped is simply a thing lying where it stopped. */
+    private fun landed(world: GameState, flying: Projectile): GameState =
+        carriedAlong(world, flying)
+}
