@@ -863,11 +863,41 @@ data class GameState(
     }
 
     /** [whose] the fuller for eating [by], up to a full stomach. */
+    /** [whose] with a full stomach outright, which is what vitality does. */
+    fun championSated(whose: PartySlot): GameState {
+        val who = champions.getOrNull(whose.index) ?: return this
+        return copy(
+            champions = champions.toMutableList().also {
+                it[whose.index] = who.copy(food = Food(FULL_STOMACH))
+            },
+        )
+    }
+
     fun championFed(whose: PartySlot, by: Int): GameState {
         val who = champions.getOrNull(whose.index) ?: return this
         return copy(
             champions = champions.toMutableList().also {
                 it[whose.index] = who.copy(food = Food((who.food.value + by).coerceAtMost(FULL_STOMACH)))
+            },
+        )
+    }
+
+    /**
+     * [whose] mended by [points], up to what they started the day able to take
+     * and no further. Nothing here raises the dead: somebody at nothing left
+     * is mended like anybody else, which is what a potion poured down them
+     * does, and being past raising is a separate question this does not ask.
+     */
+    fun championMended(whose: PartySlot, points: Int): GameState {
+        val who = champions.getOrNull(whose.index) ?: return this
+        return copy(
+            champions = champions.toMutableList().also {
+                it[whose.index] = who.copy(
+                    hitPoints = who.hitPoints.copy(
+                        current = (who.hitPoints.current + points)
+                            .coerceAtMost(who.hitPoints.max),
+                    ),
+                )
             },
         )
     }

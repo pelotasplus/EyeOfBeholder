@@ -1,0 +1,120 @@
+package pl.pelotasplus.eyeofbeholder.data
+
+import pl.pelotasplus.eyeofbeholder.data.model.Champion
+import pl.pelotasplus.eyeofbeholder.data.model.ChampionFlags
+import pl.pelotasplus.eyeofbeholder.data.model.Dice
+import pl.pelotasplus.eyeofbeholder.data.model.Direction
+import pl.pelotasplus.eyeofbeholder.data.model.Food
+import pl.pelotasplus.eyeofbeholder.data.model.GameState
+import pl.pelotasplus.eyeofbeholder.data.model.HitPoints
+import pl.pelotasplus.eyeofbeholder.data.model.Location
+import pl.pelotasplus.eyeofbeholder.data.model.PartySlot
+import pl.pelotasplus.eyeofbeholder.data.model.PartyState
+import pl.pelotasplus.eyeofbeholder.data.model.Potion
+import kotlin.test.Test
+import kotlin.test.assertEquals
+
+/**
+ * What is in each of the eight bottles, and what drinking one comes to.
+ *
+ * The order of them, the words a champion is said to feel, and the two sets of
+ * dice are all the game's. Healing is 2d4+2 and extra healing 3d8+3, so the
+ * one can mend between four and ten and the other between six and twenty-seven.
+ */
+class DrinkingAPotionTest {
+
+    /** Every die comes up its highest, and every die its lowest. */
+    private val best = Dice { times, pips, modifier -> times * pips + modifier }
+    private val worst = Dice { times, _, modifier -> times + modifier }
+
+    private fun world(hurt: Int, of: Int = 20, fed: Int = 50) = GameState(
+        party = PartyState(Location(1, 1), Direction.NORTH),
+        champions = listOf(
+            Champion.NOBODY.copy(
+                flags = ChampionFlags(1),
+                hitPoints = HitPoints(of - hurt, of),
+                food = Food(fed),
+            ),
+        ),
+    )
+
+    private val first = PartySlot(0)
+
+    // --- what is in the bottles ----------------------------------------------
+
+    @Test
+    fun `a potion is what its value says it is`() {
+        assertEquals(Potion.GIANT_STRENGTH, Potion.of(0))
+        assertEquals(Potion.HEALING, Potion.of(1))
+        assertEquals(Potion.EXTRA_HEALING, Potion.of(2))
+        assertEquals(Potion.POISON, Potion.of(3))
+        assertEquals(Potion.VITALITY, Potion.of(4))
+        assertEquals(Potion.SPEED, Potion.of(5))
+        assertEquals(Potion.INVISIBILITY, Potion.of(6))
+        assertEquals(Potion.CURE_POISON, Potion.of(7))
+        assertEquals(null, Potion.of(8), "there is no eighth")
+    }
+
+    /** Two of them say the same word for different reasons, which is the game's. */
+    @Test
+    fun `cure poison and healing both leave a champion feeling better`() {
+        assertEquals("better", Potion.HEALING.feels)
+        assertEquals("better", Potion.CURE_POISON.feels)
+        assertEquals("much better", Potion.EXTRA_HEALING.feels)
+    }
+
+    @Test
+    fun `the line names the champion and what they feel`() {
+        assertEquals(
+            "\"Stumpy\" feels much better!",
+            Potion.said("\"Stumpy\"", Potion.EXTRA_HEALING.feels),
+        )
+    }
+
+    // --- the dice ------------------------------------------------------------
+
+    @Test
+    fun `healing mends between four and ten`() {
+        assertEquals(4, Potion.HEALING.mends(worst))
+        assertEquals(10, Potion.HEALING.mends(best))
+    }
+
+    @Test
+    fun `extra healing mends between six and twenty-seven`() {
+        assertEquals(6, Potion.EXTRA_HEALING.mends(worst))
+        assertEquals(27, Potion.EXTRA_HEALING.mends(best))
+    }
+
+    /** The other six mend nothing, whatever they do instead. */
+    @Test
+    fun `nothing else in the eight mends`() {
+        val mending = listOf(Potion.HEALING, Potion.EXTRA_HEALING)
+
+        Potion.entries.filterNot { it in mending }.forEach {
+            assertEquals(0, it.mends(best), "$it should mend nothing")
+        }
+    }
+
+    // --- what mending does to a champion --------------------------------------
+
+    @Test
+    fun `mending stops at what a champion can take`() {
+        val mended = world(hurt = 3).championMended(first, 10)
+
+        assertEquals(20, mended.champions[0].hitPoints.current, "it does not go past the top")
+    }
+
+    @Test
+    fun `mending somebody barely hurt mends only what is missing`() {
+        val mended = world(hurt = 12).championMended(first, 5)
+
+        assertEquals(13, mended.champions[0].hitPoints.current)
+    }
+
+    /** Vitality fills the stomach outright rather than adding a mouthful. */
+    @Test
+    fun `vitality fills a stomach however empty it was`() {
+        assertEquals(100, world(hurt = 0, fed = 1).championSated(first).champions[0].food.value)
+        assertEquals(100, world(hurt = 0, fed = 99).championSated(first).champions[0].food.value)
+    }
+}

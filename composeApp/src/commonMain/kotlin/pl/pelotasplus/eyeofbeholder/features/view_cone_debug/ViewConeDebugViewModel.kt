@@ -67,6 +67,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.doesWhenClicked
 import pl.pelotasplus.eyeofbeholder.data.model.inTheFrontRank
 import pl.pelotasplus.eyeofbeholder.data.model.ItemKind
 import pl.pelotasplus.eyeofbeholder.data.model.ItemMessages
+import pl.pelotasplus.eyeofbeholder.data.model.Potion
 import pl.pelotasplus.eyeofbeholder.data.model.ItemNames
 import pl.pelotasplus.eyeofbeholder.data.model.ItemTypes
 import pl.pelotasplus.eyeofbeholder.data.model.OriginalSave
@@ -688,6 +689,57 @@ class ViewConeDebugViewModel(
         eat(whose, food) { it.slotEmptied(whose, slot) }
 
     /**
+     * A potion drunk out of the pocket it is in, by whoever's pocket it is.
+     *
+     * The bottle goes whatever was in it, and the champion is told what they
+     * feel — the game says that much for every one of the eight, including the
+     * ones whose effect is nothing they would notice.
+     */
+    private fun drink(whose: PartySlot, slot: CarrySlot, potion: Item) {
+        val what = Potion.of(potion.value)
+        val champion = _state.value.game.championIn(whose) ?: return
+
+        _state.update { it.copy(game = it.game.slotEmptied(whose, slot)) }
+        viewModelScope.launch { playTrack(DRINK) }
+
+        when (what) {
+            // The two that mend, by the dice the table gives them.
+            Potion.HEALING, Potion.EXTRA_HEALING ->
+                _state.update {
+                    it.copy(game = it.game.championMended(whose, what.mends(Dice.random)))
+                }
+
+            // Vitality fills the stomach outright rather than adding to it.
+            Potion.VITALITY -> _state.update { it.copy(game = it.game.championSated(whose)) }
+
+            // These want a champion to carry something they do not carry yet:
+            // a strength that wears off, a speed, whether they can be seen,
+            // and being poisoned at all. The bottle still empties.
+            //
+            // Curing poison is one of them rather than a thing already done.
+            // The dungeon poisons: the spider on the first floor does, and so
+            // do the ants and the wasps further down — their table says so in
+            // a bit nothing reads yet. So there is something to cure and no
+            // way to be in need of it, which is a gap and not an absence.
+            Potion.GIANT_STRENGTH,
+            Potion.POISON,
+            Potion.SPEED,
+            Potion.INVISIBILITY,
+            Potion.CURE_POISON,
+            null -> Logger.w(TAG) {
+                "Nothing is written for a potion of ${what ?: "value ${potion.value}"}"
+            }
+        }
+
+        // Every one of them is drunk out loud, whatever it turned out to do.
+        what?.let {
+            say(Potion.said(champion.name, it.feels))
+            drawWords()
+        }
+        renderViewPort()
+    }
+
+    /**
      * [consume] is where the food goes from, and is the only difference
      * between the two ways of eating: the hand holds what the world is
      * carrying, a pocket holds what a champion is.
@@ -1150,6 +1202,11 @@ class ViewConeDebugViewModel(
         // the plate is for food being carried, this is for food put away.
         if (held != null && itemTypes?.isEaten(held) == true) {
             eatFromSlot(whose, slot.slot, held)
+        }
+
+        // And a potion is drunk the same way, out of the pocket it is in.
+        if (held != null && itemTypes?.kindOf(held) == ItemKind.POTION) {
+            drink(whose, slot.slot, held)
         }
 
         // A hand is offered the swing whatever is in it, and what is in it
@@ -2931,6 +2988,9 @@ class ViewConeDebugViewModel(
         private val LEVEL_GAINED = TrackIndex(23)
         private val LEVEL_GAINED_INK = ScriptSpeech.inkOf(1)
         private val DOOR_BUTTON = TrackIndex(6)
+
+        /** What a bottle being emptied sounds like. */
+        private val DRINK = TrackIndex(10)
 
         /** And under 32: a weapon swung, whether or not it finds anything. */
         private val SWING = TrackIndex(32)
