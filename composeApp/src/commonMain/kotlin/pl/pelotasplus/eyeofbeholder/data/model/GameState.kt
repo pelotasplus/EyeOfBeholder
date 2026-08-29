@@ -1095,6 +1095,18 @@ data class GameState(
     )
 
     /**
+     * Whose blow lands on the frame this world is about to be drawn as: those
+     * whose arm has just reached its full stretch.
+     *
+     * Asked of the world after the swings have moved on rather than before,
+     * so that a champion is marked while the arm that marked them is still
+     * out. Asking first lands the blow as the pose ends, which puts the splat
+     * up a whole frame later, beside a monster already back at rest.
+     */
+    val landingThisFrame: List<MonsterSlot>
+        get() = monsters.filter { it.striking == MonsterPose.ATTACK_B }.map { it.index }
+
+    /**
      * Whether anything the screen shows has changed since [was] — which is
      * what says whether a tick of the clock is worth redrawing for.
      *

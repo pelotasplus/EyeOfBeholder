@@ -110,8 +110,38 @@ class MonstersStrikingBackTest {
         var world = turn.begun(from)
         world = world.swingsCarriedOn()
 
-        val landing = world.monsters.filter { it.striking == MonsterPose.ATTACK_B }.map { it.index }
-        return turn.landed(world.swingsCarriedOn(), landing)
+        return turn.landed(world, world.landingThisFrame)
+    }
+
+    /**
+     * A blow is answered while the arm that struck it is still out. The splat
+     * on a portrait is read as what that swing came to, so it has to go up on
+     * the frame the swing is drawn at full stretch — a frame later and it sits
+     * beside a monster already back at rest.
+     */
+    @Test
+    fun `a blow lands while the arm is still out`() {
+        val turn = turn(everyDieHighest)
+
+        val back = turn.begun(world())
+        assertEquals(emptyList(), back.landingThisFrame, "the arm is only on its way")
+
+        val out = back.swingsCarriedOn()
+        assertEquals(
+            out.monsters.filter { it.striking != null }.map { it.index },
+            out.landingThisFrame,
+            "everything at full stretch should be landing its blow",
+        )
+        assertTrue(
+            out.monsters.none { it.index in out.landingThisFrame && it.striking == null },
+            "a blow landed on a monster already back at rest",
+        )
+
+        assertEquals(
+            emptyList(),
+            out.swingsCarriedOn().landingThisFrame,
+            "the arm is back and the blow already landed",
+        )
     }
 
     @Test

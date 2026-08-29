@@ -1432,11 +1432,9 @@ class ViewConeDebugViewModel(
                     var world = state.game
 
                     if (aFrame) {
-                        val landing = world.monsters
-                            .filter { it.striking == MonsterPose.ATTACK_B }
-                            .map { it.index }
-
                         world = world.swingsCarriedOn()
+
+                        val landing = world.landingThisFrame
 
                         if (landing.isNotEmpty()) {
                             val taken = monstersTurn().landed(world, landing)
