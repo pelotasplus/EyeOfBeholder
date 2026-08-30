@@ -521,7 +521,18 @@ class ViewConeDebugViewModel(
         subLevel: Int = 0,
         playerX: Int? = null,
         playerY: Int? = null,
-        direction: Direction? = null
+        direction: Direction? = null,
+        /**
+         * Whether the party walked in, as against the floor merely being
+         * opened.
+         *
+         * A party who walked in are standing on a square, and the square is
+         * entitled to notice — the welcome on the seventh floor is a script on
+         * the square the stairs come up on, and there is nothing else to set
+         * it off. A floor opened from the menu, or picked up out of a save, is
+         * nobody arriving anywhere.
+         */
+        walkingIn: Boolean = false,
     ) {
         viewModelScope.launch {
             viewConeRepository
@@ -599,6 +610,7 @@ class ViewConeDebugViewModel(
                     }
                     renderViewPort()
                     autosave()
+                    if (walkingIn) runTriggers()
                 }
                 .onFailure {
                     Logger.e(it) { "Error while loading vmp: $name" }
@@ -2543,6 +2555,7 @@ class ViewConeDebugViewModel(
                     playerX = change.location.x,
                     playerY = change.location.y,
                     direction = change.direction,
+                    walkingIn = true,
                 )
             }
         }
