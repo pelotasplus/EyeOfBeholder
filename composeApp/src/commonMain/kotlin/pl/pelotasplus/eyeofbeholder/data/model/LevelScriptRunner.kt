@@ -519,8 +519,8 @@ class LevelScriptRunner(
                 // "remove" is what forbids it. So a dangerous stretch of floor
                 // says the party cannot rest by removing the flag, and the safe
                 // ground after says they can by setting it.
-                is SetFlag.PreventRest -> state = state.copy(preventRest = false)
-                is ClearFlag.Party -> state = state.copy(preventRest = true)
+                is SetFlag.RestingAllowed -> state = state.copy(preventRest = false)
+                is ClearFlag.RestingForbidden -> state = state.copy(preventRest = true)
 
                 is NewLevelOrMonster.ChangeLevel -> return stop(
                     ChangeLevel(

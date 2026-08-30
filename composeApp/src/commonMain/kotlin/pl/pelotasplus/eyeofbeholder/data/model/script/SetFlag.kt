@@ -15,7 +15,11 @@ import pl.pelotasplus.eyeofbeholder.data.model.MonsterSlot
  * - **GlobalFlag**: persists across all levels (quest progress, key events)
  * - **MonsterFlag**: per-monster state (alerted, fleeing, etc.)
  * - **DialogResult**: marks a dialog as completed
- * - **PreventRest**: disables the party's ability to rest/sleep (dangerous area)
+ * - **RestingAllowed**: lets the party sleep here again
+ *
+ * The resting one is named for what it does rather than for the flag it
+ * writes: the flag means *no resting*, so setting it lets the party rest and
+ * clearing it stops them. [ClearFlag.RestingForbidden] is the other half.
  */
 sealed class SetFlag : ScriptToken {
 
@@ -40,7 +44,7 @@ sealed class SetFlag : ScriptToken {
         }
     }
     data object DialogResult : SetFlag()                       // type = -28 (0xE4)
-    data object PreventRest : SetFlag()                        // type = -47 (0xD1)
+    data object RestingAllowed : SetFlag()                     // type = -47 (0xD1)
     data class Unknown(val type: Int) : SetFlag()
 
     companion object {
@@ -53,7 +57,7 @@ sealed class SetFlag : ScriptToken {
                     bit = FlagBit(reader.readU8())
                 )
                 -28 -> DialogResult                            // 0xE4 - event/dialog
-                -47 -> PreventRest                             // 0xD1 - party can't sleep
+                -47 -> RestingAllowed                          // 0xD1 - party may sleep
                 else -> error("Unknown flag type $type")
             }
         }

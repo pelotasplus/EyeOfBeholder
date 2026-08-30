@@ -158,7 +158,7 @@ private fun SetFlag.setFlagInWords() = when (this) {
     is SetFlag.GlobalFlag -> "set global flag ${bit.index}"
     is SetFlag.MonsterFlag -> "set flag ${bit.index} on monster ${monsterId.value}"
     SetFlag.DialogResult -> "set the answer given"
-    SetFlag.PreventRest -> "let the party rest here"
+    SetFlag.RestingAllowed -> "let the party rest here"
     is SetFlag.Unknown -> "set a flag, kind $type"
 }
 
@@ -166,7 +166,7 @@ private fun ClearFlag.clearFlagInWords() = when (this) {
     is ClearFlag.LevelFlag -> "clear level flag $flag"
     is ClearFlag.GlobalFlag -> "clear global flag $flag"
     ClearFlag.Event -> "clear the answer given"
-    ClearFlag.Party -> "keep the party from resting here"
+    ClearFlag.RestingForbidden -> "keep the party from resting here"
     is ClearFlag.Unknown -> "clear a flag, kind $type"
 }
 
