@@ -17,7 +17,37 @@ import kotlinx.serialization.Serializable
  * one is to read those scripts. What has been read so far:
  *
  * ```
- * level 2   bit 17  the ambush below (15,23) has been sprung
+ * level 2   bit 1   "this looks and smells of a prison block", on (8,20)
+ *           bit 2   "someone alive in one of these cells!", on (10,20)
+ *           bit 3   the ambush behind the door on (2,3) has been sprung
+ *           bit 4   ... the one behind (10,7), one of whom has a skull key
+ *           bit 5   ... the long one sprung from (8,4), which fills the
+ *                   rooms from (5,1) across to (12,3)
+ *           bit 6   "we are far underground", on (10,13)
+ *           bit 7   "these doors are not part of the original", on (6,13)
+ *           bit 8   the niche on (2,10) has been given its skull key
+ *           bit 9   the ambush north of (8,7) has been sprung
+ *           bit 10  the roll for spotting the fireball trap on (3,8) has
+ *                   been made, whether or not it was made by a thief
+ *           bit 11  the illusory wall by (4,18) has been called one
+ *           bit 12  the pair let out on (14,19) have been let out
+ *           bit 13  the guards on (14,20) have challenged the party
+ *           bit 14  "this door looks stuck", on (8,4)
+ *           bit 15  "a good place to hide things", on (2,17)
+ *           bit 16  "surely, this passage leads somewhere?", on (22,19)
+ *           bit 17  the ambush below (15,23) has been sprung
+ *           bit 18  the worn path through the wall by (7,15) has been named
+ *           bit 19  "why don't we read all the parchments again", on (15,7)
+ *           bit 20  "the walls here could crumble down", on (22,3)
+ *           bit 21  the vision of Khelben has been had, on (22,8)
+ *           bit 24  the pair let out on (23,25) have been let out
+ *           bit 25  set and cleared on (30,0); read where a wall is bashed
+ *                   in the crumbling corner, deciding whether to suggest
+ *                   trying another one
+ *
+ * level 3   bit 8   read before springing the trap on the treasure on
+ *                   (13,14); nothing sets it, so the trap springs again for
+ *                   each of the three things taken
  *
  * level 4   bit 0   the woman by the temple door has been spoken to
  *           bit 1   the remark about the strange bushes has been made
@@ -49,10 +79,30 @@ import kotlinx.serialization.Serializable
  * than arriving on their own, which decides whether the door's scene has to
  * draw the view behind it afresh. All three are read and cleared at once.
  *
- * Level 2's bit is the plainest use there is, and the one to read first. Its
- * square conjures a key onto the floor and two guards holding two more things,
- * then sets the bit, and the whole is wrapped in a test of it. Without that a
- * party could pace on and off the square and take a key each time.
+ * Level 2's bit 17 is the plainest use there is, and the one to read first.
+ * Its square conjures a key onto the floor and two guards holding two more
+ * things, then sets the bit, and the whole is wrapped in a test of it. Without
+ * that a party could pace on and off the square and take a key each time.
+ *
+ * Most of the rest of level 2 is that same shape, and the floor is the best
+ * place to learn the three variations on it.
+ *
+ * A remark is a bit, and who makes it is asked before it is spent: (10,13)
+ * looks for a dwarf and then, failing that, for a human, and a party of
+ * neither walks past in silence with the bit still clear. (2,17) wants a thief
+ * or a halfling, (4,18) a mage, (7,15) a dwarf.
+ *
+ * A bit can be spent by the dice rather than by the remark. On (3,8) the roll
+ * is made first and the bit is set either way — so a party with no thief has
+ * their one chance of noticing the fireball trap thrown away for them, and
+ * cannot come back for another.
+ *
+ * And one bit can serve two squares, which is how a thing is made to happen
+ * once no matter which way it is come upon. (9,20) and (21,21) share bit 12,
+ * (14,20) and (14,21) share bit 13, (4,18) and (4,20) share bit 11, and the
+ * second square's script differs only in what it has to put right about the
+ * approach: the wording of a remark made from the other side, or a wall that
+ * has to be opened before the scene can play.
  *
  * Each of level 5's three squares tests its own bit and sets it, so a way in
  * speaks once and the other two still work — one bit for the whole encounter

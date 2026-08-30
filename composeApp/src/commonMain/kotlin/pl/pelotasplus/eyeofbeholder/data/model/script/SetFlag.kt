@@ -11,7 +11,8 @@ import pl.pelotasplus.eyeofbeholder.data.model.MonsterSlot
  * Scripts check flags via [Conditional.GetLevelFlag] and [Conditional.GetGlobalFlag]
  * in [Eval] expressions, and set/clear them to record events.
  *
- * - **LevelFlag**: persists only for the current level (reset when leaving)
+ * - **LevelFlag**: a word of its own per level, which outlives leaving that
+ *   level — a floor remembers what it was told for the rest of the game
  * - **GlobalFlag**: persists across all levels (quest progress, key events)
  * - **MonsterFlag**: per-monster state (alerted, fleeing, etc.)
  * - **DialogResult**: marks a dialog as completed
