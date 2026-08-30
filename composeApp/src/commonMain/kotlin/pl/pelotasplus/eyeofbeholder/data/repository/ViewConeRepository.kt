@@ -328,24 +328,35 @@ class ViewConeRepositoryImpl(
         name: String,
     ): Result<Inf> = infRepository.loadInf(name.replace(".MAZ", ".INF"))
 
-    /** Loads and caches the near-size poses for each of the sublevel's sprite sheets. */
+    /**
+     * Loads and caches the near-size poses for each of the sublevel's sprite
+     * sheets.
+     *
+     * Only a sheet that actually loaded is kept. A frame is drawn on the way
+     * to somewhere else and the one before it is cancelled part way through,
+     * so a read can end without the file being at fault — and a blank sheet
+     * cached under a creature's name is that creature invisible for the rest
+     * of the game, still solid and still fighting, with nothing to say why.
+     */
     private suspend fun loadMonsterSheets(sublevel: SubLevel): List<MonsterSheet> {
         return sublevel.monsterGfx.map { gfx ->
             val baseName = gfx.name.filter { it.code in 33..126 }.uppercase()
-            monsterSheetCache.getOrPut(baseName) {
-                val dcr = if (gfx.hasDecorations) {
-                    dcrRepository.loadDcr("$baseName.DCR")
-                        .onFailure { Logger.e(TAG) { "Failed to load overlays for $baseName: $it" } }
-                        .getOrNull()
-                } else {
-                    null
-                }
 
-                cpsRepository.loadCps("$baseName.CPS")
-                    .map { cps -> cps.monsterSheet(gfx, dcr) }
-                    .onFailure { Logger.e(TAG) { "Failed to load monster sheet $baseName: $it" } }
-                    .getOrDefault(MonsterSheet.EMPTY)
+            monsterSheetCache[baseName]?.let { return@map it }
+
+            val dcr = if (gfx.hasDecorations) {
+                dcrRepository.loadDcr("$baseName.DCR")
+                    .onFailure { Logger.e(TAG) { "Failed to load overlays for $baseName: $it" } }
+                    .getOrNull()
+            } else {
+                null
             }
+
+            cpsRepository.loadCps("$baseName.CPS")
+                .map { cps -> cps.monsterSheet(gfx, dcr) }
+                .onSuccess { monsterSheetCache[baseName] = it }
+                .onFailure { Logger.w(TAG) { "No sheet for $baseName this frame: $it" } }
+                .getOrDefault(MonsterSheet.EMPTY)
         }
     }
 

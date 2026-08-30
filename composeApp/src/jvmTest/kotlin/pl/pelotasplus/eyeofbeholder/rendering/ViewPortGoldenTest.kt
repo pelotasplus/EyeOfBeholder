@@ -326,6 +326,24 @@ class ViewPortGoldenTest {
         checkGolden("level3-monster-on-the-diagonal", "LEVEL3.INF", x = 22, y = 25, direction = Direction.WEST)
 
     /**
+     * The corridor north of 12x4, which is where more than one kind of monster
+     * has been seen sharing a square. This is the level as its file lays it
+     * out, so it says what is standing there before anything has walked.
+     */
+    @Test
+    fun `level3 the corridor north of 12x4`() =
+        checkGolden("level3-north-of-12x4", "LEVEL3.INF", x = 12, y = 4, direction = Direction.NORTH)
+
+    /**
+     * Looking east into the margoyle trap from 14x13. Five of them are placed
+     * along 15x12 to 15x15 and 16x13, penned in by the two walls the trap
+     * takes down, so this is what springing it should leave in sight.
+     */
+    @Test
+    fun `level3 into the margoyle trap`() =
+        checkGolden("level3-margoyle-trap", "LEVEL3.INF", x = 14, y = 13, direction = Direction.EAST)
+
+    /**
      * Rooms belonging to level 3's second sublevel, which the party can walk
      * into without a script sending them. Drawn with the sublevel its own walls
      * name, so bytes 61 and 64 have the appearance only that sublevel gives

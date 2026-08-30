@@ -432,8 +432,14 @@ class ViewConeDebugViewModel(
     /** Picks the game up where the autosave left it. */
     private suspend fun resume(saved: SavedGame) {
         Logger.i(TAG) { "Resuming ${saved.description} on level ${saved.level}" }
+        // The level goes with the world. What is loaded already remembers
+        // which floor its monsters were on, and leaving a level files them
+        // under whichever one is open — so an open level left over from before
+        // the load would take the saved floor's monsters for its own, and the
+        // floor they belong to would never people itself from its file again.
         _state.update {
             it.copy(
+                inf = null,
                 game = GameState.restoredFrom(saved.world, on = saved.level)
                     .copy(champions = saved.champions),
                 messages = saved.messages,
@@ -516,6 +522,40 @@ class ViewConeDebugViewModel(
                 .onSuccess { inf ->
                     val arrivingAt = levelNumber(inf.name)
                     val showing = subLevel.coerceIn(inf.subLevels.indices)
+
+                    // Which floor's monsters the party arrive among, and where
+                    // they came from: the file, or what was left here last
+                    // time. A floor that people themselves from the wrong list
+                    // is invisible otherwise — its own monsters simply are not
+                    // there, and somebody else's are.
+                    val leaving = _state.value.inf?.let { levelNumber(it.name) }
+                    val remembered = _state.value.game.remembersOn(arrivingAt)
+                    Logger.i(TAG) {
+                        "Arriving on $arrivingAt.$showing from ${leaving ?: "nowhere"}, " +
+                            "taking ${remembered ?: inf.monsterInstances.size} monsters from " +
+                            (if (remembered != null) "what was left there" else "the file") +
+                            (leaving?.let { ", filing ${_state.value.game.monsters.size} under $it" }
+                                ?: "")
+                    }
+
+                    // What a remembered floor is remembered as holding, beside
+                    // what its file puts there. Two floors can share a type
+                    // number and mean different creatures by it, so the kinds
+                    // alone cannot say whose list this is — where they stand
+                    // can.
+                    _state.value.game
+                        .remembersOn(arrivingAt, inf.subLevels[showing].monsters)
+                        ?.let { held ->
+                            val standing = held.map { "${it.location.x}x${it.location.y}" }
+                            val onFile = inf.monsterInstances
+                                .map { "${it.location.x}x${it.location.y}" }
+                            Logger.i(TAG) {
+                                "  remembered: ${standing.sorted().joinToString(" ")}"
+                            }
+                            Logger.i(TAG) {
+                                "  on file:    ${onFile.sorted().joinToString(" ")}"
+                            }
+                        }
                     scriptRunner = LevelScriptRunner(
                         script = inf.script,
                         level = arrivingAt,

@@ -693,6 +693,14 @@ data class GameState(
     fun leaving(level: Int) = copy(asTheyWereLeft = asTheyWereLeft + (level to monsters))
 
     /**
+     * How many monsters are remembered on [level], or null where none are and
+     * arriving would people it from its file. For reading a trace by: a floor
+     * that takes the wrong list is empty of its own monsters and full of
+     * somebody else's, and nothing else on screen says so.
+     */
+    fun remembersOn(level: Int): Int? = asTheyWereLeft[level]?.size
+
+    /**
      * Puts the party on [level], as they left it if they have been before, and
      * as its file [places] it if they have not. [maz] is that file's walls,
      * which everything a script has not changed still comes from.
@@ -713,11 +721,42 @@ data class GameState(
         kinds: List<MonsterProperty> = emptyList(),
         dice: Dice = Dice.random,
     ) = copy(
-        monsters = asTheyWereLeft[level] ?: places.map {
-            it.copy(subLevel = subLevel).rolledIfKnown(kinds, dice)
+        monsters = remembersOn(level, kinds) ?: places.map {
+            it.copy(subLevel = subLevel, level = level).rolledIfKnown(kinds, dice)
         },
         mazes = if (maz == null) mazes else mazes + (level to maz),
     )
+
+    /**
+     * What is remembered of [level], or null where the party should be met by
+     * what its file lists instead.
+     *
+     * A monster is a row of that floor's own table of species, so one whose
+     * kind the floor has no row for cannot be standing on it: it is somebody
+     * else's, drawn from this floor's sheets and answering to none of this
+     * floor's rules. Those are dropped, and a memory that is nothing but such
+     * creatures is not a memory of this floor at all — the file is a truer
+     * account of it than that, so the floor peoples itself afresh.
+     *
+     * A floor genuinely emptied by fighting is remembered as empty, which is
+     * why an empty memory is only overruled where it had nothing right in it
+     * to begin with.
+     *
+     * A monster that names a different floor is not this floor's whatever its
+     * kind says, and one list of those is not a memory of this floor at all.
+     * The kinds are the weaker test of the two and are kept for the monsters
+     * out of old saves, which name no floor: two floors number their species
+     * from zero, so the kinds alone let one floor's creature pass as another's.
+     */
+    fun remembersOn(level: Int, kinds: List<MonsterProperty>): List<MonsterInstance>? {
+        val left = asTheyWereLeft[level] ?: return null
+        if (left.any { it.level != null && it.level != level }) return null
+        if (kinds.isEmpty()) return left
+
+        val belong = left.filter { who -> kinds.any { it.id == who.type.value } }
+
+        return belong.takeUnless { it.isEmpty() && left.isNotEmpty() }
+    }
 
     /** The wall on one side of a square, changed or as the file has it. */
     fun wall(level: Int, at: Location, side: WallSide): Maz.WallType =
@@ -873,12 +912,15 @@ data class GameState(
      * spawn instead.
      *
      * @param subLevel the one the party are in, which a new monster joins.
+     * @param level the floor it is conjured on, which it belongs to from here
+     *   on — see [MonsterInstance.level].
      */
     fun monsterCreated(
         spawn: CreateMonster,
         subLevel: Int = 0,
         kinds: List<MonsterProperty> = emptyList(),
         dice: Dice = Dice.random,
+        level: Int? = null,
     ): GameState {
         val taken = monsters.map { it.index }.toSet()
         val slot = (0 until MONSTER_SLOTS).map(::MonsterSlot).firstOrNull { it !in taken }
@@ -889,7 +931,7 @@ data class GameState(
             slot == null -> this
             else -> copy(
                 monsters = monsters + MonsterInstance
-                    .spawnedBy(spawn, slot, subLevel)
+                    .spawnedBy(spawn, slot, subLevel, level)
                     .rolledIfKnown(kinds, dice),
             )
         }
@@ -1357,7 +1399,15 @@ data class GameState(
             flags = saved.flags,
             items = saved.items,
             inHand = saved.inHand,
-            asTheyWereLeft = saved.leftBehind + (on to saved.monsters),
+            // A floor whose monsters name no floor comes out of a save written
+            // before they did, and nothing in it can say whether it is that
+            // floor's list or another's wrongly filed under its number. Only
+            // the floor being stood on is vouched for — those monsters are the
+            // live world, whatever the map says — and the rest are forgotten,
+            // to be read from their files again.
+            asTheyWereLeft = saved.leftBehind.filterValues { left ->
+                left.all { it.level != null }
+            } + (on to saved.monsters.map { it.copy(level = on) }),
             changedWalls = saved.changedWalls.associate {
                 WallAt(it.level, it.at, it.side) to it.to
             },

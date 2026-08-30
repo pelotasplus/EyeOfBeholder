@@ -298,6 +298,7 @@ class SavedGameRoundTripTest {
 
     private fun monsters(onLevel: Int) = listOf(0, 1).map { slot ->
         MonsterInstance(
+            level = onLevel,
             index = MonsterSlot(slot),
             unit = 0,
             location = Location(x = slot, y = onLevel),

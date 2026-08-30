@@ -455,7 +455,8 @@ class LevelScriptRunner(
                     }
                 }
 
-                is CreateMonster -> state = state.monsterCreated(token, subLevel, kinds, dice)
+                is CreateMonster ->
+                    state = state.monsterCreated(token, subLevel, kinds, dice, level)
 
                 // A script makes a thing by pointing at another like it. Where
                 // it lands can be a square outright, or the hand, or the floor

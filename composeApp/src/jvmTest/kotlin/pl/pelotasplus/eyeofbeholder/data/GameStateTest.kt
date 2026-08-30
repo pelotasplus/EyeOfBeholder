@@ -40,7 +40,11 @@ class GameStateTest {
     fun `a level never visited is peopled by its own file`() {
         val placed = listOf(monster(slot = 3), monster(slot = 4))
 
-        assertEquals(placed, world.arrivingAt(6, placed).monsters)
+        assertEquals(
+            placed.map { it.copy(level = 6) },
+            world.arrivingAt(6, placed).monsters,
+            "arriving takes the file's monsters, and they are the floor's from here on",
+        )
     }
 
     @Test
@@ -87,8 +91,8 @@ class GameStateTest {
             .arrivingAt(6, listOf(onSix)).leaving(6)
             .arrivingAt(5, listOf(onFive)).leaving(5)
 
-        assertEquals(listOf(onSix), world.arrivingAt(6, emptyList()).monsters)
-        assertEquals(listOf(onFive), world.arrivingAt(5, emptyList()).monsters)
+        assertEquals(listOf(onSix.copy(level = 6)), world.arrivingAt(6, emptyList()).monsters)
+        assertEquals(listOf(onFive.copy(level = 5)), world.arrivingAt(5, emptyList()).monsters)
     }
 
     // --- walls a script has changed ------------------------------------------

@@ -48,6 +48,20 @@ data class MonsterInstance(
     val weapon: Int,
     val pocketItem: Int,
     val subLevel: Int = 0,
+    /**
+     * Which floor it belongs to, so that a list of monsters can be told apart
+     * from another floor's.
+     *
+     * Nothing in the file says it — a floor's monsters are its by being in its
+     * file — and it would be redundant were they only ever read. They are also
+     * *remembered*, keyed by floor, and a memory filed under the wrong number
+     * is otherwise undetectable: two floors number their species from zero, so
+     * one floor's type 1 reads as another's without complaint.
+     *
+     * Null for a monster out of a save written before this was kept; see
+     * [GameState.restoredFrom], which will not vouch for those.
+     */
+    val level: Int? = null,
     val hitPoints: HitPoints = UNROLLED,
     /** Hit this instant, and so drawn as a silhouette until the moment passes. */
     val struck: Boolean = false,
@@ -216,8 +230,14 @@ data class MonsterInstance(
          * The monster a script's [CreateMonster] asks for, in a free [slot],
          * belonging to the sublevel it was conjured in.
          */
-        fun spawnedBy(spawn: CreateMonster, slot: MonsterSlot, subLevel: Int = 0) = MonsterInstance(
+        fun spawnedBy(
+            spawn: CreateMonster,
+            slot: MonsterSlot,
+            subLevel: Int = 0,
+            level: Int? = null,
+        ) = MonsterInstance(
             subLevel = subLevel,
+            level = level,
             index = slot,
             unit = spawn.unit,
             location = spawn.location,
