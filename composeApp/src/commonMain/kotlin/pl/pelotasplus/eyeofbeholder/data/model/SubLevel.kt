@@ -36,5 +36,12 @@ data class SubLevel(
     val sound: String,
     val doors: List<Door>,
     val decorations: List<Decoration>,
-)
+) {
+    /** The wall bytes a blow takes down here — the webs, where there are any. */
+    val wallsThatGiveWay: Set<WallByte>
+        get() = decorations
+            .filter { it.givesWayToABlow }
+            .map { WallByte(it.decorationWallIndex) }
+            .toSet()
+}
 

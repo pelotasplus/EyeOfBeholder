@@ -777,6 +777,24 @@ data class GameState(
         copy(changedWalls = changedWalls + WallSide.entries.associate { WallAt(level, at, it) to to })
 
     /**
+     * The same world with the webs on a square cut down.
+     *
+     * All four sides go at once and not only the one that was swung at, so a
+     * web strung across a corridor comes down whole rather than leaving the
+     * far face of it standing. Each becomes the next wall along, which is what
+     * is left of it: torn, still drawn, and walked through.
+     *
+     * @param giveWay the wall bytes that are webs, which is a level's own
+     *   business — nothing about the byte itself says so.
+     */
+    fun websCutOn(level: Int, at: Location, giveWay: Set<WallByte>): GameState =
+        WallSide.entries.fold(this) { world, side ->
+            val was = world.wallByte(level, at, side)
+            if (was !in giveWay) world
+            else world.wallChanged(level, at, side, WallByte(was.value + 1))
+        }
+
+    /**
      * Which face of a square its doorway hangs in, or null where there is no
      * door. A doorway takes two opposite faces, so either of them will do and
      * the first found is the answer.

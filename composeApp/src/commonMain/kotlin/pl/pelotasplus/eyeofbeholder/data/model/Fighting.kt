@@ -10,6 +10,8 @@ package pl.pelotasplus.eyeofbeholder.data.model
  * @property kinds the sublevel's species, which say how well armoured each is
  *   and how big — a weapon rolls different dice against something bigger than
  *   a champion.
+ * @property wallsThatGiveWay the sublevel's webs, which a blow takes down when
+ *   there is nothing standing in front of them to hit instead.
  */
 class Fighting(
     private val itemTypes: ItemTypes,
@@ -17,6 +19,7 @@ class Fighting(
     private val dice: Dice = Dice.random,
     // Where a slain monster's belongings land, on the level they land on.
     private val level: Int = 0,
+    private val wallsThatGiveWay: Set<WallByte> = emptySet(),
 ) {
 
     /** A blow, and the world it leaves behind. */
@@ -60,6 +63,10 @@ class Fighting(
             }
 
             is Blow.Missed -> after = after.rousedBy(blow.monster)
+
+            is Blow.CutDown ->
+                after = after.websCutOn(level, aheadOf(world), wallsThatGiveWay)
+
             else -> Unit
         }
 
@@ -96,7 +103,15 @@ class Fighting(
         val inHand = world.item(champion.holding(hand))
         if (inHand != null && !itemTypes.isSwungByHand(inHand)) return Blow.NotAWeapon
 
-        val target = inReach(world, whose) ?: return Blow.Nothing
+        // A web is swung at only when nothing is standing in front of it. The
+        // blow takes it down without a roll — it is cut, not fought.
+        val target = inReach(world, whose)
+            ?: return if (facingAWallThatGivesWay(world)) {
+                Blow.CutDown(edged = itemTypes.isEdged(inHand))
+            } else {
+                Blow.Nothing
+            }
+
         val kind = kinds.firstOrNull { it.id == target.type.value }
 
         val weapon = world.item(champion.holding(hand))
@@ -121,13 +136,24 @@ class Fighting(
         return Damage((rolled + champion.abilities.strengthDamageBonus + plus).coerceAtLeast(0))
     }
 
+    /** The square the party are looking at, which is the one a blow reaches. */
+    private fun aheadOf(world: GameState): Location {
+        val (dx, dy) = world.party.facing.transformCoordinates(0, -1)
+        return Location(world.party.position.x + dx, world.party.position.y + dy)
+    }
+
+    /** Whether the face of the square ahead that looks back at the party is a web. */
+    private fun facingAWallThatGivesWay(world: GameState): Boolean {
+        val facingUs = world.party.facing.transformWallSide(WallSide.SOUTH)
+        return world.wallByte(level, aheadOf(world), facingUs) in wallsThatGiveWay
+    }
+
     /**
      * Which monster on the square ahead the blow lands on: whatever fills the
      * square, else the first corner this champion reaches.
      */
     private fun inReach(world: GameState, whose: PartySlot): MonsterInstance? {
-        val (dx, dy) = world.party.facing.transformCoordinates(0, -1)
-        val ahead = Location(world.party.position.x + dx, world.party.position.y + dy)
+        val ahead = aheadOf(world)
 
         val there = world.monsters.filter { it.x == ahead.x && it.y == ahead.y }
         if (there.isEmpty()) return null

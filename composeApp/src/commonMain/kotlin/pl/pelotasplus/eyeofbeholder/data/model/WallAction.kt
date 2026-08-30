@@ -61,3 +61,16 @@ enum class WallAction {
 
 /** What the wall the party are facing does when it is clicked. */
 val Decoration.doesWhenClicked: WallAction get() = WallAction.of(specialType)
+
+/**
+ * Whether a blow takes this wall down. The webs are the one wall that answers
+ * a weapon rather than a click, and they are marked by a number of their own
+ * that no click action uses.
+ *
+ * What a cut web becomes is the next wall along in the table, so the two are
+ * written next to each other by whoever laid out the level. It is a torn web
+ * rather than an opening: still drawn, and walked through.
+ */
+val Decoration.givesWayToABlow: Boolean get() = specialType == GIVES_WAY_TO_A_BLOW
+
+private const val GIVES_WAY_TO_A_BLOW = 255

@@ -39,6 +39,17 @@ sealed interface Blow {
     data class Missed(val monster: MonsterSlot) : Blow
 
     data class Hit(val monster: MonsterSlot, val damage: Damage) : Blow
+
+    /**
+     * A wall that gives way to a weapon, taken down by this swing. Only a web
+     * is one, and only where nothing was standing in front of it to be hit
+     * instead.
+     *
+     * @property edged which of the two words the slot says. An edged weapon
+     *   hacks; a blunt one and a bare fist bash. Nothing else turns on it —
+     *   the web comes down either way, and neither is a roll.
+     */
+    data class CutDown(val edged: Boolean) : Blow
 }
 
 /**

@@ -550,6 +550,37 @@ class ViewPortGoldenTest {
     fun `level1 25x0 north`() =
         checkGolden("level1-25x0-north", "LEVEL1.INF", x = 25, y = 0, direction = Direction.NORTH)
 
+    /** The web across the corridor, which is a wall until it is cut down. */
+    @Test
+    fun `level1 27x9 north`() =
+        checkGolden("level1-27x9-north", "LEVEL1.INF", x = 27, y = 9, direction = Direction.NORTH)
+
+    /**
+     * The same web after a blow, which is where it goes rather than what it
+     * looks like: it is torn rather than taken away, so a good deal of it is
+     * still hanging there once the party can walk through.
+     */
+    @Test
+    fun `level1 27x9 north with the web cut down`() {
+        val inf = runBlocking { repository().loadLevel("LEVEL1.INF").getOrThrow() }
+        val sublevel = inf.subLevels[inf.subLevelAt(0, 27, 9, Direction.NORTH)]
+
+        val cut = GameState(party = PartyState(Location(27, 9), Direction.NORTH))
+            .arrivingAt(level = 1, places = emptyList(), maz = sublevel.maz)
+            .websCutOn(1, Location(27, 8), sublevel.wallsThatGiveWay)
+
+        checkGolden(
+            "level1-27x9-north-cut",
+            renderFrame(
+                level = "LEVEL1.INF",
+                x = 27,
+                y = 9,
+                direction = Direction.NORTH,
+                instead = { at, side -> cut.wallByte(1, at, side) },
+            ),
+        )
+    }
+
     /**
      * A keyhole wall with a scroll hanging in the air in front of it.
      *

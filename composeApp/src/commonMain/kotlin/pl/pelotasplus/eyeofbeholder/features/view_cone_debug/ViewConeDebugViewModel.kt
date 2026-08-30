@@ -1427,10 +1427,12 @@ class ViewConeDebugViewModel(
         val inf = _state.value.inf ?: return false
         val types = itemTypes ?: return false
 
+        val sublevel = inf.subLevels[_state.value.subLevel]
         val struck = Fighting(
             itemTypes = types,
-            kinds = inf.subLevels[_state.value.subLevel].monsters,
+            kinds = sublevel.monsters,
             level = levelNumber(inf.name),
+            wallsThatGiveWay = sublevel.wallsThatGiveWay,
         ).strike(_state.value.game, whose, hand)
 
         Logger.d(TAG) { "$whose swings with $hand: ${struck.blow}" }

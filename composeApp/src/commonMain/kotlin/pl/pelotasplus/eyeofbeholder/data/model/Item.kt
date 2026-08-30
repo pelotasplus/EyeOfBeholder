@@ -345,6 +345,18 @@ data class ItemTypes(private val types: List<ItemType>) {
      */
     fun isUsableBy(champion: Champion, item: Item?): Boolean = allows(champion, item)
 
+    /**
+     * Whether [held] has an edge, which decides nothing but the word said when
+     * a web is cut with it. A bare hand has none.
+     *
+     * What answers is who may swing it: a cleric is the one class kept off
+     * edged weapons, so a weapon a cleric may hold is a blunt one.
+     */
+    fun isEdged(held: Item?): Boolean {
+        val allowed = held?.let { this[it.type]?.allowedClasses } ?: return false
+        return CharacterClass.CLERIC !in CharacterClass.setOf(allowed)
+    }
+
     private fun allows(champion: Champion, item: Item?): Boolean {
         if (item == null) return true
         val allowed = this[item.type]?.allowedClasses ?: return false

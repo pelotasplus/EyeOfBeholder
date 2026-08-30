@@ -42,9 +42,7 @@ sealed class WhatTheBlowCameTo(val lines: List<String>, val theArmDidSomething: 
 
     /**
      * An edged weapon worked against a wall that gives, and the same with a
-     * blunt one or a bare hand. Nothing strikes a wall yet, so neither of
-     * these is reached; they are named because the slot has to say something
-     * when it is.
+     * blunt one or a bare hand.
      */
     data object Hacked : WhatTheBlowCameTo(listOf("HACK"), theArmDidSomething = true)
     data object Bashed : WhatTheBlowCameTo(listOf("BASH"), theArmDidSomething = true)
@@ -63,6 +61,8 @@ sealed class WhatTheBlowCameTo(val lines: List<String>, val theArmDidSomething: 
             // two are told apart only where the square holds a wall that can
             // be worked, which is what Hacked and Bashed are for.
             Blow.Nothing -> Missed
+
+            is Blow.CutDown -> if (blow.edged) Hacked else Bashed
 
             Blow.OutOfReach -> CannotReach
 
