@@ -158,7 +158,12 @@ class ViewConeRepositoryImpl(
         inFlight: List<Projectile>,
         bursting: List<Burst>,
     ): Result<ViewPort> {
-        Logger.d(TAG) { "Render position $playerX x $playerY level ${sublevel.level}"}
+        // The sublevel is on the line because which one is showing decides
+        // what is drawn and what is not, and a trace without it cannot say why
+        // something in the maze never appeared.
+        Logger.d(TAG) {
+            "Render position $playerX x $playerY level ${sublevel.level}.${sublevel.index}"
+        }
 
         val viewPort = ViewPort(
             vmp = sublevel.vmp,

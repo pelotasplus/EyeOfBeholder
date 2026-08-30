@@ -96,6 +96,40 @@ class SubLevelShowingTest {
         assertEquals(1, inf.showingAt(1, Location(3, 10), Direction.EAST))
     }
 
+    /**
+     * Which sublevel is showing settles what stands in a corridor, not merely
+     * how the corridor is painted: a monster is drawn only by the sublevel it
+     * belongs to. Two of them hold 18x15 and 19x15 for the first, so from the
+     * second that stretch is empty to look at — while the party carried there
+     * are still stopped by what they cannot see.
+     *
+     * This is the cost of the walls carrying the party forward and never back.
+     */
+    @Test
+    fun `the corridor at 19x15 is held by monsters of the first sublevel alone`() =
+        withLevel3 { inf ->
+            val inTheWay = inf.monsterInstances.filter { it.x in 18..19 && it.y == 15 }
+
+            assertEquals(2, inTheWay.size, "two of them should hold that corridor")
+            assertTrue(inTheWay.all { it.subLevel == 0 }, "they belong to the first sublevel")
+            assertTrue(
+                inTheWay.none { it.subLevel == 1 },
+                "the second sublevel draws that corridor empty",
+            )
+        }
+
+    /**
+     * And the walls there say nothing either way, so a party showing the
+     * second sublevel at 20x15 were carried in somewhere else and cannot be
+     * carried out again.
+     */
+    @Test
+    fun `the walls at 20x15 leave the party in whichever sublevel they arrived in`() =
+        withLevel3 { inf ->
+            assertEquals(0, inf.showingAt(0, Location(20, 15), Direction.WEST))
+            assertEquals(1, inf.showingAt(1, Location(20, 15), Direction.WEST))
+        }
+
     private fun Inf.showingAt(showing: Int, at: Location, facing: Direction): Int {
         val maz = subLevels[showing].maz
         return subLevelShowing(

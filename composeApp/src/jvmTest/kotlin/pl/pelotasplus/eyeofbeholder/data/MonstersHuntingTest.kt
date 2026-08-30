@@ -236,6 +236,35 @@ class MonstersHuntingTest {
     }
 
     /**
+     * A monster of another sublevel is nowhere rather than somewhere else: it
+     * is not drawn, so it must not be walked into either. Blocking on one is a
+     * corridor that is empty to look at and solid to walk down, and there is
+     * nothing on the screen to say why.
+     */
+    @Test
+    fun `a monster of another sublevel neither shows nor blocks`() {
+        val at = Location(13, 9)
+        val world = world(at = at, facing = Direction.SOUTH, party = Location(13, 10))
+
+        assertTrue(world.anythingStandingOn(at, inSubLevel = 0), "it is on this floor")
+
+        val elsewhere = world.copy(monsters = world.monsters.map { it.copy(subLevel = 1) })
+
+        assertFalse(
+            elsewhere.anythingStandingOn(at, inSubLevel = 0),
+            "something the party cannot see stopped them",
+        )
+        assertTrue(
+            elsewhere.anythingStandingOn(at, inSubLevel = 1),
+            "and it is still there for the floor it belongs to",
+        )
+        assertTrue(
+            elsewhere.anythingStandingOn(at),
+            "asked of the maze rather than a floor, it is standing there",
+        )
+    }
+
+    /**
      * A pack a level places as one unit acts together. The two clerics share a
      * unit, so they share a turn group and take their step on the same beat
      * rather than sliding after the party one and then the other a delay later.

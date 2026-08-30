@@ -894,7 +894,7 @@ class LevelScriptRunner(
      */
     private fun doorSwitched(state: GameState, at: Location): GameState {
         if (at == state.party.position) return state
-        if (state.anythingStandingOn(at)) return state
+        if (state.anythingStandingOn(at, subLevel)) return state
 
         val side = state.doorFacing(level, at) ?: run {
             Logger.w(TAG) { "No door at $at for a switch to work" }

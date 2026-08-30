@@ -576,7 +576,8 @@ class ViewConeDebugViewModel(
 
         // A monster stops them as surely as a wall, and is refused the same
         // way: the party neither walk through one nor swap places with it.
-        if (wallBetweenPartyAnd(to) || _state.value.game.anythingStandingOn(to)) {
+        val standing = _state.value.game.anythingStandingOn(to, _state.value.subLevel)
+        if (wallBetweenPartyAnd(to) || standing) {
             bumpedIntoAWall()
             return
         }
@@ -2793,11 +2794,17 @@ class ViewConeDebugViewModel(
      * Which sublevel to draw, having let the walls in sight correct it.
      *
      * Only walking through one can put the party somewhere no script sent
-     * them, so this is a debugging affordance rather than the game's own rule
-     * — but it costs a set comparison per frame and saves picking the sublevel
-     * by hand every time.
+     * them, so this is asked only while walls are passable. In an ordinary
+     * game the sublevel is whatever sent the party here said it was, and
+     * guessing it from the walls is not a safer answer than that one — it is
+     * a worse one. Where a sublevel maps every wall another maps and more, a
+     * single glimpse of a wall only the second draws moves the party to it,
+     * and nothing ever moves them back: every monster of the floor they left
+     * then stands there undrawn, in a corridor that looks empty.
      */
     private fun followTheWalls(inf: Inf, wallAt: (Location, WallSide) -> Maz.WallType): Int {
+        if (!debugging.wallsArePassable.value) return _state.value.subLevel
+
         val was = _state.value.subLevel
         val showing = inf.subLevelShowing(
             showing = was,

@@ -257,15 +257,23 @@ data class GameState(
     }
 
     /**
-     * Whether anything is standing on that square.
+     * Whether anything is standing on that square, as [inSubLevel] sees it.
      *
      * A monster stops the party as surely as a wall does, and is refused the
      * same way: they do not walk through one, and they do not swap places with
      * one. It is also why a monster that has come up to them cannot be simply
      * walked past — it has to be gone round or killed.
+     *
+     * A monster of another sublevel is not somewhere else, it is nowhere: it
+     * is not drawn, and so it must not block either, or the party meet a
+     * corridor that is empty to look at and solid to walk into. Asking without
+     * a sublevel asks about every one of them, which is what a question about
+     * the maze rather than about a floor wants.
      */
-    fun anythingStandingOn(at: Location): Boolean =
-        monsters.any { it.x == at.x && it.y == at.y }
+    fun anythingStandingOn(at: Location, inSubLevel: Int? = null): Boolean =
+        monsters.any {
+            it.x == at.x && it.y == at.y && (inSubLevel == null || it.subLevel == inSubLevel)
+        }
 
     /** Who is in one of the six places, or null where nobody is. */
     fun championIn(slot: PartySlot): Champion? =
