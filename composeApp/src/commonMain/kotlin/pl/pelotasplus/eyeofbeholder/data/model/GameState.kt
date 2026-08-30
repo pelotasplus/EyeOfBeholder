@@ -113,6 +113,15 @@ data class GameState(
     val showingDamage: List<DamageShown> = emptyList(),
 
     /**
+     * The champions something is still holding, and how much longer for.
+     *
+     * Only what lets go by itself is here. Venom and stone are on no clock —
+     * a champion has to be seen to for either — so nothing that leaves those
+     * puts anything in this list.
+     */
+    val holding: List<Holding> = emptyList(),
+
+    /**
      * The squares the party have stood on, level by level, which is what the
      * little map draws. Kept with the world rather than beside it so that a
      * game picked up again is picked up mapped.
@@ -1025,6 +1034,52 @@ data class GameState(
                     (worth == ANYTHING || it.value == worth)
             } == true
         }
+    }
+
+    /**
+     * The world with [what] left on a champion by a blow, or null where
+     * nothing was left.
+     *
+     * Three things stop it, and each is asked in turn: there being nothing
+     * left of them to work on, their already being in that state, and their
+     * making the throw. Null rather than an unchanged world, so a caller can
+     * tell the difference between a venom that took and one that did not —
+     * only the first is worth saying out loud.
+     */
+    fun championLeftWith(whose: PartySlot, what: WhatABlowLeaves, dice: Dice): GameState? {
+        val who = champions.getOrNull(whose.index) ?: return null
+        if (!who.canBeHurt) return null
+        if (what.alreadyOn(who)) return null
+        if (who.saves(what.thrownAgainst, dice)) return null
+
+        return copy(
+            champions = champions.toMutableList().also { it[whose.index] = what.leftOn(who) },
+            holding = what.holdsFor
+                ?.let { holding + Holding(whose, what, it.value) }
+                ?: holding,
+        )
+    }
+
+    /**
+     * Every grip one step nearer to letting go, and whoever it let go of.
+     *
+     * Only what wears off is here — venom and stone are not on any clock, and
+     * a champion has to be seen to for either of those.
+     */
+    fun gripsStepped(by: Ticks = CLOCK_STEP): Pair<GameState, List<PartySlot>> {
+        val stepped = holding.map { it.copy(ticksLeft = it.ticksLeft - by.value) }
+        val over = stepped.filter { it.ticksLeft <= 0 }
+
+        val freed = over.fold(this) { world, grip ->
+            val who = world.champions.getOrNull(grip.whose.index) ?: return@fold world
+            world.copy(
+                champions = world.champions.toMutableList().also {
+                    it[grip.whose.index] = who.paralysed(false)
+                },
+            )
+        }
+
+        return freed.copy(holding = stepped - over.toSet()) to over.map { it.whose }
     }
 
     /**

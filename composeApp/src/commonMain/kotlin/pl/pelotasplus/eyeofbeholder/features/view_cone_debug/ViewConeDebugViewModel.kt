@@ -80,6 +80,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.ClickedWall
 import pl.pelotasplus.eyeofbeholder.data.model.LevelScriptRunner
 import pl.pelotasplus.eyeofbeholder.data.model.Maz
 import pl.pelotasplus.eyeofbeholder.data.model.WallSide
+import pl.pelotasplus.eyeofbeholder.data.model.WhatABlowLeaves
 import pl.pelotasplus.eyeofbeholder.data.model.Location
 import pl.pelotasplus.eyeofbeholder.data.model.OnAPlate
 import pl.pelotasplus.eyeofbeholder.data.model.Palette
@@ -784,7 +785,7 @@ class ViewConeDebugViewModel(
             // spider does and works itself off the same way.
             Potion.POISON -> {
                 _state.update { it.copy(game = it.game.championPoisoned(whose)) }
-                sayOf(whose, ChampionMessages::isPoisoned)
+                sayOf(whose) { ChampionMessages.nowIs(it, WhatABlowLeaves.POISON.calledIt) }
             }
 
             // These want a champion to carry something they do not carry yet:
@@ -1535,7 +1536,8 @@ class ViewConeDebugViewModel(
                 if (poisonBites) untilPoisonBites = POISON_BITES.value
 
                 var landed = emptyList<MonstersTurn.Struck>()
-                var poisoned = emptyList<PartySlot>()
+                var left = emptyList<MonstersTurn.Left>()
+                var freed = emptyList<PartySlot>()
                 var bitten = emptyList<PartySlot>()
                 var ruined = emptyList<MonstersTurn.Ruined>()
                 var swungAndMissed = emptyList<MonsterSlot>()
@@ -1569,7 +1571,7 @@ class ViewConeDebugViewModel(
                             landed = taken.struck
                             ruined = taken.ruined
                             swungAndMissed = taken.missed
-                            poisoned = taken.poisoned
+                            left = taken.left
                             world = taken.world
                         }
                     }
@@ -1610,6 +1612,12 @@ class ViewConeDebugViewModel(
                     if (poisonBites) {
                         bitten = world.poisoned
                         bitten.forEach { world = world.championHurt(it, POISON_TAKES) }
+                    }
+
+                    // And whatever has hold of somebody loosens by a tick.
+                    world.gripsStepped().let { (loosened, letGo) ->
+                        world = loosened
+                        freed = letGo
                     }
 
                     // Whatever is in the air crosses one more square. What it
@@ -1662,11 +1670,15 @@ class ViewConeDebugViewModel(
                     Logger.d(TAG) { "$tickNow  in flight: $hit" }
                 }
 
-                // Being poisoned is said once, when it takes hold; what it
-                // costs is said every time it costs anything, which is the
-                // only sign the player gets that it is still working.
-                poisoned.forEach { whose -> sayOf(whose, ChampionMessages::isPoisoned) }
+                // What a blow left is said once, when it takes hold. Only the
+                // venom is said again after that: what it costs is said every
+                // time it costs anything, which is the only sign the player
+                // gets that it is still working.
+                left.forEach { what ->
+                    sayOf(what.whose) { ChampionMessages.nowIs(it, what.what.calledIt) }
+                }
                 bitten.forEach { whose -> sayOf(whose, ChampionMessages::feelsThePoison) }
+                freed.forEach { whose -> sayOf(whose, ChampionMessages::isNoLongerParalysed) }
                 swungAndMissed.forEach { slot -> Logger.d(TAG) { "$tickNow  m${slot.value} misses" } }
                 took.forEach { line -> Logger.d(TAG) { line } }
 

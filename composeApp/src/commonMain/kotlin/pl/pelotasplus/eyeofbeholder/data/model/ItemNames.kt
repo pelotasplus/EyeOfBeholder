@@ -186,9 +186,16 @@ object ItemMessages {
 
 /** What is said about a champion rather than about a thing. Transcribed. */
 object ChampionMessages {
-    /** Said once, when the venom takes hold. */
-    fun isPoisoned(whose: String) = "$whose is poisoned!"
+    /**
+     * Said once, when a blow leaves something behind. One line serves all
+     * three — the venom, the grip and the stone — with the word the thing
+     * calls itself dropped into it.
+     */
+    fun nowIs(whose: String, what: String) = "$whose is $what!"
 
-    /** And said again every time it costs them something. */
+    /** Said again every time the venom costs them something. */
     fun feelsThePoison(whose: String) = "$whose feels the effects of poison!"
+
+    /** And said when a grip lets go, which only paralysis does by itself. */
+    fun isNoLongerParalysed(whose: String) = "$whose is no longer paralyzed!"
 }

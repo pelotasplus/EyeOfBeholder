@@ -64,6 +64,16 @@ data class Champion(
 
     fun poisoned(yes: Boolean) = copy(flags = flags.poisoned(yes))
 
+    /** Held where they stand by something that will let go in its own time. */
+    val paralysed: Boolean get() = flags.paralysed
+
+    fun paralysed(yes: Boolean) = copy(flags = flags.paralysed(yes))
+
+    /** Stone, which no clock undoes. */
+    val petrified: Boolean get() = flags.petrified
+
+    fun turnedToStone() = copy(flags = flags.turnedToStone())
+
     /**
      * Which classes this champion counts as when an item asks who may hold
      * it — a fighter/thief counts as both, and may hold whatever either of
@@ -160,6 +170,19 @@ value class ChampionFlags(val value: Int) {
     /** The two of the troubles that leave a champion unable to use their hands. */
     val heldFast: Boolean get() = value and HELD_FAST != 0
 
+    /** Held where they stand, which wears off on its own in time. */
+    val paralysed: Boolean get() = value and PARALYSED != 0
+
+    fun paralysed(yes: Boolean) =
+        ChampionFlags(if (yes) value or PARALYSED else value and PARALYSED.inv())
+
+    /**
+     * Turned to stone, which takes everything else with it: a champion made
+     * stone keeps only their place in the party, and comes back out of it
+     * poisoned by nothing and held by nothing.
+     */
+    fun turnedToStone() = ChampionFlags((value and IN_THE_PARTY) or PETRIFIED)
+
     /**
      * Poisoned, which takes a little off them again and again until it is
      * cured. It is not one of the troubles that stops them acting — a poisoned
@@ -174,6 +197,7 @@ value class ChampionFlags(val value: Int) {
         const val IN_THE_PARTY = 0x01
         const val TROUBLE = 0x0E
         const val POISONED = 0x02
+        const val PARALYSED = 0x04
         const val HELD_FAST = 0x0C
         const val PETRIFIED = 0x08
     }

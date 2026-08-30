@@ -111,6 +111,18 @@ data class MonsterProperty(
      */
     val poisonsWhatItHits: Boolean get() = capsFlags and POISONS != 0
 
+    /**
+     * What a blow of its leaves on the champion besides the wound — see
+     * [WhatABlowLeaves]. Nothing has more than one of them, but the marks are
+     * separate bits and nothing says one is exclusive of another.
+     */
+    val whatItsBlowLeaves: List<WhatABlowLeaves>
+        get() = buildList {
+            if (capsFlags and POISONS != 0) add(WhatABlowLeaves.POISON)
+            if (capsFlags and PARALYSES != 0) add(WhatABlowLeaves.PARALYSIS)
+            if (capsFlags and PETRIFIES != 0) add(WhatABlowLeaves.PETRIFICATION)
+        }
+
     private companion object {
         const val LARGE = 0x01
         const val POISONS = 0x10
@@ -118,5 +130,7 @@ data class MonsterProperty(
         const val RUINS_WHAT_IT_HITS = 0x80
         const val COMES_IN_SIDEWAYS = 0x200
         const val OPENS_DOORS = 0x1000
+        const val PARALYSES = 0x20
+        const val PETRIFIES = 0x8000
     }
 }

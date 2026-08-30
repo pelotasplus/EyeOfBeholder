@@ -33,9 +33,15 @@ class MonstersTurn(
         val world: GameState,
         val missed: List<MonsterSlot> = emptyList(),
         val ruined: List<Ruined> = emptyList(),
-        /** Who the venom took hold of, which is only those it was new to. */
-        val poisoned: List<PartySlot> = emptyList(),
+        /**
+         * What the blows left behind, which is only what took hold: a throw
+         * made, or a champion already in that state, leaves nothing to say.
+         */
+        val left: List<Left> = emptyList(),
     )
+
+    /** Something a blow left on a champion besides the wound. */
+    data class Left(val whose: PartySlot, val what: WhatABlowLeaves)
 
     /** One monster's blow at one champion. */
     data class Struck(
@@ -269,7 +275,7 @@ class MonstersTurn(
         val struck = mutableListOf<Struck>()
         val missed = mutableListOf<MonsterSlot>()
         val ruined = mutableListOf<Ruined>()
-        val poisoned = mutableListOf<PartySlot>()
+        val left = mutableListOf<Left>()
 
         world.monsters.filter { it.index in byWhom }.forEach { monster ->
             val blow = strike(after, monster) ?: return@forEach
@@ -290,16 +296,20 @@ class MonstersTurn(
 
             after = after.championHurt(blow.at, blow.damage)
 
-            // What poisons, poisons on a blow that landed. It is not rolled
-            // for and not saved against here — the champion has already been
-            // hit, and the venom goes with the bite.
-            if (kinds.firstOrNull { it.id == monster.type.value }?.poisonsWhatItHits == true) {
-                if (after.championIn(blow.at)?.poisoned == false) poisoned += blow.at
-                after = after.championPoisoned(blow.at)
-            }
+            // Venom, a grip, stone: all three go with a blow that drew blood
+            // and none of them with one that did not, and each is thrown
+            // against on its own before it takes hold.
+            kinds.firstOrNull { it.id == monster.type.value }
+                ?.whatItsBlowLeaves
+                .orEmpty()
+                .forEach { what ->
+                    val took = after.championLeftWith(blow.at, what, dice) ?: return@forEach
+                    after = took
+                    left += Left(blow.at, what)
+                }
         }
 
-        return Taken(struck, after, missed, ruined, poisoned)
+        return Taken(struck, after, missed, ruined, left)
     }
 
     /**
