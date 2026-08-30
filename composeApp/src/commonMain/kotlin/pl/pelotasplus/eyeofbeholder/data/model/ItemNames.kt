@@ -170,6 +170,12 @@ object ItemMessages {
 
     /** A gem, a key, a set of bones, the lock picks. */
     const val NOT_USED_THIS_WAY = "This item is not used in this way."
+
+    /**
+     * What the plate says to anything that is not rations — a potion among
+     * them, which is drunk from the hand it is in and not from the plate.
+     */
+    const val ONLY_FOOD = "You may only eat food!"
 }
 
 /** What is said about a champion rather than about a thing. Transcribed. */

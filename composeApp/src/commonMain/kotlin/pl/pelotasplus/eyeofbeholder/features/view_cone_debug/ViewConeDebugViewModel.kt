@@ -56,6 +56,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.FloorReach
 import pl.pelotasplus.eyeofbeholder.data.model.ForcingADoor
 import pl.pelotasplus.eyeofbeholder.data.model.Font
 import pl.pelotasplus.eyeofbeholder.data.model.GameState
+import pl.pelotasplus.eyeofbeholder.data.model.HandUse
 import pl.pelotasplus.eyeofbeholder.data.model.Inf
 import pl.pelotasplus.eyeofbeholder.data.model.InventorySlot
 import pl.pelotasplus.eyeofbeholder.data.model.inventorySlotAt
@@ -1247,16 +1248,19 @@ class ViewConeDebugViewModel(
         val world = _state.value.game
         val champion = world.championIn(whose) ?: return
         val held = world.item(champion.holding(slot.slot))
-        val parchment = held?.let { itemTypes?.whatIsOn(it) }
+
+        // What this hand does with what it holds, which is one thing. Without
+        // an item table nothing is known about anything, and a hand swings.
+        val doing = itemTypes?.whatAHandDoesWith(held) ?: HandUse.Swing
 
         // A thing read is a thing read and nothing else: the page goes up and
         // the wall in front is left alone. Asking the wall's triggers here runs
         // a script that ends by clearing the box — which closes the page the
         // instant it opened, every time but the first, when reading the text
         // file for the first time is slow enough to win the race.
-        if (parchment != null) {
+        if (doing is HandUse.Read) {
             viewModelScope.launch {
-                when (parchment) {
+                when (val parchment = doing.what) {
                     is OnAParchment.Writing -> read(parchment.page)
                     is OnAParchment.Map -> lookAt(parchment)
                 }
@@ -1274,19 +1278,13 @@ class ViewConeDebugViewModel(
             said = true
         }
 
-        // And what kind of thing it is, for the two kinds that have nothing to
-        // do but be told about. Everything else either does something below or
-        // is a kind nothing here has been written for yet, which is not the
-        // same as the game having a line about it.
-        val aboutTheKind = when (held?.let { itemTypes?.kindOf(it) }) {
-            ItemKind.ARMOUR, ItemKind.RING -> ItemMessages.WORKS_BY_BEING_WORN
-
-            ItemKind.AN_ODDMENT,
-            ItemKind.BONES,
-            ItemKind.A_STONE_SHAPE,
-            ItemKind.KEY,
-            ItemKind.GEM -> ItemMessages.NOT_USED_THIS_WAY
-
+        // And what kind of thing it is, for the two answers that are nothing
+        // but something to say. A kind nothing here has been written for yet
+        // says nothing, which is not the same as the game having a line about
+        // it.
+        val aboutTheKind = when (doing) {
+            HandUse.WorksByBeingWorn -> ItemMessages.WORKS_BY_BEING_WORN
+            HandUse.NotUsedThisWay -> ItemMessages.NOT_USED_THIS_WAY
             else -> null
         }
         aboutTheKind?.let {
@@ -1304,38 +1302,29 @@ class ViewConeDebugViewModel(
         // sound is for is the wall's business, asked for below like any other
         // thing taken to one — a puzzle listening for a horn wants the right
         // one, and the sound alone is all the horn itself does.
-        // A hand does one thing with what it holds, and what it holds decides
-        // which. Offering the swing as well as the use drinks the potion and
-        // hits with the flask in the same breath.
-        var usedAnotherWay = false
+        // The one thing this hand does. Rations and potions are had out of the
+        // pocket they are in, by whoever's pocket it is: that is the game's own
+        // way of eating and drinking and wants nothing held, the plate being
+        // for food carried and this for food put away.
+        //
+        // Only a swing is a swing, which is why the key that sets the whole
+        // front rank going comes at [strike] from somewhere else.
+        when (doing) {
+            is HandUse.Blow -> {
+                say(doing.horn.sounds)
+                viewModelScope.launch { playTrack(doing.horn.heardAs) }
+            }
 
-        val horn = held?.let { itemTypes?.hornBlown(it) }
-        if (horn != null) {
-            say(horn.sounds)
-            viewModelScope.launch { playTrack(horn.heardAs) }
-            usedAnotherWay = true
+            HandUse.Eat -> held?.let { eatFromSlot(whose, slot.slot, it) }
+            HandUse.Drink -> held?.let { drink(whose, slot.slot, it) }
+
+            HandUse.Swing -> if (slot.slot.isAHand) strike(whose, slot.slot)
+
+            is HandUse.Read,
+            HandUse.WorksByBeingWorn,
+            HandUse.NotUsedThisWay,
+            HandUse.NotWrittenYet -> Unit
         }
-
-        // Rations are eaten out of the pocket they are in, by whoever's pocket
-        // it is. That is the game's own way of eating and wants nothing held:
-        // the plate is for food being carried, this is for food put away.
-        if (held != null && itemTypes?.isEaten(held) == true) {
-            eatFromSlot(whose, slot.slot, held)
-            usedAnotherWay = true
-        }
-
-        // And a potion is drunk the same way, out of the pocket it is in.
-        if (held != null && itemTypes?.kindOf(held) == ItemKind.POTION) {
-            drink(whose, slot.slot, held)
-            usedAnotherWay = true
-        }
-
-        // What is left over is swung, an empty hand among it — that is a fist
-        // and swings like anything else, while a shield or a set of lock picks
-        // is not a thing to hit with and says so. That is one rule and it lives
-        // in one place, because the key that sets the whole front rank going
-        // comes at it from somewhere else.
-        if (slot.slot.isAHand && !usedAnotherWay) strike(whose, slot.slot)
 
         // And whatever it was, the wall in front of the party is asked what it
         // makes of it. That is how a window is broken: not by pointing at it,
@@ -2214,9 +2203,16 @@ class ViewConeDebugViewModel(
         // Eating leaves the page open: the plate is there to be used while a
         // champion's things are being looked through.
         if (choice == SheetChoice.Eat) {
-            _state.value.game.item(_state.value.game.inHand)
-                ?.takeIf { itemTypes?.isEaten(it) == true }
-                ?.let { eatFromHand(sheet.slot, it) }
+            // The plate takes rations and nothing else, and says so to anything
+            // else offered it — a potion among them, which is drunk from the
+            // hand it is in rather than put on a plate first.
+            val offered = _state.value.game.item(_state.value.game.inHand)
+            if (offered != null && itemTypes?.isEaten(offered) == true) {
+                eatFromHand(sheet.slot, offered)
+            } else if (offered != null) {
+                say(ItemMessages.ONLY_FOOD)
+                drawWords()
+            }
             return
         }
 

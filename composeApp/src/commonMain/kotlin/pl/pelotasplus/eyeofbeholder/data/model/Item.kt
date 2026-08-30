@@ -199,6 +199,48 @@ data class ItemTypes(private val types: List<ItemType>) {
     fun kindOf(item: Item): ItemKind? = this[item.type]?.extraProperties?.kind
 
     /**
+     * What a hand does with [held], which is one thing — see [HandUse].
+     *
+     * An empty hand swings, which is a fist. Rations are asked for by type
+     * rather than by kind, which is how they were asked for before this and
+     * is left alone here.
+     */
+    fun whatAHandDoesWith(held: Item?): HandUse {
+        if (held == null) return HandUse.Swing
+        if (isEaten(held)) return HandUse.Eat
+
+        whatIsOn(held)?.let { return HandUse.Read(it) }
+        hornBlown(held)?.let { return HandUse.Blow(it) }
+
+        return when (kindOf(held)) {
+            ItemKind.SWUNG_BY_HAND,
+            ItemKind.THROWN,
+            ItemKind.A_LAUNCHER -> HandUse.Swing
+
+            ItemKind.POTION -> HandUse.Drink
+            ItemKind.FOOD -> HandUse.Eat
+
+            ItemKind.ARMOUR, ItemKind.RING -> HandUse.WorksByBeingWorn
+
+            ItemKind.AN_ODDMENT,
+            ItemKind.BONES,
+            ItemKind.A_STONE_SHAPE,
+            ItemKind.KEY,
+            ItemKind.GEM -> HandUse.NotUsedThisWay
+
+            ItemKind.SPELLBOOK,
+            ItemKind.HOLY_SYMBOL,
+            ItemKind.MAGE_SCROLL,
+            ItemKind.CLERIC_SCROLL,
+            ItemKind.WAND,
+            ItemKind.AMULET,
+            ItemKind.SOMETHING_TO_READ,
+            ItemKind.A_HORN,
+            null -> HandUse.NotWrittenYet
+        }
+    }
+
+    /**
      * Whether a champion may strike with what is in [hand], the other hand
      * being part of the answer.
      *
