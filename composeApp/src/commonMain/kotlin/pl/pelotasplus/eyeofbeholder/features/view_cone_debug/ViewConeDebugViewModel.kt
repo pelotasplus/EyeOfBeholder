@@ -81,6 +81,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.LevelScriptRunner
 import pl.pelotasplus.eyeofbeholder.data.model.Maz
 import pl.pelotasplus.eyeofbeholder.data.model.WallSide
 import pl.pelotasplus.eyeofbeholder.data.model.Location
+import pl.pelotasplus.eyeofbeholder.data.model.OnAPlate
 import pl.pelotasplus.eyeofbeholder.data.model.Palette
 import pl.pelotasplus.eyeofbeholder.data.model.PartyState
 import pl.pelotasplus.eyeofbeholder.data.model.PlayField
@@ -722,6 +723,22 @@ class ViewConeDebugViewModel(
             // camping puts a champion's page down and the party back up
             _state.update { it.copy(sheet = null) }
             showMenu(if (opening) CampMenu.camp() else null)
+        }
+    }
+
+    /** Whatever is held, offered to a champion on the plate. */
+    private fun plateOffered(whose: PartySlot) {
+        val champion = _state.value.game.championIn(whose) ?: return
+        val held = _state.value.game.item(_state.value.game.inHand)
+
+        when (val answer = itemTypes?.offeredOnAPlate(champion, held) ?: return) {
+            is OnAPlate.Eaten -> eatFromHand(whose, answer.food)
+            is OnAPlate.Refused -> {
+                say(answer.says)
+                drawWords()
+            }
+
+            OnAPlate.NothingOffered -> Unit
         }
     }
 
@@ -2207,16 +2224,7 @@ class ViewConeDebugViewModel(
         // Eating leaves the page open: the plate is there to be used while a
         // champion's things are being looked through.
         if (choice == SheetChoice.Eat) {
-            // The plate takes rations and nothing else, and says so to anything
-            // else offered it — a potion among them, which is drunk from the
-            // hand it is in rather than put on a plate first.
-            val offered = _state.value.game.item(_state.value.game.inHand)
-            if (offered != null && itemTypes?.isEaten(offered) == true) {
-                eatFromHand(sheet.slot, offered)
-            } else if (offered != null) {
-                say(ItemMessages.ONLY_FOOD)
-                drawWords()
-            }
+            plateOffered(sheet.slot)
             return
         }
 

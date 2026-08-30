@@ -59,6 +59,14 @@ data class Item(
      */
     val exists: Boolean get() = location != NOWHERE
 
+    /**
+     * Whether this has gone off, which only rations do.
+     *
+     * A ration's value is how much of a stomach it fills, and one that has
+     * spoiled carries less than nothing rather than a mark of its own.
+     */
+    val isRotten: Boolean get() = value == ROTTEN
+
     /** A cursed thing cannot be taken out of the slot it was put in. */
     val stuckToItsSlot: Boolean get() = flags and STUCK != 0
 
@@ -71,6 +79,9 @@ data class Item(
          * which is what -1 comes to when read as a position.
          */
         val NOWHERE = Location(31, 2047)
+
+        /** The value a ration carries once it has spoiled. */
+        const val ROTTEN = -1
 
         /**
          * Where a thing on a stack lies: not on the map and not in a slot of
@@ -238,6 +249,22 @@ data class ItemTypes(private val types: List<ItemType>) {
             ItemKind.A_HORN,
             null -> HandUse.NotWrittenYet
         }
+    }
+
+    /**
+     * What comes of offering [held] to [champion] on the plate.
+     *
+     * Three things are refused and each says why, asked in this order: whether
+     * this champion can be fed at all, whether the thing is food, and whether
+     * the food is still good. The order is what decides which line a stone
+     * champion offered a potion is given.
+     */
+    fun offeredOnAPlate(champion: Champion, held: Item?): OnAPlate = when {
+        !champion.canEat -> OnAPlate.Refused(ItemMessages.cannotEat(champion.name))
+        held == null -> OnAPlate.NothingOffered
+        !isEaten(held) -> OnAPlate.Refused(ItemMessages.ONLY_FOOD)
+        held.isRotten -> OnAPlate.Refused(ItemMessages.ROTTEN)
+        else -> OnAPlate.Eaten(held)
     }
 
     /**

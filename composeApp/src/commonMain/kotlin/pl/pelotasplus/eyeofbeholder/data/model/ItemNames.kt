@@ -176,6 +176,12 @@ object ItemMessages {
      * them, which is drunk from the hand it is in and not from the plate.
      */
     const val ONLY_FOOD = "You may only eat food!"
+
+    /** And to rations that have gone off, which are offered but not eaten. */
+    const val ROTTEN = "That food is rotten!  You don't want to eat that!"
+
+    /** And to a champion who is in no state to be fed. */
+    fun cannotEat(whose: String) = "$whose isn't capable of eating food!"
 }
 
 /** What is said about a champion rather than about a thing. Transcribed. */

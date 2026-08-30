@@ -93,6 +93,15 @@ data class Champion(
      */
     val canAct: Boolean get() = inTheParty && !dead && !heldFast
 
+    /**
+     * Whether this one can be fed: in the party, still standing, and not stone.
+     *
+     * Less is asked here than of somebody putting a shoulder to a door. Being
+     * held is one of the troubles that stops a champion using their hands, and
+     * it does not stop them being fed — only being turned to stone does.
+     */
+    val canEat: Boolean get() = inTheParty && !dead && !flags.petrified
+
     companion object {
         /** How many champions the party has room for, filled or not. */
         const val PARTY_SLOTS = 6
