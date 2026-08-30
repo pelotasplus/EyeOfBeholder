@@ -35,6 +35,9 @@ data class NpcMeeting(
 
     /** What they ask first, where coming along is not the first question. */
     val freeing: Freeing? = null,
+
+    /** The bit the meeting writes, and what has to happen for it to be written. */
+    val remembers: Remembers? = null,
 ) {
     /**
      * The question one of them opens with, before joining is ever raised.
@@ -46,18 +49,44 @@ data class NpcMeeting(
      * where he is.
      */
     data class Freeing(
-        /** His piece, which ends in asking to be let out. */
+        /** Their piece, which ends in the question. */
         val asks: DialogueTextId,
 
         val doIt: String,
         val leaveIt: String,
 
-        /** What he says on the half of the tosses where he goes his own way. */
-        val goesInstead: DialogueTextId,
+        /**
+         * What is said on the half of the tosses where they go their own way,
+         * where a toss is taken at all. Null where saying yes always leads to
+         * being asked along.
+         */
+        val goesInstead: DialogueTextId? = null,
 
-        /** Remembers that the cell was dealt with, so it is not opened twice. */
-        val remembers: FlagBit,
+        /** Which way the party are left facing by declining. */
+        val leftFacing: Direction? = null,
     )
+
+    /**
+     * When a meeting writes the bit that says it happened.
+     *
+     * The three of them differ, and the difference is the whole of what the
+     * bit means: one remembers that somebody came along, one that the party
+     * walked away, one that the cell was dealt with either way. A bit set on
+     * the wrong branch is a meeting that comes round again, or one that never
+     * does.
+     */
+    data class Remembers(val bit: FlagBit, val on: When) {
+        enum class When {
+            /** Only where they actually joined. */
+            THEY_JOINED,
+
+            /** Only where the first question was answered by walking away. */
+            THEY_WERE_LEFT,
+
+            /** However the first question went, so long as it was answered. */
+            THEY_WERE_DEALT_WITH,
+        }
+    }
 
     /**
      * Where somebody's picture is cut from the sheet the meetings share, and
@@ -85,16 +114,19 @@ data class NpcMeeting(
             const val FLOOR = 104
         }
     }
+    /**
+     * [state] with this meeting's bit written, where [became] is what it waits
+     * for. A meeting whose bit is set on some other branch is handed back
+     * unchanged, so every branch may ask without checking first.
+     */
+    fun remembering(state: GameState, became: Remembers.When): GameState =
+        if (remembers?.on == became) state.globalFlagSet(remembers.bit) else state
+
     companion object {
-        /**
-         * The three the dungeon has, by the number a script calls for.
-         *
-         * The middle one is still missing: it opens on a speech of its own and
-         * the choice it puts is not about joining at all, so it is not a
-         * meeting of this shape.
-         */
+        /** The three the dungeon has, by the number a script calls for. */
         fun called(npc: NpcId): NpcMeeting? = when (npc.value) {
             0 -> IN_THE_CRYPT
+            1 -> IN_THE_CATACOMBS
             2 -> IN_THE_CELL
             else -> null
         }
@@ -148,6 +180,57 @@ data class NpcMeeting(
             refused = DialogueTextId(2),
             standing = Standing(sourceTop = 0, width = 40, height = 57),
             joiningAs = INSAL,
+            remembers = Remembers(FlagBit(6), Remembers.When.THEY_JOINED),
+        )
+
+        /**
+         * Four hit points of seventy-six is not a mistake either: like Insal
+         * she is found nearly dead, and unlike him she is a fighter of the
+         * ninth level, which is what the party are being offered.
+         */
+        private val CALANDRA = Champion(
+            name = "Calandra",
+            portrait = PortraitId(-2),
+            abilities = Abilities(
+                strength = Ability(current = 18, max = 18),
+                strengthPercentile = Ability(current = 36, max = 36),
+                intelligence = Ability(current = 13, max = 13),
+                wisdom = Ability(current = 8, max = 8),
+                dexterity = Ability(current = 15, max = 15),
+                constitution = Ability(current = 16, max = 16),
+                charisma = Ability(current = 14, max = 14),
+            ),
+            hitPoints = HitPoints(current = 4, max = 76),
+            armorClass = ArmorClass(10),
+            food = Food(12),
+            race = Race.HUMAN,
+            sex = Sex.FEMALE,
+            characterClass = CharacterClass.FIGHTER,
+            alignment = Alignment.CHAOTIC_GOOD,
+            levels = listOf(ClassLevel(level = 9, experience = XpPoints(253749))),
+            carrying = CarrySlot.NOTHING_IN_ANY,
+            flags = ChampionFlags(IN_THE_PARTY),
+        )
+
+        /**
+         * The one on the second floor, who is spoken to before she is asked
+         * along: walking away from her is remembered and she is not met again,
+         * while talking to her leads straight into the other question.
+         */
+        private val IN_THE_CATACOMBS = NpcMeeting(
+            npc = NpcId(1),
+            heardAs = TrackIndex(53),
+            asks = DialogueTextId(5),
+            agrees = DialogueTextId(6),
+            refused = DialogueTextId(7),
+            standing = Standing(sourceTop = 100, width = 40, height = 79),
+            joiningAs = CALANDRA,
+            freeing = Freeing(
+                asks = DialogueTextId(4),
+                doIt = "talk",
+                leaveIt = "leave",
+            ),
+            remembers = Remembers(FlagBit(5), Remembers.When.THEY_WERE_LEFT),
         )
 
         private val SHORN = Champion(
@@ -187,8 +270,9 @@ data class NpcMeeting(
                 doIt = "release him",
                 leaveIt = "leave",
                 goesInstead = DialogueTextId(9),
-                remembers = FlagBit(3),
+                leftFacing = Direction.NORTH,
             ),
+            remembers = Remembers(FlagBit(3), Remembers.When.THEY_WERE_DEALT_WITH),
         )
 
         /** The sheet every one of them is cut from while they speak. */
@@ -200,5 +284,11 @@ data class NpcMeeting(
         /** The two answers, which belong to no level either. */
         const val YES = "yes"
         const val NO = "no"
+
+        /** What a party of six are told, and the way out of being asked. */
+        const val ONLY_SIX =
+            "You may only have six characters in your party.  " +
+                "Select the one you wish to drop."
+        const val ABORT = "ABORT"
     }
 }

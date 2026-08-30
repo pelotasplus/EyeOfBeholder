@@ -2559,9 +2559,13 @@ class ViewConeDebugViewModel(
     private suspend fun showDialog(question: ScriptQuestion): Boolean {
         val inf = _state.value.inf ?: return false
 
-        val speech = dialogueTextRepository.text(question.textId)
-            .onFailure { Logger.e(it) { "No dialogue text ${question.textId}" } }
-            .getOrNull()
+        val speech = question.textId
+            ?.let { asked ->
+                dialogueTextRepository.text(asked)
+                    .onFailure { Logger.e(it) { "No dialogue text $asked" } }
+                    .getOrNull()
+            }
+            ?: question.spoken?.let { DialogueText(listOf(it)) }
             ?: DialogueText.EMPTY
 
         val labels = question.words.ifEmpty { question.buttons.mapNotNull { inf.message(it) } }

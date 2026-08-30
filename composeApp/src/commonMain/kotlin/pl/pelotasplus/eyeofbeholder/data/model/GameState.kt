@@ -304,6 +304,42 @@ data class GameState(
      * walked up cannot also be a pile of bones in the pack, so theirs go at
      * the moment of joining.
      */
+    /**
+     * The same world with somebody put out of the party, and everything they
+     * were carrying on the floor where the party stand.
+     *
+     * They are not killed and not kept: the flag word goes to nothing, which
+     * is what says they are nobody, and the slot is free for the next person
+     * to walk into. What they held is not destroyed with them — it lands on
+     * the square underfoot, a corner at a time, so a party who drop somebody
+     * for a stranger can pick their things back up.
+     *
+     * [level] and [at] are where the party are standing, and [into] the corner
+     * it all goes in — the game rolls between the two in front of them.
+     */
+    fun championDropped(
+        whose: PartySlot,
+        level: Int,
+        at: Location,
+        into: SquarePlace,
+    ): GameState {
+        val who = championIn(whose) ?: return this
+
+        val emptied = who.carrying.filterNot { it.value == ItemIndex.NOTHING }
+
+        return emptied
+            .fold(this) { world, what -> world.itemLandedAt(what, level, at, into) }
+            .copy(
+                champions = champions.mapIndexed { slot, was ->
+                    if (slot == whose.index) {
+                        was.copy(flags = ChampionFlags(0), carrying = CarrySlot.NOTHING_IN_ANY)
+                    } else {
+                        was
+                    }
+                },
+            )
+    }
+
     fun joinedBy(somebody: Champion, whose: NpcId): GameState {
         val place = champions.indexOfFirst { !it.inTheParty }
         if (place < 0) return this

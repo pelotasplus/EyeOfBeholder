@@ -181,20 +181,19 @@ data class DialogueScene(
         ): DialogueScene {
             val lines = font.wrap(text, readOff.textWidth)
             val buttonTop = (lines.size + 1) * font.height + readOff.textTop + 4
-            val buttonLeft =
-                if (buttonLabels.size > TWO_ACROSS.size) THREE_ACROSS else TWO_ACROSS
+            val places =
+                if (buttonLabels.size > TWO_ACROSS.size) inAGrid(buttonLabels.size) else TWO_ACROSS
 
             return DialogueScene(
                 frame = frame.takeIf { portrait != null && !portrait.goes.insteadOfTheFrame },
                 portrait = portrait,
                 lines = lines,
                 buttons = buttonLabels.mapIndexed { index, label ->
+                    val place = places.getOrElse(index) { places.last() }
                     Button(
                         label = label.uppercase(),
-                        left = if (waitsToBeRead) readOff.readOnLeft else {
-                            buttonLeft.getOrElse(index) { buttonLeft.last() }
-                        },
-                        top = if (waitsToBeRead) readOff.readOnTop else buttonTop,
+                        left = if (waitsToBeRead) readOff.readOnLeft else place.left,
+                        top = if (waitsToBeRead) readOff.readOnTop else buttonTop + place.down,
                     )
                 },
                 readOff = readOff,
@@ -215,8 +214,24 @@ data class DialogueScene(
          * three spread across the full width. Asking three questions with the
          * pair's positions puts the third on top of the second.
          */
-        private val TWO_ACROSS = listOf(59, 166)
-        private val THREE_ACROSS = listOf(4, 112, 220)
+        /** Where one answer's button goes, relative to the row they start on. */
+        private data class Place(val left: Int, val down: Int)
+
+        /** Two answers stand side by side, wider apart than three would. */
+        private val TWO_ACROSS = listOf(Place(59, 0), Place(166, 0))
+
+        /**
+         * Any more than two are laid out three to a row, and a fourth answer
+         * starts a second row rather than crowding the first. Being asked
+         * which of six champions to drop is the widest question in the game,
+         * and takes three rows.
+         */
+        private fun inAGrid(howMany: Int) = List(howMany) {
+            Place(left = ACROSS[it % ACROSS.size], down = (it / ACROSS.size) * A_ROW_DOWN)
+        }
+
+        private val ACROSS = listOf(4, 112, 220)
+        private const val A_ROW_DOWN = 12
 
         /**
          * The word that turns a page part way through a speech. The button it

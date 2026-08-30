@@ -172,7 +172,7 @@ class MonstersThatCanDieTest {
     fun `the clerics speak while they live`() {
         val stage = approached(world())
 
-        assertEquals(listOf(22), stage.questions.map { it.textId.number }.take(1))
+        assertEquals(listOf(22), stage.questions.map { it.textId?.number }.take(1))
         assertEquals(3, stage.questions.first().buttons.size)
     }
 

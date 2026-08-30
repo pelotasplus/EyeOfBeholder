@@ -760,6 +760,29 @@ class ViewPortGoldenTest {
             ),
         )
 
+    /**
+     * The widest question the game asks: which of a full party leaves to make
+     * room for somebody met in the dungeon. Seven answers do not fit a row, so
+     * they are laid three to a row and wrap onto a second and a third.
+     *
+     * Two answers stand side by side and any more go into the grid, so this is
+     * also where a fourth answer crowding the first row would show.
+     */
+    @Test
+    fun `dialogue asking which of six champions to drop`() =
+        checkGolden(
+            "dialogue-who-leaves",
+            dialogueOver(
+                level = "LEVEL2.INF", x = 13, y = 26,
+                textId = 4,
+                buttons = listOf(
+                    "Pericles", "\"Stumpy\"", "Wolfspirit",
+                    "Laurann", "Insal", "Shorn",
+                    NpcMeeting.ABORT,
+                ),
+            ),
+        )
+
     @Test
     fun `dialogue with a picture across the top`() =
         checkGolden(

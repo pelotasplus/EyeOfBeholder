@@ -126,7 +126,7 @@ class LevelTransitionTest {
         assertEquals(List(4) { Ticks(15) }, stage.holds, "with a pause on each step")
         assertEquals(
             listOf(14, 16, 17, 18),
-            stage.questions.map { it.textId.number },
+            stage.questions.map { it.textId?.number },
             "she asks, answers, says where they are, and the door asks them in",
         )
         assertEquals(null, run.changeLevel, "declining the door stays on this level")

@@ -99,7 +99,11 @@ data class ScriptSpeech(
  * were run, for the screen to put up first.
  */
 data class ScriptQuestion(
-    val textId: DialogueTextId,
+    /**
+     * Which of the dungeon's speeches is being put, or null where the words
+     * are [spoken] instead and belong to no level.
+     */
+    val textId: DialogueTextId?,
     val buttons: List<MessageId>,
     val scene: List<Dialog>,
     /**
@@ -121,6 +125,12 @@ data class ScriptQuestion(
      * clean box while an exchange builds up on one.
      */
     val said: List<MessageId> = emptyList(),
+    /**
+     * What is asked, where the asking is the game's rather than a level's —
+     * the same reason [words] exists. A party of six being told to choose
+     * somebody to drop is the game speaking, so no level holds the sentence.
+     */
+    val spoken: String? = null,
     /**
      * True when the script is being read rather than answered, so the one
      * button belongs in the corner speeches are read on rather than in the row
@@ -806,11 +816,14 @@ class LevelScriptRunner(
             ),
         ) == DialogAnswer.forButton(0)
 
-        if (!release) return state.partyTurnedTo(Direction.NORTH)
+        if (!release) {
+            val walkedAway = meeting.remembering(state, NpcMeeting.Remembers.When.THEY_WERE_LEFT)
+            return freeing.leftFacing?.let(walkedAway::partyTurnedTo) ?: walkedAway
+        }
 
-        val opened = state.globalFlagSet(freeing.remembers)
+        val opened = meeting.remembering(state, NpcMeeting.Remembers.When.THEY_WERE_DEALT_WITH)
 
-        if (dice.roll(1, 2, -1) == 1) {
+        if (freeing.goesInstead != null && dice.roll(1, 2, -1) == 1) {
             stage.ask(
                 ScriptQuestion(
                     textId = freeing.goesInstead,
@@ -860,20 +873,52 @@ class LevelScriptRunner(
 
         if (!letThemAlong) return state
 
-        // A party of six is asked which of them leaves to make room, which is
-        // not written yet: until it is, a full party is a join that does not
-        // happen, and nothing is remembered as having happened either.
-        if (!state.roomForOneMore) {
-            Logger.w(TAG) {
-                "${meeting.npc} was let along with no place free, and asking who " +
-                    "leaves is not written yet"
-            }
-            return state
-        }
+        val room = madeRoomFor(state, stage) ?: return state
 
-        return state
+        return room
             .joinedBy(meeting.joiningAs, meeting.npc)
-            .copy(flags = state.flags.setting(WhatTheGameItselfRemembers.SOMEBODY_WAS_LET_ALONG))
+            .copy(flags = room.flags.setting(WhatTheGameItselfRemembers.SOMEBODY_WAS_LET_ALONG))
+            .let { meeting.remembering(it, NpcMeeting.Remembers.When.THEY_JOINED) }
+    }
+
+    /**
+     * The world with a place free in the party, or null where the party would
+     * rather keep the six they have.
+     *
+     * Six is the whole of the party, so somebody has to go before anybody else
+     * comes. The choice is put as their six names and a way out of the
+     * question; taking the way out is what refuses the join, and it refuses it
+     * after the person has been told they may come — which is the game's
+     * order, and the reason a full party still hear the yes.
+     *
+     * Whoever is dropped leaves everything they carried on the floor
+     * underfoot, in one of the two corners in front of the party.
+     */
+    private suspend fun madeRoomFor(state: GameState, stage: ScriptStage): GameState? {
+        if (state.roomForOneMore) return state
+
+        val standing = state.champions
+            .mapIndexed { slot, who -> PartySlot(slot) to who }
+            .filter { (_, who) -> who.inTheParty }
+
+        val answer = stage.ask(
+            ScriptQuestion(
+                textId = null,
+                buttons = emptyList(),
+                words = standing.map { (_, who) -> who.name } + NpcMeeting.ABORT,
+                scene = emptyList(),
+                spoken = NpcMeeting.ONLY_SIX,
+            ),
+        )
+
+        val chosen = standing.getOrNull(answer.number - 1) ?: return null
+
+        return state.championDropped(
+            whose = chosen.first,
+            level = level,
+            at = state.party.position,
+            into = cornerInFront(state.party.facing),
+        )
     }
 
     /**
