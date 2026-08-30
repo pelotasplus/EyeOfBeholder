@@ -737,19 +737,13 @@ class LevelScriptRunner(
 
                 // A pit, a trap, a column of lightning. The dice are rolled
                 // per champion rather than once for the party.
-                is DamageDealt -> when (val harm = Harm.of(token, state, itemTypes, dice)) {
-                    Harm.AllowsASave ->
-                        notYet(token, "a saving throw", "nobody is hurt")
-
-                    is Harm.Taken -> {
-                        state = with(Harm) { state.hurtBy(harm) }
-                        harm.each.forEach { (whose, amount) ->
-                            hurt[whose] = Damage(
-                                (hurt[whose]?.points ?: 0) + amount.points
-                            )
-                        }
-                        if (harm.each.values.any { it.landed }) stage.play(HURT)
+                is DamageDealt -> {
+                    val blows = Harm.of(token, state, itemTypes, dice)
+                    state = with(Harm) { state.hurtBy(blows) }
+                    blows.forEach { (whose, amount) ->
+                        hurt[whose] = Damage((hurt[whose]?.points ?: 0) + amount.points)
                     }
+                    if (blows.values.any { it.landed }) stage.play(HURT)
                 }
 
                 // A dart from a wall, or the bolt a trap throws down a

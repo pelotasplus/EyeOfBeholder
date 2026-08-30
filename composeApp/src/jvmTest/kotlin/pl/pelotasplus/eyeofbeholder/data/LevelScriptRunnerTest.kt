@@ -26,7 +26,6 @@ import pl.pelotasplus.eyeofbeholder.data.model.Trigger
 import pl.pelotasplus.eyeofbeholder.data.model.TriggerFlags
 import pl.pelotasplus.eyeofbeholder.data.model.script.Conditional
 import pl.pelotasplus.eyeofbeholder.data.model.script.CreateMonster
-import pl.pelotasplus.eyeofbeholder.data.model.script.Damage
 import pl.pelotasplus.eyeofbeholder.data.model.script.Dialog
 import pl.pelotasplus.eyeofbeholder.data.model.script.GoSub
 import pl.pelotasplus.eyeofbeholder.data.model.script.Return
@@ -743,31 +742,26 @@ class LevelScriptRunnerTest {
      * A gap in the interpreter is announced and stepped over. Both halves
      * matter: a gap that says nothing cannot be found, and one that stops the
      * script turns a missing feature into a dead level.
-     *
-     * The gap used here is a blow that allows a saving throw, the tables
-     * behind one being a piece of their own. A blow that allows none — every
-     * pit, and nearly every trap — is dealt.
      */
     @Test
     fun `a gap announces itself and the script runs on`() {
         val stage = Notices()
 
         val outcome = runFully(
-            0 to Damage(
-                charIndex = -1,
-                times = 2,
-                itemOrPips = 6,
-                useStrModifierOrBase = 0,
-                flags = 0,
-                savingThrowType = 0,
-                savingThrowEffect = 0,
+            0 to NewLevelOrMonster.LoadMonsterShapes(
+                cmd = 0,
+                monsterCmd = 0,
+                shapesName = "KENKU",
             ),
             10 to changeLevelToken(5),
             stage = stage,
         )
 
         assertEquals(changeToLevel(5), outcome.changeLevel)
-        assertEquals(listOf("a saving throw is not written yet, nobody is hurt"), stage.said)
+        assertEquals(
+            listOf("loading monster shapes is not written yet, the shapes already loaded are used"),
+            stage.said,
+        )
     }
 
     /**
