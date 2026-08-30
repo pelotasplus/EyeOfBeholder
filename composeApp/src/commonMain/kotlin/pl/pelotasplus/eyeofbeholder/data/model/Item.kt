@@ -198,6 +198,10 @@ data class ItemTypes(private val types: List<ItemType>) {
     fun hornBlown(item: Item): Horn? =
         if (kindOf(item) != ItemKind.A_HORN) null else Horn.of(item.value)
 
+    /** Which ring this is, if it is one. */
+    fun ring(item: Item): Ring? =
+        if (kindOf(item) != ItemKind.RING) null else Ring.of(item.value)
+
     /**
      * Whether a monster that ruins what it hits can ruin this one.
      *

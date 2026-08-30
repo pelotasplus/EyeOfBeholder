@@ -740,12 +740,16 @@ class LevelScriptRunnerTest {
     // --- what the runner does not do yet -------------------------------------
 
     /**
-     * An instruction with no branch written for it is announced and stepped
-     * over. Both halves matter: a gap that says nothing cannot be found, and
-     * one that stops the script turns a missing feature into a dead level.
+     * A gap in the interpreter is announced and stepped over. Both halves
+     * matter: a gap that says nothing cannot be found, and one that stops the
+     * script turns a missing feature into a dead level.
+     *
+     * The gap used here is a blow that allows a saving throw, the tables
+     * behind one being a piece of their own. A blow that allows none — every
+     * pit, and nearly every trap — is dealt.
      */
     @Test
-    fun `an instruction nobody has written announces itself and the script runs on`() {
+    fun `a gap announces itself and the script runs on`() {
         val stage = Notices()
 
         val outcome = runFully(
@@ -763,7 +767,7 @@ class LevelScriptRunnerTest {
         )
 
         assertEquals(changeToLevel(5), outcome.changeLevel)
-        assertEquals(listOf("damage is not written yet, nobody is hurt"), stage.said)
+        assertEquals(listOf("a saving throw is not written yet, nobody is hurt"), stage.said)
     }
 
     /**

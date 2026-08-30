@@ -102,6 +102,16 @@ data class Champion(
      */
     val canEat: Boolean get() = inTheParty && !dead && !flags.petrified
 
+    /**
+     * Whether there is anything left of this one to hurt: in the party, not
+     * already past raising, and not stone.
+     *
+     * Less is asked here than anywhere else — being knocked out is no
+     * protection, and a champion lying at nothing goes on losing hit points
+     * until they are past raising.
+     */
+    val canBeHurt: Boolean get() = inTheParty && !deadForGood && !flags.petrified
+
     companion object {
         /** How many champions the party has room for, filled or not. */
         const val PARTY_SLOTS = 6

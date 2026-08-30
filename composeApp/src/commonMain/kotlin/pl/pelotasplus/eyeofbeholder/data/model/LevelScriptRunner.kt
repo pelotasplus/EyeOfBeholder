@@ -6,7 +6,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.script.ClearFlag
 import pl.pelotasplus.eyeofbeholder.data.model.script.Conditional
 import pl.pelotasplus.eyeofbeholder.data.model.script.ConsumeItem
 import pl.pelotasplus.eyeofbeholder.data.model.script.CreateMonster
-import pl.pelotasplus.eyeofbeholder.data.model.script.Damage
+import pl.pelotasplus.eyeofbeholder.data.model.script.Damage as DamageDealt
 import pl.pelotasplus.eyeofbeholder.data.model.script.Dialog
 import pl.pelotasplus.eyeofbeholder.data.model.script.Encounter
 import pl.pelotasplus.eyeofbeholder.data.model.script.End
@@ -48,6 +48,16 @@ data class ScriptRun(
     val state: GameState,
     /** Set when the script ended by sending the party to another level. */
     val changeLevel: ChangeLevel? = null,
+    /**
+     * What the script took off each champion, which is reported rather than
+     * only done.
+     *
+     * The hit points are gone in [state]; the number showing on a portrait is
+     * not, because that is on a clock the script does not own — see
+     * [GameState.asAScriptLeaves]. So whoever applies the run has to put the
+     * blow up itself, and this is what it needs to do it.
+     */
+    val hurt: Map<PartySlot, Damage> = emptyMap(),
 )
 
 /** The party is to leave for another level, which ends the script. */
@@ -383,7 +393,11 @@ class LevelScriptRunner(
         // the last answer given, which the script may test more than once
         var dialogAnswer: DialogAnswer? = null
 
-        fun stop(changeLevel: ChangeLevel? = null) = ScriptRun(state, changeLevel)
+        // what the script has taken off each champion, added up over as many
+        // blows as it deals: a corridor of traps is one script and several
+        val hurt = mutableMapOf<PartySlot, Damage>()
+
+        fun stop(changeLevel: ChangeLevel? = null) = ScriptRun(state, changeLevel, hurt.toMap())
 
         // An instruction nobody has written yet says so, and says what the
         // script goes on to do instead. Silence is the wrong answer here: a
@@ -721,7 +735,22 @@ class LevelScriptRunner(
                 // game.
                 is Encounter -> notYet(token, "this set piece", "it counts as seen anyway")
 
-                is Damage -> notYet(token, "damage", "nobody is hurt")
+                // A pit, a trap, a column of lightning. The dice are rolled
+                // per champion rather than once for the party.
+                is DamageDealt -> when (val harm = Harm.of(token, state, itemTypes, dice)) {
+                    Harm.AllowsASave ->
+                        notYet(token, "a saving throw", "nobody is hurt")
+
+                    is Harm.Taken -> {
+                        state = with(Harm) { state.hurtBy(harm) }
+                        harm.each.forEach { (whose, amount) ->
+                            hurt[whose] = Damage(
+                                (hurt[whose]?.points ?: 0) + amount.points
+                            )
+                        }
+                        if (harm.each.values.any { it.landed }) stage.play(HURT)
+                    }
+                }
 
                 // A dart from a wall, or the bolt a trap throws down a
                 // corridor. The corner it starts in is the game's own table,
@@ -1246,6 +1275,9 @@ class LevelScriptRunner(
 
         /** What anything being loosed down a corridor sounds like. */
         val LOOSED = TrackIndex(11)
+
+        /** And what a champion losing hit points sounds like. */
+        val HURT = TrackIndex(21)
 
         /**
          * A gap in the interpreter, written so it can be found.

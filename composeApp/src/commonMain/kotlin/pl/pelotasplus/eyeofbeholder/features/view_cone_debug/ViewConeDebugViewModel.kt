@@ -2501,12 +2501,16 @@ class ViewConeDebugViewModel(
             if (_state.value.dialog != null) silenceEffects()
             _state.update {
                 it.copy(
-                    game = run.state.withWhoeverStandsThere(it.game).asAScriptLeaves(it.game),
+                    game = run.state
+                        .withWhoeverStandsThere(it.game)
+                        .asAScriptLeaves(it.game)
+                        .blowsShown(run.hurt),
                     dialog = null,
                 )
             }
             speaker = null
             scriptHasTheParty = false
+            if (run.hurt.isNotEmpty()) letTheDamageFade()
 
             val change = run.changeLevel
             if (change == null) {

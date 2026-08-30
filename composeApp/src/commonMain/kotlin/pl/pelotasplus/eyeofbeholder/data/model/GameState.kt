@@ -1105,6 +1105,22 @@ data class GameState(
     }
 
     /**
+     * Whether that champion is wearing [ring].
+     *
+     * Only the two ring slots count. One in the pack does nothing and one in
+     * a hand is being carried rather than worn, so a party who found the ring
+     * and never put it on fall as far as anybody else.
+     */
+    fun isWearing(whose: PartySlot, ring: Ring, types: ItemTypes?): Boolean {
+        val who = champions.getOrNull(whose.index) ?: return false
+
+        return CarrySlot.RINGS.any { slot ->
+            val worn = item(who.holding(slot)) ?: return@any false
+            types?.ring(worn) == ring
+        }
+    }
+
+    /**
      * The world with one champion [by] hit points worse off.
      *
      * Nothing else happens to them here: going down at nothing left and being
@@ -1132,6 +1148,21 @@ data class GameState(
                 DamageShown(whose, by, DamageShown.WHILE_IT_SHOWS.value),
         )
     }
+
+    /**
+     * The world with a blow put up on the portraits without anybody losing
+     * anything for it.
+     *
+     * For a blow already dealt somewhere the clock could not reach — a
+     * script's, which is handed back the world it was given and so cannot be
+     * left holding the fading.
+     */
+    fun blowsShown(blows: Map<PartySlot, Damage>): GameState = copy(
+        showingDamage = showingDamage.filterNot { it.whose in blows.keys } +
+            blows.filterValues { it.landed }.map { (whose, amount) ->
+                DamageShown(whose, amount, DamageShown.WHILE_IT_SHOWS.value)
+            },
+    )
 
     /** What is showing on that champion's portrait, if anything. */
     fun damageShownOn(whose: PartySlot): Damage? =
