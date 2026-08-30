@@ -35,6 +35,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.MessageId
 import pl.pelotasplus.eyeofbeholder.data.model.OnAParchment
 import pl.pelotasplus.eyeofbeholder.data.model.Naming
 import pl.pelotasplus.eyeofbeholder.data.model.PaletteIndex
+import pl.pelotasplus.eyeofbeholder.data.model.PartySlot
 import pl.pelotasplus.eyeofbeholder.data.model.PartyState
 import pl.pelotasplus.eyeofbeholder.data.model.Burst
 import pl.pelotasplus.eyeofbeholder.data.model.Dice
@@ -1198,6 +1199,8 @@ class ViewPortGoldenTest {
         joiningAt: Int = 5,
         /** Which of them the venom has hold of, by the place they stand in. */
         poisoned: List<Int> = emptyList(),
+        /** Who is waiting to change places, on the half the word is showing. */
+        swapping: Int? = null,
     ): BufferedImage = runBlocking {
         val resources = ResourceRepositoryImpl()
         val cps = CpsRepositoryImpl(resources)
@@ -1264,6 +1267,7 @@ class ViewPortGoldenTest {
             recovering = { whose, hand -> (whose.index to hand.index) in swung },
             reporting = { whose, hand -> reported[whose.index to hand.index] },
             hurt = { whose -> splattered[whose.index] },
+            swapping = swapping?.let(::PartySlot),
         ).toImage()
     }
 
@@ -1446,6 +1450,18 @@ class ViewPortGoldenTest {
                 y = 11,
                 hurtTo = listOf(78, -3, 20, Champion.BEYOND_RAISING),
             ),
+        )
+
+    /**
+     * A champion named to change places says so where their name goes, and the
+     * strip flickers between the two. This is the half the word is on; the
+     * other half is the ordinary panel.
+     */
+    @Test
+    fun `a champion waiting to change places`() =
+        checkGolden(
+            "party-panel-swapping",
+            partyOver(level = "LEVEL4.INF", x = 15, y = 11, swapping = 2),
         )
 
     /**

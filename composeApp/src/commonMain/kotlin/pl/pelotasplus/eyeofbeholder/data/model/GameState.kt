@@ -340,6 +340,33 @@ data class GameState(
             )
     }
 
+    /**
+     * The same world with two champions changing places in the party.
+     *
+     * Whole people change places, not their belongings: everything a champion
+     * is goes with them, so the pair are simply written into each other's
+     * slots. Which slot somebody stands in decides who is in the front rank
+     * and can reach what is ahead, which is the point of moving them.
+     *
+     * An empty slot is a place like any other, so somebody may be moved into
+     * one — that is how a party of four choose which two of them lead.
+     */
+    fun championsSwapped(one: PartySlot, other: PartySlot): GameState {
+        if (one == other) return this
+        val first = champions.getOrNull(one.index) ?: return this
+        val second = champions.getOrNull(other.index) ?: return this
+
+        return copy(
+            champions = champions.mapIndexed { slot, was ->
+                when (slot) {
+                    one.index -> second
+                    other.index -> first
+                    else -> was
+                }
+            },
+        )
+    }
+
     fun joinedBy(somebody: Champion, whose: NpcId): GameState {
         val place = champions.indexOfFirst { !it.inTheParty }
         if (place < 0) return this

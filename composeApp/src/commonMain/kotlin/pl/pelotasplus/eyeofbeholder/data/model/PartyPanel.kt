@@ -50,6 +50,16 @@ data class ChampionBox(val left: Int, val top: Int) {
         x in handSlotLeft until handSlotLeft + HAND_SLOT_WIDTH &&
             y in handTop(hand) until handTop(hand) + HAND_SLOT_HEIGHT
 
+    /**
+     * Whether a click landed on the strip along the top of the box, which is
+     * where the name is written and where two champions are swapped from.
+     *
+     * The strip is the width of the box rather than the width of the name:
+     * a short name would otherwise be a smaller target than a long one.
+     */
+    fun showsNameAt(x: Int, y: Int): Boolean =
+        x in left until left + WIDTH && y in top until top + NAME_STRIP_HEIGHT
+
     /** Whether a click landed on the face, which is what opens a champion's page. */
     fun showsFaceAt(x: Int, y: Int): Boolean =
         x in portraitLeft until portraitLeft + PORTRAIT_SIZE &&
@@ -61,8 +71,12 @@ data class ChampionBox(val left: Int, val top: Int) {
 
         private const val NAME_X = 2
         private const val NAME_Y = 2
+
         private const val PORTRAIT_X = 0
         private const val PORTRAIT_Y = 9
+
+        /** Down to where the portrait starts, the strip being the rest of it. */
+        private const val NAME_STRIP_HEIGHT = PORTRAIT_Y
         private const val HAND_X = 32
         private const val HAND_Y = 9
         private const val HAND_STEP = 16

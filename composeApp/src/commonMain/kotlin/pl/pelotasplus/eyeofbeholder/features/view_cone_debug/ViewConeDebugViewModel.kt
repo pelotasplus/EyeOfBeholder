@@ -202,6 +202,9 @@ class ViewConeDebugViewModel(
     /** Moving whatever doors are on their way somewhere. */
     private var swingingDoors: Job? = null
 
+    /** Flickering the name of whoever is waiting to change places. */
+    private var flickeringName: Job? = null
+
     /** Counting whatever hands have swung back to rest. */
     private var recoveringHands: Job? = null
     private var fadingDamage: Job? = null
@@ -1117,6 +1120,68 @@ class ViewConeDebugViewModel(
     private data class HandOnThePanel(val champion: PartySlot, val holds: InventorySlot)
 
     /**
+     * A click on a name, which is how two champions change places.
+     *
+     * The first names somebody and leaves their strip flickering between their
+     * own name and the word for what is being done to them; the second names
+     * who they change places with. Naming the same one twice is how the party
+     * change their mind, since otherwise there is no way back out of it.
+     *
+     * @return whether the click was a name, and so is not also something else.
+     */
+    private fun swappedAt(x: Int, y: Int): Boolean {
+        val whose = championBoxes
+            .indexOfFirst { it.showsNameAt(x, y) }
+            .takeIf { it >= 0 }
+            ?.let(::PartySlot)
+            ?: return false
+
+        // An empty box has no name to click and nobody to move.
+        if (_state.value.game.championIn(whose) == null) return false
+
+        val waiting = _state.value.swapping
+
+        _state.update {
+            when (waiting) {
+                null -> it.copy(swapping = whose)
+                whose -> it.copy(swapping = null)
+                else -> it.copy(
+                    game = it.game.championsSwapped(waiting, whose),
+                    swapping = null,
+                )
+            }
+        }
+
+        keepTheNameFlickering(_state.value.swapping != null)
+        drawWords()
+        return true
+    }
+
+    /**
+     * The clock that flickers the name of whoever is waiting to be moved.
+     *
+     * It is the only thing on the panel that moves without the party doing
+     * anything, so it needs a clock of its own — and must not have one when
+     * nobody is waiting, or the panel is redrawn for ever.
+     */
+    private fun keepTheNameFlickering(anyWaiting: Boolean) {
+        if (anyWaiting == (flickeringName?.isActive == true)) return
+
+        flickeringName?.cancel()
+        flickeringName = if (!anyWaiting) {
+            null
+        } else {
+            viewModelScope.launch {
+                while (_state.value.swapping != null) {
+                    delay(SWAP_FLICKER.inMilliseconds)
+                    _state.update { it.copy(swapShowing = !it.swapShowing) }
+                    drawWords()
+                }
+            }
+        }
+    }
+
+    /**
      * The other click, which uses what a slot holds where it lies instead of
      * taking it out.
      *
@@ -1127,6 +1192,8 @@ class ViewConeDebugViewModel(
      */
     private fun onUsedWhatIsAt(x: Int, y: Int) {
         val sheet = sheetOnShow
+
+        if (sheet == null && swappedAt(x, y)) return
 
         val used = when {
             sheet == null -> handAt(x, y)?.let { it.champion to it.holds }
@@ -2894,6 +2961,8 @@ class ViewConeDebugViewModel(
                     recovering = { whose, hand -> _state.value.game.isRecovering(whose, hand) },
                     reporting = { whose, hand -> _state.value.game.reportIn(whose, hand) },
                     hurt = { whose -> _state.value.game.damageShownOn(whose) },
+                    swapping = _state.value.swapping
+                        ?.takeIf { !_state.value.swapShowing },
                 )
                 .toImageBitmap()
         } else {
@@ -3043,6 +3112,15 @@ class ViewConeDebugViewModel(
          */
         val subLevel: Int = 0,
 
+        /** Who has been named to change places, while nobody has been named to. */
+        val swapping: PartySlot? = null,
+
+        /**
+         * Which half of the flicker the named champion's strip is on: their own
+         * name, or the word for what is being done to them.
+         */
+        val swapShowing: Boolean = true,
+
         val dialog: DialogPrompt? = null,
 
         /** The camp menu, if it is open, which owns the screen while it is. */
@@ -3093,6 +3171,9 @@ class ViewConeDebugViewModel(
 
         /** How long a door rests at each of the positions it slides through. */
         private val DOOR_STEP = Ticks(5)
+
+        /** How long each half of a waiting champion's name flicker lasts. */
+        private val SWAP_FLICKER = Ticks(9)
 
         /** How long an hour of sleep takes to watch. */
         private val AN_HOUR_OF_SLEEP = Ticks(3)

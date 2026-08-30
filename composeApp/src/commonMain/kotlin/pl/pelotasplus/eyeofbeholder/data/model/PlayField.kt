@@ -45,6 +45,8 @@ class PlayField(
         reporting: (PartySlot, CarrySlot) -> WhatTheBlowCameTo? = { _, _ -> null },
         /** What that champion has just been hit for, while it is still showing. */
         hurt: (PartySlot) -> Damage? = { null },
+        /** Whose name is showing "swapping" instead, this half of the flicker. */
+        swapping: PartySlot? = null,
     ): PlayField {
         // Something held up over the view is read off a champion's own page,
         // that being the one place a thing being carried can be clicked, so the
@@ -58,7 +60,9 @@ class PlayField(
         drawBackground()
         // a champion's own page takes the six boxes' side of the screen
         if (sheet == null) {
-            drawParty(party, portraits, metPortraits, carrying, recovering, reporting, hurt)
+            drawParty(
+                party, portraits, metPortraits, carrying, recovering, reporting, hurt, swapping,
+            )
         } else if (!underThePage) {
             drawSheet(sheet, portraits, metPortraits)
         }
@@ -404,6 +408,7 @@ class PlayField(
         recovering: (PartySlot, CarrySlot) -> Boolean,
         reporting: (PartySlot, CarrySlot) -> WhatTheBlowCameTo?,
         hurt: (PartySlot) -> Damage?,
+        swapping: PartySlot?,
     ) {
         championBoxes.forEachIndexed { slot, box ->
             val champion = party.getOrNull(slot)?.takeIf { it.inTheParty } ?: return@forEachIndexed
@@ -426,6 +431,7 @@ class PlayField(
                 recovering = { hand -> recovering(PartySlot(slot), CarrySlot(hand)) },
                 reporting = { hand -> reporting(PartySlot(slot), CarrySlot(hand)) },
                 hurt = hurt(PartySlot(slot)),
+                swapping = swapping?.index == slot,
             )
         }
     }
@@ -439,6 +445,7 @@ class PlayField(
         recovering: (Int) -> Boolean,
         reporting: (Int) -> WhatTheBlowCameTo?,
         hurt: Damage?,
+        swapping: Boolean = false,
     ) {
         // Past raising, the face goes and the rest of the box stays.
         if (champion.deadForGood) {
@@ -461,13 +468,19 @@ class PlayField(
             }
         }
 
+        // A champion waiting to change places says so where their name goes,
+        // and the two alternate, which is what makes the strip flicker.
         font?.let { font ->
             write(
-                text = champion.name,
+                text = if (swapping) SWAPPING else champion.name,
                 font = font,
                 left = box.nameLeft,
                 top = box.nameTop,
-                colour = if (champion.inTrouble) NAME_IN_TROUBLE else NAME_COLOUR,
+                colour = when {
+                    swapping -> NAME_SWAPPING
+                    champion.inTrouble -> NAME_IN_TROUBLE
+                    else -> NAME_COLOUR
+                },
             )
         }
 
@@ -955,6 +968,10 @@ class PlayField(
         /** Party panel colours. */
         private val NAME_COLOUR = PaletteIndex(12)
         private val NAME_IN_TROUBLE = PaletteIndex(8)
+
+        /** What a champion waiting to change places says, and in what colour. */
+        private const val SWAPPING = "Swapping"
+        private val NAME_SWAPPING = PaletteIndex(8)
         private val BAR_EMPTY = PaletteIndex(184)
 
         /** Room for three figures either side of the word between them. */
