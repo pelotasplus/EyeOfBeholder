@@ -1304,10 +1304,16 @@ class ViewConeDebugViewModel(
         // sound is for is the wall's business, asked for below like any other
         // thing taken to one — a puzzle listening for a horn wants the right
         // one, and the sound alone is all the horn itself does.
+        // A hand does one thing with what it holds, and what it holds decides
+        // which. Offering the swing as well as the use drinks the potion and
+        // hits with the flask in the same breath.
+        var usedAnotherWay = false
+
         val horn = held?.let { itemTypes?.hornBlown(it) }
         if (horn != null) {
             say(horn.sounds)
             viewModelScope.launch { playTrack(horn.heardAs) }
+            usedAnotherWay = true
         }
 
         // Rations are eaten out of the pocket they are in, by whoever's pocket
@@ -1315,19 +1321,21 @@ class ViewConeDebugViewModel(
         // the plate is for food being carried, this is for food put away.
         if (held != null && itemTypes?.isEaten(held) == true) {
             eatFromSlot(whose, slot.slot, held)
+            usedAnotherWay = true
         }
 
         // And a potion is drunk the same way, out of the pocket it is in.
         if (held != null && itemTypes?.kindOf(held) == ItemKind.POTION) {
             drink(whose, slot.slot, held)
+            usedAnotherWay = true
         }
 
-        // A hand is offered the swing whatever is in it, and what is in it
-        // decides — an empty one is a fist and swings like anything else, a
-        // shield or a set of lock picks is not a thing to hit with and says so.
-        // That is one rule and it lives in one place, because the key that sets
-        // the whole front rank going comes at it from somewhere else.
-        if (slot.slot.isAHand) strike(whose, slot.slot)
+        // What is left over is swung, an empty hand among it — that is a fist
+        // and swings like anything else, while a shield or a set of lock picks
+        // is not a thing to hit with and says so. That is one rule and it lives
+        // in one place, because the key that sets the whole front rank going
+        // comes at it from somewhere else.
+        if (slot.slot.isAHand && !usedAnotherWay) strike(whose, slot.slot)
 
         // And whatever it was, the wall in front of the party is asked what it
         // makes of it. That is how a window is broken: not by pointing at it,
