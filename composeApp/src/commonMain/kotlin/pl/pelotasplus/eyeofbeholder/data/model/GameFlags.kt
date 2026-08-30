@@ -17,6 +17,8 @@ import kotlinx.serialization.Serializable
  * one is to read those scripts. What has been read so far:
  *
  * ```
+ * level 2   bit 17  the ambush below (15,23) has been sprung
+ *
  * level 4   bit 0   the woman by the temple door has been spoken to
  *           bit 1   the remark about the strange bushes has been made
  *           bit 2   ... about the graves having found peace
@@ -46,6 +48,11 @@ import kotlinx.serialization.Serializable
  * in puts them back on it, and whether they were walked to the door rather
  * than arriving on their own, which decides whether the door's scene has to
  * draw the view behind it afresh. All three are read and cleared at once.
+ *
+ * Level 2's bit is the plainest use there is, and the one to read first. Its
+ * square conjures a key onto the floor and two guards holding two more things,
+ * then sets the bit, and the whole is wrapped in a test of it. Without that a
+ * party could pace on and off the square and take a key each time.
  *
  * Each of level 5's three squares tests its own bit and sets it, so a way in
  * speaks once and the other two still work — one bit for the whole encounter
