@@ -203,6 +203,15 @@ interface ScriptStage {
     suspend fun ask(question: ScriptQuestion): DialogAnswer
 
     /**
+     * Open the archway over the view and hold until it has finished opening.
+     *
+     * The script puts the party down somewhere else the moment this returns,
+     * so a stage that hurries it lands them before they have seen where they
+     * were going.
+     */
+    suspend fun opensThePortal()
+
+    /**
      * Something the script asked for that nothing here does yet, said in the
      * words a player could repeat back.
      *
@@ -223,6 +232,7 @@ interface ScriptStage {
             override suspend fun hold(ticks: Ticks) = Unit
             override suspend fun play(track: TrackIndex) = Unit
             override suspend fun ask(question: ScriptQuestion) = answer
+            override suspend fun opensThePortal() = Unit
         }
     }
 }
@@ -700,11 +710,15 @@ class LevelScriptRunner(
                     }
                 }
 
-                // The other two set pieces: the portal, and the way the party
-                // are told they have died. Skipping one is quiet in a way that
-                // matters — the script has usually just set the flag that says
-                // it has happened, so nothing brings it round again and the
-                // scene is gone for that game.
+                // The archway a stone gem opens, which the script waits out
+                // before it puts the party down on another floor.
+                Encounter.PortalSequence -> stage.opensThePortal()
+
+                // The last set piece: the way the party are told they have
+                // died. Skipping it is quiet in a way that matters — the script
+                // has usually just set the flag that says it has happened, so
+                // nothing brings it round again and the scene is gone for that
+                // game.
                 is Encounter -> notYet(token, "this set piece", "it counts as seen anyway")
 
                 is Damage -> notYet(token, "damage", "nobody is hurt")

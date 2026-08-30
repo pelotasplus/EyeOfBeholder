@@ -45,6 +45,7 @@ class RecordingStage(answers: List<Int> = emptyList()) : ScriptStage {
         data class Held(val ticks: Ticks) : Beat
         data class Played(val track: TrackIndex) : Beat
         data class Asked(val question: ScriptQuestion, val answered: DialogAnswer) : Beat
+        data object OpenedThePortal : Beat
     }
 
     override fun takesTheParty() {
@@ -53,6 +54,10 @@ class RecordingStage(answers: List<Int> = emptyList()) : ScriptStage {
 
     override suspend fun show(world: GameState) {
         beats += Beat.Shown(world)
+    }
+
+    override suspend fun opensThePortal() {
+        beats += Beat.OpenedThePortal
     }
 
     override suspend fun say(speech: ScriptSpeech) {

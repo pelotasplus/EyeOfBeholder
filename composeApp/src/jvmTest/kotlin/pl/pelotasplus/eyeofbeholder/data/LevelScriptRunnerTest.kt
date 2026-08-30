@@ -798,6 +798,7 @@ class LevelScriptRunnerTest {
         override suspend fun say(speech: ScriptSpeech) = Unit
         override suspend fun hold(ticks: Ticks) = Unit
         override suspend fun play(track: TrackIndex) = Unit
+        override suspend fun opensThePortal() = Unit
         override suspend fun ask(question: ScriptQuestion) = DialogAnswer(1)
     }
 

@@ -47,6 +47,8 @@ class PlayField(
         hurt: (PartySlot) -> Damage? = { null },
         /** Whose name is showing "swapping" instead, this half of the flicker. */
         swapping: PartySlot? = null,
+        /** The archway opening over the view, while one is. */
+        portal: ThePortal.Showing? = null,
     ): PlayField {
         // Something held up over the view is read off a champion's own page,
         // that being the one place a thing being carried can be clicked, so the
@@ -68,6 +70,7 @@ class PlayField(
         }
 
         drawViewPort(viewPort)
+        portal?.let(::drawPortal)
         drawCompass(direction)
         drawMessages(messages)
         dialogue?.let(::drawDialogue)
@@ -909,6 +912,41 @@ class PlayField(
             }
         }
     }
+
+    /**
+     * The archway, over the view it stands in.
+     *
+     * The arch is three shapes cut out of their own background, so what is
+     * behind them shows around their edges. What comes through the middle is a
+     * rectangle rather than a shape — it is the whole of what is seen there,
+     * and nothing of the view is meant to show through it.
+     */
+    private fun drawPortal(showing: ThePortal.Showing) {
+        val step = showing.step
+
+        copy(showing.arch, ThePortal.lintel(step.arch), ThePortal.LINTEL_AT, cutOut = true)
+        copy(showing.arch, ThePortal.leftPillar(step.arch), ThePortal.LEFT_PILLAR_AT, cutOut = true)
+        copy(
+            showing.arch,
+            ThePortal.rightPillar(step.arch),
+            ThePortal.RIGHT_PILLAR_AT,
+            cutOut = true,
+        )
+
+        if (step.showing == null) {
+            copy(showing.arch, ThePortal.SHUT, ThePortal.MIDDLE_AT, cutOut = true)
+        } else {
+            copy(
+                showing.through,
+                ThePortal.showingThrough(step.showing),
+                ThePortal.MIDDLE_AT,
+                cutOut = false,
+            )
+        }
+    }
+
+    private fun copy(from: Cps, cut: ThePortal.Cut, at: ThePortal.At, cutOut: Boolean) =
+        copy(from, cut.x, cut.y, cut.wide, cut.high, at.x, at.y, cutOut)
 
     private fun drawViewPort(viewPort: ViewPort) {
         viewPort.getRows().forEachIndexed { y, row ->

@@ -57,6 +57,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.ForcingADoor
 import pl.pelotasplus.eyeofbeholder.data.model.Font
 import pl.pelotasplus.eyeofbeholder.data.model.GameState
 import pl.pelotasplus.eyeofbeholder.data.model.HandUse
+import pl.pelotasplus.eyeofbeholder.data.model.ThePortal
 import pl.pelotasplus.eyeofbeholder.data.model.Inf
 import pl.pelotasplus.eyeofbeholder.data.model.InventorySlot
 import pl.pelotasplus.eyeofbeholder.data.model.inventorySlotAt
@@ -181,6 +182,9 @@ class ViewConeDebugViewModel(
      * button that answers them.
      */
     private var standingInTheBox = emptyList<String>()
+
+    /** The archway standing over the view, while one is opening. */
+    private var portalShowing: ThePortal.Showing? = null
 
     /** The script holding the world, if one is running. */
     private var playing: Job? = null
@@ -2533,7 +2537,17 @@ class ViewConeDebugViewModel(
      * both silence. Each says which one it was, so the difference can be read
      * rather than guessed at.
      */
-    private suspend fun playTrack(track: TrackIndex, volume: Volume = Volume.FULL) {
+    /**
+     * @param alongside whether this may sound over whatever is still playing
+     *   rather than taking its place. For the few effects written to be heard
+     *   together: a pair meant as one noise is two clicks if the second stops
+     *   the first.
+     */
+    private suspend fun playTrack(
+        track: TrackIndex,
+        volume: Volume = Volume.FULL,
+        alongside: Boolean = false,
+    ) {
         if (!_state.value.preferences.sounds) {
             Logger.d(TAG) { "Not playing $track: sounds are switched off" }
             return
@@ -2556,6 +2570,15 @@ class ViewConeDebugViewModel(
         // voices and a new program took them over, so nothing could pile up on
         // it; here nothing stops it, and a level whose scripts hand out
         // seventeen second drones turns a walk into one long chord.
+        //
+        // Which leaves nowhere for the handful of effects written to be heard
+        // at once, so those say so and are let through. What they start is not
+        // held onto: it is short, and stopping it is what they are avoiding.
+        if (alongside) {
+            audioSink.play(clip, volume)
+            return
+        }
+
         sounding?.stop()
         sounding = audioSink.play(clip, volume)
     }
@@ -2648,6 +2671,49 @@ class ViewConeDebugViewModel(
         // anybody going to write it needs anyway.
 
         override suspend fun hold(ticks: Ticks) = delay(ticks.inMilliseconds)
+
+        /**
+         * The archway, put up whole and then opened a step at a time.
+         *
+         * It stands over the view rather than in a box, so the view is drawn
+         * again for every step of it — which is what the arch is drawn on top
+         * of, and what is left when it goes.
+         */
+        override suspend fun opensThePortal() {
+            val arch = pictureCalled("PORTALA.CPS")
+            val through = pictureCalled("PORTALB.CPS")
+
+            if (arch == null || through == null) {
+                notImplemented("the archway, whose pictures would not load")
+                return
+            }
+
+            suspend fun draw(step: ThePortal.Step) {
+                portalShowing = ThePortal.Showing(step, arch, through)
+                drawViewPort()
+                step.sounds.forEach { track ->
+                    viewModelScope.launch { playTrack(track, alongside = true) }
+                }
+            }
+
+            try {
+                // It appears shut and entire, and stands so before it stirs.
+                draw(ThePortal.Step(arch = 0, showing = null))
+                ThePortal.AS_IT_APPEARS.forEach { track ->
+                    viewModelScope.launch { playTrack(track, alongside = true) }
+                }
+                hold(ThePortal.BEFORE_IT_STIRS)
+
+                ThePortal.OPENS.forEach { step ->
+                    draw(step)
+                    hold(ThePortal.A_STEP)
+                }
+            } finally {
+                // Whatever stopped it, the arch does not stay on the screen.
+                portalShowing = null
+                drawViewPort()
+            }
+        }
 
         override suspend fun ask(question: ScriptQuestion): DialogAnswer {
             Logger.i(TAG) { "Script is showing text ${question.textId} with ${question.buttons}" }
@@ -3007,6 +3073,7 @@ class ViewConeDebugViewModel(
                     hurt = { whose -> _state.value.game.damageShownOn(whose) },
                     swapping = _state.value.swapping
                         ?.takeIf { !_state.value.swapShowing },
+                    portal = portalShowing,
                 )
                 .toImageBitmap()
         } else {

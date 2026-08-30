@@ -52,6 +52,15 @@ object ThePortal {
     val A_STEP = Ticks(2)
 
     /**
+     * A step of the opening with the two pictures it is cut from, which is
+     * everything needed to draw it.
+     *
+     * @property arch PORTALA, which holds the archway itself.
+     * @property through PORTALB, which holds what shows once it is open.
+     */
+    data class Showing(val step: Step, val arch: Cps, val through: Cps)
+
+    /**
      * One step: which stage the arch is in, what shows through the middle, and
      * what is heard as it is drawn.
      *
