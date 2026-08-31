@@ -370,11 +370,22 @@ sealed interface Conditional {
         }
     }
 
+    /**
+     * A number written into a condition, to be compared against whatever the
+     * condition put on the stack before it.
+     *
+     * Signed, and it has to be: a script asks for a ration that has gone off
+     * by comparing its worth against -1, and read as an unsigned 65535 that
+     * question can never be answered yes. Every quantity these are weighed
+     * against — an item's worth, its kind, a facing — is signed on our side
+     * too, and the only numbers this moves are the ones with the top bit set,
+     * which are the sentinels.
+     */
     data class ImmediateShort(val value: Int) : Conditional {   // 0xD2
         override fun read(reader: ByteReader) = this
 
         companion object : Conditional {
-            override fun read(reader: ByteReader) = ImmediateShort(reader.readU16LE())
+            override fun read(reader: ByteReader) = ImmediateShort(reader.readI16LE())
         }
     }
 
