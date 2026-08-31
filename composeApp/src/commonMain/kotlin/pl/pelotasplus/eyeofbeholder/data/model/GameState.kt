@@ -1,8 +1,10 @@
 package pl.pelotasplus.eyeofbeholder.data.model
 
 import co.touchlab.kermit.Logger
+import pl.pelotasplus.eyeofbeholder.data.model.Harm.hurtBy
 import pl.pelotasplus.eyeofbeholder.data.model.script.CreateMonster
 import pl.pelotasplus.eyeofbeholder.data.model.script.ItemOverrides
+import pl.pelotasplus.eyeofbeholder.data.model.script.Damage as DamageDealt
 
 /**
  * What a trigger script is allowed to ask about the world it runs in.
@@ -1032,7 +1034,13 @@ data class GameState(
      * long way — nothing left in it is ever read, and the slot it frees is the
      * next slot a script's conjuring takes.
      */
-    fun monsterHurt(slot: MonsterSlot, by: Damage): GameState {
+    fun monsterHurt(
+        slot: MonsterSlot,
+        by: Damage,
+        kinds: List<MonsterProperty> = emptyList(),
+        types: ItemTypes? = null,
+        dice: Dice = Dice.random,
+    ): GameState {
         val hit = monsters.firstOrNull { it.index == slot } ?: return this
 
         if (!hit.couldBeHurt) {
@@ -1040,11 +1048,44 @@ data class GameState(
             return this
         }
 
+        val kind = kinds.firstOrNull { it.id == hit.type.value }
+        if (kind?.burstsWhenHurt == true) return burstOf(hit, types, dice)
+
         val after = hit.hurt(by)
         return copy(
             monsters = if (after.hitPoints.current <= 0) monsters - hit
             else monsters.map { if (it.index == slot) after else it },
         )
+    }
+
+    /**
+     * The world with a thing that goes off having gone off, which it does
+     * however lightly it was touched.
+     *
+     * How much it was hurt by never comes into it: it dies of being hurt at
+     * all, and what it costs is a matter of where it was standing. Set off
+     * beside the party it takes six dice of six off every one of them, a
+     * throw halving it, and the flash is drawn on the party's own square
+     * rather than on its. Set off further away it is only a flash, and one
+     * on a square they cannot see is nothing at all.
+     *
+     * Everybody means everybody: the burst reaches champions who are already
+     * down, as a trap's does.
+     */
+    private fun burstOf(spore: MonsterInstance, types: ItemTypes?, dice: Dice): GameState {
+        val beside = spore.location.squaresFrom(party.position) < TOO_FAR_TO_CATCH
+        val gone = copy(
+            monsters = monsters - spore,
+            bursting = bursting + Burst.of(
+                at = if (beside) party.position else spore.location,
+                dice = dice,
+                inYourFace = beside,
+            ),
+        )
+
+        if (!beside) return gone
+
+        return gone.hurtBy(Harm.of(A_SPORE_GOING_OFF, gone, types, dice))
     }
 
     private fun MonsterInstance.rolledIfKnown(kinds: List<MonsterProperty>, dice: Dice) =
@@ -1587,6 +1628,35 @@ data class GameState(
          * first kind. Every other stuck door becomes one of the second.
          */
         private val FIRST_KIND = WallByte(51)
+
+        /**
+         * How far a bursting spore has to be for the party to be clear of
+         * it: on their square or next to it and they are caught, and one
+         * square further out is already too far.
+         *
+         * The engine measures this its own way, adding half the smaller of
+         * the two gaps to the larger. That parts company with counting
+         * squares further out, but not here — for "on it or beside it" the
+         * two agree exactly.
+         */
+        private const val TOO_FAR_TO_CATCH = 2
+
+        /**
+         * What a spore going off beside the party costs them: six dice of
+         * six each, a throw against a wand halving it.
+         *
+         * Transcribed rather than derived, and dealt to everybody — which is
+         * what the -1 says.
+         */
+        private val A_SPORE_GOING_OFF = DamageDealt(
+            charIndex = -1,
+            times = 6,
+            itemOrPips = 6,
+            useStrModifierOrBase = 0,
+            flags = 8,
+            savingThrowType = 1,
+            savingThrowEffect = 0,
+        )
 
         private const val MAX_MONSTERS_PER_SQUARE = 7
 

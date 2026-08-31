@@ -377,7 +377,7 @@ private val atEachQuarter = listOf(
     }
 
     private fun struckDown(world: GameState, hurt: Hurt): GameState = when (hurt) {
-        is Hurt.AMonster -> world.monsterHurt(hurt.slot, hurt.by)
+        is Hurt.AMonster -> world.monsterHurt(hurt.slot, hurt.by, kinds, itemTypes, dice)
         is Hurt.AChampion -> world.championHurt(hurt.slot, hurt.by)
     }
 

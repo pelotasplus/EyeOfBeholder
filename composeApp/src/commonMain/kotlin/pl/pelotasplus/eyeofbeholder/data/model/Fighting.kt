@@ -52,7 +52,8 @@ class Fighting(
         when (blow) {
             is Blow.Hit -> {
                 val struck = world.monsters.firstOrNull { it.index == blow.monster }
-                after = after.rousedBy(blow.monster).monsterHurt(blow.monster, blow.damage)
+                after = after.rousedBy(blow.monster)
+                    .monsterHurt(blow.monster, blow.damage, kinds, itemTypes, dice)
 
                 val killed = struck != null && after.monsters.none { it.index == blow.monster }
                 if (killed) {

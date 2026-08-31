@@ -112,6 +112,16 @@ data class MonsterProperty(
     val poisonsWhatItHits: Boolean get() = capsFlags and POISONS != 0
 
     /**
+     * Whether being hurt at all bursts it instead of wounding it.
+     *
+     * The gas spores on the eighth floor are these: nine armour class, one
+     * hit point, and no wound worth the name. Whatever lands on one kills it
+     * outright and sets it off, and what that costs depends only on how close
+     * it was standing — see [GameState.monsterHurt].
+     */
+    val burstsWhenHurt: Boolean get() = capsFlags and BURSTS_WHEN_HURT != 0
+
+    /**
      * What a blow of its leaves on the champion besides the wound — see
      * [WhatABlowLeaves]. Nothing has more than one of them, but the marks are
      * separate bits and nothing says one is exclusive of another.
@@ -131,6 +141,7 @@ data class MonsterProperty(
         const val COMES_IN_SIDEWAYS = 0x200
         const val OPENS_DOORS = 0x1000
         const val PARALYSES = 0x20
+        const val BURSTS_WHEN_HURT = 0x2000
         const val PETRIFIES = 0x8000
     }
 }
