@@ -60,6 +60,37 @@ data class ScriptRun(
     val hurt: Map<PartySlot, Damage> = emptyMap(),
 )
 
+/**
+ * Whether a finished run is worth noticing: worth the frame that follows an
+ * event, and worth the lines it wrote getting there. Those are one answer, not
+ * two — what is not worth seeing is not worth reading about either.
+ *
+ * Drawing that frame belongs to whoever ran the script, because a caller that
+ * sets a trigger off hands the drawing over. So an event somebody caused is
+ * worth a frame whether or not its script did anything: a step onto a square
+ * whose script declines is still a step, and the frame skipped there leaves
+ * the party looking at the view from the square behind them.
+ *
+ * What a floor does by itself is the exception — see [ScriptTimer]. Nobody
+ * asked for it, and it puts the same question to the same square for as long
+ * as the party stay on the floor, hearing "not now" almost every time. A run
+ * like that which left no mark is worth neither the frame nor the lines.
+ *
+ * @param before the world as the run found it
+ * @param byItself whether the floor set the run off rather than anybody did
+ * @param aBoxWasUp whether a dialogue stood when the run began, for this run
+ *   to take down. That is a mark too, and one a [ScriptRun] cannot see: the
+ *   box is on the screen rather than in the world
+ */
+fun ScriptRun.worthNoticing(
+    before: GameState,
+    byItself: Boolean,
+    aBoxWasUp: Boolean = false,
+): Boolean = !byItself || aBoxWasUp || leftAMarkOn(before)
+
+private fun ScriptRun.leftAMarkOn(before: GameState) =
+    state != before || hurt.isNotEmpty() || changeLevel != null
+
 /** The party is to leave for another level, which ends the script. */
 data class ChangeLevel(
     val level: Int,
@@ -327,7 +358,35 @@ class LevelScriptRunner(
         at: Location = state.party.position,
         /** What was used, for the questions a script asks about it. */
         used: ItemIndex? = null,
-    ): ScriptRun = onEvent(triggers, event, state, stage, at, depth = 0, used = used)
+        /**
+         * Whether the floor set this off rather than anybody did, which is
+         * what lets a run that left no mark go unsaid — see [worthNoticing].
+         */
+        byItself: Boolean = false,
+    ): ScriptRun {
+        writingDown = if (byItself) mutableListOf() else null
+
+        val run = onEvent(triggers, event, state, stage, at, depth = 0, used = used)
+
+        writingDown?.also { written ->
+            writingDown = null
+            if (run.worthNoticing(before = state, byItself = true)) {
+                written.forEach { line -> Logger.d(TAG) { line } }
+            }
+        }
+        return run
+    }
+
+    /**
+     * Where a trace goes while it is being weighed — see [byItself]. Null is
+     * the ordinary case of saying each line as it happens.
+     */
+    private var writingDown: MutableList<String>? = null
+
+    private inline fun say(crossinline line: () -> String) {
+        val written = writingDown
+        if (written == null) Logger.d(TAG) { line() } else written += line()
+    }
 
     private suspend fun onEvent(
         triggers: List<Trigger>,
@@ -343,7 +402,7 @@ class LevelScriptRunner(
 
         if (trigger == null) {
             if (here.isNotEmpty()) {
-                Logger.d(TAG) {
+                say {
                     "The trigger on ${position.xy} ignores $event, " +
                         "flags ${here.map { it.flags.raw.toHexString() }}"
                 }
@@ -351,11 +410,11 @@ class LevelScriptRunner(
             return ScriptRun(state)
         }
 
-        Logger.d(TAG) {
+        say {
             "$event on ${position.xy} runs the script at ${trigger.script.offset.value}"
         }
         return runScript(trigger.script.offset, state, stage, triggers, depth, event, used).also { result ->
-            Logger.d(TAG) {
+            say {
                 val party = result.state.party
                 "The script at ${trigger.script.offset.value} left the party " +
                     "on ${party.position.xy} facing ${party.facing}"
@@ -430,7 +489,7 @@ class LevelScriptRunner(
 
             // A condition is logged once it has an answer, so that the line
             // asking it is the line saying which way the script went.
-            if (step.token !is Eval) Logger.d(TAG) { "  ${step.offset.value}  ${step.token.inWords()}" }
+            if (step.token !is Eval) say { "  ${step.offset.value}  ${step.token.inWords()}" }
 
             when (val token = step.token) {
                 End -> return stop()
@@ -466,7 +525,7 @@ class LevelScriptRunner(
                 is Eval -> {
                     // a true condition falls through, a false one jumps
                     val condition = evaluate(token.tokens, state, dialogAnswer, event, used, stage)
-                    Logger.d(TAG) {
+                    say {
                         val went =
                             if (condition.isTrue) "yes, carrying on"
                             else "no, jumping to ${token.goto.value}"
@@ -708,6 +767,8 @@ class LevelScriptRunner(
                 // test an answer that was never given, and takes a branch
                 // silently. Say so rather than let it read as a script that
                 // did its work.
+                SpecialEvent.InitNpc -> state = broughtAlong(state, stage)
+
                 is SpecialEvent -> notYet(
                     token,
                     "this set piece",
@@ -920,6 +981,35 @@ class LevelScriptRunner(
     }
 
     /**
+     * Somebody put in the party by the script rather than by a meeting.
+     *
+     * The opcode carries nothing, because it does not need to: it always means
+     * the same one of the six, and the script around it has already done the
+     * talking. Which is why a party of six are asked here and not earlier —
+     * the yes has been said by the time anybody counts them.
+     *
+     * That order leaves a seam, and it is the game's rather than ours: turning
+     * him down at the door is a branch of the script, and it is that branch
+     * which sweeps the things he leaves lying about. Backing out here is not,
+     * so a party who say yes and then find no room for him keep both his
+     * refusal and his belongings.
+     *
+     * Nor could a script do better with it. This is the one set piece that
+     * leaves nothing behind for a script to read — its neighbours all answer
+     * with something the next instruction can ask about, and this one answers
+     * with nothing at all. So there is no branch to write, and the seam is not
+     * a branch anybody forgot.
+     *
+     * His bones, if the party were carrying them, are let go of by the
+     * joining: he cannot both walk along and be in somebody's pack.
+     */
+    private suspend fun broughtAlong(state: GameState, stage: ScriptStage): GameState {
+        val room = madeRoomFor(state, stage) ?: return state
+
+        return room.joinedBy(NpcMeeting.TANGLOR, NpcMeeting.TANGLOR_IS)
+    }
+
+    /**
      * The world with a place free in the party, or null where the party would
      * rather keep the six they have.
      *
@@ -955,7 +1045,8 @@ class LevelScriptRunner(
             whose = chosen.first,
             level = level,
             at = state.party.position,
-            into = cornerInFront(state.party.facing),
+            facing = state.party.facing,
+            dice = dice,
         )
     }
 

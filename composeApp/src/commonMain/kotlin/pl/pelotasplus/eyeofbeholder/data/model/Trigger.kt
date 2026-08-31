@@ -38,6 +38,17 @@ enum class ScriptEvent(val mask: Int) {
     WALL_CLICKED(0x40),
 
     /**
+     * The floor's own clock came round — see [ScriptTimer].
+     *
+     * Nobody has to be near the square: this is how a level does something on
+     * its own, and it is the only event that reaches a square the party are
+     * nowhere near. Every square answers it, the top three bits of the
+     * accepted set being forced on, so a level can point its clock wherever it
+     * likes without marking the square for it.
+     */
+    THE_CLOCK_CAME_ROUND(0x80),
+
+    /**
      * Something in a hand was used, and the wall the party face is being asked
      * what it makes of that.
      *

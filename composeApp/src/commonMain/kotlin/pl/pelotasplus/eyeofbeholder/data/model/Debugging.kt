@@ -46,6 +46,21 @@ class Debugging {
         _monstersMayWalk.value = may
     }
 
+    private val _floorsKeepTime = MutableStateFlow(true)
+
+    /**
+     * Whether a floor's own clock runs — see [ScriptTimer].
+     *
+     * On, because it is the game. Off, whatever the floor was doing by itself
+     * holds still: the seventh floor's pads stop rearranging and stop firing,
+     * which is the only way to walk that array and look at it.
+     */
+    val floorsKeepTime: StateFlow<Boolean> = _floorsKeepTime.asStateFlow()
+
+    fun letFloorsKeepTime(may: Boolean) {
+        _floorsKeepTime.value = may
+    }
+
     private val _showingMap = MutableStateFlow(true)
 
     /** Whether the little map of where the party have been is drawn. */

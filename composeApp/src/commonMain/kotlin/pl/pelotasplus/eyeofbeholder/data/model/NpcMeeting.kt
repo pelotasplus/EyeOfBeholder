@@ -275,6 +275,62 @@ data class NpcMeeting(
             remembers = Remembers(FlagBit(3), Remembers.When.THEY_WERE_DEALT_WITH),
         )
 
+        private const val A_HAND = 0
+        private const val THE_OTHER_HAND = 1
+
+        /**
+         * What the one below comes carrying. The numbers are where these sit
+         * in the game's own table of items, which is the table the party's
+         * belongings are numbered in too.
+         */
+        private val A_DAGGER = ItemIndex(4)
+        private val A_HOLY_SYMBOL = ItemIndex(8)
+        private val PLATE_MAIL = ItemIndex(36)
+
+        /**
+         * The one the seventh floor brings along without a meeting.
+         *
+         * He is not an [NpcMeeting] and needs none: the script does all of it
+         * — his picture, his piece, the question and the answer — and asks
+         * only that he be put in the party at the end. So there is nothing of
+         * him here but who he is, and he is the first of the six to come with
+         * anything of his own.
+         */
+        val TANGLOR = Champion(
+            name = "Tanglor",
+            portrait = PortraitId(-5),
+            abilities = Abilities(
+                strength = Ability(current = 16, max = 16),
+                strengthPercentile = Ability(current = 0, max = 0),
+                intelligence = Ability(current = 13, max = 13),
+                wisdom = Ability(current = 16, max = 16),
+                dexterity = Ability(current = 15, max = 15),
+                constitution = Ability(current = 11, max = 11),
+                charisma = Ability(current = 12, max = 12),
+            ),
+            hitPoints = HitPoints(current = 53, max = 53),
+            armorClass = ArmorClass(9),
+            food = Food(100),
+            race = Race.HALF_ELF,
+            sex = Sex.MALE,
+            characterClass = CharacterClass.FIGHTER_CLERIC,
+            alignment = Alignment.NEUTRAL_GOOD,
+            // one level and one purse of experience per class he is levelled in
+            levels = listOf(
+                ClassLevel(level = 7, experience = XpPoints(69570)),
+                ClassLevel(level = 7, experience = XpPoints(69570)),
+            ),
+            carrying = CarrySlot.NOTHING_IN_ANY.toMutableList().also {
+                it[A_HAND] = A_DAGGER
+                it[THE_OTHER_HAND] = A_HOLY_SYMBOL
+                it[CarrySlot.WORN_ARMOUR.index] = PLATE_MAIL
+            },
+            flags = ChampionFlags(IN_THE_PARTY),
+        )
+
+        /** Which of the six he is, which is how the opcode names him. */
+        val TANGLOR_IS = NpcId(4)
+
         /** The sheet every one of them is cut from while they speak. */
         const val SHEET = "OUTTAKE.CPS"
 

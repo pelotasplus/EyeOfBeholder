@@ -52,6 +52,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.MonsterStepping
 import pl.pelotasplus.eyeofbeholder.data.model.MonstersTurn
 import pl.pelotasplus.eyeofbeholder.data.model.DoorMessages
 import pl.pelotasplus.eyeofbeholder.data.model.DoorSounds
+import pl.pelotasplus.eyeofbeholder.data.model.FloorClocks
 import pl.pelotasplus.eyeofbeholder.data.model.FloorReach
 import pl.pelotasplus.eyeofbeholder.data.model.ForcingADoor
 import pl.pelotasplus.eyeofbeholder.data.model.Font
@@ -78,6 +79,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.ItemTypes
 import pl.pelotasplus.eyeofbeholder.data.model.OriginalSave
 import pl.pelotasplus.eyeofbeholder.data.model.ClickedWall
 import pl.pelotasplus.eyeofbeholder.data.model.LevelScriptRunner
+import pl.pelotasplus.eyeofbeholder.data.model.worthNoticing
 import pl.pelotasplus.eyeofbeholder.data.model.Maz
 import pl.pelotasplus.eyeofbeholder.data.model.WallSide
 import pl.pelotasplus.eyeofbeholder.data.model.WhatABlowLeaves
@@ -105,6 +107,7 @@ import kotlin.math.abs
 import pl.pelotasplus.eyeofbeholder.data.model.SavedGame
 import pl.pelotasplus.eyeofbeholder.data.model.rightNow
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptEvent
+import pl.pelotasplus.eyeofbeholder.data.model.ScriptTimer
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptQuestion
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptSpeech
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptStage
@@ -1499,6 +1502,11 @@ class ViewConeDebugViewModel(
             val untilTheirTurn = WHEN_EACH_GROUP_STARTS.toIntArray()
             var untilTheNextFrame = A_SWING_FRAME.value
 
+            // And the floor's own clocks, which belong to the sublevel rather
+            // than to the fight: they are wound from here because this is the
+            // only thing that ticks.
+            val floorClocks = FloorClocks(timersHere())
+
             // Ticks since this fight started, so the log reads as a rhythm
             // rather than as a pile of unrelated lines. The party stamp their
             // own steps with it, which is the comparison worth having.
@@ -1516,6 +1524,15 @@ class ViewConeDebugViewModel(
 
                 tickNow += GameState.CLOCK_STEP.value
                 untilTheNextFrame -= GameState.CLOCK_STEP.value
+
+                floorClocks.nowKeeping(timersHere())
+
+                val cameRound = floorClocks.stepped(
+                    by = GameState.CLOCK_STEP,
+                    // a script owns the screen while it runs, and a waking
+                    // that talked over it would take down what it had up
+                    held = !debugging.floorsKeepTime.value || playing?.isActive == true,
+                )
 
                 val aFrame = untilTheNextFrame <= 0
                 if (aFrame) untilTheNextFrame = A_SWING_FRAME.value
@@ -1676,6 +1693,17 @@ class ViewConeDebugViewModel(
                     runTriggersAt(where, ScriptEvent.SOMETHING_FLEW_IN)
                 }
 
+                // And a square the floor keeps coming back to gets its say,
+                // whether or not anybody is near it. This is the only thing a
+                // level does on its own.
+                cameRound.forEach { where ->
+                    runTriggersAt(
+                        at = where,
+                        event = ScriptEvent.THE_CLOCK_CAME_ROUND,
+                        byItself = true,
+                    )
+                }
+
                 if (_state.value.game.bursting.isNotEmpty()) letTheBurstsBurn()
 
                 struckInFlight.forEach { hit ->
@@ -1769,13 +1797,28 @@ class ViewConeDebugViewModel(
      * noticing the party is itself something a turn does — a clock that waited
      * for a fight would be waiting for the thing it is supposed to start.
      */
+    /** The clocks the sublevel the party are standing in keeps. */
+    private fun timersHere(): List<ScriptTimer> =
+        _state.value.inf?.subLevels?.getOrNull(_state.value.subLevel)?.scriptTimers.orEmpty()
+
     private fun stillFighting(): Boolean {
         val monsters = _state.value.game.monsters
+
+        // A floor with a clock of its own never finishes: its squares go on
+        // being woken with nobody near them, which is what a floor that does
+        // something by itself is. Stopping the clock from the debug menu is
+        // the one thing that lets this settle.
+        if (debugging.floorsKeepTime.value && timersHere().isNotEmpty()) return true
 
         // Poison outlasts whatever gave it: this clock is the only thing that
         // winds it, so it has to keep running for a party standing perfectly
         // still in an empty corridor with somebody quietly dying on it.
         if (_state.value.game.poisoned.isNotEmpty()) return true
+
+        // And so does whatever has hold of somebody, for the same reason and
+        // more urgently: nothing else lets go of a paralysed champion, so a
+        // clock stopped over one leaves them held for the rest of the game.
+        if (_state.value.game.holding.isNotEmpty()) return true
 
         // And a thing in the air has to come down, whether or not anybody is
         // fighting over it — and a burst has to finish burning.
@@ -2502,6 +2545,12 @@ class ViewConeDebugViewModel(
         at: Location,
         event: ScriptEvent,
         used: ItemIndex? = null,
+        /**
+         * Whether the floor set this off rather than anybody: see
+         * [ScriptTimer]. Such a run that changes nothing leaves no trace at
+         * all — neither a line nor a frame.
+         */
+        byItself: Boolean = false,
     ): Boolean {
         val inf = _state.value.inf ?: return false
         val runner = scriptRunner ?: return false
@@ -2516,13 +2565,16 @@ class ViewConeDebugViewModel(
                 stage = stage,
                 at = at,
                 used = used,
+                byItself = byItself,
             )
             // Whatever the script left on screen goes with it. Scripts end
             // without closing the box they last wrote in — the one that walks
             // the party downstairs says so and changes level on the next
             // instruction — and a box with nothing to click cannot be got rid
             // of by the player.
-            if (_state.value.dialog != null) silenceEffects()
+            val wasSaying = _state.value.dialog != null
+            val stood = _state.value.game
+            if (wasSaying) silenceEffects()
             _state.update {
                 it.copy(
                     game = run.state
@@ -2538,8 +2590,10 @@ class ViewConeDebugViewModel(
 
             val change = run.changeLevel
             if (change == null) {
-                drawViewPort()
-                autosave()
+                if (run.worthNoticing(before = stood, byItself = byItself, aBoxWasUp = wasSaying)) {
+                    drawViewPort()
+                    autosave()
+                }
             } else {
                 Logger.i(TAG) {
                     "Changing to level ${change.level} sublevel ${change.subLevel} " +

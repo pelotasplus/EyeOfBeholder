@@ -567,8 +567,7 @@ class InfRepositoryImpl(
             }
             val ticks = reader.readU16LE() * 18
 
-            val scriptTimer = ScriptTimer(func, ticks)
-            scriptTimers.add(scriptTimer)
+            scriptTimers.add(ScriptTimer.of(block = func, ticks = ticks))
         }
 
         return scriptTimers

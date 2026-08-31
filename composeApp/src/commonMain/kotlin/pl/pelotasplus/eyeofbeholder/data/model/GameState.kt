@@ -305,15 +305,6 @@ data class GameState(
     val roomForOneMore: Boolean get() = champions.any { !it.inTheParty }
 
     /**
-     * The same world with somebody taking the first free place in the party,
-     * and the bones the party were carrying of theirs let go of.
-     *
-     * Bones are what is left of somebody who is not with the party: carried to
-     * where they can be raised, they are that person again. Whoever has just
-     * walked up cannot also be a pile of bones in the pack, so theirs go at
-     * the moment of joining.
-     */
-    /**
      * The same world with somebody put out of the party, and everything they
      * were carrying on the floor where the party stand.
      *
@@ -323,31 +314,60 @@ data class GameState(
      * the square underfoot, a corner at a time, so a party who drop somebody
      * for a stranger can pick their things back up.
      *
-     * [level] and [at] are where the party are standing, and [into] the corner
-     * it all goes in — the game rolls between the two in front of them.
+     * [level], [at] and [facing] are where the party are standing and which
+     * way they look, which is what decides the two corners it scatters
+     * between; each thing is rolled for on its own.
      */
     fun championDropped(
         whose: PartySlot,
         level: Int,
         at: Location,
-        into: SquarePlace,
+        facing: Direction,
+        dice: Dice,
     ): GameState {
         val who = championIn(whose) ?: return this
 
-        val emptied = who.carrying.filterNot { it.value == ItemIndex.NOTHING }
+        val loose = who.carrying.filterIndexed { slot, what ->
+            slot != CarrySlot.QUIVER.index && what.isSomething
+        }
 
-        return emptied
-            .fold(this) { world, what -> world.itemLandedAt(what, level, at, into) }
-            .copy(
-                champions = champions.mapIndexed { slot, was ->
-                    if (slot == whose.index) {
-                        was.copy(flags = ChampionFlags(0), carrying = CarrySlot.NOTHING_IN_ANY)
-                    } else {
-                        was
-                    }
-                },
-            )
+        var world = loose.fold(this) { world, what ->
+            world.itemLandedAt(what, level, at, letGoOf(facing, dice))
+        }
+
+        // A quiver is a ring of arrows rather than one thing, so it empties a
+        // shaft at a time. Letting go of only the one the slot names would
+        // leave the rest of the ring nowhere: still strung to each other, on
+        // no floor and in nobody's hands.
+        var quiver = who.carrying[CarrySlot.QUIVER.index]
+        var shafts = 0
+        while (quiver.isSomething && shafts++ <= items.size) {
+            val off = world.unstacking(quiver)
+            world = off.world.itemLandedAt(quiver, level, at, letGoOf(facing, dice))
+            quiver = off.head
+        }
+
+        return world.copy(
+            // unstacking takes each arrow through the hand on its way out
+            inHand = inHand,
+            champions = champions.mapIndexed { slot, was ->
+                if (slot == whose.index) {
+                    was.copy(flags = ChampionFlags(0), carrying = CarrySlot.NOTHING_IN_ANY)
+                } else {
+                    was
+                }
+            },
+        )
     }
+
+    /**
+     * Which corner a thing let go of lands in: one of the two ahead of the
+     * party, rolled between. A thing dropped starts where a thing thrown
+     * does, which is why both read the corners the same way.
+     */
+    private fun letGoOf(facing: Direction, dice: Dice): SquarePlace =
+        (if (dice.roll(1, 2, -1) == 0) ViewPlace.FAR_LEFT else ViewPlace.FAR_RIGHT)
+            .onASquareFacing(facing)
 
     /**
      * The same world with two champions changing places in the party.
@@ -376,6 +396,15 @@ data class GameState(
         )
     }
 
+    /**
+     * The same world with somebody taking the first free place in the party,
+     * and the bones the party were carrying of theirs let go of.
+     *
+     * Bones are what is left of somebody who is not with the party: carried to
+     * where they can be raised, they are that person again. Whoever has just
+     * walked up cannot also be a pile of bones in the pack, so theirs go at
+     * the moment of joining.
+     */
     fun joinedBy(somebody: Champion, whose: NpcId): GameState {
         val place = champions.indexOfFirst { !it.inTheParty }
         if (place < 0) return this

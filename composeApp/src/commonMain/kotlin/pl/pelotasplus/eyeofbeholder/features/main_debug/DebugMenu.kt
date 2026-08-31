@@ -77,6 +77,7 @@ private fun DebugMenuPanel(
 ) {
     val wallsArePassable by debugging.wallsArePassable.collectAsState()
     val monstersMayWalk by debugging.monstersMayWalk.collectAsState()
+    val floorsKeepTime by debugging.floorsKeepTime.collectAsState()
     val showingMap by debugging.showingMap.collectAsState()
     val mapSize by debugging.mapSize.collectAsState()
 
@@ -105,6 +106,13 @@ private fun DebugMenuPanel(
             modifier = Modifier.fillMaxWidth(),
         ) {
             Text(if (monstersMayWalk) "Monsters: hunt" else "Monsters: rooted")
+        }
+
+        Button(
+            onClick = { debugging.letFloorsKeepTime(!floorsKeepTime) },
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text(if (floorsKeepTime) "Floor clock: running" else "Floor clock: stopped")
         }
 
         Button(

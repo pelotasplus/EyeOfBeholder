@@ -1,18 +1,29 @@
 package pl.pelotasplus.eyeofbeholder.data.model
 
 /**
- * A timed script trigger — calls a script function at regular intervals.
+ * A square a floor keeps coming back to, whether or not anybody is near it.
  *
- * Used for periodic events like wandering monsters, trap resets, or
- * environmental effects. Timers are defined per sublevel.
+ * This is the only clock a level has of its own. The lightning pads on the
+ * seventh floor are one square woken every eighteen ticks, and what it does
+ * each time is rearrange the pads and look to see whether the party are
+ * standing on a lit one — so a floor without this runs, but stands still.
  *
- * The raw tick value from the INF file is multiplied by 18 during parsing
- * (converting from game timer ticks to a time-based value).
- *
- * @property func Script function offset to call when the timer fires
- * @property ticks Interval between calls (raw value × 18 from INF)
+ * @property watches which square is woken. The file names it as one number
+ *   across the whole 32×32 maze rather than as a pair, so it is unpacked here
+ *   and nothing downstream has to know that.
+ * @property ticks how long between wakings.
  */
 data class ScriptTimer(
-    val func: Int,
-    val ticks: Int,
-)
+    val watches: Location,
+    val ticks: Ticks,
+) {
+    companion object {
+        /** The width of every maze, which is what a square number is packed by. */
+        private const val ACROSS = 32
+
+        fun of(block: Int, ticks: Int) = ScriptTimer(
+            watches = Location(x = block % ACROSS, y = block / ACROSS),
+            ticks = Ticks(ticks),
+        )
+    }
+}
