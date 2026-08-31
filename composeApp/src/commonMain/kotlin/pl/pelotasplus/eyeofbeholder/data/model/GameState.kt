@@ -957,12 +957,13 @@ data class GameState(
     /**
      * The world with the monster a script asked for standing in it.
      *
-     * The engine refuses the same three ways: never under the party, never
-     * onto a square already holding as many as it can, and never without a
-     * free slot. The slot is not bookkeeping — it decides which of its
-     * sheet's color schemes the monster is painted in.
+     * The engine refuses the same four ways: never under the party, never
+     * onto a square already holding as many as it can, never beside one that
+     * has no room to be shared ([roomBesideThem]), and never without a free
+     * slot. The slot is not bookkeeping — it decides which of its sheet's
+     * color schemes the monster is painted in.
      *
-     * The engine has a fourth way out we cannot take yet: with every slot in
+     * The engine has one more way out we cannot take yet: with every slot in
      * use it evicts whichever monster stands farthest from the party, killing
      * it if it still lives. Nothing dies here, so a full world drops the
      * spawn instead.
@@ -981,9 +982,12 @@ data class GameState(
         val taken = monsters.map { it.index }.toSet()
         val slot = (0 until MONSTER_SLOTS).map(::MonsterSlot).firstOrNull { it !in taken }
 
+        val crowd = monstersOn(spawn.location)
+
         return when {
             spawn.location == party.position -> this
-            monstersOn(spawn.location) >= MAX_MONSTERS_PER_SQUARE -> this
+            crowd >= MAX_MONSTERS_PER_SQUARE -> this
+            crowd > 0 && !roomBesideThem(spawn, kinds) -> this
             slot == null -> this
             else -> copy(
                 monsters = monsters + MonsterInstance
@@ -991,6 +995,33 @@ data class GameState(
                     .rolledIfKnown(kinds, dice),
             )
         }
+    }
+
+    /**
+     * Whether a square that already holds monsters has room for one more.
+     *
+     * Only the smallest kind share a square, and only by keeping to its
+     * corners: anything larger fills it, and anything standing in the middle
+     * has spread across the whole of it whatever its size. So a second
+     * monster arrives only where everything already there is small and in a
+     * corner, and it is small and bound for a corner itself.
+     *
+     * This is what holds a nest down. A script that conjures three of
+     * something square-filling onto one square places the first and is
+     * refused the other two, and is refused again every time it runs, for as
+     * long as that one lives.
+     *
+     * A kind with no properties to read counts as large, which refuses.
+     */
+    private fun roomBesideThem(spawn: CreateMonster, kinds: List<MonsterProperty>): Boolean {
+        fun small(type: MonsterTypeId) =
+            kinds.getOrNull(type.value)?.size == MonsterSize.FOUR_TO_A_SQUARE
+
+        if (!small(spawn.type) || spawn.place == SquarePlace.MIDDLE) return false
+
+        return monsters
+            .filter { it.x == spawn.location.x && it.y == spawn.location.y }
+            .none { it.place == SquarePlace.MIDDLE || !small(it.type) }
     }
 
     /**
