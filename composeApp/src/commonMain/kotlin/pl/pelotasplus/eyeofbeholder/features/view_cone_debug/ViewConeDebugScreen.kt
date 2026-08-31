@@ -69,7 +69,6 @@ fun ViewConeDebugScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val showingMap by debugging.showingMap.collectAsState()
-    val mapSize by debugging.mapSize.collectAsState()
 
     LaunchedEffect(level, startX, startY, startDirection) {
         viewModel.onEvent(
@@ -118,7 +117,6 @@ fun ViewConeDebugScreen(
         },
         onTyping = { viewModel.onEvent(ViewConeDebugViewModel.Event.Typed(it)) },
         showingMap = showingMap,
-        mapSize = mapSize,
     )
 }
 
@@ -133,7 +131,6 @@ private fun ViewConeDebugContent(
     onFrontRankStrike: () -> Unit = {},
     onTyping: (Typing) -> Unit = {},
     showingMap: Boolean = true,
-    mapSize: Debugging.MapSize = Debugging.MapSize.NORMAL,
 ) {
     val keyboard = remember { FocusRequester() }
     val playFieldFocus = LocalPlayFieldFocus.current
@@ -306,7 +303,7 @@ private fun ViewConeDebugContent(
                     party = state.game.party,
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
-                        .size(with(density) { (mapSize.side * scaleFactor).toDp() }),
+                        .size(with(density) { (Debugging.MAP_SIDE * scaleFactor).toDp() }),
                 )
             }
         }
