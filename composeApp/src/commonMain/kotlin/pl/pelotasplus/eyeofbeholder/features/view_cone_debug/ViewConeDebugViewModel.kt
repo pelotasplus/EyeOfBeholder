@@ -1230,45 +1230,13 @@ class ViewConeDebugViewModel(
             if (reachedInto(reach)) return
         }
 
-        // Above the floor, a full hand throws where an empty one touches. A
-        // niche is the exception and is aimed at rather than thrown at: it is
-        // a shelf, and putting something on it is why anybody walks up to one
-        // holding something.
-        if (_state.value.game.inHand.isSomething && !aimedAtANiche(x, y)) {
-            letFly(x)
-            return
-        }
+        // The wall ahead is offered the click first, and a full hand throws
+        // only what it turns down. Reaching a keyhole, a niche or a button is
+        // aiming at something and is why anybody walks up to one holding
+        // something at all; the rest of a wall is somewhere to throw past.
+        if (onClickedTheWorld(x, y)) return
 
-        onClickedTheWorld(x, y)
-    }
-
-    /**
-     * Whether a click landed on a niche in the wall ahead, which is the one
-     * thing above the floor that wants a held item put on it rather than
-     * thrown past it.
-     */
-    private fun aimedAtANiche(x: Int, y: Int): Boolean {
-        val inf = _state.value.inf ?: return false
-        val sublevel = inf.subLevels[_state.value.subLevel]
-
-        val (dx, dy) = party.facing.transformCoordinates(0, -1)
-        val ahead = Location(party.position.x + dx, party.position.y + dy)
-        val facingUs = party.facing.transformWallSide(WallSide.SOUTH)
-
-        val wall = _state.value.game.wall(levelNumber(inf.name), ahead, facingUs)
-        if (wall !is Maz.WallType.Decoration) return false
-
-        val decoration = sublevel.decorations
-            .firstOrNull { it.decorationWallIndex == wall.decorationWallIndex }
-            ?: return false
-
-        if (decoration.doesWhenClicked != WallAction.NICHE) return false
-
-        val hanging = decoration.dec.decorations
-            .firstOrNull { it.index == decoration.decorationID }
-            ?: return false
-
-        return ClickedWall.hits(hanging, decoration.dec.rectangles, x, y)
+        if (_state.value.game.inHand.isSomething) letFly(x)
     }
 
     /**
@@ -2500,8 +2468,16 @@ class ViewConeDebugViewModel(
      * party, whatever part of the view it landed on. Where it landed decides
      * only whether it hit what hangs there.
      */
-    private fun onClickedTheWorld(x: Int, y: Int) {
-        val inf = _state.value.inf ?: return
+    /**
+     * The wall ahead answering a click, and whether it had anything to answer
+     * with.
+     *
+     * Saying so is what keeps a full hand from throwing everything: a key held
+     * at a keyhole is a key put in a keyhole, and only a wall with nothing to
+     * do with the click leaves it to be a throw.
+     */
+    private fun onClickedTheWorld(x: Int, y: Int): Boolean {
+        val inf = _state.value.inf ?: return false
         val sublevel = inf.subLevels[_state.value.subLevel]
 
         val (dx, dy) = party.facing.transformCoordinates(0, -1)
@@ -2519,25 +2495,31 @@ class ViewConeDebugViewModel(
         // line the game gives a door that will not be opened by hand — but
         // only while it is shut, an open doorway having nothing to say.
         if (wall is Maz.WallType.Door) {
-            val door = sublevel.doors.getOrNull(wall.doorIndex.value) ?: return
+            val door = sublevel.doors.getOrNull(wall.doorIndex.value) ?: return false
 
-            when {
-                wall.hasButton && ClickedWall.hitsDoorButton(door, x, y) ->
+            return when {
+                wall.hasButton && ClickedWall.hitsDoorButton(door, x, y) -> {
                     swingsTheDoor(level, ahead, facingUs, opening = !wall.isOpen)
+                    true
+                }
 
                 !wall.isOpen -> {
                     say(DoorMessages.NO_ONE_CAN_PRY)
                     drawWords()
+                    true
                 }
+
+                // an open doorway has nothing to say, and nothing to catch a
+                // thing thrown through it either
+                else -> false
             }
-            return
         }
 
-        if (wall !is Maz.WallType.Decoration) return
+        if (wall !is Maz.WallType.Decoration) return false
 
         val decoration = sublevel.decorations
             .firstOrNull { it.decorationWallIndex == wall.decorationWallIndex }
-            ?: return
+            ?: return false
 
         val hanging = decoration.dec.decorations
             .firstOrNull { it.index == decoration.decorationID }
@@ -2554,7 +2536,7 @@ class ViewConeDebugViewModel(
         }
 
         Logger.d(TAG) { "Clicked $ahead $facingUs is a $does, hit=$hit" }
-        if (!hit) return
+        if (!hit) return false
 
         // Most walls answer with their script and nothing else. These few are
         // worked as well: something on them moves, or something is taken from
@@ -2575,6 +2557,11 @@ class ViewConeDebugViewModel(
 
             else -> runTriggersAt(ahead, ScriptEvent.WALL_CLICKED)
         }
+
+        // A decoration hit is answered whatever it does with it — the aiming
+        // was the answer, and a hand held to the right place is not a throw
+        // however little comes of it.
+        return true
     }
 
     /**
