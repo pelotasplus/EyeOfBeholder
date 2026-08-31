@@ -167,6 +167,20 @@ data class ScriptQuestion(
      */
     val said: List<MessageId> = emptyList(),
     /**
+     * Whether the box is drawn again once this has been answered, taking what
+     * stood in it with it.
+     *
+     * A question does that, so its answer arrives on a clean box. A speech
+     * does not: it is written where the last one left off, and a script that
+     * speaks, animates something and speaks again leaves both lines standing.
+     * The blank speech after the mouth's riddle is the whole point of this —
+     * it says nothing and only raises the button, and wiping the box for it
+     * would take the riddle away unread.
+     *
+     * Only drawing the box empties it.
+     */
+    val boxDrawnAgainAfter: Boolean = true,
+    /**
      * What is asked, where the asking is the game's rather than a level's —
      * the same reason [words] exists. A party of six being told to choose
      * somebody to drop is the game speaking, so no level holds the sentence.
@@ -716,6 +730,7 @@ class LevelScriptRunner(
                         scene = scene.toList(),
                         said = said.toList(),
                         waitsToBeRead = true,
+                        boxDrawnAgainAfter = false,
                     )
                 )
 

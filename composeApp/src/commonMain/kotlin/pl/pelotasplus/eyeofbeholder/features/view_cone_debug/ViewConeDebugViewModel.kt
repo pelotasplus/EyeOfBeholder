@@ -2962,8 +2962,9 @@ class ViewConeDebugViewModel(
             return awaiting.ask { showDialog(question) }.also {
                 // An answered question leaves the box drawn again behind it, so
                 // whatever is said to the answer is said on a clean one rather
-                // than under the question it answers.
-                standingInTheBox = emptyList()
+                // than under the question it answers. A speech leaves it
+                // standing instead — see ScriptQuestion.boxDrawnAgainAfter.
+                if (question.boxDrawnAgainAfter) standingInTheBox = emptyList()
             }
         }
     }
