@@ -9,6 +9,8 @@ import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.Food
 import pl.pelotasplus.eyeofbeholder.data.model.GameState
 import pl.pelotasplus.eyeofbeholder.data.model.HitPoints
+import pl.pelotasplus.eyeofbeholder.data.model.Holding
+import pl.pelotasplus.eyeofbeholder.data.model.WhatABlowLeaves
 import pl.pelotasplus.eyeofbeholder.data.model.Inf
 import pl.pelotasplus.eyeofbeholder.data.model.Location
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterInstance
@@ -81,6 +83,112 @@ class RestingTest {
     private fun champion(food: Int, hurt: HitPoints) = Champion.NOBODY.copy(
         name = "Test", hitPoints = hurt, food = Food(food), flags = ChampionFlags(1),
     )
+
+    // --- what an hour does to a grip -----------------------------------------
+
+    /** As long as a champion is held for when it takes hold. */
+    private val aFreshGrip = WhatABlowLeaves.PARALYSIS.holdsFor!!.value
+
+    /** What an hour of sleep costs somebody poisoned, which the engine fixes at ten. */
+    private val VENOM_AN_HOUR = 10
+
+    /**
+     * Sleeping is not a cure. It is time passing, and whatever has hold of a
+     * champion is on a clock — so the party get up with those clocks wound
+     * forward by however long they lay there.
+     *
+     * An hour is a dozen times longer than the longest grip, so a party who
+     * lie down at all get up free of one.
+     */
+    @Test
+    fun `an hour of sleep outlasts anything holding somebody`() {
+        val held = world(champion(food = 100, hurt = HitPoints(10, 20))).copy(
+            holding = listOf(
+                Holding(PartySlot(0), WhatABlowLeaves.PARALYSIS, ticksLeft = aFreshGrip),
+            ),
+        )
+
+        val woken = held.sleptAnHour(HOURS_A_MENDED_POINT)
+
+        assertEquals(emptyList(), woken.holding, "they slept and something still had hold of them")
+    }
+
+    /**
+     * Venom is the one thing sleeping makes worse. It goes on taking what it
+     * takes while they lie there, and charges ten an hour for the privilege.
+     */
+    @Test
+    fun `sleeping poisoned costs ten an hour`() {
+        val hale = champion(food = 100, hurt = HitPoints(100, 200))
+
+        val clean = world(hale).sleptAnHour(HOURS_A_MENDED_POINT)
+        val bitten = world(hale.poisoned(true)).sleptAnHour(HOURS_A_MENDED_POINT)
+
+        assertEquals(
+            VENOM_AN_HOUR * HOURS_A_MENDED_POINT,
+            clean.champions[0].hitPoints.current - bitten.champions[0].hitPoints.current,
+            "the venom charged something other than ten an hour for the night",
+        )
+    }
+
+    /** Whatever the night costs, it is the venom charging and nothing else. */
+    @Test
+    fun `and nothing at all once the venom is washed out`() {
+        val hale = champion(food = 100, hurt = HitPoints(100, 200))
+
+        assertEquals(
+            world(hale).sleptAnHour(HOURS_A_MENDED_POINT).champions[0].hitPoints.current,
+            world(hale.poisoned(true).poisoned(false))
+                .sleptAnHour(HOURS_A_MENDED_POINT).champions[0].hitPoints.current,
+            "somebody cured before lying down was charged anyway",
+        )
+    }
+
+    /** Every poisoned champion pays it, and pays it separately. */
+    @Test
+    fun `each of them is charged for their own venom`() {
+        val hale = champion(food = 100, hurt = HitPoints(100, 200))
+
+        val night = world(hale.poisoned(true), hale.poisoned(true), hale)
+            .sleptAnHour(HOURS_A_MENDED_POINT)
+        val clean = world(hale, hale, hale).sleptAnHour(HOURS_A_MENDED_POINT)
+
+        assertEquals(
+            listOf(VENOM_AN_HOUR * HOURS_A_MENDED_POINT, VENOM_AN_HOUR * HOURS_A_MENDED_POINT, 0),
+            clean.champions.zip(night.champions).map { (was, now) ->
+                was.hitPoints.current - now.hitPoints.current
+            },
+            "the venom was charged to the wrong people, or charged once for the party",
+        )
+    }
+
+    /** There is nothing further to take from somebody past raising. */
+    @Test
+    fun `somebody past raising is beyond the venom`() {
+        val gone = champion(food = 100, hurt = HitPoints(Champion.BEYOND_RAISING, 200)).poisoned(true)
+
+        assertEquals(
+            Champion.BEYOND_RAISING,
+            world(gone).sleptAnHour(HOURS_A_MENDED_POINT).champions[0].hitPoints.current,
+            "the venom went on taking from somebody it could not reach",
+        )
+    }
+
+    /** Too short a sleep to mend anything is too short to let go of anybody. */
+    @Test
+    fun `and a sleep too short to mend is too short to let go`() {
+        val held = world(champion(food = 100, hurt = HitPoints(10, 20))).copy(
+            holding = listOf(
+                Holding(PartySlot(0), WhatABlowLeaves.PARALYSIS, ticksLeft = aFreshGrip),
+            ),
+        )
+
+        assertEquals(
+            held.holding,
+            held.sleptAnHour(HOURS_A_MENDED_POINT - 1).holding,
+            "a rest that mended nothing let a grip go anyway",
+        )
+    }
 
     /** The party at [at] with the level's own monsters put where this test wants. */
     private fun world(

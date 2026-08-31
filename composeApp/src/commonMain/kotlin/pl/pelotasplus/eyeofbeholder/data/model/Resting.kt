@@ -126,7 +126,41 @@ fun GameState.isBesideTheParty(monster: MonsterInstance): Boolean {
 fun GameState.sleptAnHour(hours: Int = 1): GameState {
     if (hours < HOURS_A_MENDED_POINT) return this
     return copy(champions = champions.map { it.sleptAStep() })
+        .gripsStepped(Ticks(hours * TICKS_AN_HOUR)).first
+        .venomWorkedFor(hours)
 }
+
+/**
+ * The world [hours] further on for whoever is carrying venom.
+ *
+ * Lying down does nothing to it, and is the worst thing to do while carrying
+ * it: it takes [VENOM_AN_HOUR] off every poisoned champion for each hour
+ * slept, on top of what it is already taking from them by the half-minute.
+ * A night of it costs far more than the night mends, which is what makes the
+ * cure worth carrying rather than worth saving.
+ *
+ * Nothing is rolled — it is the same ten every hour.
+ */
+private fun GameState.venomWorkedFor(hours: Int): GameState =
+    poisoned.fold(this) { world, whose ->
+        world.championHurt(whose, Damage(VENOM_AN_HOUR * hours))
+    }
+
+/** What an hour of sleep costs somebody poisoned. Transcribed. */
+private const val VENOM_AN_HOUR = 10
+
+/**
+ * Ticks in an hour of sleep.
+ *
+ * Sleeping is not a cure for anything. It is time passing, and whatever has
+ * hold of a champion is on a clock: the party get up with every one of those
+ * clocks wound forward by however long they lay there, and anything with less
+ * than that left on it has run out. An hour is a dozen times longer than the
+ * longest grip, so in practice a party who lie down get up free of it.
+ *
+ * Transcribed rather than derived.
+ */
+private const val TICKS_AN_HOUR = 32760
 
 /** Whether anybody is hurt at all, whether or not they can do anything about it. */
 val GameState.anybodyStillHurt: Boolean get() = champions.any { it.stillHurt }
