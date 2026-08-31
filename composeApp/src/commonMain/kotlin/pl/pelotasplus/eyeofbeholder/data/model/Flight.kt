@@ -37,6 +37,17 @@ class Flight(
          * clicked is.
          */
         val struckWalls: List<StruckWall> = emptyList(),
+        /**
+         * The squares a real thing came to rest on, for the same reason again.
+         *
+         * A thing that lands has been put down, and the square is told so in
+         * those words — which is how something heavy enough to hold a plate
+         * down can be thrown onto one rather than carried to it.
+         *
+         * Only a thing that exists: a conjured bolt is on no floor and has
+         * nothing to leave behind, so it lands on nothing.
+         */
+        val settled: List<Location> = emptyList(),
     )
 
     /**
@@ -109,7 +120,16 @@ private val atEachQuarter = listOf(
         val flewOnto = mutableListOf<Location>()
         val hurt = mutableListOf<Hurt>()
         val struckWalls = mutableListOf<StruckWall>()
+        val settled = mutableListOf<Location>()
         val stillGoing = mutableListOf<Projectile>()
+
+        // Whatever stopped it, it has stopped: it lies where it is, goes off
+        // if it was going to, and the square is told something has been put
+        // down on it — unless there was nothing there to put down.
+        fun cameToRest(world: GameState, flying: Projectile): GameState {
+            if (flying.what != null) settled += flying.at
+            return burstIfItWould(landed(world, flying), flying)
+        }
 
         world.inFlight.forEach { flying ->
             val waited = flying.copy(untilNextSquare = flying.untilNextSquare - ticks)
@@ -145,7 +165,7 @@ private val atEachQuarter = listOf(
                 } else {
                     hurt += met
                     met.forEach { carried = struckDown(carried, it) }
-                    carried = burstIfItWould(landed(carried, crossing), crossing)
+                    carried = cameToRest(carried, crossing)
                 }
                 return@forEach
             }
@@ -154,7 +174,7 @@ private val atEachQuarter = listOf(
 
             if (next == null) {
                 blockedBy(carried, waited)?.let { struckWalls += it }
-                carried = burstIfItWould(landed(carried, waited), waited)
+                carried = cameToRest(carried, waited)
                 return@forEach
             }
 
@@ -165,18 +185,18 @@ private val atEachQuarter = listOf(
             if (struck.isNotEmpty()) {
                 hurt += struck
                 struck.forEach { carried = struckDown(carried, it) }
-                carried = burstIfItWould(landed(carried, next), next)
+                carried = cameToRest(carried, next)
                 return@forEach
             }
 
             if (next.squaresLeft <= 0) {
-                carried = landed(carried, next)
+                carried = cameToRest(carried, next)
             } else {
                 stillGoing += next
             }
         }
 
-        return Moved(carried.copy(inFlight = stillGoing), flewOnto, hurt, struckWalls)
+        return Moved(carried.copy(inFlight = stillGoing), flewOnto, hurt, struckWalls, settled)
     }
 
     /**
@@ -251,8 +271,28 @@ private val atEachQuarter = listOf(
         return whoTheyWalkedInto(world, flying)
     }
 
+    /**
+     * Whatever is under [flying] and could be hurt by it.
+     *
+     * A thing in the air is over one quarter of a square rather than the
+     * whole of it, and crossing takes it down one side: the near corner of
+     * that side, then the far one. So it meets what is standing in the corner
+     * it is over and nothing standing across the way — which is what lets a
+     * stone be thrown past somebody, and what makes which side it was thrown
+     * from worth anything.
+     *
+     * Whatever stands in the middle is in the way of all of them, having
+     * spread over the square rather than keeping to a corner.
+     *
+     * A burst is the exception. It takes the square whole.
+     */
     private fun monstersUnder(world: GameState, flying: Projectile) = world.monsters
         .filter { it.x == flying.at.x && it.y == flying.at.y && it.couldBeHurt }
+        .filter {
+            flying.harm.everybody ||
+                it.place == flying.place ||
+                it.place == SquarePlace.MIDDLE
+        }
 
     /**
      * Everything under it that has now had its chance, which is everything

@@ -1682,6 +1682,7 @@ class ViewConeDebugViewModel(
                 var moved = false
                 var flewOnto = emptyList<Location>()
                 var struckWalls = emptyList<Flight.StruckWall>()
+                var settled = emptyList<Location>()
                 var struckInFlight = emptyList<Flight.Hurt>()
 
                 // Settled before the world is touched: an update that loses a
@@ -1772,6 +1773,7 @@ class ViewConeDebugViewModel(
                         flewOnto = flown.flewOnto
                         struckWalls = flown.struckWalls
                         struckInFlight = flown.hurt
+                        settled = flown.settled
                     }
 
 
@@ -1820,6 +1822,15 @@ class ViewConeDebugViewModel(
                 struckWalls.forEach { struck ->
                     Logger.d(TAG) { "$tickNow  something struck ${struck.at} ${struck.side}" }
                     runTriggersAt(struck.at, ScriptEvent.SOMETHING_FLEW_IN)
+                }
+
+                // A thing that has come down has been put down, and the square
+                // it lies on is told so in those words. Anything a hand could
+                // set on a plate can therefore be thrown onto one instead.
+                settled.forEach { where ->
+                    Logger.d(TAG) { "$tickNow  something landed on $where" }
+                    viewModelScope.launch { playTrack(SOMETHING_LANDED) }
+                    runTriggersAt(where, ScriptEvent.ITEM_PUT_DOWN)
                 }
 
                 // And a square the floor keeps coming back to gets its say,
@@ -3572,6 +3583,9 @@ class ViewConeDebugViewModel(
 
         /** And what it sounds like arriving. */
         private val BURSTING = TrackIndex(35)
+
+        /** A thing that was in the air hitting the floor. */
+        private val SOMETHING_LANDED = TrackIndex(18)
 
         /** How long a struck monster is drawn as a silhouette. */
         private val FLASH = Ticks(2)
