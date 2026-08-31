@@ -390,7 +390,7 @@ class MonstersTurn(
      */
     private fun whoItReaches(world: GameState, monster: MonsterInstance): PartySlot? =
         WhoTheMonsterReaches
-            .inOrder(world.party.facing, monster.direction, monster.place)
+            .inOrder(world.party.facing, monster.direction, monster.place, dice)
             .firstOrNull { world.championIn(it)?.dead == false }
 
     private companion object {
@@ -416,19 +416,26 @@ object WhoTheMonsterReaches {
         partyFacing: Direction,
         monsterFacing: Direction,
         monsterPlace: SquarePlace,
+        dice: Dice = Dice.random,
     ): List<PartySlot> {
         val group = GROUPS[partyFacing.ordinal * SIDES + monsterFacing.ordinal] * (SLOTS * 2)
-        val half = if (nearerSide(monsterFacing, monsterPlace)) 0 else SLOTS
+        val half = if (nearerSide(monsterFacing, monsterPlace, dice)) 0 else SLOTS
 
         return REACHED_IN_ORDER.subList(group + half, group + half + SLOTS).map(::PartySlot)
     }
 
     /**
      * Whether a monster stands on the half of its square nearer the party, and
-     * so reaches the near pair of them first. Something in the middle of a
-     * square is always near.
+     * so reaches the near pair of them first.
+     *
+     * A corner decides it: the monster is on one side or the other and its arm
+     * comes down that side every time. Something standing in the middle is on
+     * neither, and it is decided afresh for every blow — which is why one
+     * large thing on its own does not simply grind down whoever happens to
+     * stand on the right of the front rank.
      */
-    private fun nearerSide(facing: Direction, place: SquarePlace): Boolean {
+    private fun nearerSide(facing: Direction, place: SquarePlace, dice: Dice): Boolean {
+        if (place == SquarePlace.MIDDLE) return dice.roll(1, 2, -1) == 0
         if (!place.onTheFloor) return true
         return NEARER[facing.ordinal * SIDES + place.ordinal] == 0
     }
