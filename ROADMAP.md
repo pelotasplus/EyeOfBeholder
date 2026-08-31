@@ -14,11 +14,10 @@ leave ticked — this file is what is *not* done, and a finished thing belongs i
 the history instead.
 
 - [ ] **1. Combat** — the blow and the monster's turn are written; what is left rides on them
-  - [ ] 1a. Status attacks on a landed blow: poison, paralysis, a pocket picked — **S**
-  - [ ] 1b. Bows and slings, which are a hand rather than the cursor; the only route to `NO AMMO` — **M**
+  - [ ] 1a. Bows and slings, which are a hand rather than the cursor; the only route to `NO AMMO` — **M**
+  - [ ] 1b. Monsters shooting what their own tables give them — every floor from 8 down has somebody with a remote weapon and nothing reads the field — **M**
   - [ ] 1c. Monsters casting spells — **L**
-  - [ ] 1d. `HACK` and `BASH`, which want a wall that gives under a weapon — **S**, and no floor has one
-  - [ ] 1e. The `SetFlag.MonsterFlag` bits nobody has found a meaning for — **XS** each
+  - [ ] 1d. The `SetFlag.MonsterFlag` bits nobody has found a meaning for — **XS** each
 - [ ] **2. A monster's blow does not stop the world** — the original freezes every other clock for the length of one — **S**, but blocked: the pause list names one monster clock twice and another not at all, and which of those is the bug decides whether this is worth writing
 - [ ] **3. The last two things a monster mode can do** — fear, and giving up on a destination. Both have a branch waiting and nothing to trigger them — **S**
 - [ ] **4. What a script can ask about a thing by name** — needs ITEM.DAT names threaded through — **M**
@@ -36,13 +35,11 @@ the history instead.
   swings, rolls against armour, takes hit points off, and the thing flashes and
   leaves the world when they run out.
 
-  Two of the six things a slot can report are unreachable: `HACK` and `BASH`,
-  which are what it says when a weapon is *swung* at a wall with nothing in
-  front of it. That is a different path from using a weapon on one, which is
-  written: a wall answers a swing only where its special type is 8 or 9, and
-  all that decides is which of the two words appears — the wall that actually
-  gives is special type 255, and no floor so far has one. `NO AMMO` needs
-  something that fires.
+  One of the six things a slot can report is still unreachable. `HACK` and
+  `BASH` appear now — they are what a slot says when a weapon is swung at
+  something that gives under it, an edged weapon choosing the first word and
+  anything else the second. `NO AMMO` needs something that fires, and nothing
+  does.
 
   Two things worth not re-deriving. There is no sound for a blow landing or a
   monster dying: this game plays one sound for the swing and nothing else, and
@@ -56,9 +53,15 @@ the history instead.
   0 and 1, and a wolf's to-hit number of 19 means it needs an 18 or better.
   Three of them being nearly untouchable by an animal is the arithmetic working.
 
-  Riding on a landed blow there are the status attacks a kind can carry:
-  poison, paralysis, and having something taken out of a pocket. Each is a flag
-  on the kind and a branch nobody has written.
+  The status attacks a kind carries ride on a landed blow and are written:
+  poison, paralysis, petrification, and having something ruined in a pocket,
+  each a flag on the kind and each allowing its own saving throw.
+
+  What no monster does yet is shoot. Every floor from the first has somebody
+  whose table names a remote weapon and a number of shots — the dark moon
+  clerics have four, the beholders and will-o-wisps on the ninth have no
+  limit at all — and nothing reads those fields, so they close to arm's
+  length like everything else.
 
   Anything can be thrown now: a thing held on the cursor and let go of at the
   view flies down the corridor, hurts what it meets, works a wall it stops
