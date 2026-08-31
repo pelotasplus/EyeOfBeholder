@@ -57,9 +57,11 @@ data class Projectile(
     /**
      * Whether it is still on the square it was loosed from.
      *
-     * The first step is always allowed. A thing fired from inside a wall — a
-     * trap in the masonry — would otherwise be stopped by that wall before it
-     * ever got out of it.
+     * What this spares it is being asked what it has hit: a thing is not
+     * thrown into the thrower, and something loosed on a square the party are
+     * standing on would otherwise strike them where it lay. It is dropped the
+     * moment the thing tries to leave, so it says nothing about the wall it
+     * is thrown at — that stops it like any other.
      */
     val leaving: Boolean = true,
 

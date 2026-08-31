@@ -185,8 +185,6 @@ private val atEachQuarter = listOf(
      * wall there to be worked.
      */
     private fun blockedBy(world: GameState, flying: Projectile): StruckWall? {
-        if (flying.leaving) return null
-
         val onto = flying.going.oneStepFrom(flying.at)
         if (onto.x !in 0 until sublevel.maz.width || onto.y !in 0 until sublevel.maz.height) {
             return null
@@ -201,9 +199,10 @@ private val atEachQuarter = listOf(
     /**
      * The projectile one square along, or null where the wall stops it.
      *
-     * The square it is leaving cannot stop it. A trap fires out of the
-     * masonry it is built into, and asking that masonry's permission would
-     * mean nothing ever left the wall it came from.
+     * Every crossing is asked, the first one included: a thing thrown at the
+     * wall in front of the party strikes it and drops at their feet. Being
+     * newly loosed buys it nothing here — that only spares it the square it
+     * is still standing on, which it has not tried to leave yet.
      */
     private fun stepped(world: GameState, flying: Projectile): Projectile? {
         val onto = flying.going.oneStepFrom(flying.at)
@@ -213,7 +212,7 @@ private val atEachQuarter = listOf(
         }
 
         val face = world.wall(level, onto, flying.going.wallSideFacingBack)
-        if (!flying.leaving && !sublevel.canBeReachedOnto(face)) return null
+        if (!sublevel.canBeReachedOnto(face)) return null
 
         return flying.copy(
             at = onto,

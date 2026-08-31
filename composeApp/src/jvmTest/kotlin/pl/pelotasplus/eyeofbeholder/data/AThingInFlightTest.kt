@@ -12,7 +12,9 @@ import pl.pelotasplus.eyeofbeholder.data.model.HitPoints
 import pl.pelotasplus.eyeofbeholder.data.model.Inf
 import pl.pelotasplus.eyeofbeholder.data.model.LevelScriptRunner
 import pl.pelotasplus.eyeofbeholder.data.model.Location
+import pl.pelotasplus.eyeofbeholder.data.model.PartySlot
 import pl.pelotasplus.eyeofbeholder.data.model.PartyState
+import pl.pelotasplus.eyeofbeholder.data.model.WallSide
 import pl.pelotasplus.eyeofbeholder.data.model.Projectile
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptEvent
 import pl.pelotasplus.eyeofbeholder.data.model.SquarePlace
@@ -307,6 +309,48 @@ class AThingInFlightTest {
             world.champions[0].hitPoints.current,
             "a body was hurt past being dead for good",
         )
+    }
+
+    /**
+     * The wall a thing is thrown at stops it, the first square included.
+     *
+     * Being newly loosed spares a thing only the square it has not tried to
+     * leave yet — it is not thrown into the thrower. The moment it goes for
+     * the next square it is asked about the wall between, so a throw at the
+     * masonry in front of the party comes straight back down at their feet
+     * rather than passing through it.
+     *
+     * The corridor ends at 3x12, whose north face nothing can be reached
+     * onto; the fireball above stops against the same wall.
+     */
+    @Test
+    fun `a wall stops a thing thrown at it from the square in front of it`() {
+        // the walls come from the floor's own maze, and a world that has not
+        // been given one reads every side of every square as open
+        val world = standingAt(Location(3, 11)).arrivingAt(
+            level = 2,
+            places = emptyList(),
+            maz = level.subLevels[0].maz,
+        ).copy(
+            inFlight = listOf(
+                Projectile(
+                    what = null,
+                    at = Location(3, 11),
+                    place = SquarePlace.MIDDLE,
+                    going = Direction.SOUTH,
+                    thrownBy = Projectile.Thrower.AChampion(PartySlot(0)),
+                ),
+            ),
+        )
+
+        val moved = onward(world)
+
+        assertEquals(
+            listOf(Flight.StruckWall(Location(3, 12), WallSide.NORTH)),
+            moved.struckWalls,
+            "the wall it was thrown at was never asked",
+        )
+        assertEquals(emptyList<Projectile>(), moved.world.inFlight, "it went through the wall")
     }
 
     /** And it stops when it has hit something rather than flying on. */
