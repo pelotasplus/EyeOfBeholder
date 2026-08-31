@@ -21,6 +21,7 @@ import pl.pelotasplus.eyeofbeholder.data.repository.ItemTypesRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.model.Maz
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterInstance
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterSlot
+import pl.pelotasplus.eyeofbeholder.data.model.MonsterTypeId
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterPose
 import pl.pelotasplus.eyeofbeholder.data.model.NpcId
 import pl.pelotasplus.eyeofbeholder.data.model.NpcMeeting
@@ -567,6 +568,46 @@ class ViewPortGoldenTest {
                 monsters.map {
                     it.copy(location = Location(8, 23), subLevel = 1, place = SquarePlace.NORTH_WEST)
                 }
+            },
+        )
+
+    /**
+     * The eighth floor, which is the first this suite has looked at.
+     */
+    @Test
+    fun `level8 12x1 north`() =
+        checkGolden("level8-12x1-north", "LEVEL8.INF", x = 12, y = 1, direction = Direction.NORTH)
+
+    /**
+     * The same corridor with what the floor actually puts at the end of it.
+     *
+     * This floor ships no monsters at all — everything on it is conjured by a
+     * script, so the empty frame above is the whole of what the file says is
+     * there. Walking onto 16x3 is what fills it: a gas spore straight ahead on
+     * 12x0, and a flying snake off on 14x1. The spore is the one worth a
+     * picture, being the first thing drawn that has one hit point and bursts
+     * rather than dies.
+     */
+    @Test
+    fun `level8 12x1 north with the spore it is sent`() =
+        checkGolden(
+            "level8-12x1-north-a-gas-spore",
+            renderFrame("LEVEL8.INF", x = 12, y = 1, direction = Direction.NORTH) {
+                listOf(
+                    MonsterInstance(
+                        index = MonsterSlot(0),
+                        unit = 0,
+                        location = Location(12, 0),
+                        place = SquarePlace.MIDDLE,
+                        direction = Direction.SOUTH,
+                        type = MonsterTypeId(5),
+                        gfxIndex = 1,
+                        mode = 0,
+                        pause = 0,
+                        weapon = 0,
+                        pocketItem = 0,
+                    ),
+                )
             },
         )
 
