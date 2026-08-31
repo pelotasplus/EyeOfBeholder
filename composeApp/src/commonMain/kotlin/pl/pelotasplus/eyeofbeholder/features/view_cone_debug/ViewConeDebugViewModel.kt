@@ -190,6 +190,15 @@ class ViewConeDebugViewModel(
      */
     private var standingInTheBox = emptyList<String>()
 
+    /**
+     * How many lines of what stands in the box have been read already.
+     *
+     * The box scrolls and never goes back: what is said next is written on
+     * from here rather than from the top of the conversation. Without it a
+     * reply sends the reader back to the beginning of the speech it answers.
+     */
+    private var linesReadInTheBox = 0
+
     /** The archway standing over the view, while one is opening. */
     private var portalShowing: ThePortal.Showing? = null
 
@@ -2170,6 +2179,7 @@ class ViewConeDebugViewModel(
         // nobody is speaking, and nothing said before stands in the box behind
         speaker = null
         standingInTheBox = emptyList()
+        linesReadInTheBox = 0
 
         val unread = text.pages.drop(1)
 
@@ -2200,6 +2210,7 @@ class ViewConeDebugViewModel(
 
         speaker = null
         standingInTheBox = emptyList()
+        linesReadInTheBox = 0
 
         _state.update {
             it.copy(
@@ -2868,13 +2879,17 @@ class ViewConeDebugViewModel(
         override suspend fun say(speech: ScriptSpeech) {
             val inf = _state.value.inf ?: return
 
-            if (speech.boxJustDrawn) standingInTheBox = emptyList()
+            if (speech.boxJustDrawn) {
+                standingInTheBox = emptyList()
+                linesReadInTheBox = 0
+            }
 
             if (speech.isEmpty) {
                 silenceEffects()
                 _state.update { it.copy(dialog = null) }
                 speaker = null
                 standingInTheBox = emptyList()
+                linesReadInTheBox = 0
                 drawWords()
                 return
             }
@@ -2899,12 +2914,23 @@ class ViewConeDebugViewModel(
                 return
             }
 
+            // Nothing here is read off, so nothing may be held back: the box
+            // has scrolled and shows the end of what has been said.
+            val shown = font?.let {
+                DialogueScene.standingInTheBox(
+                    text = spoken,
+                    font = it,
+                    readOff = DialogueScene.ReadOff.TheStripBelow,
+                    canBeReadOff = false,
+                ).first
+            } ?: spoken
+
             _state.update {
                 it.copy(
                     dialog = DialogPrompt(
                         scene = sceneFor(
                             scene = speech.scene,
-                            text = spoken,
+                            text = shown,
                             buttonLabels = emptyList(),
                             waitsToBeRead = false,
                         ),
@@ -2975,7 +3001,10 @@ class ViewConeDebugViewModel(
                 // whatever is said to the answer is said on a clean one rather
                 // than under the question it answers. A speech leaves it
                 // standing instead — see ScriptQuestion.boxDrawnAgainAfter.
-                if (question.boxDrawnAgainAfter) standingInTheBox = emptyList()
+                if (question.boxDrawnAgainAfter) {
+                    standingInTheBox = emptyList()
+                    linesReadInTheBox = 0
+                }
             }
         }
     }
@@ -2999,24 +3028,51 @@ class ViewConeDebugViewModel(
             ?: DialogueText.EMPTY
 
         val labels = question.words.ifEmpty { question.buttons.mapNotNull { inf.message(it) } }
-        val unread = speech.pages.drop(1)
 
         val clickable = question.hasSomethingToClick(labels)
 
+        // A speech written in pages is read a page at a time, but only where
+        // there is something to press: with no button the whole of it is said
+        // at once and the last page is what is left standing.
+        val (saidNow, stillToSay) = DialogueScene.whatIsReadFirst(speech.pages, clickable)
+
         // the party's own line goes in the box above what it answers
-        val spoken = (standingInTheBox + question.said.mapNotNull { inf.message(it) } + speech.first)
+        val spoken = (standingInTheBox + question.said.mapNotNull { inf.message(it) } + saidNow)
             .filter { it.isNotBlank() }
             .joinToString("\n") { it.spokenBy(whoeverSpeaks()) }
 
-        // and what is being said now stands in the box after it has been read
-        standingInTheBox = standingInTheBox + speech.first
+
+        // The box is written on from where it was last read, never from the
+        // top of the conversation. What is left over is read off a boxful at
+        // a time where there is a button, and where there is none the box has
+        // simply scrolled to the end of what was said.
+        val boxfuls = font?.let {
+            DialogueScene.boxfulsLeft(
+                text = spoken,
+                font = it,
+                readOff = DialogueScene.ReadOff.TheStripBelow,
+                alreadyRead = linesReadInTheBox,
+            )
+        } ?: listOf(spoken)
+
+        val shown = if (clickable) boxfuls.first() else boxfuls.last()
+        val overflow = if (clickable) boxfuls.drop(1) else emptyList()
+
+        // What stands in the box is what is on the screen, and all of it has
+        // been read. Whatever is said next is written on after it.
+        standingInTheBox = listOf(shown)
+        linesReadInTheBox = font
+            ?.let { DialogueScene.linesOf(shown, it, DialogueScene.ReadOff.TheStripBelow) }
+            ?: 0
+
+        val unread = overflow + stillToSay
 
         _state.update {
             it.copy(
                 dialog = DialogPrompt(
                     scene = sceneFor(
                         scene = question.scene,
-                        text = spoken,
+                        text = shown,
                         buttonLabels = when {
                             unread.isNotEmpty() -> listOf(MORE)
                             clickable -> labels
@@ -3128,6 +3184,9 @@ class ViewConeDebugViewModel(
         // turning a page empties the box and writes on from there, so the page
         // being read is the whole of what stands in it
         standingInTheBox = listOf(dialog.unread.first())
+        linesReadInTheBox = font
+            ?.let { DialogueScene.linesOf(dialog.unread.first(), it, dialog.readOff) }
+            ?: 0
 
         viewModelScope.launch {
             _state.update {

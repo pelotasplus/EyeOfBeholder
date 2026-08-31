@@ -36,7 +36,15 @@ data class DialogueScene(
             val textWidth: Int,
             val readOnLeft: Int,
             val readOnTop: Int,
-        ) : ReadOff
+        ) : ReadOff {
+            /**
+             * How many lines the box holds before the words reach the button
+             * that reads them off, which is as far down as anything may be
+             * written.
+             */
+            fun linesThatFit(font: Font): Int =
+                ((readOnTop - textTop) / font.height).coerceAtLeast(1)
+        }
 
         /**
          * The strip along the bottom, under the frame a speaker is drawn in,
@@ -157,6 +165,113 @@ data class DialogueScene(
         const val FRAME_HEIGHT = 121
         const val PORTRAIT_LEFT = 8
         const val PORTRAIT_TOP = 8
+
+        /**
+         * [text] cut into as many pages as the box needs to hold it.
+         *
+         * A box is a fixed number of lines deep and the words written into it
+         * are not: a speech, a reply and a speech again all stand in the same
+         * box, and between them they outgrow it. What overruns is not drawn
+         * anywhere — it is written past the bottom of the panel, over the view
+         * and under the button — so it has to become the next page instead,
+         * read off with the same button that turns any other.
+         *
+         * Always at least one page, so that nothing has to ask whether there
+         * is anything to draw.
+         */
+        fun pagesThatFit(text: String, font: Font, readOff: ReadOff.Written): List<String> {
+            val lines = font.wrap(text, readOff.textWidth)
+            val fits = readOff.linesThatFit(font)
+
+            return lines.chunked(fits).map { it.joinToString("\n") }.ifEmpty { listOf("") }
+        }
+
+        /**
+         * The boxfuls still to be read of [text], given [alreadyRead] lines
+         * of it have been.
+         *
+         * The box only ever moves forward. Words are written into it and it
+         * scrolls, so what stands there is the last lines written — and it
+         * stops for the reader each time a boxful of new ones has arrived,
+         * never showing again what has been read.
+         *
+         * Re-reading the whole of it each time something is said is what
+         * makes the box jump backwards: a speech, then a reply, and the
+         * reader is shown the start of the speech again in the middle of the
+         * conversation.
+         *
+         * Always at least one, so there is always something to draw.
+         */
+        fun boxfulsLeft(
+            text: String,
+            font: Font,
+            readOff: ReadOff.Written,
+            alreadyRead: Int,
+        ): List<String> {
+            val lines = font.wrap(text, readOff.textWidth)
+            val fits = readOff.linesThatFit(font)
+
+            val stops = generateSequence(minOf(lines.size, alreadyRead + fits)) { upTo ->
+                (upTo + fits).takeIf { upTo < lines.size }?.coerceAtMost(lines.size)
+            }
+
+            return stops.map { upTo -> lines.subList(maxOf(0, upTo - fits), upTo) }
+                .map { it.joinToString("\n") }
+                .toList()
+                .ifEmpty { listOf("") }
+        }
+
+        /** How many lines [text] comes to, which is how much of a box it fills. */
+        fun linesOf(text: String, font: Font, readOff: ReadOff.Written): Int =
+            font.wrap(text, readOff.textWidth).size
+
+        /**
+         * What stands in the box now, and what is left to be read after it.
+         *
+         * A box that has filled up scrolls: it is copied up a line and the
+         * bottom cleared, so what stands in it is the end of what has been
+         * said rather than the beginning. It stops to be read only where
+         * there is a button to read it off with — and where there is not,
+         * nothing may be held back, or the words would wait on a click that
+         * can never come.
+         */
+        fun standingInTheBox(
+            text: String,
+            font: Font,
+            readOff: ReadOff.Written,
+            canBeReadOff: Boolean,
+        ): Pair<String, List<String>> {
+            if (canBeReadOff) {
+                return whatIsReadFirst(pagesThatFit(text, font, readOff), true)
+            }
+
+            // Scrolled, so it is the last lines that stand there — not the
+            // last page. A page that filled only half the box would otherwise
+            // leave the top half of the box blank and the lines that should
+            // have scrolled into it gone.
+            val lines = font.wrap(text, readOff.textWidth)
+            return lines.takeLast(readOff.linesThatFit(font)).joinToString("\n") to emptyList()
+        }
+
+        /**
+         * Which of [pages] is read first, and what is left after it.
+         *
+         * With something to press, the first page is read and the rest wait
+         * behind it. With nothing to press, nothing may wait — so the whole
+         * of it is said at once, and it is the box that decides how much of
+         * that is still on screen when it settles.
+         *
+         * Two speeches in the dungeon are written in two pages and name no
+         * button, so this is not a precaution.
+         */
+        fun whatIsReadFirst(
+            pages: List<String>,
+            canBeReadOff: Boolean,
+        ): Pair<String, List<String>> = when {
+            pages.isEmpty() -> "" to emptyList()
+            canBeReadOff -> pages.first() to pages.drop(1)
+            else -> pages.joinToString("\n") to emptyList()
+        }
 
         /**
          * Wraps the speech and puts the answers a line below the last one
