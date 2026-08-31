@@ -101,18 +101,53 @@ class ItemNamesTest {
      * Both kinds of scroll read the one list of spells, the cleric spells
      * following the mage ones — so a cleric scroll's own value is already far
      * enough along it to land among them.
+     *
+     * The numbers are not the lines, though. The run they are counted in has a
+     * blank in front of it and another where the cleric spells begin, so a
+     * mage spell sits one line back from its number and a cleric spell two.
+     * These are read off that run rather than off the list.
      */
     @Test
     fun `a scroll is named by the spell written on it`() {
         assertEquals(
-            "Mage Scroll of fireball",
-            names.of(dungeonOfKind(ItemKind.MAGE_SCROLL).copy(value = 12), types),
+            "Mage Scroll of armor",
+            names.of(mageScroll(1), types),
+            "the first spell of all is numbered one, the blank being nought",
+        )
+        assertEquals("Mage Scroll of fireball", names.of(mageScroll(13), types))
+        assertEquals(
+            "Mage Scroll of disintegrate",
+            names.of(mageScroll(26), types),
+            "the drift reads this as flesh to stone, which is the next one along",
         )
         assertEquals(
-            "Cleric Scroll of cure light wounds",
-            names.of(dungeonOfKind(ItemKind.CLERIC_SCROLL).copy(value = 34), types),
+            "Mage Scroll of bigby's clenched fist",
+            names.of(mageScroll(32), types),
+            "the last of the mage spells",
         )
+        assertEquals(
+            "Cleric Scroll of bless",
+            names.of(clericScroll(34), types),
+            "the first cleric spell, one past the blank that separates them",
+        )
+        assertEquals("Cleric Scroll of cure light wounds", names.of(clericScroll(36), types))
     }
+
+    /**
+     * The two numbers that name no spell: nought, and the blank the cleric
+     * spells begin after. A scroll of nothing is called only what it is.
+     */
+    @Test
+    fun `a scroll of no spell is just a scroll`() {
+        assertEquals("Mage Scroll", names.of(mageScroll(0), types))
+        assertEquals("Mage Scroll", names.of(mageScroll(33), types))
+    }
+
+    private fun mageScroll(value: Int) =
+        dungeonOfKind(ItemKind.MAGE_SCROLL).copy(value = value)
+
+    private fun clericScroll(value: Int) =
+        dungeonOfKind(ItemKind.CLERIC_SCROLL).copy(value = value)
 
     /** The first thing in the dungeon of a given kind, taken as identified. */
     private fun dungeonOfKind(kind: ItemKind): Item = dungeon.items

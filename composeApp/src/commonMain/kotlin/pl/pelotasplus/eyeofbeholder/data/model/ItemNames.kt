@@ -45,8 +45,8 @@ data class ItemNames(private val names: List<String>) {
                 else -> "+$value $looksLike"
             }
 
-            ItemKind.MAGE_SCROLL -> named(MAGE_SCROLL_NAME, spellNames, value)
-            ItemKind.CLERIC_SCROLL -> named(CLERIC_SCROLL_NAME, spellNames, value)
+            ItemKind.MAGE_SCROLL -> named(MAGE_SCROLL_NAME, spellNames, writtenOn(value))
+            ItemKind.CLERIC_SCROLL -> named(CLERIC_SCROLL_NAME, spellNames, writtenOn(value))
             ItemKind.POTION -> named(POTION_NAME, potionEffects, value)
             ItemKind.RING -> named(RING_NAME, ringEffects, value)
 
@@ -63,6 +63,27 @@ data class ItemNames(private val names: List<String>) {
 
             else -> looksLike
         }
+    }
+
+    /**
+     * Which line of [spellNames] the spell numbered [value] is on.
+     *
+     * The spells are numbered in one run across both kinds of scroll, and that
+     * run is not the list. It is the list with a blank put in front of it and
+     * a second blank where the cleric spells begin, so a number has drifted
+     * one line off the mage spells and two off the cleric ones. Reading the
+     * list at the number itself gives the spell after the one the scroll
+     * casts, which is a name that looks perfectly reasonable: a scroll of
+     * disintegrate reads as flesh to stone.
+     *
+     * Both blanks are answered with nothing, and a scroll of nothing is called
+     * only what it is.
+     */
+    private fun writtenOn(value: Int): Int = when {
+        value <= 0 -> NOTHING_WRITTEN
+        value < WHERE_THE_CLERIC_SPELLS_START -> value - 1
+        value == WHERE_THE_CLERIC_SPELLS_START -> NOTHING_WRITTEN
+        else -> value - 2
     }
 
     /** A magical thing is called what it is and then what it does. */
@@ -82,6 +103,15 @@ data class ItemNames(private val names: List<String>) {
 
         /** The one wand called by what it does rather than by what it is. */
         const val GOES_BY_ITS_EFFECT = 5
+
+        /**
+         * Which number the second blank sits on: the mage spells and the
+         * blank in front of them come to thirty-three.
+         */
+        const val WHERE_THE_CLERIC_SPELLS_START = 33
+
+        /** No line of the list at all, for the two numbers that name none. */
+        const val NOTHING_WRITTEN = -1
 
         const val MAGE_SCROLL_NAME = "Mage Scroll"
         const val CLERIC_SCROLL_NAME = "Cleric Scroll"
