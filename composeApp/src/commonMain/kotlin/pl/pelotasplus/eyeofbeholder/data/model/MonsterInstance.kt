@@ -63,6 +63,21 @@ data class MonsterInstance(
      */
     val level: Int? = null,
     val hitPoints: HitPoints = UNROLLED,
+    /**
+     * Whether a script put it here, rather than the floor having been shipped
+     * with it.
+     *
+     * It decides what may be taken away to make room. A floor holds thirty
+     * monsters and no more, and a script that asks for one with all thirty
+     * standing has the furthest of them removed to make the room — but only
+     * ever one that was itself conjured. What the floor came with stays,
+     * however far off it is, or a nest at one end of a level would quietly
+     * empty the rooms at the other.
+     *
+     * False for a monster out of a save written before this was kept, which
+     * is the safe way round: it will not be taken away.
+     */
+    val conjured: Boolean = false,
     /** Hit this instant, and so drawn as a silhouette until the moment passes. */
     val struck: Boolean = false,
     /**
@@ -238,6 +253,7 @@ data class MonsterInstance(
         ) = MonsterInstance(
             subLevel = subLevel,
             level = level,
+            conjured = true,
             index = slot,
             unit = spawn.unit,
             location = spawn.location,

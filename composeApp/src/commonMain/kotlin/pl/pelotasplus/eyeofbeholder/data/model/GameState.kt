@@ -965,10 +965,8 @@ data class GameState(
      * slot. The slot is not bookkeeping — it decides which of its sheet's
      * color schemes the monster is painted in.
      *
-     * The engine has one more way out we cannot take yet: with every slot in
-     * use it evicts whichever monster stands farthest from the party, killing
-     * it if it still lives. Nothing dies here, so a full world drops the
-     * spawn instead.
+     * With every slot in use it does not refuse but makes room — see
+     * [madeRoom].
      *
      * @param subLevel the one the party are in, which a new monster joins.
      * @param level the floor it is conjured on, which it belongs to from here
@@ -981,49 +979,94 @@ data class GameState(
         dice: Dice = Dice.random,
         level: Int? = null,
     ): GameState {
-        val taken = monsters.map { it.index }.toSet()
-        val slot = (0 until MONSTER_SLOTS).map(::MonsterSlot).firstOrNull { it !in taken }
-
         val crowd = monstersOn(spawn.location)
 
-        return when {
-            spawn.location == party.position -> this
-            crowd >= MAX_MONSTERS_PER_SQUARE -> this
-            crowd > 0 && !roomBesideThem(spawn, kinds) -> this
-            slot == null -> this
-            else -> copy(
-                monsters = monsters + MonsterInstance
-                    .spawnedBy(spawn, slot, subLevel, level)
-                    .rolledIfKnown(kinds, dice),
-            )
+        if (spawn.location == party.position) return this
+        if (crowd >= MAX_MONSTERS_PER_SQUARE) return this
+        if (crowd > 0 && !roomBesideThem(spawn, kinds)) return this
+
+        val taken = monsters.map { it.index }.toSet()
+        val free = (0 until MONSTER_SLOTS).map(::MonsterSlot).firstOrNull { it !in taken }
+
+        val (world, slot) = when {
+            free != null -> this to free
+            else -> madeRoom(subLevel, level, dice) ?: return this
         }
+
+        return world.copy(
+            monsters = world.monsters + MonsterInstance
+                .spawnedBy(spawn, slot, subLevel, level)
+                .rolledIfKnown(kinds, dice),
+        )
+    }
+
+    /**
+     * The world with one thing taken out of it to make room, and the slot
+     * that frees — or null where there was nothing that could be taken.
+     *
+     * A floor holds thirty and no more, and a script asking for one with all
+     * thirty standing is not refused: whichever of them is furthest off is
+     * removed instead, so that whatever is conjured in front of the party
+     * always arrives. Nobody is credited with the kill — it dies unwatched
+     * and unearned — but it leaves its belongings on the floor where it
+     * stood, exactly as one cut down would.
+     *
+     * Only what a script conjured may go; see [MonsterInstance.conjured].
+     * And anything not where the party are goes before anything that is,
+     * because a monster on another floor or another sublevel is not far away
+     * so much as elsewhere: the two share a coordinate space and nothing
+     * else, and the distance between them means nothing.
+     *
+     * One standing on the party's own square is never the one taken, however
+     * little else there is to choose from. That falls out of the engine
+     * measuring furthest from a starting distance of nought, and reads as a
+     * quirk rather than an intention, but it is the behaviour.
+     */
+    private fun madeRoom(
+        subLevel: Int,
+        level: Int?,
+        dice: Dice,
+    ): Pair<GameState, MonsterSlot>? {
+        val loose = monsters.filter { it.conjured }
+
+        val going = loose.firstOrNull { it.subLevel != subLevel || it.level != level }
+            ?: loose
+                .filter { it.location.blocksFrom(party.position) > 0 }
+                .maxByOrNull { it.location.blocksFrom(party.position) }
+            ?: return null
+
+        val emptied = going.level?.let { whatAMonsterDrops(going, it, dice) } ?: this
+
+        return emptied.copy(monsters = emptied.monsters - going) to going.index
     }
 
     /**
      * Whether a square that already holds monsters has room for one more.
      *
-     * Only the smallest kind share a square, and only by keeping to its
-     * corners: anything larger fills it, and anything standing in the middle
-     * has spread across the whole of it whatever its size. So a second
-     * monster arrives only where everything already there is small and in a
-     * corner, and it is small and bound for a corner itself.
+     * How many fit is the kind's own [MonsterSize.toASquare] — four of the
+     * small, two of the middling, one of anything that fills a square — and
+     * they must all be of a size with each other, each in a corner of its
+     * own. One in the middle has spread over the whole square and leaves no
+     * corner free.
      *
-     * This is what holds a nest down. A script that conjures three of
-     * something square-filling onto one square places the first and is
-     * refused the other two, and is refused again every time it runs, for as
-     * long as that one lives.
+     * Killing frees a place, so a square down to two takes two more.
      *
-     * A kind with no properties to read counts as large, which refuses.
+     * A kind with no properties to read has no size, which refuses.
      */
     private fun roomBesideThem(spawn: CreateMonster, kinds: List<MonsterProperty>): Boolean {
-        fun small(type: MonsterTypeId) =
-            kinds.getOrNull(type.value)?.size == MonsterSize.FOUR_TO_A_SQUARE
+        fun sizeOf(type: MonsterTypeId) = kinds.getOrNull(type.value)?.size
 
-        if (!small(spawn.type) || spawn.place == SquarePlace.MIDDLE) return false
+        val size = sizeOf(spawn.type) ?: return false
+        if (spawn.place == SquarePlace.MIDDLE) return false
 
-        return monsters
-            .filter { it.x == spawn.location.x && it.y == spawn.location.y }
-            .none { it.place == SquarePlace.MIDDLE || !small(it.type) }
+        val there = monsters.filter { it.x == spawn.location.x && it.y == spawn.location.y }
+
+        return when {
+            there.any { it.place == SquarePlace.MIDDLE } -> false
+            there.any { sizeOf(it.type) != size } -> false
+            there.size >= size.toASquare -> false
+            else -> there.none { it.place == spawn.place }
+        }
     }
 
     /**

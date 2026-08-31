@@ -21,11 +21,15 @@ import kotlin.test.assertEquals
  * whether the newcomer is one of those itself. Only the smallest kind share a
  * square, and only by keeping to its corners.
  *
- * Without those questions a nest never stops. Level 7's wasps all fill their
- * square, and the script over the nest conjures three onto one every time the
- * floor's clock comes round — so the difference between one refusal and none
- * is the difference between a square holding one wasp and a square holding a
- * fresh three every forty seconds.
+ * Which of the two a creature is decides how crowded a floor can get. The
+ * small ones really do stand four to a square, one to a corner, and a script
+ * may put three of them down at once; anything larger takes a square whole
+ * and a second is refused for as long as the first is standing.
+ *
+ * Seven is not a limit anything reaches by itself. It is what three bits of
+ * the square's flag byte can count, and the size rule refuses long before it
+ * — but a script naming the same corner twice can climb towards it, which is
+ * the one way a square ends up holding more than four.
  */
 class RoomOnASquareTest {
 
@@ -90,6 +94,41 @@ class RoomOnASquareTest {
         assertEquals(1, world.monstersOn(nest), "five turns of the clock filled the square")
     }
 
+    /**
+     * The one that matters in play: the nest asks for the same three corners
+     * every time its clock comes round, and must be refused after the first.
+     *
+     * Allowing it stacks wasps at identical screen coordinates, so the square
+     * looks no fuller while what it can do to the party doubles.
+     */
+    @Test
+    fun `a corner already taken takes nothing more`() {
+        var world = world()
+        repeat(5) {
+            world = world
+                .put(0, SquarePlace.NORTH_WEST)
+                .put(0, SquarePlace.SOUTH_WEST)
+                .put(0, SquarePlace.NORTH_EAST)
+        }
+
+        assertEquals(
+            3,
+            world.monstersOn(nest),
+            "five turns of the clock put more than one on a corner",
+        )
+    }
+
+    @Test
+    fun `and four is the most a square holds`() {
+        var world = world()
+        repeat(4) {
+            SquarePlace.entries.filter { it.onTheFloor && it != SquarePlace.MIDDLE }
+                .forEach { corner -> world = world.put(0, corner) }
+        }
+
+        assertEquals(4, world.monstersOn(nest), "a square held more than its four corners")
+    }
+
     @Test
     fun `four of the smallest kind share a square`() {
         val world = world()
@@ -101,14 +140,38 @@ class RoomOnASquareTest {
         assertEquals(4, world.monstersOn(nest), "the small kind stopped sharing")
     }
 
-    /** Two of a size, but a size that fills the square between the two of them. */
+    /** Two of the middling kind, and no third. */
     @Test
-    fun `the middling kind does not share either`() {
-        val world = world()
+    fun `the middling kind goes two to a square`() {
+        val two = world()
             .put(1, SquarePlace.NORTH_WEST)
             .put(1, SquarePlace.SOUTH_EAST)
 
-        assertEquals(1, world.monstersOn(nest), "two of the middling kind stood together")
+        assertEquals(2, two.monstersOn(nest), "a pair of wolves would not share a square")
+
+        assertEquals(
+            2,
+            two.put(1, SquarePlace.NORTH_EAST).monstersOn(nest),
+            "a third stood on a square that holds two",
+        )
+    }
+
+    /** And a square emptied by killing takes as many again. */
+    @Test
+    fun `killing makes room`() {
+        val full = world()
+            .put(0, SquarePlace.NORTH_WEST)
+            .put(0, SquarePlace.NORTH_EAST)
+            .put(0, SquarePlace.SOUTH_WEST)
+            .put(0, SquarePlace.SOUTH_EAST)
+
+        val down = full.copy(monsters = full.monsters.take(2))
+
+        assertEquals(
+            4,
+            down.put(0, SquarePlace.SOUTH_WEST).put(0, SquarePlace.SOUTH_EAST).monstersOn(nest),
+            "two were killed and two could not take their places",
+        )
     }
 
     @Test

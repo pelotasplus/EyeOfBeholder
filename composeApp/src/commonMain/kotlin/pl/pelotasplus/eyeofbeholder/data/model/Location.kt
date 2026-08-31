@@ -40,6 +40,23 @@ data class Location(
     fun squaresFrom(other: Location) =
         maxOf(abs(other.x - x), abs(other.y - y))
 
+    /**
+     * How far off [other] is, counted the way the engine counts it: the whole
+     * of the larger gap, plus half the smaller.
+     *
+     * Not [squaresFrom], which is the larger gap on its own. The two agree on
+     * whether a thing is on this square or beside it, and part company past
+     * that — something three squares along both axes is three away by
+     * [squaresFrom] and four away by this. Transcribed rather than derived,
+     * and wanted wherever the engine's own ordering by distance is what
+     * decides something.
+     */
+    fun blocksFrom(other: Location): Int {
+        val across = abs(other.x - x)
+        val down = abs(other.y - y)
+        return minOf(across, down) / 2 + maxOf(across, down)
+    }
+
     companion object {
         fun read(reader: ByteReader): Location {
             val pos = reader.readU16LE()

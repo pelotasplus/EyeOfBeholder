@@ -572,6 +572,47 @@ class ViewPortGoldenTest {
         )
 
     /**
+     * A square with as many on it as it can hold: four, one to each corner.
+     *
+     * There are four sets of screen coordinates and no fifth, which is why a
+     * square cannot usefully hold more — put two on a corner and the second
+     * is drawn over the first, pixel for pixel, biting from inside a picture
+     * of one. That is what [GameState.monsterCreated] refuses, and this is
+     * the arrangement it refuses anything beyond.
+     */
+    @Test
+    fun `level7 7x20 south with four on one square`() =
+        checkGolden(
+            "level7-7x20-south-four-on-a-square",
+            renderFrame("LEVEL7.INF", x = 7, y = 20, direction = Direction.SOUTH) {
+                waspsOn7x21(
+                    SquarePlace.NORTH_WEST,
+                    SquarePlace.NORTH_EAST,
+                    SquarePlace.SOUTH_WEST,
+                    SquarePlace.SOUTH_EAST,
+                )
+            },
+        )
+
+    private fun waspsOn7x21(vararg corners: SquarePlace) =
+        corners.toList().mapIndexed { slot, corner ->
+            MonsterInstance(
+                index = MonsterSlot(slot),
+                unit = 0,
+                location = Location(7, 21),
+                place = corner,
+                direction = Direction.NORTH,
+                type = MonsterTypeId(0),
+                gfxIndex = 0,
+                mode = 0,
+                pause = 0,
+                weapon = 0,
+                pocketItem = 0,
+                subLevel = 1,
+            )
+        }
+
+    /**
      * The eighth floor, which is the first this suite has looked at.
      */
     @Test
