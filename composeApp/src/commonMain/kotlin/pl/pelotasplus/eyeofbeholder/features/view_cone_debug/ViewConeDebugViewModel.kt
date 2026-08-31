@@ -1307,7 +1307,13 @@ class ViewConeDebugViewModel(
         }
 
         Logger.d(TAG) { "Threw $held ${party.facing} from ${party.position}" }
+
+        // Drawn on the click rather than on the clock's next turn: letting go
+        // of a thing is seen at the moment it is heard, and the clock's first
+        // turn is a whole tick away. The two go separately so that neither
+        // waits on the other.
         viewModelScope.launch { playTrack(LOOSED) }
+        viewModelScope.launch { renderViewPort() }
         keepTheFightGoing()
     }
 

@@ -308,6 +308,17 @@ class ViewConeRepositoryImpl(
             partyFacing = direction,
         )
 
+        // And whatever is in the air over it, which is where a thing the party
+        // have just let go of spends its first moment. Nothing drew it there,
+        // so a throw was heard and then not seen until it had left the square
+        // it was thrown from.
+        drawWhatIsInTheAir(
+            viewPort, items, smallIcons, largeIcons, inFlight, direction,
+            at = Location(playerX, playerY),
+            blockIndex = ViewPort.OWN_BLOCK_INDEX,
+            dim = 3,
+        )
+
         // A burst on the party's own square is not on any of the squares they
         // are looking at, so it is not drawn with them: it goes in front of
         // the whole view, dead centre and at its full size, because it is
@@ -479,31 +490,12 @@ class ViewConeRepositoryImpl(
                     viewPort.drawInFlight(bolt, block.blockIndex, ScaleSteps(NEAREST_DIM - dim))
                 }
 
-                // And a thing somebody threw, which is drawn as itself rather
-                // than as a bolt but at the same height: a stone crossing a
-                // corridor is in the air, not sliding along the floor.
-                inFlight
-                    .filter {
-                        it.what != null &&
-                            it.at.x == playerX + dx &&
-                            it.at.y == playerY + dy
-                    }
-                    .forEach { flying ->
-                        val what = items.getOrNull(flying.what?.value ?: return@forEach)
-                            ?: return@forEach
-
-                        sheetFor(what.icon, smallIcons, largeIcons)
-                            ?.getItemIcon(what.icon)
-                            ?.let { shape ->
-                                viewPort.drawInFlight(
-                                    shape,
-                                    block.blockIndex,
-                                    ScaleSteps(NEAREST_DIM - dim),
-                                    over = flying.place.asSeenFacing(direction)
-                                        ?: ViewPlace.MIDDLE,
-                                )
-                            }
-                    }
+                drawWhatIsInTheAir(
+                    viewPort, items, smallIcons, largeIcons, inFlight, direction,
+                    at = Location(playerX + dx, playerY + dy),
+                    blockIndex = block.blockIndex,
+                    dim = dim,
+                )
 
                 // And a burst on it, which is in front of everything on the
                 // square and behind every wall nearer than it.
@@ -562,6 +554,44 @@ class ViewConeRepositoryImpl(
                 nudge = nudgeOf(slot),
             )
         }
+    }
+
+    /**
+     * Whatever somebody threw that is over [at] now, drawn as itself and at
+     * the height of it rather than lying among what is on that floor.
+     *
+     * A bolt nobody threw has a shape of its own and is drawn elsewhere; this
+     * is for the things that are real items, and it draws them wherever they
+     * are — the square the party stand on included, which is where one spends
+     * its first moment after being let go of.
+     */
+    private fun drawWhatIsInTheAir(
+        viewPort: ViewPort,
+        items: List<Item>,
+        smallIcons: Cps,
+        largeIcons: Cps,
+        inFlight: List<Projectile>,
+        direction: Direction,
+        at: Location,
+        blockIndex: Int,
+        dim: Int,
+    ) {
+        inFlight
+            .filter { it.what != null && it.at.x == at.x && it.at.y == at.y }
+            .forEach { flying ->
+                val what = items.getOrNull(flying.what?.value ?: return@forEach) ?: return@forEach
+
+                sheetFor(what.icon, smallIcons, largeIcons)
+                    ?.getItemIcon(what.icon)
+                    ?.let { shape ->
+                        viewPort.drawInFlight(
+                            shape,
+                            blockIndex,
+                            ScaleSteps(NEAREST_DIM - dim),
+                            over = flying.place.asSeenFacing(direction) ?: ViewPlace.MIDDLE,
+                        )
+                    }
+            }
     }
 
     private fun drawItemsAtBlock(
