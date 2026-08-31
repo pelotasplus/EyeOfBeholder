@@ -1034,8 +1034,60 @@ class ViewConeDebugViewModel(
             is MenuChoice.UseSlot ->
                 if (!choice.saving) loadFrom(choice.slot)
                 else if (canTypeIntoTheGame) startNaming(choice.slot) else saveTo(choice.slot, suggestedName())
+            MenuChoice.DropCharacter -> showMenu(whoCouldLeave())
+            is MenuChoice.DropThisOne -> dropChampion(choice.whose)
+
             is MenuChoice.NotYet -> Logger.i(TAG) { "${choice.what} is not implemented" }
         }
+    }
+
+    /**
+     * The party to choose from, or the refusal where there are too few of them
+     * to lose one. The count is taken before the question is put, which is why
+     * a party of four are told rather than offered a list they may not use.
+     */
+    private fun whoCouldLeave(): CampMenu {
+        val party = _state.value.game.champions
+        val standing = party.count { it.inTheParty }
+
+        if (standing <= CampMenu.NEVER_FEWER_THAN) return CampMenu.tooFewToDrop()
+
+        return CampMenu.whoLeaves(party.filter { it.inTheParty }.map { it.name })
+    }
+
+    /**
+     * Sends one of them away, everything they carried landing on the square
+     * underfoot — see [GameState.championDropped].
+     *
+     * The slot the menu names is a place in the list of those still standing,
+     * not a place in the party: an empty slot is nobody and was never offered.
+     */
+    private suspend fun dropChampion(chosen: PartySlot) {
+        val party = _state.value.game.champions
+        val whose = party.indices
+            .filter { party[it].inTheParty }
+            .getOrNull(chosen.index)
+            ?.let(::PartySlot)
+            ?: return
+
+        val level = _state.value.inf?.let { levelNumber(it.name) } ?: return
+        val who = party[whose.index].name
+
+        _state.update {
+            it.copy(
+                game = it.game.championDropped(
+                    whose = whose,
+                    level = level,
+                    at = it.game.party.position,
+                    facing = it.game.party.facing,
+                    dice = Dice.random,
+                ),
+            )
+        }
+        Logger.i(TAG) { "$who was dropped from the party at ${party.size} strong" }
+
+        showMenu(CampMenu.gameOptions())
+        drawViewPort()
     }
 
     private suspend fun showSlots(saving: Boolean) {

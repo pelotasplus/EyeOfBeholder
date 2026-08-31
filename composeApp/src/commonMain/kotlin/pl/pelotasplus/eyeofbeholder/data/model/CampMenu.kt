@@ -173,11 +173,77 @@ data class CampMenu(
             entries = menuLines(
                 MenuChoice.OpenSlots(saving = false),
                 MenuChoice.OpenSlots(saving = true),
-                MenuChoice.NotYet("Drop Character"),
+                MenuChoice.DropCharacter,
                 MenuChoice.NotYet("Quit Game"),
                 leaving = MenuChoice.OpenCamp,
             ),
         )
+
+        /**
+         * Who the party are to send away, a champion to a line, with a way out
+         * where the save list keeps its Cancel.
+         *
+         * Everybody in the party is offered whatever state they are in. The
+         * dead are the point of it: somebody past raising is carried about as
+         * a pack and dropped when the party would rather have the room.
+         */
+        fun whoLeaves(names: List<String>) = CampMenu(
+            title = DROP_TITLE,
+            titleLeft = SLOT_TITLE_LEFT,
+            entries = names.mapIndexed { slot, name ->
+                MenuEntry(
+                    label = name,
+                    left = SLOT_X,
+                    top = FIRST_LINE_TOP + slot * LINE_STEP,
+                    width = SLOT_WIDTH,
+                    height = LINE_HEIGHT,
+                    choice = MenuChoice.DropThisOne(PartySlot(slot)),
+                )
+            } + MenuEntry(
+                label = "Cancel",
+                left = CANCEL_X,
+                top = CANCEL_TOP,
+                width = CANCEL_WIDTH,
+                height = LINE_HEIGHT,
+                choice = MenuChoice.OpenGameOptions,
+            ),
+        )
+
+        /**
+         * What a party too small to lose anybody are told instead. Written as
+         * the game writes it, three short lines in a box of its own.
+         */
+        fun tooFewToDrop() = CampMenu(
+            title = DROP_TITLE,
+            titleLeft = SLOT_TITLE_LEFT,
+            entries = listOf(
+                MenuEntry(
+                    label = "Cancel",
+                    left = CANCEL_X,
+                    top = CANCEL_TOP,
+                    width = CANCEL_WIDTH,
+                    height = LINE_HEIGHT,
+                    choice = MenuChoice.OpenGameOptions,
+                ),
+            ),
+            says = listOf("You cannot have", "less than four", "characters."),
+            saysLeft = SLOT_X,
+            saysTop = FIRST_LINE_TOP,
+        )
+
+        /**
+         * What the box is headed. The game puts its question in three lines
+         * of a box of its own and then has the player click a portrait; this
+         * asks the same thing the way the save list asks its own.
+         */
+        private const val DROP_TITLE = "Drop Character:"
+
+        /**
+         * How few the party may not go below. Four is the game's number and
+         * not a round one: it is checked before the question is put, so a
+         * party of four are told rather than asked.
+         */
+        const val NEVER_FEWER_THAN = 4
 
         /**
          * The six slots, each showing what was saved in it or that it is
@@ -311,6 +377,11 @@ sealed class MenuChoice(val label: String) {
     data object KeepResting : MenuChoice("Yes")
 
     data object StopResting : MenuChoice("No")
+
+    data object DropCharacter : MenuChoice("Drop Character")
+
+    /** Which of the six the party are sending away. */
+    data class DropThisOne(val whose: PartySlot) : MenuChoice("")
 
     data class NotYet(val what: String) : MenuChoice(what)
 }
