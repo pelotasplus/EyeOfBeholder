@@ -2,6 +2,7 @@ package pl.pelotasplus.eyeofbeholder.data.repository
 
 import co.touchlab.kermit.Logger
 import pl.pelotasplus.eyeofbeholder.data.ByteReader
+import pl.pelotasplus.eyeofbeholder.data.asTheGameDrawsIt
 import pl.pelotasplus.eyeofbeholder.data.model.Cps
 import pl.pelotasplus.eyeofbeholder.data.model.DamageDice
 import pl.pelotasplus.eyeofbeholder.data.model.Dec
@@ -323,7 +324,7 @@ class InfRepositoryImpl(
 
         val messages = mutableListOf<String>()
         while (reader.offset < offsetBlockC) {
-            val message = reader.readString()
+            val message = reader.readString().asTheGameDrawsIt()
             messages.add(message)
         }
         messages.forEachIndexed { index, message ->
