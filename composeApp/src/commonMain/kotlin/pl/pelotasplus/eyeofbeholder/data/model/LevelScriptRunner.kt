@@ -784,6 +784,10 @@ class LevelScriptRunner(
                 // did its work.
                 SpecialEvent.InitNpc -> state = broughtAlong(state, stage)
 
+                SpecialEvent.CharSelectDialogue -> dialogAnswer = whoWasChosen(state, stage)
+
+                SpecialEvent.CharacterLevelGain -> state = aLevelGiven(state, dialogAnswer)
+
                 is SpecialEvent -> notYet(
                     token,
                     "this set piece",
@@ -1062,6 +1066,62 @@ class LevelScriptRunner(
             at = state.party.position,
             facing = state.party.facing,
             dice = dice,
+        )
+    }
+
+    /**
+     * The party asked which of them does a thing, and the answer in the form
+     * the script reads it: which champion, or [NOBODY_CHOSE] where they
+     * refused.
+     *
+     * Only those who could act are offered — nobody asks the stone or the
+     * past-raising to lay a hand on anything — and refusing is always the
+     * last of the choices. The question itself has been spoken already; this
+     * only puts the names up.
+     */
+    private suspend fun whoWasChosen(state: GameState, stage: ScriptStage): DialogAnswer {
+        val standing = state.champions
+            .mapIndexed { slot, who -> slot to who }
+            .filter { (_, who) -> who.canBeHurt }
+
+        val answer = stage.ask(
+            ScriptQuestion(
+                textId = null,
+                buttons = emptyList(),
+                words = standing.map { (_, who) -> who.name } + NpcMeeting.ABORT,
+                scene = emptyList(),
+            ),
+        )
+
+        val chosen = standing.getOrNull(answer.number - 1) ?: return DialogAnswer(NOBODY_CHOSE)
+        return DialogAnswer(chosen.first)
+    }
+
+    /**
+     * A level handed to whoever was last chosen.
+     *
+     * Not by writing the number down: by giving them exactly the experience
+     * the next level costs, one class at a time, so that what a level brings
+     * with it arrives the way it always does. A champion of three classes
+     * gets a third of each shortfall, the experience being split among their
+     * classes as any other is — which is the arithmetic the game does and
+     * leaves a multi-class champion short of the level a single-class one
+     * gets outright.
+     */
+    private fun aLevelGiven(state: GameState, whose: DialogAnswer?): GameState {
+        val slot = whose?.number?.takeIf { it in state.champions.indices } ?: return state
+        val classes = state.champions[slot].characterClass?.levelledIn.orEmpty()
+
+        val grown = classes.indices.fold(state.champions[slot]) { champion, which ->
+            val standing = champion.levels.getOrNull(which) ?: return@fold champion
+            val needed = classes[which].progression.neededFor(standing.level + 1)
+                ?: return@fold champion
+
+            champion.earning(XpPoints(needed.count - standing.experience.count + 1), dice)
+        }
+
+        return state.copy(
+            champions = state.champions.mapIndexed { at, who -> if (at == slot) grown else who },
         )
     }
 
@@ -1402,5 +1462,11 @@ class LevelScriptRunner(
 
         /** A script moving the party onto a square that moves them back again. */
         const val MAX_NESTED_TRIGGERS = 4
+
+        /**
+         * The answer a script reads where the party were asked which of them
+         * would do a thing and declined to name anybody. Transcribed.
+         */
+        const val NOBODY_CHOSE = 99
     }
 }

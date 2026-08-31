@@ -2756,6 +2756,11 @@ class ViewConeDebugViewModel(
             }
             speaker = null
             scriptHasTheParty = false
+
+            // A level is not only won by fighting: the eleventh floor gives one
+            // for a kindness, and it has to be said aloud like any other.
+            announceAnyLevelGained(stood.champions, _state.value.game.champions)
+
             if (run.hurt.isNotEmpty()) letTheDamageFade()
 
             val change = run.changeLevel
