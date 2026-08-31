@@ -63,6 +63,23 @@ import kotlinx.serialization.Serializable
  *
  * level 6   bit 2   the priest by the stairs has had his say, or has lost
  *                   his chance
+ *
+ * level 7   bit 1   the wasp nest over (5,24) is running. Unlike every other
+ *                   bit here it is turned off as well as on: (2,19) sets it
+ *                   where it is clear and clears it where it is set, and the
+ *                   floor's own clock reads it every 756 ticks and asks for
+ *                   three more wasps on (5,24) while it holds
+ *           bit 24  the wasps have been loosed, on (1,15) — twenty-three
+ *                   conjured at once across seven squares, and the bit is
+ *                   what stops the corridor filling again on the way back
+ *           bit 25  set by standing on (13,21). (19,18) opens the way past
+ *                   the four pillars only while it is *clear*, so crossing
+ *                   (13,21) first is what shuts that way for good
+ *           bit 29  (10,5) has had its say, which it only ever has for a
+ *                   party with a dwarf in it — it asks for the bit clear and
+ *                   a dwarf present, and then sets it. Not the global bit 29
+ *                   below, which this floor also sets, and the clearest
+ *                   example on hand of why these are read per level
  * ```
  *
  * Not every bit is a memory. Level 4's bit 7 is how a subroutine answers the
