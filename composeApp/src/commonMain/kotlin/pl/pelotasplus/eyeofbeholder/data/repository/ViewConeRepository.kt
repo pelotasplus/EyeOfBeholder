@@ -202,7 +202,10 @@ class ViewConeRepositoryImpl(
                         sublevel, playerX, playerY, direction, windows, wallAt,
                         inFlight = inFlight, bolt = bolt, bursting = bursting,
                     )
-                    drawMonstersAtRow(relY, viewPort, monsters, monsterSheets, sublevel, playerX, playerY, direction, windows)
+                    drawMonstersAtRow(
+                        relY, viewPort, monsters, monsterSheets, sublevel,
+                        playerX, playerY, direction, windows, wallAt,
+                    )
                     drawTeleportersAtRow(relY, viewPort, teleporters, decorations, pulse, windows)
                 }
             }
@@ -682,7 +685,10 @@ class ViewConeRepositoryImpl(
         playerY: Int,
         direction: Direction,
         windows: List<ViewWindow>,
+        wallAt: (Location, WallSide) -> Maz.WallType,
     ) {
+        val facingUs = direction.transformWallSide(WallSide.SOUTH)
+
         for (block in viewBlockRows.getValue(relativeY)) {
             val window = windows[block.blockIndex]
             if (window.closed) continue
@@ -690,6 +696,14 @@ class ViewConeRepositoryImpl(
             val (dx, dy) = direction.transformCoordinates(block.relativeX, block.relativeY)
             val mazX = playerX + dx
             val mazY = playerY + dy
+
+            // Whatever stands on a square is behind the wall that square turns
+            // towards the party, exactly as whatever lies on it is. A square
+            // walled off from them shows them nothing of what is on it, and a
+            // thing that walked in there while they were not looking does not
+            // become visible by being alive.
+            val face = wallAt(Location(mazX, mazY), facingUs)
+            if (!sublevel.showsWhatIsOnIt(face)) continue
 
             // A monster of another sublevel is not somewhere else, it is
             // nowhere: its type and graphic index mean whatever that sublevel's

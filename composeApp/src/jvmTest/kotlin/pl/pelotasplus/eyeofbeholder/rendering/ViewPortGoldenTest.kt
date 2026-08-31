@@ -535,6 +535,41 @@ class ViewPortGoldenTest {
     fun `level7 7x11 south`() =
         checkGolden("level7-7x11-south", "LEVEL7.INF", x = 7, y = 11, direction = Direction.SOUTH)
 
+    /**
+     * The corridor down the seventh floor's second sublevel, looking at a
+     * square something is standing on behind a wall. Whatever is on the far
+     * side of masonry should not be drawn through it, and these two are the
+     * pair that say whether it is: one down the length of the corridor, and
+     * one with the wall a single step ahead.
+     */
+    @Test
+    fun `level7 7x20 south`() =
+        checkGolden("level7-7x20-south", "LEVEL7.INF", x = 7, y = 20, direction = Direction.SOUTH)
+
+    @Test
+    fun `level7 8x22 south`() =
+        checkGolden("level7-8x22-south", "LEVEL7.INF", x = 8, y = 22, direction = Direction.SOUTH)
+
+    /**
+     * The same wall, with something standing on the far side of it.
+     *
+     * The two above are of an empty corridor, because a floor's own monsters
+     * are the ones it was shipped with and this floor ships none down here —
+     * whatever walks these squares is conjured while it is played. So one is
+     * put there by hand: a square the party cannot see into should not show
+     * what is standing on it, however it came to be there.
+     */
+    @Test
+    fun `level7 8x22 south with something behind the wall`() =
+        checkGolden(
+            "level7-8x22-south-behind-the-wall",
+            renderFrame("LEVEL7.INF", x = 8, y = 22, direction = Direction.SOUTH) { monsters ->
+                monsters.map {
+                    it.copy(location = Location(8, 23), subLevel = 1, place = SquarePlace.NORTH_WEST)
+                }
+            },
+        )
+
     /** A decoration close on the party's own row, clipped to its left edge. */
     @Test
     fun `level1 27x3 south`() =
