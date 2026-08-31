@@ -149,6 +149,68 @@ class DroppingAChampionTest {
         )
     }
 
+    // --- where the gap ends up -----------------------------------------------
+
+    /**
+     * The party close up behind whoever is left rather than fighting around a
+     * hole where somebody used to stand.
+     */
+    @Test
+    fun `the gap goes to the back of a full party`() {
+        val after = sixOf().dropping(PartySlot(0))
+
+        assertEquals(
+            listOf("Six", "Two", "Three", "Four", "Five", null),
+            after.champions.map { it.name.takeIf { _ -> it.inTheParty } },
+            "the gap was left where the dropped champion stood",
+        )
+    }
+
+    /** With the last slot already empty the gap goes to the one before it. */
+    @Test
+    fun `and to the second from the back where the back is empty`() {
+        val five = sixOf().let { it.copy(champions = it.champions.dropLast(1) + Champion.NOBODY) }
+
+        val after = five.dropping(PartySlot(1))
+
+        assertEquals(
+            listOf("One", "Five", "Three", "Four", null, null),
+            after.champions.map { it.name.takeIf { _ -> it.inTheParty } },
+            "the gap was not put behind the living",
+        )
+    }
+
+    @Test
+    fun `dropping the one at the back moves nobody`() {
+        val after = sixOf().dropping(PartySlot(5))
+
+        assertEquals(
+            listOf("One", "Two", "Three", "Four", "Five", null),
+            after.champions.map { it.name.takeIf { _ -> it.inTheParty } },
+            "the party were shuffled to no purpose",
+        )
+    }
+
+    private fun GameState.dropping(whose: PartySlot) = championDropped(
+        whose = whose,
+        level = LEVEL,
+        at = HERE,
+        facing = Direction.NORTH,
+        dice = rolling(0),
+    )
+
+    /** Six named champions carrying nothing, so only the order is in play. */
+    private fun sixOf() = GameState(
+        party = PartyState(HERE, Direction.NORTH),
+        champions = listOf("One", "Two", "Three", "Four", "Five", "Six").map {
+            Champion.NOBODY.copy(
+                name = it,
+                flags = ChampionFlags(1),
+                carrying = CarrySlot.NOTHING_IN_ANY,
+            )
+        },
+    )
+
     // --- the world these run in ----------------------------------------------
 
     /** Three arrows strung into a ring, the way a stack is kept. */

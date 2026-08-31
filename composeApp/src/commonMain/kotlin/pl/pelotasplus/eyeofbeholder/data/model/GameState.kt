@@ -349,7 +349,7 @@ data class GameState(
             quiver = off.head
         }
 
-        return world.copy(
+        val emptied = world.copy(
             // unstacking takes each arrow through the hand on its way out
             inHand = inHand,
             champions = champions.mapIndexed { slot, was ->
@@ -360,6 +360,26 @@ data class GameState(
                 }
             },
         )
+
+        return emptied.championsSwapped(whose, emptied.whereTheGapGoes(whose))
+    }
+
+    /**
+     * Which slot the gap left by a dropped champion is moved into.
+     *
+     * It goes to the back, so that the party close up rather than fighting
+     * around a hole in the middle of themselves. The last slot takes it where
+     * somebody is standing there, and the one before it where nobody is —
+     * which keeps the gap behind the living either way.
+     *
+     * A champion dropped from the last slot leaves the gap where it already
+     * is, and nothing moves.
+     */
+    private fun whereTheGapGoes(dropped: PartySlot): PartySlot {
+        val last = PartySlot(Champion.PARTY_SLOTS - 1)
+        if (dropped == last) return dropped
+
+        return if (championIn(last)?.inTheParty == true) last else PartySlot(last.index - 1)
     }
 
     /**
