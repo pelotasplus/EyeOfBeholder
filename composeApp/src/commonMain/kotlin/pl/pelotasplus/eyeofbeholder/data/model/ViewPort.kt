@@ -784,11 +784,27 @@ class ViewPort(
      * baseline, and only its size changes as it nears — which is the whole of
      * the effect of something being thrown at you.
      */
-    fun drawInFlight(icon: Cps.ItemIcon, blockIndex: Int, scaleSteps: ScaleSteps) {
+    /**
+     * A thing in the air, drawn at the height of it.
+     *
+     * [over] is the quarter of the square it is crossing as the party see it,
+     * which is what decides how far down the corridor's width it goes: a thing
+     * loosed from the left goes down the left. The height is the same for all
+     * of them and for every distance — a thing in the air is not on the floor,
+     * and the floor is the only thing perspective is kept for here.
+     */
+    fun drawInFlight(
+        icon: Cps.ItemIcon,
+        blockIndex: Int,
+        scaleSteps: ScaleSteps,
+        over: ViewPlace = ViewPlace.MIDDLE,
+    ) {
+        Logger.d(TAG) { "drawInFlight ${icon.w}x${icon.h} block=$blockIndex over=$over scale=$scaleSteps" }
+
         var shape = icon
         repeat(scaleSteps.value) { shape = scaleDown(shape) }
 
-        val spot = blockSpot(blockIndex, ViewPlace.MIDDLE)
+        val spot = blockSpot(blockIndex, over)
 
         drawIcon(
             shape,

@@ -62,6 +62,18 @@ data class Projectile(
      * ever got out of it.
      */
     val leaving: Boolean = true,
+
+    /**
+     * The monsters already rolled against on the square it is over now.
+     *
+     * A thing in the air asks what it has come to on every turn of the clock,
+     * because anything can walk under it between one of its own steps and the
+     * next. Asking is a roll, though, and rolling twice at the same monster
+     * over the same square would be two chances at it for standing still. So
+     * each is asked once a square, and the list is dropped on crossing to the
+     * next one.
+     */
+    val alreadyTried: Set<MonsterSlot> = emptySet(),
 ) {
     /** Who answers for the damage, which decides whether anybody aims. */
     sealed interface Thrower {

@@ -20,6 +20,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.DoorIndex
 import pl.pelotasplus.eyeofbeholder.data.model.SubLevel
 import pl.pelotasplus.eyeofbeholder.data.model.TeleporterPulse
 import pl.pelotasplus.eyeofbeholder.data.model.ViewBlock
+import pl.pelotasplus.eyeofbeholder.data.model.ViewPlace
 import pl.pelotasplus.eyeofbeholder.data.model.ViewPort
 import pl.pelotasplus.eyeofbeholder.data.model.ViewWindow
 import pl.pelotasplus.eyeofbeholder.data.model.WallSet
@@ -477,6 +478,32 @@ class ViewConeRepositoryImpl(
                     // dim counts up as it nears, the shrinking counts down.
                     viewPort.drawInFlight(bolt, block.blockIndex, ScaleSteps(NEAREST_DIM - dim))
                 }
+
+                // And a thing somebody threw, which is drawn as itself rather
+                // than as a bolt but at the same height: a stone crossing a
+                // corridor is in the air, not sliding along the floor.
+                inFlight
+                    .filter {
+                        it.what != null &&
+                            it.at.x == playerX + dx &&
+                            it.at.y == playerY + dy
+                    }
+                    .forEach { flying ->
+                        val what = items.getOrNull(flying.what?.value ?: return@forEach)
+                            ?: return@forEach
+
+                        sheetFor(what.icon, smallIcons, largeIcons)
+                            ?.getItemIcon(what.icon)
+                            ?.let { shape ->
+                                viewPort.drawInFlight(
+                                    shape,
+                                    block.blockIndex,
+                                    ScaleSteps(NEAREST_DIM - dim),
+                                    over = flying.place.asSeenFacing(direction)
+                                        ?: ViewPlace.MIDDLE,
+                                )
+                            }
+                    }
 
                 // And a burst on it, which is in front of everything on the
                 // square and behind every wall nearer than it.

@@ -54,6 +54,8 @@ import pl.pelotasplus.eyeofbeholder.data.model.DoorMessages
 import pl.pelotasplus.eyeofbeholder.data.model.DoorSounds
 import pl.pelotasplus.eyeofbeholder.data.model.FloorClocks
 import pl.pelotasplus.eyeofbeholder.data.model.FloorReach
+import pl.pelotasplus.eyeofbeholder.data.model.Projectile
+import pl.pelotasplus.eyeofbeholder.data.model.ViewPlace
 import pl.pelotasplus.eyeofbeholder.data.model.ForcingADoor
 import pl.pelotasplus.eyeofbeholder.data.model.Font
 import pl.pelotasplus.eyeofbeholder.data.model.GameState
@@ -1228,7 +1230,85 @@ class ViewConeDebugViewModel(
             if (reachedInto(reach)) return
         }
 
+        // Above the floor, a full hand throws where an empty one touches. A
+        // niche is the exception and is aimed at rather than thrown at: it is
+        // a shelf, and putting something on it is why anybody walks up to one
+        // holding something.
+        if (_state.value.game.inHand.isSomething && !aimedAtANiche(x, y)) {
+            letFly(x)
+            return
+        }
+
         onClickedTheWorld(x, y)
+    }
+
+    /**
+     * Whether a click landed on a niche in the wall ahead, which is the one
+     * thing above the floor that wants a held item put on it rather than
+     * thrown past it.
+     */
+    private fun aimedAtANiche(x: Int, y: Int): Boolean {
+        val inf = _state.value.inf ?: return false
+        val sublevel = inf.subLevels[_state.value.subLevel]
+
+        val (dx, dy) = party.facing.transformCoordinates(0, -1)
+        val ahead = Location(party.position.x + dx, party.position.y + dy)
+        val facingUs = party.facing.transformWallSide(WallSide.SOUTH)
+
+        val wall = _state.value.game.wall(levelNumber(inf.name), ahead, facingUs)
+        if (wall !is Maz.WallType.Decoration) return false
+
+        val decoration = sublevel.decorations
+            .firstOrNull { it.decorationWallIndex == wall.decorationWallIndex }
+            ?: return false
+
+        if (decoration.doesWhenClicked != WallAction.NICHE) return false
+
+        val hanging = decoration.dec.decorations
+            .firstOrNull { it.index == decoration.decorationID }
+            ?: return false
+
+        return ClickedWall.hits(hanging, decoration.dec.rectangles, x, y)
+    }
+
+    /**
+     * Lets go of what is held, into the air ahead of the party.
+     *
+     * The upper part of the view is two halves and which was clicked decides
+     * which of the two corners ahead it is loosed from — the same pair a thing
+     * simply dropped scatters between. It travels on the same clock everything
+     * else in the air does, hurting whatever it meets and stopping there.
+     */
+    private fun letFly(x: Int) {
+        val held = _state.value.game.inHand
+        if (!held.isSomething) return
+
+        val thrower = _state.value.game.champions
+            .indexOfFirst { it.inTheParty }
+            .takeIf { it >= 0 }
+            ?: return
+
+        val from = if (x < ViewPort.COLS / 2) ViewPlace.FAR_LEFT else ViewPlace.FAR_RIGHT
+
+        _state.update {
+            val party = it.game.party
+            it.copy(
+                game = it.game.copy(
+                    inFlight = it.game.inFlight + Projectile(
+                        what = held,
+                        at = party.position,
+                        place = from.onASquareFacing(party.facing),
+                        going = party.facing,
+                        thrownBy = Projectile.Thrower.AChampion(PartySlot(thrower)),
+                    ),
+                    inHand = ItemIndex(ItemIndex.NOTHING),
+                ),
+            )
+        }
+
+        Logger.d(TAG) { "Threw $held ${party.facing} from ${party.position}" }
+        viewModelScope.launch { playTrack(LOOSED) }
+        keepTheFightGoing()
     }
 
     /** Which champion's which hand a click landed on, if it landed on one. */
@@ -1627,6 +1707,7 @@ class ViewConeDebugViewModel(
                 var took = emptyList<String>()
                 var moved = false
                 var flewOnto = emptyList<Location>()
+                var struckWalls = emptyList<Flight.StruckWall>()
                 var struckInFlight = emptyList<Flight.Hurt>()
 
                 // Settled before the world is touched: an update that loses a
@@ -1715,6 +1796,7 @@ class ViewConeDebugViewModel(
 
                         world = flown.world
                         flewOnto = flown.flewOnto
+                        struckWalls = flown.struckWalls
                         struckInFlight = flown.hurt
                     }
 
@@ -1734,6 +1816,16 @@ class ViewConeDebugViewModel(
                 if (landed.isNotEmpty() || bitten.isNotEmpty() || struckInFlight.isNotEmpty()) {
                     letTheDamageFade()
                 }
+
+                // A monster lit by anything at all has to be put out again,
+                // and a hand is not the only thing that lights one: something
+                // thrown does, and nothing else here was taking it off.
+                //
+                // Only where one has just been lit. This starts a wait and
+                // throws away the wait before it, so asking every turn of the
+                // clock would put the moment off for as long as the clock ran
+                // — and a monster roused by the blow is what keeps it running.
+                if (struckInFlight.isNotEmpty()) letTheFlashFade()
                 ruined.forEach { sayWhatWasRuined(it) }
 
                 // A square something has just flown over gets its say. This is
@@ -1743,6 +1835,17 @@ class ViewConeDebugViewModel(
                 flewOnto.forEach { where ->
                     Logger.d(TAG) { "$tickNow  something flew onto $where" }
                     runTriggersAt(where, ScriptEvent.SOMETHING_FLEW_IN)
+                }
+
+                // And the wall it stopped against. A wall is worked by a thing
+                // that hits it exactly as by a hand laid on it, and whether it
+                // may be worked that way at all is the square's own business:
+                // one that does not answer to something flying in is simply
+                // something a thrown thing bounces off. That is the whole of
+                // how a button out of arm's reach is pressed.
+                struckWalls.forEach { struck ->
+                    Logger.d(TAG) { "$tickNow  something struck ${struck.at} ${struck.side}" }
+                    runTriggersAt(struck.at, ScriptEvent.SOMETHING_FLEW_IN)
                 }
 
                 // And a square the floor keeps coming back to gets its say,

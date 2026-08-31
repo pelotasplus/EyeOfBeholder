@@ -15,7 +15,7 @@ the history instead.
 
 - [ ] **1. Combat** — the blow and the monster's turn are written; what is left rides on them
   - [ ] 1a. Status attacks on a landed blow: poison, paralysis, a pocket picked — **S**
-  - [ ] 1b. Thrown and fired weapons; the only route to `NO AMMO` — **L**
+  - [ ] 1b. Bows and slings, which are a hand rather than the cursor; the only route to `NO AMMO` — **M**
   - [ ] 1c. Monsters casting spells — **L**
   - [ ] 1d. `HACK` and `BASH`, which want a wall that gives under a weapon — **S**, and no floor has one
   - [ ] 1e. The `SetFlag.MonsterFlag` bits nobody has found a meaning for — **XS** each
@@ -60,8 +60,17 @@ the history instead.
   poison, paralysis, and having something taken out of a pocket. Each is a flag
   on the kind and a branch nobody has written.
 
-  Thrown and fired weapons are a piece of their own — nothing launches anything
-  yet — and so is a monster casting a spell, which is the other half of what
+  Anything can be thrown now: a thing held on the cursor and let go of at the
+  view flies down the corridor, hurts what it meets, works a wall it stops
+  against, and is rolled for against a monster the way a hand's blow is. What
+  is left of that piece is the other gesture. A bow or a sling is fired from
+  the hand it is held in, with what it fires taken from a quiver, and it is
+  that pairing rather than the flying that is the work — an empty quiver is
+  the only thing in the game that says `NO AMMO`, and nothing can reach it
+  while nothing is fired. Track 26 is waiting for it too: 11 is anything
+  thrown, 26 only a bow.
+
+  A monster casting a spell is a piece of its own, and the other half of what
   the clerics ought to be able to do.
 
   `SetFlag.MonsterFlag` carries one bit anybody has found a meaning for, the
