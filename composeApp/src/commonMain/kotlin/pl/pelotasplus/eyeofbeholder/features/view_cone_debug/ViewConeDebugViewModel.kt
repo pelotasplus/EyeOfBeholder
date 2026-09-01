@@ -85,6 +85,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.worthNoticing
 import pl.pelotasplus.eyeofbeholder.data.model.Maz
 import pl.pelotasplus.eyeofbeholder.data.model.WallSide
 import pl.pelotasplus.eyeofbeholder.data.model.WhatABlowLeaves
+import pl.pelotasplus.eyeofbeholder.data.model.WhereASpellLands
 import pl.pelotasplus.eyeofbeholder.data.model.Location
 import pl.pelotasplus.eyeofbeholder.data.model.OnAPlate
 import pl.pelotasplus.eyeofbeholder.data.model.Palette
@@ -1702,6 +1703,7 @@ class ViewConeDebugViewModel(
                 var settled = emptyList<Location>()
                 var struckInFlight = emptyList<Flight.Hurt>()
                 var stoodBefore = emptyList<Champion>()
+                var spellsLeft = emptyList<WhereASpellLands.Left>()
 
                 // Settled before the world is touched: an update that loses a
                 // race runs its block again, and the way round a corner would
@@ -1794,9 +1796,11 @@ class ViewConeDebugViewModel(
                             level = levelNumber(state.inf.name),
                             itemTypes = itemTypes,
                             kinds = here.monsters,
+                            landing = WhereASpellLands(),
                         ).onward(world)
 
                         world = flown.world
+                        spellsLeft = flown.left
                         flewOnto = flown.flewOnto
                         struckWalls = flown.struckWalls
                         struckInFlight = flown.hurt
@@ -1889,6 +1893,9 @@ class ViewConeDebugViewModel(
                 // time it costs anything, which is the only sign the player
                 // gets that it is still working.
                 left.forEach { what ->
+                    sayOf(what.whose) { ChampionMessages.nowIs(it, what.what.calledIt) }
+                }
+                spellsLeft.forEach { what ->
                     sayOf(what.whose) { ChampionMessages.nowIs(it, what.what.calledIt) }
                 }
                 bitten.forEach { whose -> sayOf(whose, ChampionMessages::feelsThePoison) }

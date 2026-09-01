@@ -17,6 +17,9 @@ class Flight(
     private val itemTypes: ItemTypes? = null,
     private val kinds: List<MonsterProperty> = emptyList(),
     private val dice: Dice = Dice.random,
+    // What a spell does where it arrives. Without it a spell crosses the room
+    // and stops, which is every spell's picture and none of its point.
+    private val landing: WhereASpellLands? = null,
 ) {
     /**
      * What one step came to: the world after it, the squares something flew
@@ -48,6 +51,12 @@ class Flight(
          * nothing to leave behind, so it lands on nothing.
          */
         val settled: List<Location> = emptyList(),
+        /**
+         * What a spell coming down on the party left on them, which is not
+         * damage and so is not in [hurt]: a paralysis has no number to put on
+         * a portrait, and something has to say it out loud.
+         */
+        val left: List<WhereASpellLands.Left> = emptyList(),
     )
 
     /**
@@ -144,6 +153,7 @@ private val atEachQuarter = listOf(
         val hurt = mutableListOf<Hurt>()
         val struckWalls = mutableListOf<StruckWall>()
         val settled = mutableListOf<Location>()
+        val left = mutableListOf<WhereASpellLands.Left>()
         val stillGoing = mutableListOf<Projectile>()
 
         // Whatever stopped it, it has stopped: it lies where it is, goes off
@@ -151,7 +161,17 @@ private val atEachQuarter = listOf(
         // down on it — unless there was nothing there to put down.
         fun cameToRest(world: GameState, flying: Projectile): GameState {
             if (flying.what != null) settled += flying.at
-            return burstIfItWould(landed(world, flying), flying)
+
+            // A spell does whatever it does here and nowhere else. One that
+            // stopped short — against a wall, or on a monster it was allowed
+            // to touch — has simply failed to arrive.
+            val after = if (flying.spell != null && flying.at == world.party.position) {
+                landing?.of(flying.spell, world)?.also { left += it.left }?.world ?: world
+            } else {
+                world
+            }
+
+            return burstIfItWould(landed(after, flying), flying)
         }
 
         // What a thing over a square meets there, which is asked whether or
@@ -235,7 +255,7 @@ private val atEachQuarter = listOf(
             if (steps > 0) stillGoing += now else overItsSquare(now)
         }
 
-        return Moved(carried.copy(inFlight = stillGoing), flewOnto, hurt, struckWalls, settled)
+        return Moved(carried.copy(inFlight = stillGoing), flewOnto, hurt, struckWalls, settled, left)
     }
 
     /**
@@ -294,8 +314,16 @@ private val atEachQuarter = listOf(
      * who it finds is where it went.
      */
     private fun whatItHit(world: GameState, flying: Projectile): List<Hurt> {
-        val monsters = monstersUnder(world, flying)
-            .filterNot { it.index in flying.alreadyTried }
+        // A spell goes over the head of whatever it crosses unless it is one
+        // of the three that are already burning as they travel. It is why a
+        // corridor of monsters never thins itself out.
+        val overThem = flying.spell?.hurtsWhatItPasses == false
+
+        val monsters = if (overThem) {
+            emptyList()
+        } else {
+            monstersUnder(world, flying).filterNot { it.index in flying.alreadyTried }
+        }
 
         if (monsters.isNotEmpty()) {
             val struck = if (flying.harm.everybody) monsters else monsters.take(1)

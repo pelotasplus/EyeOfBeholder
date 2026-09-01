@@ -1222,11 +1222,20 @@ data class GameState(
      * tell the difference between a venom that took and one that did not —
      * only the first is worth saying out loud.
      */
-    fun championLeftWith(whose: PartySlot, what: WhatABlowLeaves, dice: Dice): GameState? {
+    fun championLeftWith(
+        whose: PartySlot,
+        what: WhatABlowLeaves,
+        dice: Dice,
+        // A spell names its own throw. Hold person leaves the same paralysis a
+        // monster's grip does and is shrugged off by a different one, so which
+        // throw is asked belongs to whatever did it rather than to the state
+        // it leaves behind.
+        against: SavingThrow? = what.thrownAgainst,
+    ): GameState? {
         val who = champions.getOrNull(whose.index) ?: return null
         if (!who.canBeHurt) return null
         if (what.alreadyOn(who)) return null
-        if (who.saves(what.thrownAgainst, dice)) return null
+        if (against != null && who.saves(against, dice)) return null
 
         return copy(
             champions = champions.toMutableList().also { it[whose.index] = what.leftOn(who) },

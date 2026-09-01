@@ -77,6 +77,18 @@ enum class MonsterSpell(
      * as one picture: a beholder gives nothing away by ear either.
      */
     val heardAs: TrackIndex = TrackIndex(0),
+
+    /**
+     * Whether it touches what it crosses on the way, rather than only what is
+     * on the square it comes down on.
+     *
+     * The three that go off are the three that do: a fireball takes whatever
+     * it passes through because it is already burning. The rest reach the
+     * party and nothing else, so a beholder's ray goes clean over the head of
+     * anything standing between — which is worth knowing before wondering why
+     * monsters never kill one another with them.
+     */
+    val hurtsWhatItPasses: Boolean = false,
 ) {
     MAGIC_MISSILE(0, ConjuredBolt.LIKE_A_MISSILE, UNTIL_IT_HITS, heardAs = TrackIndex(85)),
 
@@ -94,6 +106,7 @@ enum class MonsterSpell(
         UNTIL_IT_HITS,
         bursts = true,
         heardAs = TrackIndex(99),
+        hurtsWhatItPasses = true,
     ),
 
     HOLD_PERSON(3, ConjuredBolt.LIKE_MOTES, UNTIL_IT_HITS, heardAs = TrackIndex(101)),
@@ -106,6 +119,7 @@ enum class MonsterSpell(
         burstsLike = Burst.LIKE_LIGHTNING,
         heardAs = TrackIndex(71),
         downTheMiddle = false,
+        hurtsWhatItPasses = true,
     ),
 
     ICE_STORM(
@@ -115,6 +129,7 @@ enum class MonsterSpell(
         bursts = true,
         burstsLike = Burst.LIKE_LIGHTNING,
         heardAs = TrackIndex(89),
+        hurtsWhatItPasses = true,
     ),
 
     HOLD_MONSTER(6, ConjuredBolt.LIKE_MOTES, UNTIL_IT_HITS, heardAs = TrackIndex(101)),
