@@ -11,6 +11,7 @@ package pl.pelotasplus.eyeofbeholder.data.model
  *
  * Kept apart from taking a turn because the question is worth asking on its
  * own — five conditions, of which four are cheap and one walks a corridor.
+ * Once it is allowed, [loosed] puts the thing in the air.
  */
 class TakingAShot(
     private val sublevel: SubLevel,
@@ -67,6 +68,68 @@ class TakingAShot(
             weapon = kind.remoteWeapons[which.first],
         )
     }
+
+    /**
+     * The world with what the monster reached for now in the air.
+     *
+     * The sign of the weapon decides which of two quite different things it
+     * is. A negative number names an item in the level's own table, and what
+     * flies is a copy of it — a real thing, which lands where it stops and can
+     * be picked up and thrown back. Anything else is a spell, which is nothing
+     * you could pick up and is drawn as whichever bolt its kind uses.
+     *
+     * A weapon with neither meaning leaves nothing in the air. The mind blast
+     * is the one that matters: it is a number in the list with no projectile
+     * behind it at all, reaching the whole party where they stand.
+     */
+    fun loosed(world: GameState, shot: Shot.Looses): GameState {
+        val monster = shot.monster
+
+        if (shot.weapon < 0) {
+            return world.thrown(monster, ItemIndex(-shot.weapon))
+        }
+
+        val spell = MonsterSpell.of(shot.weapon) ?: return world
+        if (spell.looksLike == null) return world
+
+        return world.inTheAir(
+            Projectile(
+                what = null,
+                at = monster.location,
+                place = monster.place,
+                going = monster.direction,
+                squaresLeft = spell.reach,
+                thrownBy = Projectile.Thrower.AMonster(monster.index),
+                harm = Projectile.Harm.ofASpell(spell.bursts),
+                spell = spell,
+            ),
+        )
+    }
+
+    /**
+     * A copy of one of the level's items, thrown. Where there is no room in
+     * the table for the copy, nothing is thrown and the shot is simply lost.
+     */
+    private fun GameState.thrown(monster: MonsterInstance, copyOf: ItemIndex): GameState {
+        val made = itemCopiedOnto(
+            copyOf = copyOf,
+            level = level,
+            at = monster.location,
+            place = monster.place,
+        ) ?: return this
+
+        return made.world.inTheAir(
+            Projectile(
+                what = made.slot,
+                at = monster.location,
+                place = monster.place,
+                going = monster.direction,
+                thrownBy = Projectile.Thrower.AMonster(monster.index),
+            ),
+        )
+    }
+
+    private fun GameState.inTheAir(loosed: Projectile) = copy(inFlight = inFlight + loosed)
 
     /**
      * Whether the party are somewhere this monster can shoot them: near

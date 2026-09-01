@@ -609,11 +609,23 @@ data class GameState(
         at: Location,
         place: SquarePlace,
         overrides: ItemOverrides = ItemOverrides(),
-    ): GameState {
-        val made = copyOf(copyOf) {
-            overrides.applyTo(it).copy(location = at, level = level, place = place)
-        }
-        return made?.world ?: this
+    ): GameState = itemCopiedOnto(copyOf, level, at, place, overrides)?.world ?: this
+
+    /**
+     * The same, but saying which slot of the table the copy landed in.
+     *
+     * Needed by whoever means to do something more with it than leave it
+     * there — a thing loosed down a corridor is copied onto the square it is
+     * thrown from and then has to be named as the thing in the air.
+     */
+    fun itemCopiedOnto(
+        copyOf: ItemIndex,
+        level: Int,
+        at: Location,
+        place: SquarePlace,
+        overrides: ItemOverrides = ItemOverrides(),
+    ): Made? = copyOf(copyOf) {
+        overrides.applyTo(it).copy(location = at, level = level, place = place)
     }
 
     /**
@@ -659,8 +671,8 @@ data class GameState(
         }
     }
 
-    /** A thing a script has just made, and which slot of the table it is in. */
-    private data class Made(val world: GameState, val slot: ItemIndex)
+    /** A thing just made, and which slot of the table it is in. */
+    data class Made(val world: GameState, val slot: ItemIndex)
 
     /**
      * The same, into the hand — which is where a script puts a thing it means

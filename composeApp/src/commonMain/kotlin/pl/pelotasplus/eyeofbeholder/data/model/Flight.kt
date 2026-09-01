@@ -434,17 +434,15 @@ private val atEachQuarter = listOf(
                 at = flying.at,
                 dice = dice,
                 inYourFace = flying.at == world.party.position,
+                burning = flying.burstsLike,
             ),
         )
 
     /**
-     * Where a projectile is now, as far as the floor is concerned. A conjured
-     * bolt is on no floor at all and leaves nothing behind it.
-     */
-    /**
      * A thing still going is over its square rather than on it: it is in the
      * air, and what is in the air is drawn at the height of it rather than
-     * lying among whatever else is on that floor.
+     * lying among whatever else is on that floor. A conjured bolt is on no
+     * floor at all and leaves nothing behind it either way.
      *
      * Which corner it is over is kept on the projectile and not on the item,
      * so that the corner is still there to be put back when it comes down.

@@ -148,8 +148,10 @@ class MonstersTurn(
         val shot = shooting?.taken(world, monster)
 
         // Loosing is the whole of the turn: what shoots does not also swing or
-        // step. What it reached for is not yet put in the air.
-        if (shot is TakingAShot.Shot.Looses) return world.holding(shot.monster)
+        // step.
+        if (shooting != null && shot is TakingAShot.Shot.Looses) {
+            return shooting.loosed(world.holding(shot.monster), shot)
+        }
 
         // Waiting for a shot is not spending the turn on one. All a refused
         // shot leaves behind is the waiting it did, and the monster goes on to

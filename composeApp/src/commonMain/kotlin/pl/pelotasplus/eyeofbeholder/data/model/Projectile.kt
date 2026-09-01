@@ -66,13 +66,32 @@ data class Projectile(
     val leaving: Boolean = true,
 
     /**
-     * Which of the four conjured bolts this is drawn as, where it is one of
-     * them rather than a thing somebody threw.
+     * Which spell this is, where somebody cast one.
+     *
+     * A trap's bolt is nobody's spell and has none: it is conjured by the
+     * level itself, which knows no spells. What this is for is the things a
+     * spell is that its picture is not — the sound of the casting, and a name
+     * to say it by.
+     */
+    val spell: MonsterSpell? = null,
+
+    /**
+     * Which of the conjured bolts this is drawn as, where it is one of them
+     * rather than a thing somebody threw.
      *
      * Ignored entirely for anything with a [what]: a thrown hammer is drawn
      * as a hammer.
      */
-    val looksLike: ConjuredBolt = ConjuredBolt.LIKE_FIRE,
+    val looksLike: ConjuredBolt = spell?.looksLike ?: ConjuredBolt.LIKE_FIRE,
+
+    /**
+     * And in what colours it goes off, for the ones that do.
+     *
+     * A separate choice from [looksLike] rather than the same one twice: a
+     * bolt of lightning and a storm of ice cross the view as different things
+     * and burst as the same one.
+     */
+    val burstsLike: List<Int> = spell?.burstsLike ?: Burst.LIKE_FIRE,
 
     /**
      * The monsters already rolled against on the square it is over now.
@@ -136,6 +155,20 @@ data class Projectile(
                 dice = DamageDice(times = 1, pips = 6, base = 0),
                 times = times,
                 everybody = true,
+            )
+
+            /**
+             * A monster's spell, which costs nothing yet: what each of the
+             * fourteen does where it arrives is a table of its own and none of
+             * it is written. Rolling a die in the meantime would be a number
+             * from nowhere, so it rolls none.
+             *
+             * One that bursts still takes the square whole, because that is
+             * what makes it go off at all rather than merely stop.
+             */
+            fun ofASpell(bursts: Boolean) = Harm(
+                dice = DamageDice(times = 0, pips = 0, base = 0),
+                everybody = bursts,
             )
         }
     }

@@ -116,6 +116,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.ScriptStage
 import pl.pelotasplus.eyeofbeholder.data.model.TELEPORTER_PULSE
 import pl.pelotasplus.eyeofbeholder.data.model.TeleporterPulse
 import pl.pelotasplus.eyeofbeholder.data.model.Ticks
+import pl.pelotasplus.eyeofbeholder.data.model.TakingAShot
 import pl.pelotasplus.eyeofbeholder.data.model.ViewPort
 import pl.pelotasplus.eyeofbeholder.data.model.levelNumber
 import pl.pelotasplus.eyeofbeholder.data.model.Flight
@@ -1113,6 +1114,12 @@ class ViewConeDebugViewModel(
     private fun showMenu(menu: CampMenu?) {
         _state.update { it.copy(menu = menu) }
         drawWords()
+
+        // Everything the floor was doing stopped when the menu went up, and
+        // each of those clocks is started by drawing the view. Nothing else
+        // would wind them again, so a party who camped mid-fight would walk
+        // out into a corridor where nothing moved.
+        if (menu == null) renderViewPort()
     }
 
     /**
@@ -1688,6 +1695,7 @@ class ViewConeDebugViewModel(
                 var roused = emptyList<MonsterInstance>()
                 var walked = emptyList<MonsterInstance>()
                 var took = emptyList<String>()
+                var loosed = emptyList<Projectile>()
                 var moved = false
                 var flewOnto = emptyList<Location>()
                 var struckWalls = emptyList<Flight.StruckWall>()
@@ -1727,6 +1735,12 @@ class ViewConeDebugViewModel(
                         val stood = world.monsters.associate { it.index to it.location }
                         val was = world.monsters.associateBy { it.index }
 
+                        // A shot is only ever added to the end of what is in
+                        // the air, and nothing takes anything out of it until
+                        // the flight below. So whatever is past this mark when
+                        // the turns are done was loosed on this tick.
+                        val flyingAlready = world.inFlight.size
+
                         theirTurn.forEach { group ->
                             world = monstersTurn().begun(
                                 world = world,
@@ -1743,13 +1757,15 @@ class ViewConeDebugViewModel(
                             stood[it.index]?.let { at -> at != it.location } == true
                         }
 
+                        loosed = world.inFlight.drop(flyingAlready)
+
                         took = world.monsters
                             .filter { it.turnGroup in theirTurn && it.provoked }
                             .mapNotNull { now ->
                                 was[now.index]?.let { before ->
                                     whatItDidWithItsTurn(tickNow, before, now, world.party)
                                 }
-                            }
+                            } + loosed.map { whatWasLoosed(tickNow, it) }
                     }
 
                     // What the venom takes, it takes from everyone it has hold
@@ -1793,6 +1809,11 @@ class ViewConeDebugViewModel(
                 landed.forEach {
                     Logger.d(TAG) { "$tickNow  m${it.monster} lands on ${it.at} for ${it.damage}" }
                 }
+
+                // A spell is heard being cast, and the sound belongs to the
+                // spell rather than to whatever cast it — the same four rays
+                // out of a beholder are one sound as well as one picture.
+                loosed.mapNotNull { it.spell?.heardAs }.forEach { playTrack(it) }
 
                 // A blow that landed puts a number on a portrait, and the
                 // clock that takes it off again is not this one: this one
@@ -1909,6 +1930,23 @@ class ViewConeDebugViewModel(
      * was written to show. So a line is kept back while it would repeat, and
      * the next one that differs is printed.
      */
+    /**
+     * The line for something a monster has just loosed.
+     *
+     * Named rather than described, because which of the fourteen it was is the
+     * one thing the screen will not tell you: four of them are the same
+     * picture and the same sound, so a beholder's ray is only ever identified
+     * here.
+     */
+    private fun whatWasLoosed(tick: Int, flying: Projectile): String {
+        val who = (flying.thrownBy as? Projectile.Thrower.AMonster)?.slot
+
+        return "$tick\tm$who SHOOTS" +
+            "\t${flying.spell?.name ?: flying.what?.let { "thrown item $it" } ?: "?"}" +
+            "\t${flying.at.x}x${flying.at.y} ${flying.place} ${flying.going}" +
+            "\treach=${flying.squaresLeft} heard=${flying.spell?.heardAs?.value}"
+    }
+
     private fun whatItDidWithItsTurn(
         tick: Int,
         before: MonsterInstance,
@@ -1939,6 +1977,10 @@ class ViewConeDebugViewModel(
         return "$tick\t$line"
     }
 
+    /** The clocks the sublevel the party are standing in keeps. */
+    private fun timersHere(): List<ScriptTimer> =
+        _state.value.inf?.subLevels?.getOrNull(_state.value.subLevel)?.scriptTimers.orEmpty()
+
     /**
      * Whether anything is still going that the clock has to keep winding.
      *
@@ -1946,11 +1988,14 @@ class ViewConeDebugViewModel(
      * noticing the party is itself something a turn does — a clock that waited
      * for a fight would be waiting for the thing it is supposed to start.
      */
-    /** The clocks the sublevel the party are standing in keeps. */
-    private fun timersHere(): List<ScriptTimer> =
-        _state.value.inf?.subLevels?.getOrNull(_state.value.subLevel)?.scriptTimers.orEmpty()
-
     private fun stillFighting(): Boolean {
+        // Camp stops the world. Nothing takes a turn, nothing in the air comes
+        // down, no venom bites and no floor keeps its own time, because a
+        // party reading a menu are not standing in the corridor to be shot at.
+        // The hours a rest passes are counted by the rest itself and are the
+        // only time that goes by in here.
+        if (_state.value.menu != null) return false
+
         val monsters = _state.value.game.monsters
 
         // A floor with a clock of its own never finishes: its squares go on
@@ -1998,7 +2043,15 @@ class ViewConeDebugViewModel(
         kinds = _state.value.inf?.subLevels?.getOrNull(_state.value.subLevel)?.monsters.orEmpty(),
         itemTypes = itemTypes,
         stepping = stepping(),
+        shooting = shooting(),
     )
+
+    /** Whether a monster looses anything at the party, and what. */
+    private fun shooting(): TakingAShot? {
+        val inf = _state.value.inf ?: return null
+        val sublevel = inf.subLevels.getOrNull(_state.value.subLevel) ?: return null
+        return TakingAShot(sublevel, levelNumber(inf.name), sublevel.monsters)
+    }
 
     /** How a monster shifts its feet on its own square, rooted or not. */
     private fun stepping(): MonsterStepping? {
@@ -2614,7 +2667,9 @@ class ViewConeDebugViewModel(
             null
         } else {
             viewModelScope.launch {
-                while (_state.value.game.swinging.isNotEmpty()) {
+                // A door half shut stays half shut while the camp menu is up:
+                // it is as much the floor moving as a monster is.
+                while (_state.value.game.swinging.isNotEmpty() && _state.value.menu == null) {
                     delay(DOOR_STEP.inMilliseconds)
 
                     Logger.d(TAG) { "Door step, going ${_state.value.game.swinging}" }

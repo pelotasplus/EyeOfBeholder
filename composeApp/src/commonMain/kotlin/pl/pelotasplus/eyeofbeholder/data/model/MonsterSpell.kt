@@ -1,0 +1,134 @@
+package pl.pelotasplus.eyeofbeholder.data.model
+
+/** As far as the corridor goes: it is stopped by hitting something. */
+private const val UNTIL_IT_HITS = Projectile.UNTIL_IT_HITS
+
+/**
+ * Six squares, which is the other distance the table uses. Nothing is ever
+ * shot at from more than three, so this only matters past the party.
+ */
+private const val DOWN_A_CORRIDOR = 6
+
+/**
+ * A spell a monster can loose down a corridor.
+ *
+ * The twenty numbers a monster's kind may carry as a weapon are these, and a
+ * kind names them by number: a dark moon cleric carries `3, 7, 7, 3`, and a
+ * beholder `10` through `13`. Fourteen are defined and the rest are nothing.
+ *
+ * Four bytes each in the original, and transcribed rather than derived —
+ * `callBackIndex, distance, flags, objectType`. The first says which spell it
+ * runs where it lands, which is not modelled here; the other three are. The
+ * sound comes from that first byte all the same: it names a row of a table of
+ * twenty-five-byte spell records, and the sound is the nineteenth byte of it.
+ *
+ * The one thing worth noticing before reading the table: **four different
+ * spells share one picture.** [MONSTER_DEATH_SPELL], [MONSTER_DISINTEGRATE],
+ * [MONSTER_CAUSE_CRITICAL_WOUNDS] and [MONSTER_FLESH_TO_STONE] all cross the
+ * view as the same scatter of blue motes, so a beholder gives no warning of
+ * which of the four it has cast. That is the original and not a shortcut.
+ */
+enum class MonsterSpell(
+    /** The number a monster's kind carries to mean this one. */
+    val asWritten: Int,
+
+    /**
+     * How it is drawn, or null for the one shape not cut yet.
+     *
+     * Only [MELFS_ACID_ARROW] is null: it is drawn as one of the thrown
+     * weapons rather than as a bolt, and no monster in the game fires it —
+     * it is the party's, and the party do not cast yet.
+     */
+    val looksLike: ConjuredBolt?,
+
+    /**
+     * How many squares it crosses before it gives out. Two thirds of them go
+     * until they hit something instead, which down a corridor is the same
+     * thing and against an open hall is not.
+     */
+    val reach: Int,
+
+    /** Whether it goes off where it stops rather than simply stopping. */
+    val bursts: Boolean = false,
+
+    /** And in what colours, for the ones that do. */
+    val burstsLike: List<Int> = Burst.LIKE_FIRE,
+
+    /**
+     * What is heard as it is cast, which is the spell's own sound and not the
+     * monster's.
+     *
+     * Transcribed, and worth noticing that the four rays are one sound as well
+     * as one picture: a beholder gives nothing away by ear either.
+     */
+    val heardAs: TrackIndex = TrackIndex(0),
+) {
+    MAGIC_MISSILE(0, ConjuredBolt.LIKE_A_MISSILE, UNTIL_IT_HITS, heardAs = TrackIndex(85)),
+
+    MELFS_ACID_ARROW(1, null, UNTIL_IT_HITS, heardAs = TrackIndex(96)),
+
+    FIREBALL(
+        2,
+        ConjuredBolt.LIKE_FIRE,
+        UNTIL_IT_HITS,
+        bursts = true,
+        heardAs = TrackIndex(99),
+    ),
+
+    HOLD_PERSON(3, ConjuredBolt.LIKE_MOTES, UNTIL_IT_HITS, heardAs = TrackIndex(101)),
+
+    LIGHTNING_BOLT(
+        4,
+        ConjuredBolt.LIKE_LIGHTNING,
+        DOWN_A_CORRIDOR,
+        bursts = true,
+        burstsLike = Burst.LIKE_LIGHTNING,
+        heardAs = TrackIndex(71),
+    ),
+
+    ICE_STORM(
+        5,
+        ConjuredBolt.LIKE_ICE,
+        DOWN_A_CORRIDOR,
+        bursts = true,
+        burstsLike = Burst.LIKE_LIGHTNING,
+        heardAs = TrackIndex(89),
+    ),
+
+    HOLD_MONSTER(6, ConjuredBolt.LIKE_MOTES, UNTIL_IT_HITS, heardAs = TrackIndex(101)),
+
+    FLAME_STRIKE(7, ConjuredBolt.LIKE_FIRE, UNTIL_IT_HITS, heardAs = TrackIndex(98)),
+
+    /** The one the dragon breathes, and the heaviest thing in the game. */
+    MONSTER_FIREBALL(8, ConjuredBolt.LIKE_FIRE, UNTIL_IT_HITS, heardAs = TrackIndex(98)),
+
+    /** A lesser one, and the hell hounds' whole repertoire. */
+    MONSTER_LESSER_FIREBALL(
+        9,
+        ConjuredBolt.LIKE_FIRE,
+        DOWN_A_CORRIDOR,
+        heardAs = TrackIndex(98),
+    ),
+
+    MONSTER_DEATH_SPELL(10, ConjuredBolt.LIKE_MOTES, DOWN_A_CORRIDOR, heardAs = TrackIndex(101)),
+
+    MONSTER_DISINTEGRATE(11, ConjuredBolt.LIKE_MOTES, DOWN_A_CORRIDOR, heardAs = TrackIndex(101)),
+
+    MONSTER_CAUSE_CRITICAL_WOUNDS(
+        12,
+        ConjuredBolt.LIKE_MOTES,
+        DOWN_A_CORRIDOR,
+        heardAs = TrackIndex(101),
+    ),
+
+    MONSTER_FLESH_TO_STONE(
+        13,
+        ConjuredBolt.LIKE_MOTES,
+        DOWN_A_CORRIDOR,
+        heardAs = TrackIndex(101),
+    );
+
+    companion object {
+        fun of(asWritten: Int) = entries.firstOrNull { it.asWritten == asWritten }
+    }
+}

@@ -148,6 +148,17 @@ class ShootingInsteadOfSwingingTest {
         assertEquals(3, after.theShooter().shotsLeft, "the shot was not spent")
     }
 
+    /** And the shot is a thing in the air, not merely a counter going down. */
+    @Test
+    fun `one that shoots puts something in the air`() {
+        val after = turn(theLowestRoll).begun(world(shooter(at = Location(3, 9))))
+
+        val flying = after.inFlight.singleOrNull()
+        assertNotNull(flying, "it spent a shot on nothing at all")
+        assertEquals(Location(3, 9), flying.at, "it was not loosed from where the monster stands")
+        assertEquals(Direction.SOUTH, flying.going)
+    }
+
     /** And out of reach, with somewhere to walk to, it holds its ground. */
     @Test
     fun `one that shoots does not also walk`() {
