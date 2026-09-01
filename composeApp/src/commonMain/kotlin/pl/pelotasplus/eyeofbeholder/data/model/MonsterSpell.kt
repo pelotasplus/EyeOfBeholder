@@ -55,6 +55,21 @@ enum class MonsterSpell(
     val burstsLike: List<Int> = Burst.LIKE_FIRE,
 
     /**
+     * Whether it is drawn down the middle of the view rather than over the
+     * quarter of the square it is actually crossing.
+     *
+     * Nearly all of them are, and it is a flag of its own rather than anything
+     * that follows from the rest: a conjured thing is centred and a thrown one
+     * is not, so a mage on the left of the party still sends a fireball down
+     * the middle of the corridor. It changes nothing about what the spell
+     * meets — that is still decided by the quarter it is on.
+     *
+     * The two that keep their quarter are the two that look like a line rather
+     * than a ball, which is the only sense anybody has ever made of it.
+     */
+    val downTheMiddle: Boolean = true,
+
+    /**
      * What is heard as it is cast, which is the spell's own sound and not the
      * monster's.
      *
@@ -65,7 +80,13 @@ enum class MonsterSpell(
 ) {
     MAGIC_MISSILE(0, ConjuredBolt.LIKE_A_MISSILE, UNTIL_IT_HITS, heardAs = TrackIndex(85)),
 
-    MELFS_ACID_ARROW(1, null, UNTIL_IT_HITS, heardAs = TrackIndex(96)),
+    MELFS_ACID_ARROW(
+        1,
+        null,
+        UNTIL_IT_HITS,
+        heardAs = TrackIndex(96),
+        downTheMiddle = false,
+    ),
 
     FIREBALL(
         2,
@@ -84,6 +105,7 @@ enum class MonsterSpell(
         bursts = true,
         burstsLike = Burst.LIKE_LIGHTNING,
         heardAs = TrackIndex(71),
+        downTheMiddle = false,
     ),
 
     ICE_STORM(

@@ -561,7 +561,24 @@ class ViewConeRepositoryImpl(
 
                     // Shrunk the way anything else on that row is: the row's
                     // dim counts up as it nears, the shrinking counts down.
-                    viewPort.drawInFlight(bolt, block.blockIndex, ScaleSteps(NEAREST_DIM - dim))
+                    //
+                    // Nearly every conjured thing is drawn down the middle
+                    // whatever quarter it is really crossing, so a mage on the
+                    // left of the party still sends a fireball down the centre
+                    // of the corridor. The two that keep their quarter are the
+                    // two drawn as a line rather than a ball.
+                    val over = if (flying.downTheMiddle) {
+                        ViewPlace.MIDDLE
+                    } else {
+                        flying.place.asSeenFacing(direction) ?: ViewPlace.MIDDLE
+                    }
+
+                    viewPort.drawInFlight(
+                        bolt,
+                        block.blockIndex,
+                        ScaleSteps(NEAREST_DIM - dim),
+                        over = over,
+                    )
                 }
 
                 drawWhatIsInTheAir(

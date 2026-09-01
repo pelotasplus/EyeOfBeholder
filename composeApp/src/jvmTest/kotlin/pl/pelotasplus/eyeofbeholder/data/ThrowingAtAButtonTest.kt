@@ -202,9 +202,10 @@ class ThrowingAtAButtonTest {
                 place = corner,
                 going = Direction.SOUTH,
                 thrownBy = Projectile.Thrower.TheLevel,
-                // just short of the middle, so one turn of the clock carries
-                // it past — which is when what it is over is asked
-                untilNextSquare = Projectile.ACROSS_A_SQUARE / 2 + 1,
+                // far enough from its next step that this turn of the clock
+                // moves it nowhere: it is asked where it stands, which is the
+                // quarter these are about
+                untilItSteps = Projectile.A_STEP,
                 leaving = false,
             ),
         ),
@@ -297,7 +298,7 @@ class ThrowingAtAButtonTest {
                 place = side,
                 going = Direction.SOUTH,
                 thrownBy = Projectile.Thrower.TheLevel,
-                untilNextSquare = 1,
+                untilItSteps = 1,
                 leaving = false,
             ),
         ),
@@ -328,9 +329,9 @@ class ThrowingAtAButtonTest {
         val betweenSteps = overThem(SquarePlace.SOUTH_EAST).let {
             it.copy(
                 inFlight = it.inFlight.map { flying ->
-                    // a whole square to go, so this turn of the clock carries
-                    // it neither past the middle nor onto the next square
-                    flying.copy(untilNextSquare = Projectile.ACROSS_A_SQUARE)
+                    // two steps' worth of waiting, so this turn of the clock
+                    // moves it nowhere at all
+                    flying.copy(untilItSteps = Projectile.ACROSS_A_SQUARE)
                 },
             )
         }
@@ -348,7 +349,11 @@ class ThrowingAtAButtonTest {
      */
     @Test
     fun `and reaches the front rank once it is half way across`() {
-        assertEquals(listOf(0), overThem(SquarePlace.NORTH_EAST).whoWasHit())
+        val aboutToStep = overThem(SquarePlace.NORTH_EAST).let {
+            it.copy(inFlight = it.inFlight.map { flying -> flying.copy(untilItSteps = 1) })
+        }
+
+        assertEquals(listOf(0), aboutToStep.whoWasHit())
     }
 
     /** But letting go of one is not walking into it. */

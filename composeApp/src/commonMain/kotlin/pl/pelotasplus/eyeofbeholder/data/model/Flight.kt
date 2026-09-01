@@ -61,7 +61,7 @@ class Flight(
  * @param coming true for the end it arrives at, false for the end it leaves by
  */
 private fun SquarePlace.endTowards(going: Direction, coming: Boolean): SquarePlace {
-    val onTheWay = asSeenFacing(going) ?: return this
+    val onTheWay = onAQuarter().asSeenFacing(going) ?: return this
 
     val end = when (onTheWay) {
         ViewPlace.FAR_LEFT, ViewPlace.NEAR_LEFT ->
@@ -75,6 +75,29 @@ private fun SquarePlace.endTowards(going: Direction, coming: Boolean): SquarePla
 
     return end.onASquareFacing(going)
 }
+
+/**
+ * Whether it has already reached the end of this square it will leave by.
+ *
+ * The whole of how a thing crosses a square, and the reason it is asked
+ * rather than counted: a step takes it to the far end, and a step made from
+ * the far end takes it off the square altogether. So something loosed at the
+ * far end to begin with — which is what a monster shooting the way it faces
+ * often is — leaves on its first step and is never drawn twice over its own
+ * square.
+ */
+private fun SquarePlace.atTheFarEndGoing(going: Direction) =
+    endTowards(going, coming = false) == onAQuarter()
+
+/**
+ * The quarter this counts as. A thing in the middle of a square is on no
+ * quarter of it, and the game reads such a position as the first one rather
+ * than leaving it in the middle — which is why a bolt from something big
+ * enough to fill its square still crosses that square in two steps like
+ * anything else, instead of sitting in the centre of it twice.
+ */
+private fun SquarePlace.onAQuarter() =
+    if (onTheFloor) this else SquarePlace.NORTH_WEST
 
 /**
  * Who stands under each quarter of a square, in the order a thing coming
@@ -131,69 +154,85 @@ private val atEachQuarter = listOf(
             return burstIfItWould(landed(world, flying), flying)
         }
 
-        world.inFlight.forEach { flying ->
-            val waited = flying.copy(untilNextSquare = flying.untilNextSquare - ticks)
+        // What a thing over a square meets there, which is asked whether or
+        // not it has just moved: anything can walk under a thing in the air
+        // between one of its own steps and the next, the party by walking and
+        // a monster by taking its turn.
+        //
+        // Not while it is still leaving, though — that is the square it was
+        // thrown from, and nobody hits themselves letting go.
+        fun overItsSquare(now: Projectile) {
+            val met = if (now.leaving) emptyList() else whatItHit(carried, now)
 
-            // Half way across is where it passes the middle of the square and
-            // takes up the far end of it, which is the end it will leave by.
-            // A thing stopped before that lies at the near end, in front of
-            // whatever stopped it rather than beyond it.
-            val crossing = if (waited.untilNextSquare * 2 > Projectile.ACROSS_A_SQUARE) {
-                waited
+            if (met.isEmpty()) {
+                stillGoing += now.copy(alreadyTried = triedHere(carried, now))
             } else {
-                waited.copy(place = waited.place.endTowards(waited.going, coming = false))
+                hurt += met
+                met.forEach { carried = struckDown(carried, it) }
+                carried = cameToRest(carried, now)
             }
+        }
 
-            if (crossing.untilNextSquare > 0) {
-                // What it is over is asked each time it moves, and it moves
-                // twice across a square: in at the near end, and on to the far
-                // one. That is what lets somebody who walks into the path of a
-                // thing already going be found by it, and it is also why this
-                // is not asked on every turn of the clock — a square takes
-                // several of those, and asking each time would roll to hit the
-                // same monster over and over on the way past.
-                //
-                // Not while it is still leaving, either: that is the square it
-                // was thrown from, and nobody hits themselves letting go.
-                // Asked on every turn of the clock, because anything may walk
-                // under it between one of its own steps and the next — the
-                // party by walking, a monster by taking its turn.
-                val met = if (waited.leaving) emptyList() else whatItHit(carried, crossing)
+        world.inFlight.forEach { flying ->
+            var now = flying.copy(untilItSteps = flying.untilItSteps - ticks)
+            var stopped = false
+            var steps = 0
 
-                if (met.isEmpty()) {
-                    stillGoing += crossing.copy(alreadyTried = triedHere(carried, crossing))
+            // As many steps as the ticks have paid for, which is nearly always
+            // none or one — a caller handing over a whole square's worth gets
+            // the whole square rather than half of it.
+            while (!stopped && now.untilItSteps <= 0) {
+                steps++
+
+                // A step takes it to the far end of the square it is over, and
+                // a step made from that end takes it off the square. Which of
+                // the two this is depends on where it already stands rather
+                // than on how long it has been going, so a thing loosed at the
+                // far end leaves on its first step instead of being drawn
+                // twice over the square it came from.
+                if (now.place.atTheFarEndGoing(now.going)) {
+                    val next = stepped(carried, now)
+
+                    if (next == null) {
+                        blockedBy(carried, now)?.let { struckWalls += it }
+                        carried = cameToRest(carried, now)
+                        stopped = true
+                        continue
+                    }
+
+                    now = next.copy(untilItSteps = now.untilItSteps + Projectile.A_STEP)
+                    flewOnto += now.at
+                    carried = carriedAlong(carried, now)
                 } else {
+                    now = now.copy(
+                        place = now.place.endTowards(now.going, coming = false),
+                        untilItSteps = now.untilItSteps + Projectile.A_STEP,
+                    )
+                }
+
+                val met = if (now.leaving) emptyList() else whatItHit(carried, now)
+
+                if (met.isNotEmpty()) {
                     hurt += met
                     met.forEach { carried = struckDown(carried, it) }
-                    carried = cameToRest(carried, crossing)
+                    carried = cameToRest(carried, now)
+                    stopped = true
+                    continue
                 }
-                return@forEach
+
+                now = now.copy(alreadyTried = triedHere(carried, now))
+
+                if (now.squaresLeft <= 0) {
+                    carried = cameToRest(carried, now)
+                    stopped = true
+                }
             }
 
-            val next = stepped(carried, waited)
+            if (stopped) return@forEach
 
-            if (next == null) {
-                blockedBy(carried, waited)?.let { struckWalls += it }
-                carried = cameToRest(carried, waited)
-                return@forEach
-            }
-
-            flewOnto += next.at
-            carried = carriedAlong(carried, next)
-
-            val struck = whatItHit(carried, next)
-            if (struck.isNotEmpty()) {
-                hurt += struck
-                struck.forEach { carried = struckDown(carried, it) }
-                carried = cameToRest(carried, next)
-                return@forEach
-            }
-
-            if (next.squaresLeft <= 0) {
-                carried = cameToRest(carried, next)
-            } else {
-                stillGoing += next
-            }
+            // One that moved has already been asked what it met. One that did
+            // not still has to be: somebody may have walked under it.
+            if (steps > 0) stillGoing += now else overItsSquare(now)
         }
 
         return Moved(carried.copy(inFlight = stillGoing), flewOnto, hurt, struckWalls, settled)
@@ -239,7 +278,7 @@ private val atEachQuarter = listOf(
             // it comes in at the end of the square nearest where it came from
             place = flying.place.endTowards(flying.going, coming = true),
             squaresLeft = flying.squaresLeft - 1,
-            untilNextSquare = Projectile.ACROSS_A_SQUARE,
+            untilItSteps = Projectile.A_STEP,
             leaving = false,
             // a new square is a new set of things to be asked about
             alreadyTried = emptySet(),

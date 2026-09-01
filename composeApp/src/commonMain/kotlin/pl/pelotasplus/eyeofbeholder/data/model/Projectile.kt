@@ -46,13 +46,15 @@ data class Projectile(
     val harm: Harm = Harm.ofAThrownThing,
 
     /**
-     * Ticks still to run before it is over the next square.
+     * Ticks still to run before its next step.
      *
-     * A thing in flight is not on the clock the rest of the world is: it
-     * crosses a square in its own time, and counting down to the next one is
-     * what keeps it from crossing a corridor faster than the eye follows it.
+     * A thing in flight is not on the clock the rest of the world is: it steps
+     * in its own time, and counting down to the next step is what keeps it
+     * from crossing a corridor faster than the eye follows it.
+     *
+     * A step is half a square, not a whole one — see [A_STEP].
      */
-    val untilNextSquare: Int = ACROSS_A_SQUARE,
+    val untilItSteps: Int = A_STEP,
 
     /**
      * Whether it is still on the square it was loosed from.
@@ -92,6 +94,17 @@ data class Projectile(
      * and burst as the same one.
      */
     val burstsLike: List<Int> = spell?.burstsLike ?: Burst.LIKE_FIRE,
+
+    /**
+     * Whether it is drawn down the middle of the view rather than over the
+     * quarter it is crossing — see [MonsterSpell.downTheMiddle].
+     *
+     * A thing somebody threw never is: a dagger goes down the side it was
+     * thrown from. A conjured one nearly always is, a trap's fireball
+     * included, which is why this is what a bolt with no spell behind it
+     * falls back to.
+     */
+    val downTheMiddle: Boolean = what == null && spell?.downTheMiddle != false,
 
     /**
      * The monsters already rolled against on the square it is over now.
@@ -178,12 +191,16 @@ data class Projectile(
         const val REACH = 12
 
         /**
-         * How long a thing takes to cross one square.
+         * How long a thing waits between one step and the next.
          *
-         * The game moves what is in the air every three ticks and walks it
-         * through a square in two of those moves, so a square is six.
+         * The game moves what is in the air every three ticks, and a move
+         * takes it half a square: to the far end of the one it is over, or
+         * off that one and onto the near end of the next.
          */
-        const val ACROSS_A_SQUARE = 6
+        const val A_STEP = 3
+
+        /** Which makes a whole square two of them. */
+        const val ACROSS_A_SQUARE = A_STEP * 2
 
         /**
          * How far a burst carries, which is as far as the corridor goes: it is

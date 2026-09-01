@@ -21,6 +21,7 @@ import pl.pelotasplus.eyeofbeholder.data.repository.ItemTypesRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.model.Maz
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterInstance
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterSlot
+import pl.pelotasplus.eyeofbeholder.data.model.MonsterSpell
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterTypeId
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterPose
 import pl.pelotasplus.eyeofbeholder.data.model.NpcId
@@ -1912,6 +1913,67 @@ class ViewPortGoldenTest {
         }
     }
 
+    /**
+     * A beholder's ray crossing an empty square to reach the party.
+     *
+     * The scene is the one that is hard to read while playing: something too
+     * big for a corner two squares off, one empty square between, and the ray
+     * coming down it. Every step of the crossing is frozen — both ends of the
+     * beholder's own square, both ends of the empty one, and the party's.
+     *
+     * What the pictures are for is the size. A row has one size and the whole
+     * of a square is drawn at it, so the ray is seen small over the beholder,
+     * a size larger over the gap, and larger again on the party's own square.
+     *
+     * One frame a square is enough, and that is the point of it: a ray is
+     * drawn down the middle whatever quarter it is really on, so the two ends
+     * of a square are the same picture and freezing both would prove nothing.
+     * The last of the three never happens in play either — a ray aimed at the
+     * party hits on arrival and is gone before anything draws it — so it is
+     * here as the size that is missing rather than as a thing anybody sees.
+     */
+    @Test
+    fun `a beholder's ray coming across an empty square`() {
+        (2 downTo 0).forEach { squaresOff ->
+            checkGolden(
+                "ray-across-a-gap-$squaresOff",
+                aBoltInFlight(
+                    "LEVEL2.INF", 3, 11, Direction.NORTH,
+                    squaresOff = squaresOff,
+                    looksLike = ConjuredBolt.LIKE_MOTES,
+                    standing = listOf(aMonsterOn(Location(3, 9))),
+                ),
+            )
+        }
+    }
+
+    /**
+     * And the one spell that is not drawn down the middle, at both ends of a
+     * square, which is where the difference shows.
+     *
+     * Two of the fourteen keep the quarter they are really crossing — the two
+     * drawn as a line rather than as a ball — and a lightning bolt is the one
+     * a monster ever fires. These two frames are the only proof that the
+     * centring is applied to some and not all: everything else in flight
+     * renders the same at both ends of a square, so nothing else can tell a
+     * rule that centres selectively from one that centres everything.
+     */
+    @Test
+    fun `a lightning bolt keeps the side of the square it is crossing`() {
+        listOf(SquarePlace.NORTH_WEST to "near", SquarePlace.SOUTH_WEST to "far")
+            .forEach { (end, which) ->
+                checkGolden(
+                    "bolt-lightning-side-$which",
+                    aBoltInFlight(
+                        "LEVEL2.INF", 3, 11, Direction.NORTH,
+                        squaresOff = 1,
+                        over = end,
+                        spell = MonsterSpell.LIGHTNING_BOLT,
+                    ),
+                )
+            }
+    }
+
     /** @param messages the level's own message ids, each with the ink to write it in. */
     private fun messagesOver(
         level: String,
@@ -2281,6 +2343,10 @@ class ViewPortGoldenTest {
         over: SquarePlace = SquarePlace.MIDDLE,
         looksLike: ConjuredBolt = ConjuredBolt.LIKE_FIRE,
         standing: List<MonsterInstance> = emptyList(),
+        // Given only where the scene is about a spell being one rather than
+        // about the picture: it is what says whether the thing is drawn down
+        // the middle or over the quarter it is on.
+        spell: MonsterSpell? = null,
     ): ViewPort = runBlocking {
         val repository = repository()
         val inf = repository.loadLevel(level).getOrThrow()
@@ -2307,7 +2373,8 @@ class ViewPortGoldenTest {
                     going = going
                         ?: Direction.entries[(direction.ordinal + 2) % Direction.entries.size],
                     thrownBy = Projectile.Thrower.TheLevel,
-                    looksLike = looksLike,
+                    spell = spell,
+                    looksLike = spell?.looksLike ?: looksLike,
                 ),
             ),
         ).getOrThrow()

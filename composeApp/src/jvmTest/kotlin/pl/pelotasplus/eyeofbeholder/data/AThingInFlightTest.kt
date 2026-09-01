@@ -375,6 +375,69 @@ class AThingInFlightTest {
         assertEquals(emptyList<Projectile>(), world.inFlight, "it carried on after hitting")
     }
 
+    /**
+     * A step takes a thing to the far end of the square it is over, or off
+     * that square if it is already there — so where it starts decides how many
+     * steps it spends over its own square, and a thing loosed at the far end
+     * spends none.
+     *
+     * The corridor south from the trap at 3x8 is the ground again. Going
+     * south, the south corners are the far end.
+     */
+    @Test
+    fun `one loosed at the far end of its square leaves on its first step`() {
+        val atTheFarEnd = standingAt(Location(3, 11)).copy(
+            inFlight = listOf(aBolt(SquarePlace.SOUTH_WEST)),
+        )
+
+        assertEquals(
+            Location(3, 9),
+            oneTick(atTheFarEnd).world.inFlight.single().at,
+            "it stayed over the square it was loosed from",
+        )
+    }
+
+    /** And one at the near end spends that step crossing to the far end. */
+    @Test
+    fun `and one loosed at the near end spends a step getting there`() {
+        val atTheNearEnd = standingAt(Location(3, 11)).copy(
+            inFlight = listOf(aBolt(SquarePlace.NORTH_WEST)),
+        )
+
+        val after = oneTick(atTheNearEnd).world.inFlight.single()
+
+        assertEquals(Location(3, 8), after.at, "it left the square without crossing it")
+        assertEquals(SquarePlace.SOUTH_WEST, after.place, "it did not reach the end it leaves by")
+    }
+
+    /**
+     * Something too big for a corner stands in the middle of its square, and
+     * a bolt from it has no half to move to. Read as a corner it crosses like
+     * anything else, rather than being drawn twice in the same place — which
+     * is what a beholder's ray looked like coming out of its own back.
+     */
+    @Test
+    fun `one loosed from the middle takes a corner rather than staying there`() {
+        val fromTheMiddle = standingAt(Location(3, 11)).copy(
+            inFlight = listOf(aBolt(SquarePlace.MIDDLE)),
+        )
+
+        val after = oneTick(fromTheMiddle).world.inFlight.single()
+
+        assertEquals(SquarePlace.SOUTH_WEST, after.place, "it stayed in the middle")
+        assertEquals(Location(3, 8), after.at, "the middle is the near end, so it has not crossed")
+    }
+
+    /** A conjured thing going south from the trap's square. */
+    private fun aBolt(place: SquarePlace) = Projectile(
+        at = Location(3, 8),
+        place = place,
+        going = Direction.SOUTH,
+        thrownBy = Projectile.Thrower.TheLevel,
+        untilItSteps = 1,
+        leaving = false,
+    )
+
     /** All six of them on their feet and hale, so damage is visible on each. */
     private fun aFullParty() = List(6) {
         Champion.NOBODY.copy(

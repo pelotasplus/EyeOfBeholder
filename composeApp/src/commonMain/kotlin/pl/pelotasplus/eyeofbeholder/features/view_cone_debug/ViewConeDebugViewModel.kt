@@ -1701,6 +1701,7 @@ class ViewConeDebugViewModel(
                 var struckWalls = emptyList<Flight.StruckWall>()
                 var settled = emptyList<Location>()
                 var struckInFlight = emptyList<Flight.Hurt>()
+                var stoodBefore = emptyList<Champion>()
 
                 // Settled before the world is touched: an update that loses a
                 // race runs its block again, and the way round a corner would
@@ -1714,6 +1715,7 @@ class ViewConeDebugViewModel(
 
                 _state.update { state ->
                     var world = state.game
+                    stoodBefore = state.game.champions
 
                     if (aFrame) {
                         world = world.swingsCarriedOn()
@@ -1822,6 +1824,8 @@ class ViewConeDebugViewModel(
                 if (landed.isNotEmpty() || bitten.isNotEmpty() || struckInFlight.isNotEmpty()) {
                     letTheDamageFade()
                 }
+
+                heardTakingIt(stoodBefore, _state.value.game.champions)
 
                 // A monster lit by anything at all has to be put out again,
                 // and a hand is not the only thing that lights one: something
@@ -2178,6 +2182,32 @@ class ViewConeDebugViewModel(
                 drawViewPort()
             }
         }
+    }
+
+    /**
+     * The party heard taking it, comparing who was standing before with who
+     * is standing now.
+     *
+     * Once for the lot of them rather than once each: a burst that reaches
+     * all six is one cry, not six over the top of one another. Somebody put
+     * down is what is heard where both happened at once, that being the news.
+     *
+     * Asked of the world before and after rather than of the blow itself, so
+     * that it covers a monster's arm, a venom's bite, a thing out of the air
+     * and a script's own damage without any of them having to remember to say
+     * so.
+     */
+    private fun heardTakingIt(before: List<Champion>, after: List<Champion>) {
+        val hurt = after.indices.filter { slot ->
+            val was = before.getOrNull(slot) ?: return@filter false
+            val now = after[slot]
+            now.hitPoints.current < was.hitPoints.current
+        }
+
+        if (hurt.isEmpty()) return
+
+        val track = if (hurt.any { after[it].deadForGood }) PUT_DOWN else HURT
+        viewModelScope.launch { playTrack(track) }
     }
 
     private fun letTheDamageFade() {
@@ -2817,6 +2847,7 @@ class ViewConeDebugViewModel(
             announceAnyLevelGained(stood.champions, _state.value.game.champions)
 
             if (run.hurt.isNotEmpty()) letTheDamageFade()
+            heardTakingIt(stood.champions, _state.value.game.champions)
 
             val change = run.changeLevel
             if (change == null) {
@@ -3705,6 +3736,20 @@ class ViewConeDebugViewModel(
 
         /** A thing that was in the air hitting the floor. */
         private val SOMETHING_LANDED = TrackIndex(18)
+
+        /**
+         * A champion taking a wound, and the one that puts them down.
+         *
+         * Which of the two is heard turns on the same number that decides
+         * whether they can ever be raised, so a blow heavy enough to take
+         * somebody past it sounds different from the one that only hurt.
+         *
+         * Neither carries from where the blow came: they belong to the party
+         * rather than to the room, so they are not made quieter for distance
+         * the way a monster's swing is.
+         */
+        private val HURT = TrackIndex(21)
+        private val PUT_DOWN = TrackIndex(22)
 
         /** How long a struck monster is drawn as a silhouette. */
         private val FLASH = Ticks(2)
