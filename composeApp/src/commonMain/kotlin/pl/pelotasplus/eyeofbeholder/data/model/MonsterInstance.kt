@@ -100,6 +100,28 @@ data class MonsterInstance(
     val readyToStrike: Boolean = false,
     /** Where it is in its looking-about, for the two modes that stray. */
     val straying: Straying = Straying.TURNED_AWAY,
+    /**
+     * How many more times it may shoot, or [SHOOTS_FOREVER].
+     *
+     * A kind says how many its sort get; the count is this one's own and goes
+     * down as it spends them. Null until the kind has been read, the same way
+     * hit points are unrolled until then.
+     */
+    val shotsLeft: Int? = null,
+    /**
+     * How close it is to being ready to shoot again.
+     *
+     * Not a countdown but a count up, and it is raced against a die: a turn
+     * where `1d3` beats it is a turn it spends waiting and adding one. So the
+     * wait is short but never nothing, and two of the same kind do not fire
+     * in step.
+     */
+    val stepsTillItShoots: Int = 0,
+    /**
+     * Which of its kind's remote weapons it reaches for next, for the kinds
+     * that take them in turn rather than at random.
+     */
+    val nextRemoteWeapon: Int = 0,
 ) {
     /** What it does with a turn nobody has provoked it into taking. */
     val whatItDoes: MonsterMode get() = MonsterMode.of(mode)
@@ -136,7 +158,13 @@ data class MonsterInstance(
      */
     fun rolledFor(kind: MonsterProperty, dice: Dice): MonsterInstance {
         val rolled = dice.roll(kind.hpDcTimes, kind.hpDcPips, kind.hpDcBase)
-        return copy(hitPoints = HitPoints(current = rolled, max = rolled))
+        return copy(
+            hitPoints = HitPoints(current = rolled, max = rolled),
+            shotsLeft = kind.numRemoteAttacks,
+            // Two of a kind placed together do not fire in step: each starts
+            // somewhere different in its wait.
+            stepsTillItShoots = dice.roll(1, 3, 0),
+        )
     }
 
     /**
