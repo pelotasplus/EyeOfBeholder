@@ -1678,6 +1678,9 @@ class ViewPortGoldenTest {
      * that always land the same would throw all thirty-five to one pixel and
      * there would be nothing to look at. These are neither.
      */
+    /** So the goldens sort into the order the animation runs in. */
+    private fun Int.twoDigits() = toString().padStart(2, '0')
+
     private fun seededDice(): Dice {
         var seed = 1L
         return Dice { times, pips, modifier ->
@@ -1714,18 +1717,37 @@ class ViewPortGoldenTest {
         ).getOrThrow()
     }
 
+    /**
+     * A fireball going off down the corridor, every step of it.
+     *
+     * Sampling a burst at three moments says the three moments are right and
+     * nothing about the arc between them, which is the whole of what a burst
+     * is: thirty-five sparks thrown out and up, slowing, falling back
+     * steeper, bouncing off the floor at half the speed, and going out
+     * through thirteen colours as they go. A frame wrong in the middle of
+     * that is invisible to any test that only looks at the ends.
+     *
+     * It goes out after fifty-eight steps and the last is drawn dark, which
+     * is why the range runs one past it.
+     */
     @Test
-    fun `a fireball going off on the party themselves`() =
-        checkGolden("burst-in-your-face", aBurstOnTheParty(16))
+    fun `a fireball down the corridor, every step`() {
+        (0..BURNS_FOR).forEach { step ->
+            checkGolden("burst-step-${step.twoDigits()}", aBurst(step))
+        }
+    }
 
+    /**
+     * And one going off on the party themselves, which is thrown differently:
+     * half again as many sparks, three times as hard, and much less of it
+     * upward.
+     */
     @Test
-    fun `a fireball at the moment it goes off`() = checkGolden("burst-at-once", aBurst(2))
-
-    @Test
-    fun `a fireball a few moments into burning`() = checkGolden("burst-burning", aBurst(16))
-
-    @Test
-    fun `a fireball nearly spent`() = checkGolden("burst-nearly-out", aBurst(32))
+    fun `a fireball in your face, every step`() {
+        (0..BURNS_IN_YOUR_FACE_FOR).forEach { step ->
+            checkGolden("burst-near-step-${step.twoDigits()}", aBurstOnTheParty(step))
+        }
+    }
 
     /**
      * A trap's bolt coming up the corridor, one square away and three.
@@ -1757,6 +1779,37 @@ class ViewPortGoldenTest {
     @Test
     fun `a bolt in the air three squares off`() =
         checkGolden("bolt-three-squares-off", aBoltInFlight("LEVEL2.INF", 3, 11, Direction.NORTH, 3))
+
+    /**
+     * A bolt coming the length of the corridor, every step of the way.
+     *
+     * It crosses a square in two: in at the near end and on to the far one,
+     * and the two are drawn at different sizes because how big it is is the
+     * only thing that says how far off it is. Three squares of corridor and
+     * the party's own square make eight positions, and a bolt that grows
+     * wrongly between any two of them is a bolt that reads as jumping.
+     *
+     * This is the shot a monster takes, drawn from the far end of what it can
+     * reach — three squares — down onto the party.
+     */
+    @Test
+    fun `a bolt down the whole corridor, every step`() {
+        (3 downTo 0).forEach { squaresOff ->
+            // the far end of the square is the end it leaves by, and going
+            // south that is the near side of it as the party see it
+            listOf(SquarePlace.NORTH_WEST to "far", SquarePlace.SOUTH_WEST to "near")
+                .forEach { (end, which) ->
+                    checkGolden(
+                        "bolt-corridor-$squaresOff-$which",
+                        aBoltInFlight(
+                            "LEVEL2.INF", 3, 11, Direction.NORTH,
+                            squaresOff = squaresOff,
+                            over = end,
+                        ),
+                    )
+                }
+        }
+    }
 
     /** @param messages the level's own message ids, each with the ink to write it in. */
     private fun messagesOver(
@@ -2124,6 +2177,7 @@ class ViewPortGoldenTest {
         squaresOff: Int = 0,
         boltAt: Location? = null,
         going: Direction? = null,
+        over: SquarePlace = SquarePlace.MIDDLE,
     ): ViewPort = runBlocking {
         val repository = repository()
         val inf = repository.loadLevel(level).getOrThrow()
@@ -2146,7 +2200,7 @@ class ViewPortGoldenTest {
                 Projectile(
                     what = null,
                     at = at,
-                    place = SquarePlace.MIDDLE,
+                    place = over,
                     going = going
                         ?: Direction.entries[(direction.ordinal + 2) % Direction.entries.size],
                     thrownBy = Projectile.Thrower.TheLevel,
@@ -2264,6 +2318,16 @@ class ViewPortGoldenTest {
     companion object {
         /** Render the last frame a script drew rather than its first. */
         private const val LAST_FRAME = -1
+
+        /**
+         * How many steps a burst lasts before every spark of it is dark.
+         *
+         * Measured rather than transcribed: the sparks fade at a rate rolled
+         * between two bounds, so how long one lives depends on the dice, and
+         * the seeded dice these goldens use always give this.
+         */
+        private const val BURNS_FOR = 58
+        private const val BURNS_IN_YOUR_FACE_FOR = 60
 
         /** Door 1 without a button, two steps of five out of its frame. */
         private val HALF_OPEN = WallByte(10)
