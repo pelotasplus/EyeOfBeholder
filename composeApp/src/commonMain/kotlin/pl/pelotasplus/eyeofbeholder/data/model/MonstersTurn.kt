@@ -19,6 +19,10 @@ class MonstersTurn(
     // monster does it whether or not the floor lets it walk. Kept apart from
     // [MonsterPathing] for that reason.
     private val stepping: MonsterStepping? = null,
+    // Only a monster hunting the party ever shoots. One wandering the floor
+    // does not stop and loose down a corridor however squarely it is standing
+    // in one, so this is asked on the hunting turn and nowhere else.
+    private val shooting: TakingAShot? = null,
 ) {
 
     /**
@@ -121,13 +125,15 @@ class MonstersTurn(
     }
 
     /**
-     * One monster's turn: swing at the party if it is already facing them,
-     * and otherwise go to them.
+     * One monster's turn: shoot at the party, or swing at them if it is
+     * already facing them, or else go to them.
      *
-     * The order is the point. Swinging is only ever at the square a monster
-     * already faces, so arriving and striking are different turns — except for
-     * the kinds that carry the flag for it, which land a blow in the turn they
-     * moved in and so cannot be escaped by stepping aside.
+     * The order is the point, and it is strict — whichever of the three it
+     * gets to first is the whole of its turn. Swinging is only ever at the
+     * square a monster already faces, so arriving and striking are different
+     * turns, except for the kinds that carry the flag for it, which land a
+     * blow in the turn they moved in and so cannot be escaped by stepping
+     * aside.
      */
     private fun takenBy(
         world: GameState,
@@ -139,30 +145,49 @@ class MonstersTurn(
             return wandering(world, monster, walking)
         }
 
-        swungBy(world, monster, walking)?.let { return it }
+        val shot = shooting?.taken(world, monster)
+
+        // Loosing is the whole of the turn: what shoots does not also swing or
+        // step. What it reached for is not yet put in the air.
+        if (shot is TakingAShot.Shot.Looses) return world.holding(shot.monster)
+
+        // Waiting for a shot is not spending the turn on one. All a refused
+        // shot leaves behind is the waiting it did, and the monster goes on to
+        // fight or to walk as it would have — otherwise anything with a bow
+        // would stand still for as long as its wait ran.
+        val waited = (shot as? TakingAShot.Shot.StillWaiting)?.monster
+        val hunting = waited ?: monster
+        val now = waited?.let { world.holding(it) } ?: world
+
+        swungBy(now, hunting, walking)?.let { return it }
 
         if (walking == null) {
             // Rooted, all a monster out of reach can do is turn towards the
             // party. It reaches only the square it faces, so without this it
             // is dangerous from one side and harmless from the other three.
-            return monster.facingThe(world.party)
-                ?.let { world.monsterTurned(monster.index, it) }
-                ?: world
+            return hunting.facingThe(now.party)
+                ?.let { now.monsterTurned(hunting.index, it) }
+                ?: now
         }
 
         val after = when (
-            val went = walking.towards(world, monster, world.party.position, wayRound)
+            val went = walking.towards(now, hunting, now.party.position, wayRound)
         ) {
             is MonsterStepping.Stepped.Moved -> went.world
             is MonsterStepping.Stepped.Turned -> went.world
-            MonsterStepping.Stepped.Refused -> world
+            MonsterStepping.Stepped.Refused -> now
         }
 
-        if (kinds.firstOrNull { it.id == monster.type.value }?.hitsAsItMoves != true) return after
+        if (kinds.firstOrNull { it.id == hunting.type.value }?.hitsAsItMoves != true) return after
 
-        val moved = after.monsters.firstOrNull { it.index == monster.index } ?: return after
+        val moved = after.monsters.firstOrNull { it.index == hunting.index } ?: return after
         return swungBy(after, moved, walking) ?: after
     }
+
+    /** The world with this monster as it now is. */
+    private fun GameState.holding(monster: MonsterInstance) = copy(
+        monsters = monsters.map { if (it.index == monster.index) monster else it },
+    )
 
     /**
      * A monster going about its own business, having not noticed the party.
@@ -253,9 +278,7 @@ class MonstersTurn(
         }
 
         val counted = monster.turnCameRound()
-        val after = world.copy(
-            monsters = world.monsters.map { if (it.index == monster.index) counted else it },
-        )
+        val after = world.holding(counted)
 
         return if (counted.readyToStrike) {
             after.monstersStriking(listOf(monster.index))
