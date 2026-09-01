@@ -188,12 +188,8 @@ class ViewConeRepositoryImpl(
             .map { it.looksLike }
             .distinct()
             .associateWith { conjured ->
-                getThrownShapes().cut(
-                    BOLT_X,
-                    BOLT_Y + conjured.row * BOLT_HEIGHT,
-                    BOLT_WIDTH,
-                    BOLT_HEIGHT,
-                )
+                getThrownShapes()
+                    .cut(conjured.x, conjured.y, conjured.width, conjured.height)
             }
         val windows = viewWindows(sublevel, playerX, playerY, direction, wallAt)
 
@@ -847,19 +843,6 @@ class ViewConeRepositoryImpl(
 
     companion object {
         private const val TAG = "ViewConeRepository"
-
-        /**
-         * Where the conjured bolt is cut from `THROWN.CPS`, transcribed rather
-         * than measured off the sheet.
-         *
-         * The thrown weapons are cut in rows of four columns; the four bolts
-         * sit past them in a column of their own, thirty-two apart. This is
-         * the first of that column, which is the one a trap throws.
-         */
-        const val BOLT_X = 64
-        const val BOLT_Y = 0
-        const val BOLT_WIDTH = 48
-        const val BOLT_HEIGHT = 32
 
         /** The dim of the row the party stand on, which everything shrinks from. */
         private const val NEAREST_DIM = 3
