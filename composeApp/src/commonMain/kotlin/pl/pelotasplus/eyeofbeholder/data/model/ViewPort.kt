@@ -832,7 +832,7 @@ class ViewPort(
 
         at(howFarOff, hiddenByCloserThings = true) {
             burst.sparks.forEach { spark ->
-                val colour = spark.colour ?: return@forEach
+                val colour = burst.colourOf(spark) ?: return@forEach
 
                 draw(
                     ScreenX(middle + (spark.x shr 6 shr shrunkBy)),

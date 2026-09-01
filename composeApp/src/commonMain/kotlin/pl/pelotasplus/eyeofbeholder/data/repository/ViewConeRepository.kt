@@ -2,6 +2,7 @@ package pl.pelotasplus.eyeofbeholder.data.repository
 
 import co.touchlab.kermit.Logger
 import pl.pelotasplus.eyeofbeholder.data.model.Burst
+import pl.pelotasplus.eyeofbeholder.data.model.ConjuredBolt
 import pl.pelotasplus.eyeofbeholder.data.model.Cps
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.Inf
@@ -181,11 +182,19 @@ class ViewConeRepositoryImpl(
 
         // Only fetched when there is something to draw with it: nothing is in
         // the air on most frames, and the sheet is a whole screen of pixels.
-        val bolt = if (inFlight.none { it.what == null }) {
-            null
-        } else {
-            getThrownShapes().cut(BOLT_X, BOLT_Y, BOLT_WIDTH, BOLT_HEIGHT)
-        }
+        // Only the ones actually in the air are cut: the sheet is a whole
+        // screen of pixels and nothing is flying on most frames.
+        val bolts = inFlight.filter { it.what == null }
+            .map { it.looksLike }
+            .distinct()
+            .associateWith { conjured ->
+                getThrownShapes().cut(
+                    BOLT_X,
+                    BOLT_Y + conjured.row * BOLT_HEIGHT,
+                    BOLT_WIDTH,
+                    BOLT_HEIGHT,
+                )
+            }
         val windows = viewWindows(sublevel, playerX, playerY, direction, wallAt)
 
         // Data-driven wall rendering using the viewSlots table
@@ -200,11 +209,16 @@ class ViewConeRepositoryImpl(
                     drawItemsAtRow(
                         relY, viewPort, items, fromTheBottomUp, smallIcons, largeIcons,
                         sublevel, playerX, playerY, direction, windows, wallAt,
-                        inFlight = inFlight, bolt = bolt, bursting = bursting,
+                        inFlight = inFlight, bolts = bolts, bursting = bursting,
                     )
                     drawMonstersAtRow(
                         relY, viewPort, monsters, monsterSheets, sublevel,
                         playerX, playerY, direction, windows, wallAt,
+                    )
+                    drawWhatIsFlyingAtRow(
+                        relY, viewPort, items, smallIcons, largeIcons, sublevel,
+                        playerX, playerY, direction, windows, wallAt,
+                        inFlight = inFlight, bolts = bolts, bursting = bursting,
                     )
                     drawTeleportersAtRow(relY, viewPort, teleporters, decorations, pulse, windows)
                 }
@@ -321,6 +335,17 @@ class ViewConeRepositoryImpl(
             blockIndex = ViewPort.OWN_BLOCK_INDEX,
             dim = 3,
         )
+
+        // A conjured bolt on that square as well, which is the moment before
+        // one coming down the corridor arrives — and the last moment one the
+        // party loosed is theirs. Drawing only the things somebody threw left
+        // a bolt invisible for exactly the square that matters most.
+        inFlight.filter { it.what == null && it.at.x == playerX && it.at.y == playerY }
+            .forEach { flying ->
+                bolts[flying.looksLike]?.let { bolt ->
+                    viewPort.drawInFlight(bolt, ViewPort.OWN_BLOCK_INDEX, ScaleSteps(0))
+                }
+            }
 
         // A burst on the party's own square is not on any of the squares they
         // are looking at, so it is not drawn with them: it goes in front of
@@ -444,7 +469,7 @@ class ViewConeRepositoryImpl(
         windows: List<ViewWindow>,
         wallAt: (Location, WallSide) -> Maz.WallType,
         inFlight: List<Projectile>,
-        bolt: Cps.ItemIcon?,
+        bolts: Map<ConjuredBolt, Cps.ItemIcon>,
         bursting: List<Burst>,
     ) {
         val dim = when (relativeY) {
@@ -480,14 +505,64 @@ class ViewConeRepositoryImpl(
                     partyFacing = direction,
                 )
 
-                // After what lies on the square: a bolt crossing a floor
-                // passes in front of whatever is dropped on it.
-                if (bolt != null && inFlight.any {
-                        it.what == null &&
-                            it.at.x == playerX + dx &&
-                            it.at.y == playerY + dy
-                    }
-                ) {
+            }
+        }
+    }
+
+    /**
+     * Everything in the air over a row, drawn after that row's monsters.
+     *
+     * A thing in flight passes in front of whatever is standing on the square
+     * it crosses, which is how a bolt about to strike a monster reads as
+     * about to strike it rather than as already behind it. The order is the
+     * game's: what lies on the floor, then the door, then the monsters, then
+     * whatever is flying, then the teleporter.
+     */
+    private fun drawWhatIsFlyingAtRow(
+        relativeY: Int,
+        viewPort: ViewPort,
+        items: List<Item>,
+        smallIcons: Cps,
+        largeIcons: Cps,
+        sublevel: SubLevel,
+        playerX: Int,
+        playerY: Int,
+        direction: Direction,
+        windows: List<ViewWindow>,
+        wallAt: (Location, WallSide) -> Maz.WallType,
+        inFlight: List<Projectile>,
+        bolts: Map<ConjuredBolt, Cps.ItemIcon>,
+        bursting: List<Burst>,
+    ) {
+        val dim = when (relativeY) {
+            -3 -> 0
+            -2 -> 1
+            else -> 2
+        }
+
+        val facingUs = direction.transformWallSide(WallSide.SOUTH)
+
+        for (block in viewBlockRows.getValue(relativeY)) {
+            val window = windows[block.blockIndex]
+            if (window.closed) continue
+
+            val (dx, dy) = direction.transformCoordinates(block.relativeX, block.relativeY)
+
+            val face = wallAt(Location(playerX + dx, playerY + dy), facingUs)
+            if (!sublevel.showsWhatIsOnIt(face)) continue
+
+            viewPort.at(
+                DistanceFromParty.standingOnSquare(block.relativeX, block.relativeY),
+                hiddenByCloserThings = true,
+                within = window,
+            ) {
+                inFlight.filter {
+                    it.what == null &&
+                        it.at.x == playerX + dx &&
+                        it.at.y == playerY + dy
+                }.forEach { flying ->
+                    val bolt = bolts[flying.looksLike] ?: return@forEach
+
                     // Shrunk the way anything else on that row is: the row's
                     // dim counts up as it nears, the shrinking counts down.
                     viewPort.drawInFlight(bolt, block.blockIndex, ScaleSteps(NEAREST_DIM - dim))

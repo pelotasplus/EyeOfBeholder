@@ -66,6 +66,15 @@ data class Projectile(
     val leaving: Boolean = true,
 
     /**
+     * Which of the four conjured bolts this is drawn as, where it is one of
+     * them rather than a thing somebody threw.
+     *
+     * Ignored entirely for anything with a [what]: a thrown hammer is drawn
+     * as a hammer.
+     */
+    val looksLike: ConjuredBolt = ConjuredBolt.LIKE_FIRE,
+
+    /**
      * The monsters already rolled against on the square it is over now.
      *
      * A thing in the air asks what it has come to on every turn of the clock,

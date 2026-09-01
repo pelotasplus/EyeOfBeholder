@@ -39,6 +39,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.PaletteIndex
 import pl.pelotasplus.eyeofbeholder.data.model.PartySlot
 import pl.pelotasplus.eyeofbeholder.data.model.PartyState
 import pl.pelotasplus.eyeofbeholder.data.model.Burst
+import pl.pelotasplus.eyeofbeholder.data.model.ConjuredBolt
 import pl.pelotasplus.eyeofbeholder.data.model.Dice
 import pl.pelotasplus.eyeofbeholder.data.model.Projectile
 import pl.pelotasplus.eyeofbeholder.data.model.SquarePlace
@@ -1651,12 +1652,15 @@ class ViewPortGoldenTest {
      * rolled: a burst rendered from a clock would be a different picture every
      * run and could never be compared with anything.
      */
-    private fun aBurst(afterTurns: Int): ViewPort = runBlocking {
+    private fun aBurst(
+        afterTurns: Int,
+        burning: List<Int> = Burst.LIKE_FIRE,
+    ): ViewPort = runBlocking {
         val repository = repository()
         val inf = repository.loadLevel("LEVEL2.INF").getOrThrow()
         val sublevel = inf.subLevels[inf.subLevelAt(0, 3, 12, Direction.NORTH)]
 
-        var burst = Burst.of(Location(3, 10), seededDice())
+        var burst = Burst.of(Location(3, 10), seededDice(), burning = burning)
         repeat(afterTurns) { burst = burst.onward(steps = 1) }
 
         repository.renderPosition(
@@ -1750,6 +1754,36 @@ class ViewPortGoldenTest {
     }
 
     /**
+     * A bolt of lightning going off, which looks nothing like a fireball.
+     *
+     * The colours a burst runs through are a table, and there are three of
+     * them: lightning and ice take the one that goes white, blue and pale
+     * rather than red and orange, and it is three colours shorter — so this
+     * burst is not only another colour but a shorter one, out in
+     * forty-four steps against the fireball's fifty-eight.
+     */
+    @Test
+    fun `lightning going off, every step`() {
+        (0..LIGHTNING_BURNS_FOR).forEach { step ->
+            checkGolden(
+                "burst-lightning-step-${step.twoDigits()}",
+                aBurst(step, Burst.LIKE_LIGHTNING),
+            )
+        }
+    }
+
+    /** And the third of them, dimmer than either and what a magic missile leaves. */
+    @Test
+    fun `a magic missile going off, every step`() {
+        (0..A_MISSILE_BURNS_FOR).forEach { step ->
+            checkGolden(
+                "burst-missile-step-${step.twoDigits()}",
+                aBurst(step, Burst.LIKE_A_MISSILE),
+            )
+        }
+    }
+
+    /**
      * A trap's bolt coming up the corridor, one square away and three.
      *
      * It is drawn down the middle of the square at the height of the party's
@@ -1779,6 +1813,73 @@ class ViewPortGoldenTest {
     @Test
     fun `a bolt in the air three squares off`() =
         checkGolden("bolt-three-squares-off", aBoltInFlight("LEVEL2.INF", 3, 11, Direction.NORTH, 3))
+
+    /**
+     * A bolt and a monster on the same square, which is the only picture that
+     * says which of them is in front.
+     *
+     * The game draws a row in a fixed order — what lies on the floor, the
+     * door, the monsters, then whatever is flying, then the teleporter — so a
+     * bolt about to strike something is drawn over it and reads as about to
+     * strike it. Drawn the other way round it reads as already past, or as
+     * not there at all where the monster fills the square.
+     *
+     * Nothing else here has both on one square, so nothing else could catch
+     * that order going wrong.
+     */
+    @Test
+    fun `a bolt passes in front of what it is about to hit`() =
+        checkGolden(
+            "bolt-over-a-monster",
+            aBoltInFlight(
+                "LEVEL2.INF", 3, 11, Direction.NORTH,
+                squaresOff = 1,
+                looksLike = ConjuredBolt.LIKE_ICE,
+                standing = listOf(aMonsterOn(Location(3, 10))),
+            ),
+        )
+
+    /** One of the second floor's own, stood where the test wants it. */
+    private fun aMonsterOn(where: Location) = MonsterInstance(
+        index = MonsterSlot(0),
+        unit = 0,
+        location = where,
+        place = SquarePlace.MIDDLE,
+        direction = Direction.SOUTH,
+        type = MonsterTypeId(0),
+        gfxIndex = 0,
+        mode = 0,
+        pause = 0,
+        weapon = 0,
+        pocketItem = 0,
+    )
+
+    /**
+     * The other three conjured bolts coming down the same corridor.
+     *
+     * Four of them sit in a column of their own on the sheet everything in
+     * flight is cut from, and which spell takes which is a table in the game.
+     * Drawing one for another is the kind of mistake nothing but a picture
+     * catches: a bolt of lightning is not a fireball, and the ice storm is
+     * the fireball's shape in the colours of the lightning.
+     */
+    @Test
+    fun `each of the conjured bolts coming down the corridor`() {
+        ConjuredBolt.entries.filter { it != ConjuredBolt.LIKE_FIRE }.forEach { bolt ->
+            val called = bolt.name.removePrefix("LIKE_").removePrefix("A_").lowercase()
+
+            (3 downTo 0).forEach { squaresOff ->
+                checkGolden(
+                    "bolt-$called-$squaresOff",
+                    aBoltInFlight(
+                        "LEVEL2.INF", 3, 11, Direction.NORTH,
+                        squaresOff = squaresOff,
+                        looksLike = bolt,
+                    ),
+                )
+            }
+        }
+    }
 
     /**
      * A bolt coming the length of the corridor, every step of the way.
@@ -2178,6 +2279,8 @@ class ViewPortGoldenTest {
         boltAt: Location? = null,
         going: Direction? = null,
         over: SquarePlace = SquarePlace.MIDDLE,
+        looksLike: ConjuredBolt = ConjuredBolt.LIKE_FIRE,
+        standing: List<MonsterInstance> = emptyList(),
     ): ViewPort = runBlocking {
         val repository = repository()
         val inf = repository.loadLevel(level).getOrThrow()
@@ -2191,7 +2294,7 @@ class ViewPortGoldenTest {
 
         repository.renderPosition(
             items = dungeonItems,
-            monsters = emptyList(),
+            monsters = standing,
             sublevel = sublevel,
             playerX = x,
             playerY = y,
@@ -2204,6 +2307,7 @@ class ViewPortGoldenTest {
                     going = going
                         ?: Direction.entries[(direction.ordinal + 2) % Direction.entries.size],
                     thrownBy = Projectile.Thrower.TheLevel,
+                    looksLike = looksLike,
                 ),
             ),
         ).getOrThrow()
@@ -2328,6 +2432,10 @@ class ViewPortGoldenTest {
          */
         private const val BURNS_FOR = 58
         private const val BURNS_IN_YOUR_FACE_FOR = 60
+
+        /** A shorter table is a shorter burst: these go out sooner. */
+        private const val LIGHTNING_BURNS_FOR = 44
+        private const val A_MISSILE_BURNS_FOR = 49
 
         /** Door 1 without a button, two steps of five out of its frame. */
         private val HALF_OPEN = WallByte(10)

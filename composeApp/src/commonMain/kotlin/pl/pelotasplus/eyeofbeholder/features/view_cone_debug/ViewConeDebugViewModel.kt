@@ -2118,7 +2118,7 @@ class ViewConeDebugViewModel(
                         game = state.game.copy(
                             bursting = state.game.bursting
                                 .map { it.onward() }
-                                .filter { it.burning },
+                                .filter { it.stillBurning },
                         ),
                     )
                 }

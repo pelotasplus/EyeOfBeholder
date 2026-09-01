@@ -20,9 +20,21 @@ data class Burst(
     val inYourFace: Boolean = false,
 
     val sparks: List<Spark>,
+
+    /**
+     * The colours its sparks burn through, which is what makes a bolt of
+     * lightning going off look nothing like a fireball doing it. Three of
+     * them and they are not the same length, so this decides how long the
+     * burst lasts as well as what colour it is.
+     */
+    val burning: List<Int> = LIKE_FIRE,
 ) {
-    /** Whether anything is still burning. */
-    val burning: Boolean get() = sparks.any { it.lit }
+    /** Whether anything is still alight. */
+    val stillBurning: Boolean get() = sparks.any { colourOf(it) != null }
+
+    /** What [spark] is drawn in, or null once it has burnt past the last colour. */
+    fun colourOf(spark: Spark): PaletteIndex? =
+        burning.getOrNull(spark.through shr 8)?.takeIf { it != 0 }?.let(::PaletteIndex)
 
     /**
      * One spark.
@@ -39,12 +51,7 @@ data class Burst(
         /** How far along its colours it is, in two hundred and fifty sixths. */
         val through: Int,
         val fading: Int,
-    ) {
-        val colour: PaletteIndex?
-            get() = COLOURS.getOrNull(through shr 8)?.takeIf { it != 0 }?.let(::PaletteIndex)
-
-        val lit: Boolean get() = colour != null
-    }
+    )
 
     /**
      * The burst [steps] moments later.
@@ -60,7 +67,7 @@ data class Burst(
     }
 
     private fun moved(spark: Spark): Spark {
-        if (!spark.lit) return spark
+        if (colourOf(spark) == null) return spark
 
         // The push it was given bleeds away a little at a time, while what
         // pulls it down only ever grows: so a spark goes out and up, slows,
@@ -96,7 +103,12 @@ data class Burst(
          * climbs and falls where you can watch it; one in your face sprays
          * outward across the whole view.
          */
-        fun of(at: Location, dice: Dice = Dice.random, inYourFace: Boolean = false): Burst {
+        fun of(
+            at: Location,
+            dice: Dice = Dice.random,
+            inYourFace: Boolean = false,
+            burning: List<Int> = LIKE_FIRE,
+        ): Burst {
             val sparks = if (inYourFace) SPARKS_CLOSE_UP else SPARKS
             val thrown = if (inYourFace) THROWN_CLOSE_UP else THROWN
             val upward = thrown shr (if (inYourFace) LIFT_CLOSE_UP else LIFT)
@@ -104,6 +116,7 @@ data class Burst(
             return Burst(
                 at = at,
                 inYourFace = inYourFace,
+                burning = burning,
                 sparks = List(sparks) {
                     Spark(
                         x = 0,
@@ -121,8 +134,21 @@ data class Burst(
             )
         }
 
-        /** The colours a spark burns through, and nothing at the end of them. */
-        private val COLOURS = listOf(15, 5, 15, 5, 6, 5, 6, 8, 6, 8, 6, 8, 0)
+        /**
+         * The colours a spark burns through, and nothing at the end of them.
+         *
+         * Three of these, transcribed, and which one a burst uses is decided
+         * by what went off. They are not the same length, so they do not last
+         * the same time either: a shorter table is a shorter burst, since a
+         * spark goes dark when it reaches the end of its colours.
+         */
+        val LIKE_FIRE = listOf(15, 5, 15, 5, 6, 5, 6, 8, 6, 8, 6, 8, 0)
+
+        /** Lightning and ice, which burn white and blue and go out sooner. */
+        val LIKE_LIGHTNING = listOf(15, 9, 15, 9, 2, 10, 11, 10, 11, 0)
+
+        /** And what a magic missile leaves, which is dimmer than either. */
+        val LIKE_A_MISSILE = listOf(5, 3, 5, 3, 3, 3, 3, 11, 3, 11, 0)
 
         /** How many sparks one makes. */
         const val SPARKS = 35
