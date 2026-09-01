@@ -1,6 +1,8 @@
 package pl.pelotasplus.eyeofbeholder.data
 
 import kotlinx.coroutines.runBlocking
+import org.junit.experimental.categories.Category
+import pl.pelotasplus.eyeofbeholder.NeedsGameData
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.GameState
 import pl.pelotasplus.eyeofbeholder.data.model.LevelScriptRunner
@@ -47,6 +49,7 @@ import kotlin.test.assertTrue
  * cannot shut and an open square cannot open. This pins it so that it is not
  * mistaken later for a bug in the runner.
  */
+@Category(NeedsGameData::class)
 class TheTreasureTrapTest {
 
     private val resources = ResourceRepositoryImpl()

@@ -1,6 +1,8 @@
 package pl.pelotasplus.eyeofbeholder.data
 
 import kotlinx.coroutines.runBlocking
+import org.junit.experimental.categories.Category
+import pl.pelotasplus.eyeofbeholder.NeedsGameData
 import pl.pelotasplus.eyeofbeholder.data.model.Champion
 import pl.pelotasplus.eyeofbeholder.data.model.Abilities
 import pl.pelotasplus.eyeofbeholder.data.model.Ability
@@ -44,6 +46,7 @@ import kotlin.test.assertTrue
  * See [pl.pelotasplus.eyeofbeholder.data.model.GameFlags] for what each of
  * the floor's bits is spent on.
  */
+@Category(NeedsGameData::class)
 class LevelTwoRemarksTest {
 
     private val resources = ResourceRepositoryImpl()

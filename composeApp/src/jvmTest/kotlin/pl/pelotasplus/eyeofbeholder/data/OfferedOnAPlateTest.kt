@@ -1,6 +1,8 @@
 package pl.pelotasplus.eyeofbeholder.data
 
 import kotlinx.coroutines.runBlocking
+import org.junit.experimental.categories.Category
+import pl.pelotasplus.eyeofbeholder.NeedsGameData
 import pl.pelotasplus.eyeofbeholder.data.model.Ability
 import pl.pelotasplus.eyeofbeholder.data.model.Abilities
 import pl.pelotasplus.eyeofbeholder.data.model.ArmorClass
@@ -32,6 +34,7 @@ import kotlin.test.assertEquals
  * they were handed, so a stone dwarf offered a potion hears about being stone
  * rather than about the potion.
  */
+@Category(NeedsGameData::class)
 class OfferedOnAPlateTest {
 
     private val resources = ResourceRepositoryImpl()

@@ -1,6 +1,8 @@
 package pl.pelotasplus.eyeofbeholder.data
 
 import kotlinx.coroutines.runBlocking
+import org.junit.experimental.categories.Category
+import pl.pelotasplus.eyeofbeholder.NeedsGameData
 import pl.pelotasplus.eyeofbeholder.data.model.Champion
 import pl.pelotasplus.eyeofbeholder.data.model.CarrySlot
 import pl.pelotasplus.eyeofbeholder.data.model.ChampionFlags
@@ -40,6 +42,7 @@ import kotlin.test.assertTrue
  * what the code does with them — which speech, which two words, which bit, and
  * on which answer the bit is written.
  */
+@Category(NeedsGameData::class)
 class MeetingCalandraTest {
 
     private val resources = ResourceRepositoryImpl()

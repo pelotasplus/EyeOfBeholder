@@ -1,6 +1,8 @@
 package pl.pelotasplus.eyeofbeholder.data
 
 import kotlinx.coroutines.runBlocking
+import org.junit.experimental.categories.Category
+import pl.pelotasplus.eyeofbeholder.NeedsGameData
 import pl.pelotasplus.eyeofbeholder.data.model.HandUse
 import pl.pelotasplus.eyeofbeholder.data.model.Horn
 import pl.pelotasplus.eyeofbeholder.data.model.Item
@@ -23,6 +25,7 @@ import kotlin.test.assertTrue
  * The kinds come from ITEMTYPE.DAT rather than from a table written here, so
  * this says what the game's own items do and not what somebody expected.
  */
+@Category(NeedsGameData::class)
 class WhatAHandDoesTest {
 
     private val resources = ResourceRepositoryImpl()

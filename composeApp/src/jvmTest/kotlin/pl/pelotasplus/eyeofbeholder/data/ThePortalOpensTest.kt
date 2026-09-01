@@ -1,6 +1,8 @@
 package pl.pelotasplus.eyeofbeholder.data
 
 import kotlinx.coroutines.runBlocking
+import org.junit.experimental.categories.Category
+import pl.pelotasplus.eyeofbeholder.NeedsGameData
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.GameState
 import pl.pelotasplus.eyeofbeholder.data.model.Inf
@@ -30,6 +32,7 @@ import kotlin.test.assertTrue
  * The party stand at 17x23 facing west and take the gem to the arch, so the
  * script that answers is the one on the square in front of them.
  */
+@Category(NeedsGameData::class)
 class ThePortalOpensTest {
 
     private val resources = ResourceRepositoryImpl()

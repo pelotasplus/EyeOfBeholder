@@ -1,6 +1,8 @@
 package pl.pelotasplus.eyeofbeholder.data
 
 import kotlinx.coroutines.runBlocking
+import org.junit.experimental.categories.Category
+import pl.pelotasplus.eyeofbeholder.NeedsGameData
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.GameState
 import pl.pelotasplus.eyeofbeholder.data.model.LevelScriptRunner
@@ -42,6 +44,7 @@ import kotlin.test.assertEquals
  * Asking `== 26` before each is what makes it once-only: a second visit finds
  * nothing to dissolve and falls through to `end`.
  */
+@Category(NeedsGameData::class)
 class DissolvingTheSealedRoomsTest {
 
     private val resources = ResourceRepositoryImpl()
