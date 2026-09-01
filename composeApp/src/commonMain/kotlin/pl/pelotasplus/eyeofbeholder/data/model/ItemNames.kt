@@ -229,3 +229,22 @@ object ChampionMessages {
     /** And said when a grip lets go, which only paralysis does by itself. */
     fun isNoLongerParalysed(whose: String) = "$whose is no longer paralyzed!"
 }
+
+/**
+ * What is said when a spell reaches the party.
+ *
+ * Three of the ones a monster casts have a line and the rest have none, which
+ * is why a beholder's ray is so hard to read: two of the four announce
+ * themselves and two arrive in silence.
+ *
+ * [seriousWounds] calls the spell serious where every other name for it says
+ * critical. Leave it: the wording is what a player sees.
+ */
+object SpellMessages {
+    fun disintegrated(whose: String) = "$whose has been disintegrated!"
+
+    /** The one that names nobody, however many of them it takes. */
+    const val A_DEATH_SPELL = "The party has been hit by a death spell!"
+
+    fun seriousWounds(whose: String) = "$whose has been hit by cause serious wounds."
+}

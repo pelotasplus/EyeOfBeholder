@@ -1646,6 +1646,7 @@ data class GameState(
     companion object {
         private const val TAG = "GameState"
 
+
         /** How often the thing a monster only might carry actually drops. */
         private const val ONE_TIME_IN_TEN = 10
 

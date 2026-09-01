@@ -60,38 +60,52 @@ class WhatASpellDoesOnArrivalTest {
     // --- the ones that kill ---------------------------------------------------
 
     /**
-     * Disintegrate has a saving throw in the original which is never rolled:
-     * what it asks for is halved as a whole number before anything is thrown,
-     * and one halved is none, so it always reads as a failure. It kills every
-     * time, and the best roll a champion could make does not change it.
+     * Both of these are save-or-lose-a-champion, and the throw is the one a
+     * spell asks for rather than the one paralysis uses — so hardiness against
+     * a rod is no help, and the levels a champion has earned are.
      */
     @Test
-    fun `disintegrate always kills, however well the dice fall`() {
+    fun `disintegrate kills the one it finds, where the throw is failed`() {
         val before = world()
 
-        val after = landing(everyDieAtItsMost).of(MonsterSpell.MONSTER_DISINTEGRATE, before)
+        val after = landing(everyDieAtItsLeast).of(MonsterSpell.MONSTER_DISINTEGRATE, before)
 
         assertEquals(1, after.hurt.size, "it took more than one of them, or none")
         assertEquals(5, after.world.standing(), "the one it reached is still standing")
     }
 
-    /**
-     * And flesh to stone, asking for the same throw with a two, is always read
-     * as having been saved — so it walks the whole party, finds every one of
-     * them saved, and stops. It has never turned anybody to stone.
-     */
+    /** And a champion who makes the throw walks away from it. */
     @Test
-    fun `flesh to stone does nothing at all, ever`() {
+    fun `and takes nobody who makes it`() {
+        val before = world()
+
+        val after = landing(everyDieAtItsMost).of(MonsterSpell.MONSTER_DISINTEGRATE, before)
+
+        assertEquals(emptyList(), after.hurt, "the throw was made and they died anyway")
+        assertEquals(6, after.world.standing())
+    }
+
+    /** Flesh to stone takes the first who fails, and stone is on no clock. */
+    @Test
+    fun `flesh to stone turns the first one who fails the throw`() {
         val before = world()
 
         val after = landing(everyDieAtItsLeast).of(MonsterSpell.MONSTER_FLESH_TO_STONE, before)
 
-        assertEquals(emptyList(), after.left, "somebody was turned to stone")
-        assertEquals(emptyList(), after.hurt, "somebody was hurt by it")
-        assertTrue(
-            after.world.champions.none { it.petrified },
-            "the spell that never works worked",
-        )
+        assertEquals(1, after.left.size, "it took more than one of them, or none")
+        assertEquals(WhatABlowLeaves.PETRIFICATION, after.left.single().what)
+        assertEquals(1, after.world.champions.count { it.petrified })
+    }
+
+    /** And leaves a party who all make it standing. */
+    @Test
+    fun `and leaves a party who all make the throw alone`() {
+        val before = world()
+
+        val after = landing(everyDieAtItsMost).of(MonsterSpell.MONSTER_FLESH_TO_STONE, before)
+
+        assertEquals(emptyList(), after.left, "somebody was turned to stone anyway")
+        assertTrue(after.world.champions.none { it.petrified })
     }
 
     /** The death spell passes over anybody of the eighth level or better. */
@@ -114,6 +128,23 @@ class WhatASpellDoesOnArrivalTest {
 
         assertEquals(4, most.hurt.size, "a die of four at its most is four of them")
         assertEquals(1, least.hurt.size, "and at its least is one")
+    }
+
+    /**
+     * The number on the portrait is the whole of what the blow cost, however
+     * big. It is the only thing on screen that explains a champion dropping
+     * to one hit, so a number too large to draw is worth drawing anyway.
+     */
+    @Test
+    fun `a killing three hundred shows all three hundred`() {
+        val before = world()
+
+        val after = landing(everyDieAtItsLeast)
+            .of(MonsterSpell.MONSTER_DISINTEGRATE, before).world
+
+        val whose = PartySlot(after.champions.indexOfFirst { it.dead })
+        assertEquals(300, after.damageShownOn(whose)?.points, "it drew the byte, which is 44")
+        assertTrue(after.champions[whose.index].deadForGood, "three hundred did not kill")
     }
 
     // --- the one that only wounds ---------------------------------------------

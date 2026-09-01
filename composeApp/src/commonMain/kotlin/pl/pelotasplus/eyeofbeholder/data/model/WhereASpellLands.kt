@@ -85,16 +85,16 @@ class WhereASpellLands(private val dice: Dice = Dice.random) {
     }
 
     /**
-     * One champion destroyed.
+     * The one champion it happens upon destroyed, unless they shrug it off.
      *
-     * There is a saving throw against this in the original and it is never
-     * rolled: what the throw is asked for is halved as a whole number first,
-     * and one halved is none, so the answer is always that they failed.
-     * Transcribed rather than repaired — a beholder's disintegrate always
-     * kills, and a party that has met one knows it.
+     * It asks only that one. A party who watch somebody go this way have no
+     * reason to think the next of them was ever in danger.
      */
     private fun disintegrated(world: GameState): Landed {
         val whose = inTheOrderItFinds(world).firstOrNull() ?: return Landed(world)
+        val who = world.championIn(whose) ?: return Landed(world)
+        if (who.saves(SavingThrow.A_SPELL, dice)) return Landed(world)
+
         return Landed(world.championHurt(whose, ENOUGH_TO_KILL), listOf(whose))
     }
 
@@ -107,15 +107,27 @@ class WhereASpellLands(private val dice: Dice = Dice.random) {
     }
 
     /**
-     * Nothing at all, which is the whole of what this spell does.
+     * The first champion who fails the throw turned to stone.
      *
-     * The same never-rolled throw as [disintegrated], asked for with a two
-     * instead of a one — and two halved is one, which counts as having saved.
-     * So the spell looks at each champion in turn, finds every one of them
-     * saved, runs out of party and stops. It has never turned anybody to stone
-     * in this game and it does not here either.
+     * This one walks the party rather than asking a single champion, and stops
+     * at the first it takes — so a party of six is not six chances to escape
+     * it, only six chances for it to find somebody. Stone is on no clock and
+     * no rest lifts it.
      */
-    private fun turnedToStone(world: GameState) = Landed(world)
+    private fun turnedToStone(world: GameState): Landed {
+        inTheOrderItFinds(world).forEach { whose ->
+            val after = world.championLeftWith(
+                whose = whose,
+                what = WhatABlowLeaves.PETRIFICATION,
+                dice = dice,
+                against = SavingThrow.A_SPELL,
+            ) ?: return@forEach
+
+            return Landed(after, left = listOf(Left(whose, WhatABlowLeaves.PETRIFICATION)))
+        }
+
+        return Landed(world)
+    }
 
     /**
      * The party in the order a spell finds them: from a champion picked at

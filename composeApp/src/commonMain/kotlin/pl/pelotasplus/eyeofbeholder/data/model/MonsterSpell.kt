@@ -16,17 +16,15 @@ private const val DOWN_A_CORRIDOR = 6
  * kind names them by number: a dark moon cleric carries `3, 7, 7, 3`, and a
  * beholder `10` through `13`. Fourteen are defined and the rest are nothing.
  *
- * Four bytes each in the original, and transcribed rather than derived —
- * `callBackIndex, distance, flags, objectType`. The first says which spell it
- * runs where it lands, which is not modelled here; the other three are. The
- * sound comes from that first byte all the same: it names a row of a table of
- * twenty-five-byte spell records, and the sound is the nineteenth byte of it.
+ * Every value below is data rather than judgement: nothing here follows from
+ * anything else, so a number changed by eye is simply a different spell.
  *
- * The one thing worth noticing before reading the table: **four different
- * spells share one picture.** [MONSTER_DEATH_SPELL], [MONSTER_DISINTEGRATE],
+ * The one thing worth knowing before reading it: **four of them share one
+ * picture and one sound.** [MONSTER_DEATH_SPELL], [MONSTER_DISINTEGRATE],
  * [MONSTER_CAUSE_CRITICAL_WOUNDS] and [MONSTER_FLESH_TO_STONE] all cross the
- * view as the same scatter of blue motes, so a beholder gives no warning of
- * which of the four it has cast. That is the original and not a shortcut.
+ * view as the same scatter of blue motes and are cast with the same noise, so
+ * a beholder gives no warning of which of the four is coming. Nothing but the
+ * message it prints on arrival tells them apart.
  */
 enum class MonsterSpell(
     /** The number a monster's kind carries to mean this one. */
@@ -36,8 +34,8 @@ enum class MonsterSpell(
      * How it is drawn, or null for the one shape not cut yet.
      *
      * Only [MELFS_ACID_ARROW] is null: it is drawn as one of the thrown
-     * weapons rather than as a bolt, and no monster in the game fires it —
-     * it is the party's, and the party do not cast yet.
+     * weapons rather than as a bolt, and nothing fires it — no monster carries
+     * it, and the party do not cast yet.
      */
     val looksLike: ConjuredBolt?,
 
@@ -71,10 +69,7 @@ enum class MonsterSpell(
 
     /**
      * What is heard as it is cast, which is the spell's own sound and not the
-     * monster's.
-     *
-     * Transcribed, and worth noticing that the four rays are one sound as well
-     * as one picture: a beholder gives nothing away by ear either.
+     * monster's — so two kinds casting the same thing sound alike.
      */
     val heardAs: TrackIndex = TrackIndex(0),
 

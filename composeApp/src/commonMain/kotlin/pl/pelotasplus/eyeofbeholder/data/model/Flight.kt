@@ -57,6 +57,21 @@ class Flight(
          * a portrait, and something has to say it out loud.
          */
         val left: List<WhereASpellLands.Left> = emptyList(),
+        /**
+         * Every spell that got as far as the party, and what it did there.
+         *
+         * Worth reporting separately from the damage because four of them are
+         * one picture and one sound: nothing on screen says which of a
+         * beholder's rays arrived, so this is the only place it is named.
+         */
+        val landed: List<Landing> = emptyList(),
+    )
+
+    /** One spell arriving, and what it cost. */
+    data class Landing(
+        val spell: MonsterSpell,
+        val hurt: List<PartySlot>,
+        val left: List<WhereASpellLands.Left>,
     )
 
     /**
@@ -154,6 +169,7 @@ private val atEachQuarter = listOf(
         val struckWalls = mutableListOf<StruckWall>()
         val settled = mutableListOf<Location>()
         val left = mutableListOf<WhereASpellLands.Left>()
+        val landed = mutableListOf<Landing>()
         val stillGoing = mutableListOf<Projectile>()
 
         // Whatever stopped it, it has stopped: it lies where it is, goes off
@@ -166,7 +182,10 @@ private val atEachQuarter = listOf(
             // stopped short — against a wall, or on a monster it was allowed
             // to touch — has simply failed to arrive.
             val after = if (flying.spell != null && flying.at == world.party.position) {
-                landing?.of(flying.spell, world)?.also { left += it.left }?.world ?: world
+                landing?.of(flying.spell, world)?.also {
+                    left += it.left
+                    landed += Landing(flying.spell, it.hurt, it.left)
+                }?.world ?: world
             } else {
                 world
             }
@@ -255,7 +274,15 @@ private val atEachQuarter = listOf(
             if (steps > 0) stillGoing += now else overItsSquare(now)
         }
 
-        return Moved(carried.copy(inFlight = stillGoing), flewOnto, hurt, struckWalls, settled, left)
+        return Moved(
+            carried.copy(inFlight = stillGoing),
+            flewOnto,
+            hurt,
+            struckWalls,
+            settled,
+            left,
+            landed,
+        )
     }
 
     /**

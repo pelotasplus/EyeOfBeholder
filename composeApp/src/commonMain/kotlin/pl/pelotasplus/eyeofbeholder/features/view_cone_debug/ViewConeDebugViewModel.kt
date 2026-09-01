@@ -112,7 +112,9 @@ import pl.pelotasplus.eyeofbeholder.data.model.rightNow
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptEvent
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptTimer
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptQuestion
+import pl.pelotasplus.eyeofbeholder.data.model.MonsterSpell
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptSpeech
+import pl.pelotasplus.eyeofbeholder.data.model.SpellMessages
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptStage
 import pl.pelotasplus.eyeofbeholder.data.model.TELEPORTER_PULSE
 import pl.pelotasplus.eyeofbeholder.data.model.TeleporterPulse
@@ -1704,6 +1706,7 @@ class ViewConeDebugViewModel(
                 var struckInFlight = emptyList<Flight.Hurt>()
                 var stoodBefore = emptyList<Champion>()
                 var spellsLeft = emptyList<WhereASpellLands.Left>()
+                var spellsLanded = emptyList<Flight.Landing>()
 
                 // Settled before the world is touched: an update that loses a
                 // race runs its block again, and the way round a corner would
@@ -1801,6 +1804,7 @@ class ViewConeDebugViewModel(
 
                         world = flown.world
                         spellsLeft = flown.left
+                        spellsLanded = flown.landed
                         flewOnto = flown.flewOnto
                         struckWalls = flown.struckWalls
                         struckInFlight = flown.hurt
@@ -1897,6 +1901,14 @@ class ViewConeDebugViewModel(
                 }
                 spellsLeft.forEach { what ->
                     sayOf(what.whose) { ChampionMessages.nowIs(it, what.what.calledIt) }
+                }
+                spellsLanded.forEach { landing ->
+                    Logger.d(TAG) {
+                        "$tickNow  ${landing.spell.name} LANDS" +
+                            "\thurt ${landing.hurt.map { it.index }}" +
+                            "\tleft ${landing.left.map { "${it.whose.index}:${it.what}" }}"
+                    }
+                    sayWhatTheSpellDid(landing)
                 }
                 bitten.forEach { whose -> sayOf(whose, ChampionMessages::feelsThePoison) }
                 freed.forEach { whose -> sayOf(whose, ChampionMessages::isNoLongerParalysed) }
@@ -2397,6 +2409,28 @@ class ViewConeDebugViewModel(
     }
 
     /** A line about one champion, which wants their name in it. */
+    /**
+     * The line a spell puts up on arriving, for the three that have one.
+     *
+     * The rest arrive in silence, which is why a beholder is so hard to read:
+     * two of its four rays announce themselves by name and two say nothing at
+     * all. The death spell names nobody however many it takes, and says so
+     * whether or not it found anybody it was allowed to kill.
+     */
+    private fun sayWhatTheSpellDid(landing: Flight.Landing) {
+        when (landing.spell) {
+            MonsterSpell.MONSTER_DISINTEGRATE ->
+                landing.hurt.forEach { whose -> sayOf(whose, SpellMessages::disintegrated) }
+
+            MonsterSpell.MONSTER_DEATH_SPELL -> say(SpellMessages.A_DEATH_SPELL)
+
+            MonsterSpell.MONSTER_CAUSE_CRITICAL_WOUNDS ->
+                landing.hurt.forEach { whose -> sayOf(whose, SpellMessages::seriousWounds) }
+
+            else -> Unit
+        }
+    }
+
     private fun sayOf(whose: PartySlot, line: (String) -> String) {
         _state.value.game.championIn(whose)?.let { say(line(it.name)) }
     }
