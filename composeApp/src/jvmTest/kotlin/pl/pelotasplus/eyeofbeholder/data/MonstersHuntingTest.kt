@@ -99,7 +99,7 @@ class MonstersHuntingTest {
             party = Location(13, 10),
         ).rousedBy(CLERIC)
 
-        val after = turn().begun(world, walking)
+        val after = turn().begun(world, walking).world
 
         assertEquals(Location(13, 9), after.whereTheClericIs())
     }
@@ -113,7 +113,7 @@ class MonstersHuntingTest {
             party = Location(13, 10),
         ).rousedBy(CLERIC)
 
-        val after = turn().begun(world)
+        val after = turn().begun(world).world
 
         assertEquals(Location(13, 8), after.whereTheClericIs())
     }
@@ -130,7 +130,7 @@ class MonstersHuntingTest {
             party = Location(13, 10),
         ).rousedBy(CLERIC)
 
-        val after = turn().begun(world, walking)
+        val after = turn().begun(world, walking).world
 
         assertEquals(Location(13, 9), after.whereTheClericIs())
         assertEquals(Direction.SOUTH, after.theCleric().direction)
@@ -153,7 +153,7 @@ class MonstersHuntingTest {
 
         assertEquals(SquarePlace.SOUTH_EAST, world.theCleric().place)
 
-        val after = turn().begun(world, walking)
+        val after = turn().begun(world, walking).world
 
         assertEquals(Location(12, 9), after.whereTheClericIs())
         assertEquals(Direction.SOUTH, after.theCleric().direction, "it turned instead of sidling")
@@ -180,7 +180,7 @@ class MonstersHuntingTest {
             party = Location(12, 10),
         ).rousedBy(CLERIC)
 
-        val after = turn().begun(world, walking)
+        val after = turn().begun(world, walking).world
 
         assertEquals(Location(12, 9), after.whereTheClericIs(), "it did not follow")
         assertEquals(
@@ -207,7 +207,7 @@ class MonstersHuntingTest {
                 stepping = MonsterStepping(level = 5, subLevel = sub, kinds = plodding),
                 kinds = plodding,
             ),
-        )
+        ).world
 
         assertEquals(Location(12, 9), after.whereTheClericIs())
         assertNull(after.theCleric().striking, "it moved and swung in one turn")
@@ -281,7 +281,7 @@ class MonstersHuntingTest {
         val groups = world.monsters.map { it.turnGroup }
         assertEquals(1, groups.toSet().size, "the pair are not in one turn group")
 
-        val itsTurn = turn().begun(world, walking, group = groups.first())
+        val itsTurn = turn().begun(world, walking, group = groups.first()).world
         val whoMoved = itsTurn.monsters.filter { after ->
             world.monsters.first { it.index == after.index }.location != after.location
         }
@@ -309,7 +309,7 @@ class MonstersHuntingTest {
         assertTrue(world.theCleric().facesTheSquareOf(world.party))
         assertFalse(world.theClericReaches(), "it could reach all along")
 
-        val after = turn().begun(world, walking)
+        val after = turn().begun(world, walking).world
 
         assertEquals(Location(13, 9), after.whereTheClericIs(), "it walked off instead")
         assertEquals(SquarePlace.MIDDLE, after.theCleric().place)
@@ -335,7 +335,7 @@ class MonstersHuntingTest {
 
         assertFalse(world.theClericReaches(), "it could reach all along")
 
-        val after = MonstersTurn(kinds, stepping = stepping).begun(world, walking = null)
+        val after = MonstersTurn(kinds, stepping = stepping).begun(world, walking = null).world
 
         assertEquals(SquarePlace.MIDDLE, after.theCleric().place, "it stayed on the far corner")
         assertTrue(after.theClericReaches())
@@ -388,7 +388,7 @@ class MonstersHuntingTest {
 
         assertTrue(world.theCleric().standingBy, "the pair are not placed waiting to see")
 
-        val after = turn().begun(world, walking)
+        val after = turn().begun(world, walking).world
 
         assertFalse(after.theCleric().provoked)
         assertEquals(Location(13, 8), after.whereTheClericIs())

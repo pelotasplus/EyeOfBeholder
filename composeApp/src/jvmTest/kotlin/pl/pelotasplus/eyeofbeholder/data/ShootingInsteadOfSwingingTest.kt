@@ -142,7 +142,7 @@ class ShootingInsteadOfSwingingTest {
      */
     @Test
     fun `one that shoots does not also swing`() {
-        val after = turn(theLowestRoll).begun(world(shooter(at = Location(3, 10))))
+        val after = turn(theLowestRoll).begun(world(shooter(at = Location(3, 10)))).world
 
         assertNull(after.theShooter().striking, "it swung on the turn it shot")
         assertEquals(3, after.theShooter().shotsLeft, "the shot was not spent")
@@ -151,7 +151,7 @@ class ShootingInsteadOfSwingingTest {
     /** And the shot is a thing in the air, not merely a counter going down. */
     @Test
     fun `one that shoots puts something in the air`() {
-        val after = turn(theLowestRoll).begun(world(shooter(at = Location(3, 9))))
+        val after = turn(theLowestRoll).begun(world(shooter(at = Location(3, 9)))).world
 
         val flying = after.inFlight.singleOrNull()
         assertNotNull(flying, "it spent a shot on nothing at all")
@@ -162,7 +162,7 @@ class ShootingInsteadOfSwingingTest {
     /** And out of reach, with somewhere to walk to, it holds its ground. */
     @Test
     fun `one that shoots does not also walk`() {
-        val after = turn(theLowestRoll).begun(world(shooter(at = Location(3, 9))), walking)
+        val after = turn(theLowestRoll).begun(world(shooter(at = Location(3, 9))), walking).world
 
         assertEquals(Location(3, 9), after.whereItIs(), "it walked on the turn it shot")
         assertEquals(3, after.theShooter().shotsLeft, "the shot was not spent")
@@ -179,7 +179,7 @@ class ShootingInsteadOfSwingingTest {
     fun `one still waiting for its shot walks anyway, and waits one less`() {
         val waiting = shooter(at = Location(3, 9), waited = 0)
 
-        val after = turn(theHighestRoll).begun(world(waiting), walking)
+        val after = turn(theHighestRoll).begun(world(waiting), walking).world
 
         assertEquals(Location(3, 10), after.whereItIs(), "waiting for a shot ate its step")
         assertEquals(4, after.theShooter().shotsLeft, "a shot it never took was counted")
@@ -195,7 +195,7 @@ class ShootingInsteadOfSwingingTest {
     fun `and one still waiting swings anyway`() {
         val waiting = shooter(at = Location(3, 10), waited = 0)
 
-        val after = turn(theHighestRoll).begun(world(waiting))
+        val after = turn(theHighestRoll).begun(world(waiting)).world
 
         assertNotNull(after.theShooter().striking, "waiting for a shot ate its swing")
     }
@@ -211,7 +211,7 @@ class ShootingInsteadOfSwingingTest {
     fun `one waiting to see what the party do does not shoot them`() {
         val talking = shooter(at = Location(3, 9), mode = MonsterMode.WAITING_TO_SEE)
 
-        val after = turn(theLowestRoll).begun(world(talking, roused = false), walking)
+        val after = turn(theLowestRoll).begun(world(talking, roused = false), walking).world
 
         assertEquals(4, after.theShooter().shotsLeft, "it shot before anybody had provoked it")
     }

@@ -173,7 +173,7 @@ class MonstersBunchingTest {
         }.rousedBy(MonsterSlot(0)).rousedBy(MonsterSlot(1))
 
         val hunting = MonsterPathing(stepping = stepping(), kinds = kinds)
-        val after = generateSequence(world) { MonstersTurn(kinds).begun(it, hunting) }
+        val after = generateSequence(world) { MonstersTurn(kinds).begun(it, hunting).world }
             .elementAt(TURNS_TO_CLOSE)
 
         val squares = after.monsters.map { Location(it.x, it.y) }

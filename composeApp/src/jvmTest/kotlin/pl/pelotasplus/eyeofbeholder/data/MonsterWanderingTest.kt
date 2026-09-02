@@ -100,6 +100,7 @@ class MonsterWanderingTest {
 
                 val after = MonstersTurn(sub.monsters)
                     .begun(world, walking(inf, 3))
+                    .world
                     .at(slot)
 
                 if (sub.openAhead(world, 3, before)) {
@@ -166,6 +167,7 @@ class MonsterWanderingTest {
 
         val after = MonstersTurn(inf.subLevels[0].monsters)
             .begun(world, walking(inf, 1))
+            .world
             .at(one.index)
 
         assertEquals(MonsterMode.HUNTING, after.whatItDoes)
@@ -215,7 +217,10 @@ class MonsterWanderingTest {
                 looking.wall(4, aside.oneStepFrom(Location(before.x, before.y)), aside.wallSideFacingBack),
             )
 
-            val after = MonstersTurn(sub.monsters).begun(looking, walking(inf, 4)).at(before.index)
+            val after = MonstersTurn(sub.monsters)
+                .begun(looking, walking(inf, 4))
+                .world
+                .at(before.index)
 
             if (open) {
                 assertEquals(aside, after.direction, "it walked past an opening")

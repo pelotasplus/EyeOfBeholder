@@ -47,6 +47,19 @@ class MonstersTurn(
     /** Something a blow left on a champion besides the wound. */
     data class Left(val whose: PartySlot, val what: WhatABlowLeaves)
 
+    /**
+     * What the turns came to: the world afterwards, and anything that reached
+     * the party without crossing the room to do it.
+     *
+     * [world] is what nearly every caller wants. The rest is for the one
+     * attack that has no projectile behind it, and so has nothing in the air
+     * to be noticed arriving.
+     */
+    data class Turned(
+        val world: GameState,
+        val blasted: List<TakingAShot.MindBlast> = emptyList(),
+    )
+
     /** One monster's blow at one champion. */
     data class Struck(
         val monster: MonsterSlot,
@@ -84,12 +97,12 @@ class MonstersTurn(
         walking: MonsterPathing? = null,
         wayRound: MonsterPathing.WayRound = MonsterPathing.WayRound.RIGHT_FIRST,
         group: Int? = null,
-    ): GameState {
+    ): Turned {
         // One swing at a time. A blow coming down at the party holds the rest
         // of the floor still until it lands, so a second monster cannot start
         // its own swing over the top of the first — without this a pair in
         // front take turns swinging and never leave a gap to move in.
-        if (world.pinnedByASwing) return world
+        if (world.pinnedByASwing) return Turned(world)
 
         // Anything that walks also notices, and whatever it was doing before it
         // is now hunting. What is standing by is deaf until it is hit, which is
@@ -115,13 +128,17 @@ class MonstersTurn(
             }
             .map { it.index }
 
+        val blasted = mutableListOf<TakingAShot.MindBlast>()
+
         // One at a time, and read back out of the world each time: an earlier
         // monster's step may have taken the square this one was making for.
-        return taking.fold(noticing) { world, slot ->
+        val after = taking.fold(noticing) { world, slot ->
             world.monsters.firstOrNull { it.index == slot }
-                ?.let { takenBy(world, it, walking, wayRound) }
+                ?.let { takenBy(world, it, walking, wayRound, blasted::add) }
                 ?: world
         }
+
+        return Turned(after, blasted)
     }
 
     /**
@@ -140,6 +157,7 @@ class MonstersTurn(
         monster: MonsterInstance,
         walking: MonsterPathing?,
         wayRound: MonsterPathing.WayRound,
+        blasted: (TakingAShot.MindBlast) -> Unit,
     ): GameState {
         if (walking != null && !monster.provoked) {
             return wandering(world, monster, walking)
@@ -150,7 +168,9 @@ class MonstersTurn(
         // Loosing is the whole of the turn: what shoots does not also swing or
         // step.
         if (shooting != null && shot is TakingAShot.Shot.Looses) {
-            return shooting.loosed(world.holding(shot.monster), shot)
+            val loosed = shooting.loosed(world.holding(shot.monster), shot)
+            loosed.blast?.let(blasted)
+            return loosed.world
         }
 
         // Waiting for a shot is not spending the turn on one. All a refused

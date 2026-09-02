@@ -89,6 +89,7 @@ class Resting(
             THE_UNITS_THAT_STIR.forEach { unit ->
                 settling = MonstersTurn(kinds, stepping = stepping)
                     .begun(settling, walking = walking, group = unit)
+                    .world
             }
         }
         return settling

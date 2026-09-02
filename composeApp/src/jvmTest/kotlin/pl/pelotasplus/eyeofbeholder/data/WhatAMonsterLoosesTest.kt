@@ -4,6 +4,10 @@ import kotlinx.coroutines.runBlocking
 import org.junit.experimental.categories.Category
 import pl.pelotasplus.eyeofbeholder.NeedsGameData
 import pl.pelotasplus.eyeofbeholder.data.model.Burst
+import pl.pelotasplus.eyeofbeholder.data.model.Champion
+import pl.pelotasplus.eyeofbeholder.data.model.ChampionFlags
+import pl.pelotasplus.eyeofbeholder.data.model.ClassLevel
+import pl.pelotasplus.eyeofbeholder.data.model.XpPoints
 import pl.pelotasplus.eyeofbeholder.data.model.ConjuredBolt
 import pl.pelotasplus.eyeofbeholder.data.model.Dice
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
@@ -149,7 +153,7 @@ class WhatAMonsterLoosesTest {
         val shot = shooting.taken(world, shooter)
         check(shot is TakingAShot.Shot.Looses) { "it did not shoot at all: $shot" }
 
-        return shooting.loosed(world, shot).inFlight
+        return shooting.loosed(world, shot).world.inFlight
     }
 
     private fun theOneLoosed(weapon: Int) = loosed(listOf(weapon)).single()
@@ -238,7 +242,7 @@ class WhatAMonsterLoosesTest {
 
         val shot = shooting.taken(before, shooter)
         check(shot is TakingAShot.Shot.Looses)
-        val after = shooting.loosed(before, shot)
+        val after = shooting.loosed(before, shot).world
 
         val flying = after.inFlight.single()
         val what = assertNotNull(flying.what, "a thrown thing had nothing to be picked up")
@@ -265,8 +269,52 @@ class WhatAMonsterLoosesTest {
         assertTrue(loosed(listOf(MIND_BLAST)).isEmpty(), "the mind blast threw something")
     }
 
+    /** It reaches all six at once, each thrown against on their own. */
+    @Test
+    fun `and takes hold of whoever fails the throw`() {
+        val shot = blasting(everyDieAtItsLeast)
+
+        assertEquals(6, shot.blast?.held?.size, "it did not reach the whole party")
+        assertEquals(6, shot.world.champions.count { it.paralysed })
+    }
+
+    /** And a party who all make it are only startled. */
+    @Test
+    fun `and leaves alone whoever makes it`() {
+        val shot = blasting(everyDieAtItsMost)
+
+        assertEquals(emptyList(), shot.blast?.held, "somebody was held who saved")
+        assertTrue(shot.world.champions.none { it.paralysed })
+    }
+
+    /** Always the highest roll, so every saving throw is made. */
+    private val everyDieAtItsMost = Dice { times, pips, modifier -> times * pips + modifier }
+
+    private val everyDieAtItsLeast = theLowestRoll
+
+    /** A mindflayer's shot, with the party standing in front of it. */
+    private fun blasting(dice: Dice): TakingAShot.Loosed {
+        val kinds = listOf(kind(listOf(MIND_BLAST)))
+        val shooting = TakingAShot(sublevel = sub, level = 2, kinds = kinds, dice = dice)
+        val world = world().copy(champions = List(6) { aChampion() })
+
+        val shot = shooting.taken(world, shooter)
+        check(shot is TakingAShot.Shot.Looses) { "it did not shoot at all: $shot" }
+
+        return shooting.loosed(world, shot)
+    }
+
+    private fun aChampion() = Champion.NOBODY.copy(
+        name = "One",
+        flags = ChampionFlags(IN_THE_PARTY),
+        hitPoints = HitPoints(40, 40),
+        levels = listOf(ClassLevel(5, XpPoints(0))),
+    )
+
     private companion object {
         val SHOOTER = MonsterSlot(0)
+
+        const val IN_THE_PARTY = 0x01
 
         const val FIREBALL = 2
         const val HOLD_PERSON = 3

@@ -70,6 +70,20 @@ class TakingAShot(
     }
 
     /**
+     * A mindflayer's blast, which reaches the whole party at once from
+     * wherever it stands rather than crossing the room to them.
+     *
+     * [held] is whoever it caught, which may well be nobody: each of them is
+     * thrown against on their own, and what they throw against is a rod rather
+     * than a spell — so the champions who shrug off a cleric are not the ones
+     * who shrug off this.
+     */
+    data class MindBlast(val held: List<PartySlot>)
+
+    /** The world after a shot, and the one attack that has nothing to fly. */
+    data class Loosed(val world: GameState, val blast: MindBlast? = null)
+
+    /**
      * The world with what the monster reached for now in the air.
      *
      * The sign of the weapon decides which of two quite different things it
@@ -78,32 +92,60 @@ class TakingAShot(
      * be picked up and thrown back. Anything else is a spell, which is nothing
      * you could pick up and is drawn as whichever bolt its kind uses.
      *
-     * A weapon with neither meaning leaves nothing in the air. The mind blast
-     * is the one that matters: it is a number in the list with no projectile
-     * behind it at all, reaching the whole party where they stand.
+     * One number in the list stands for the mind blast, which has no
+     * projectile behind it at all and takes the whole party where they stand.
      */
-    fun loosed(world: GameState, shot: Shot.Looses): GameState {
+    fun loosed(world: GameState, shot: Shot.Looses): Loosed {
         val monster = shot.monster
 
         if (shot.weapon < 0) {
-            return world.thrown(monster, ItemIndex(-shot.weapon))
+            return Loosed(world.thrown(monster, ItemIndex(-shot.weapon)))
         }
 
-        val spell = MonsterSpell.of(shot.weapon) ?: return world
-        if (spell.looksLike == null) return world
+        if (shot.weapon == MIND_BLAST) return blasted(world)
 
-        return world.inTheAir(
-            Projectile(
-                what = null,
-                at = monster.location,
-                place = monster.place,
-                going = monster.direction,
-                squaresLeft = spell.reach,
-                thrownBy = Projectile.Thrower.AMonster(monster.index),
-                harm = Projectile.Harm.ofASpell(spell.bursts),
-                spell = spell,
+        val spell = MonsterSpell.of(shot.weapon) ?: return Loosed(world)
+        if (spell.looksLike == null) return Loosed(world)
+
+        return Loosed(
+            world.inTheAir(
+                Projectile(
+                    what = null,
+                    at = monster.location,
+                    place = monster.place,
+                    going = monster.direction,
+                    squaresLeft = spell.reach,
+                    thrownBy = Projectile.Thrower.AMonster(monster.index),
+                    harm = Projectile.Harm.ofASpell(spell.bursts),
+                    spell = spell,
+                ),
             ),
         )
+    }
+
+    /**
+     * The whole party thrown against at once, and whoever failed held.
+     *
+     * Nothing crosses the room and nothing is drawn: it is heard, it is read,
+     * and then half the party cannot move. Distance does not soften it either
+     * — anywhere the thing may shoot from is close enough.
+     */
+    private fun blasted(world: GameState): Loosed {
+        var after = world
+        val held = mutableListOf<PartySlot>()
+
+        world.champions.indices.forEach { slot ->
+            val whose = PartySlot(slot)
+
+            after = after.championLeftWith(
+                whose = whose,
+                what = WhatABlowLeaves.PARALYSIS,
+                dice = dice,
+                against = SavingThrow.A_ROD_STAFF_OR_WAND,
+            )?.also { held += whose } ?: after
+        }
+
+        return Loosed(after, MindBlast(held))
     }
 
     /**
@@ -185,6 +227,9 @@ class TakingAShot(
 
         const val IN_TURN = 1
         const val AT_RANDOM = 2
+
+        /** The one weapon number that stands for an attack rather than a thing. */
+        const val MIND_BLAST = 20
     }
 }
 

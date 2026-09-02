@@ -107,7 +107,7 @@ class MonstersStrikingBackTest {
     private fun swungThrough(from: GameState, dice: Dice = everyDieHighest): MonstersTurn.Taken {
         val turn = turn(dice)
 
-        var world = turn.begun(from)
+        var world = turn.begun(from).world
         world = world.swingsCarriedOn()
 
         return turn.landed(world, world.landingThisFrame)
@@ -123,7 +123,7 @@ class MonstersStrikingBackTest {
     fun `a blow lands while the arm is still out`() {
         val turn = turn(everyDieHighest)
 
-        val back = turn.begun(world())
+        val back = turn.begun(world()).world
         assertEquals(emptyList(), back.landingThisFrame, "the arm is only on its way")
 
         val out = back.swingsCarriedOn()
@@ -223,7 +223,7 @@ class MonstersStrikingBackTest {
     @Test
     fun `the arm goes back before the blow lands`() {
         val before = world()
-        var world = turn(everyDieHighest).begun(before)
+        var world = turn(everyDieHighest).begun(before).world
 
         assertTrue(world.monsters.all { it.striking == MonsterPose.ATTACK_A })
         assertEquals(
@@ -248,9 +248,9 @@ class MonstersStrikingBackTest {
     @Test
     fun `a swing already going is not begun again`() {
         val turn = turn(everyDieHighest)
-        val going = turn.begun(world()).swingsCarriedOn()
+        val going = turn.begun(world()).world.swingsCarriedOn()
 
-        assertTrue(turn.begun(going).monsters.all { it.striking == MonsterPose.ATTACK_B })
+        assertTrue(turn.begun(going).world.monsters.all { it.striking == MonsterPose.ATTACK_B })
     }
 
     /**
@@ -264,16 +264,16 @@ class MonstersStrikingBackTest {
 
         // It swings the first time its turn comes round, and the arm is back
         // at rest well before the turn after that.
-        val first = turn.begun(world())
+        val first = turn.begun(world()).world
         assertTrue(first.monsters.all { it.striking == MonsterPose.ATTACK_A })
 
         val resting = first.swingsCarriedOn().swingsCarriedOn()
         assertTrue(resting.monsters.none { it.striking != null })
 
-        val second = turn.begun(resting)
+        val second = turn.begun(resting).world
         assertTrue(second.monsters.none { it.striking != null }, "swung on both turns")
 
-        val third = turn.begun(second)
+        val third = turn.begun(second).world
         assertTrue(third.monsters.all { it.striking == MonsterPose.ATTACK_A })
     }
 
@@ -312,11 +312,11 @@ class MonstersStrikingBackTest {
             world.copy(monsters = world.monsters.map { it.copy(direction = Direction.NORTH) })
         }
 
-        val turned = turn.begun(fromTheSide)
+        val turned = turn.begun(fromTheSide).world
         assertTrue(turned.monsters.all { it.direction == Direction.SOUTH }, "never turned")
         assertTrue(turned.monsters.none { it.striking != null }, "turned and swung at once")
 
-        val swinging = turn.begun(turned)
+        val swinging = turn.begun(turned).world
         assertTrue(swinging.monsters.all { it.striking == MonsterPose.ATTACK_A })
     }
 
@@ -332,7 +332,7 @@ class MonstersStrikingBackTest {
 
         assertFalse(world().pinnedByASwing, "pinned before anything swung")
 
-        val swinging = turn.begun(world())
+        val swinging = turn.begun(world()).world
         assertTrue(swinging.pinnedByASwing, "the party can walk out of a swing")
 
         val landed = swinging.swingsCarriedOn().swingsCarriedOn()
@@ -360,7 +360,7 @@ class MonstersStrikingBackTest {
         }
         assertTrue(midSwing.pinnedByASwing, "the first is not counted as swinging in front")
 
-        val after = turn(everyDieHighest).begun(midSwing)
+        val after = turn(everyDieHighest).begun(midSwing).world
 
         assertEquals(midSwing.monsters, after.monsters, "the floor did not hold still for the swing")
     }
@@ -372,8 +372,8 @@ class MonstersStrikingBackTest {
             world.copy(party = world.party.copy(facing = Direction.EAST))
         }
 
-        assertTrue(turn(everyDieHighest).begun(fromTheSide).anythingSwinging)
-        assertFalse(turn(everyDieHighest).begun(fromTheSide).pinnedByASwing)
+        assertTrue(turn(everyDieHighest).begun(fromTheSide).world.anythingSwinging)
+        assertFalse(turn(everyDieHighest).begun(fromTheSide).world.pinnedByASwing)
     }
 
     /**

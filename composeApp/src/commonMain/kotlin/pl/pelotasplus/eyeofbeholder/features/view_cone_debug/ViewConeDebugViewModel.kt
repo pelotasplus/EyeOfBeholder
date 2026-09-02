@@ -1707,6 +1707,7 @@ class ViewConeDebugViewModel(
                 var stoodBefore = emptyList<Champion>()
                 var spellsLeft = emptyList<WhereASpellLands.Left>()
                 var spellsLanded = emptyList<Flight.Landing>()
+                var blasted = emptyList<TakingAShot.MindBlast>()
 
                 // Settled before the world is touched: an update that loses a
                 // race runs its block again, and the way round a corner would
@@ -1749,12 +1750,15 @@ class ViewConeDebugViewModel(
                         val flyingAlready = world.inFlight.size
 
                         theirTurn.forEach { group ->
-                            world = monstersTurn().begun(
+                            val turned = monstersTurn().begun(
                                 world = world,
                                 walking = walking,
                                 wayRound = wayRound,
                                 group = group,
                             )
+
+                            world = turned.world
+                            blasted = blasted + turned.blasted
                         }
 
                         roused = world.monsters.filter {
@@ -1901,6 +1905,20 @@ class ViewConeDebugViewModel(
                 }
                 spellsLeft.forEach { what ->
                     sayOf(what.whose) { ChampionMessages.nowIs(it, what.what.calledIt) }
+                }
+
+                // Said once for the party and then once for each of them it
+                // caught, because the second half is the part that matters:
+                // a blast everybody shrugs off is only a noise.
+                blasted.forEach { blast ->
+                    viewModelScope.launch { playTrack(MIND_BLAST) }
+                    say(SpellMessages.A_MIND_BLAST)
+
+                    blast.held.forEach { whose ->
+                        sayOf(whose) {
+                            ChampionMessages.nowIs(it, WhatABlowLeaves.PARALYSIS.calledIt)
+                        }
+                    }
                 }
                 spellsLanded.forEach { landing ->
                     Logger.d(TAG) {
@@ -3791,6 +3809,9 @@ class ViewConeDebugViewModel(
          */
         private val HURT = TrackIndex(21)
         private val PUT_DOWN = TrackIndex(22)
+
+        /** The blast a mindflayer throws, which is all there is to notice of it. */
+        private val MIND_BLAST = TrackIndex(103)
 
         /** How long a struck monster is drawn as a silhouette. */
         private val FLASH = Ticks(2)

@@ -243,6 +243,9 @@ object ChampionMessages {
 object SpellMessages {
     fun disintegrated(whose: String) = "$whose has been disintegrated!"
 
+    /** The one attack with nothing to see: it is heard, read, and felt. */
+    const val A_MIND_BLAST = "The party is hit with a psychic mind blast!"
+
     /** The one that names nobody, however many of them it takes. */
     const val A_DEATH_SPELL = "The party has been hit by a death spell!"
 
