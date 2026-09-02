@@ -200,21 +200,67 @@ class WhatASpellDoesOnArrivalTest {
         assertFalse(after.world.champions.any { it.paralysed })
     }
 
+    // --- the ones that burn the lot of you ------------------------------------
+
+    /**
+     * These take the whole party rather than picking somebody, and each of
+     * them is rolled for and thrown for separately.
+     */
+    @Test
+    fun `flame strike takes six of eight off everybody`() {
+        val before = world()
+
+        val after = landing(everyDieAtItsLeast).of(MonsterSpell.FLAME_STRIKE, before)
+
+        assertEquals(6, after.hurt.size, "it did not reach the whole party")
+        assertEquals(
+            6,
+            before.champions[0].hitPoints.current - after.world.champions[0].hitPoints.current,
+            "six dice at their least is six",
+        )
+    }
+
+    /** A throw made halves it. There is nowhere to stand that is out of it. */
+    @Test
+    fun `and a champion who makes the throw takes half, not none`() {
+        val before = world()
+
+        val after = landing(everyDieAtItsMost).of(MonsterSpell.FLAME_STRIKE, before)
+
+        assertEquals(6, after.hurt.size, "somebody dodged it altogether")
+        assertEquals(
+            6 * 8 / 2,
+            before.champions[0].hitPoints.current - after.world.champions[0].hitPoints.current,
+        )
+    }
+
+    /** The hell hounds' one rolls nothing at all: eighteen, every time. */
+    @Test
+    fun `the lesser fireball is a flat eighteen`() {
+        val before = world()
+
+        val most = landing(everyDieAtItsMost)
+            .of(MonsterSpell.MONSTER_LESSER_FIREBALL, before).world
+        val least = landing(everyDieAtItsLeast)
+            .of(MonsterSpell.MONSTER_LESSER_FIREBALL, before).world
+
+        val was = before.champions[0].hitPoints.current
+        assertEquals(18 / 2, was - most.champions[0].hitPoints.current, "the throw was made")
+        assertEquals(18, was - least.champions[0].hitPoints.current, "and here it was not")
+    }
+
     // --- and the ones not written yet -----------------------------------------
 
     /**
-     * The ones that only deal damage want the game's damage table, saving
-     * throws and all, and none of it is written. They must do nothing rather
-     * than something invented.
+     * Three spells only a mage on the fifteenth floor throws, and what they
+     * cost is not written. They must do nothing rather than something
+     * invented.
      */
     @Test
     fun `a spell with no effect written takes nothing off anybody`() {
         val before = world()
 
         listOf(
-            MonsterSpell.FLAME_STRIKE,
-            MonsterSpell.MONSTER_FIREBALL,
-            MonsterSpell.MONSTER_LESSER_FIREBALL,
             MonsterSpell.MAGIC_MISSILE,
             MonsterSpell.FIREBALL,
             MonsterSpell.LIGHTNING_BOLT,

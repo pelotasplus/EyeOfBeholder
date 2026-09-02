@@ -32,9 +32,42 @@ class WhereASpellLands(private val dice: Dice = Dice.random) {
         MonsterSpell.MONSTER_CAUSE_CRITICAL_WOUNDS -> wounded(world)
         MonsterSpell.MONSTER_FLESH_TO_STONE -> turnedToStone(world)
 
-        // The ones that only hurt, which want the damage table, and the ones
-        // nothing in the game casts at the party.
+        MonsterSpell.FLAME_STRIKE -> everybodyTakes(world, FLAME_STRIKE)
+        MonsterSpell.MONSTER_FIREBALL -> everybodyTakes(world, A_DRAGONS_FIREBALL)
+        MonsterSpell.MONSTER_LESSER_FIREBALL -> everybodyTakes(world, A_LESSER_FIREBALL)
+
         else -> Landed(world)
+    }
+
+    /**
+     * Everybody in the party hurt, each rolled for separately and each given
+     * their own throw.
+     *
+     * A throw made halves it rather than turning it aside, which is the whole
+     * difference between this and the spells that pick somebody: there is
+     * nowhere to stand on your own square that is out of the way of a burning
+     * one, so the best anybody manages is to take less of it.
+     *
+     * Everyone counts, including whoever is already down — this is what
+     * finishes off a champion lying at the party's feet.
+     */
+    private fun everybodyTakes(world: GameState, dealing: DamageDice): Landed {
+        var after = world
+        val hurt = mutableListOf<PartySlot>()
+
+        world.champions.forEachIndexed { slot, who ->
+            if (!who.inTheParty) return@forEachIndexed
+
+            val rolled = dice.roll(dealing.times, dealing.pips, dealing.base)
+            val taken = if (who.saves(SavingThrow.A_SPELL, dice)) rolled / 2 else rolled
+            if (taken <= 0) return@forEachIndexed
+
+            val whose = PartySlot(slot)
+            after = after.championHurt(whose, Damage(taken))
+            hurt += whose
+        }
+
+        return Landed(after, hurt)
     }
 
     /**
@@ -157,5 +190,13 @@ class WhereASpellLands(private val dice: Dice = Dice.random) {
         const val WOUNDS_TIMES = 3
         const val WOUNDS_PIPS = 8
         const val WOUNDS_BASE = 3
+
+        val FLAME_STRIKE = DamageDice(times = 6, pips = 8, base = 0)
+
+        /** The heaviest thing anything throws, and only one creature has it. */
+        val A_DRAGONS_FIREBALL = DamageDice(times = 12, pips = 10, base = 6)
+
+        /** And the hell hounds', which rolls nothing: eighteen, every time. */
+        val A_LESSER_FIREBALL = DamageDice(times = 0, pips = 0, base = 18)
     }
 }
