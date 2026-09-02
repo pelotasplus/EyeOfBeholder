@@ -11,6 +11,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.Location
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterSpell
 import pl.pelotasplus.eyeofbeholder.data.model.PartySlot
 import pl.pelotasplus.eyeofbeholder.data.model.PartyState
+import pl.pelotasplus.eyeofbeholder.data.model.SquarePlace
 import pl.pelotasplus.eyeofbeholder.data.model.WhatABlowLeaves
 import pl.pelotasplus.eyeofbeholder.data.model.WhereASpellLands
 import pl.pelotasplus.eyeofbeholder.data.model.XpPoints
@@ -249,26 +250,65 @@ class WhatASpellDoesOnArrivalTest {
         assertEquals(18, was - least.champions[0].hitPoints.current, "and here it was not")
     }
 
-    // --- and the ones not written yet -----------------------------------------
+    // --- the three a mage throws ----------------------------------------------
 
     /**
-     * Three spells only a mage on the fifteenth floor throws, and what they
-     * cost is not written. They must do nothing rather than something
-     * invented.
+     * These three scale with how practised the caster is, and no monster says
+     * how practised it is — the floor answers, and answers what it answers for
+     * a trap: five above the seventh, nine from there down. So a mage on the
+     * fifteenth throws at nine.
      */
     @Test
-    fun `a spell with no effect written takes nothing off anybody`() {
+    fun `a fireball rolls a die of six for every level of whatever threw it`() {
         val before = world()
 
-        listOf(
-            MonsterSpell.MAGIC_MISSILE,
-            MonsterSpell.FIREBALL,
-            MonsterSpell.LIGHTNING_BOLT,
-        ).forEach { spell ->
-            val after = landing(everyDieAtItsMost).of(spell, before)
-            assertEquals(emptyList(), after.hurt, "$spell hurt somebody by a number from nowhere")
-        }
+        val after = deepLanding(everyDieAtItsLeast).of(MonsterSpell.FIREBALL, before)
+
+        assertEquals(6, after.hurt.size, "it did not reach the whole party")
+        assertEquals(
+            9,
+            before.champions[0].hitPoints.current - after.world.champions[0].hitPoints.current,
+            "a one rolled nine times over is nine",
+        )
     }
+
+    /**
+     * A lightning bolt does the same but picks one champion, chosen by the
+     * quarter it came down on rather than by who stands in front.
+     */
+    @Test
+    fun `a lightning bolt takes one of them, not the party`() {
+        val before = world()
+
+        val after = deepLanding(everyDieAtItsLeast)
+            .of(MonsterSpell.LIGHTNING_BOLT, before, SquarePlace.NORTH_WEST)
+
+        assertEquals(1, after.hurt.size, "it took the whole party")
+    }
+
+    /**
+     * And a missile cannot be thrown off at all — the only thing in the game
+     * that allows nothing against it. One missile for every two levels, and
+     * the same at the best roll a champion can make as at the worst.
+     */
+    @Test
+    fun `nothing is thrown against a magic missile`() {
+        val before = world()
+
+        val saved = deepLanding(everyDieAtItsMost)
+            .of(MonsterSpell.MAGIC_MISSILE, before, SquarePlace.NORTH_WEST)
+
+        assertEquals(1, saved.hurt.size)
+        assertEquals(
+            (4 + 1) * 4,
+            before.champions[0].hitPoints.current -
+                saved.world.champions[saved.hurt.single().index].hitPoints.current,
+            "the best throw in the world took something off it",
+        )
+    }
+
+    /** Deep enough that whatever throws these is at its most practised. */
+    private fun deepLanding(dice: Dice) = WhereASpellLands(dice, level = 15)
 
     private companion object {
         const val IN_THE_PARTY = 0x01

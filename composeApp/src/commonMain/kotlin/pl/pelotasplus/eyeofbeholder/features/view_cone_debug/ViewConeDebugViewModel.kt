@@ -1803,7 +1803,7 @@ class ViewConeDebugViewModel(
                             level = levelNumber(state.inf.name),
                             itemTypes = itemTypes,
                             kinds = here.monsters,
-                            landing = WhereASpellLands(),
+                            landing = WhereASpellLands(level = levelNumber(state.inf.name)),
                         ).onward(world)
 
                         world = flown.world

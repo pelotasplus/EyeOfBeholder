@@ -39,6 +39,17 @@ enum class SquarePlace(val asWritten: Int) {
     val onTheFloor: Boolean get() = ordinal < CORNERS
 
     /**
+     * The quarter this counts as where only a quarter will do.
+     *
+     * A thing in the middle of a square is on no quarter of it, and anything
+     * that has to name one reads such a position as the first rather than
+     * leaving it in the middle — which is why a bolt from something big enough
+     * to fill its square still crosses in two steps, and still comes down on
+     * somebody, like anything else.
+     */
+    fun onAQuarter(): SquarePlace = if (onTheFloor) this else NORTH_WEST
+
+    /**
      * Where this is drawn when the party face [facing] — or nowhere, for a
      * thing that is not on the square at all: a niche is drawn where its wall
      * is, and so turns with the walls rather than with the floor.

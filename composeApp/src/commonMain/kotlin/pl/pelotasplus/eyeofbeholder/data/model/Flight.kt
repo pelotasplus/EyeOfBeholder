@@ -113,15 +113,6 @@ private fun SquarePlace.endTowards(going: Direction, coming: Boolean): SquarePla
 private fun SquarePlace.atTheFarEndGoing(going: Direction) =
     endTowards(going, coming = false) == onAQuarter()
 
-/**
- * The quarter this counts as. A thing in the middle of a square is on no
- * quarter of it, and the game reads such a position as the first one rather
- * than leaving it in the middle — which is why a bolt from something big
- * enough to fill its square still crosses that square in two steps like
- * anything else, instead of sitting in the centre of it twice.
- */
-private fun SquarePlace.onAQuarter() =
-    if (onTheFloor) this else SquarePlace.NORTH_WEST
 
 /**
  * Who stands under each quarter of a square, in the order a thing coming
@@ -182,7 +173,7 @@ private val atEachQuarter = listOf(
             // stopped short — against a wall, or on a monster it was allowed
             // to touch — has simply failed to arrive.
             val after = if (flying.spell != null && flying.at == world.party.position) {
-                landing?.of(flying.spell, world)?.also {
+                landing?.of(flying.spell, world, flying.place)?.also {
                     left += it.left
                     landed += Landing(flying.spell, it.hurt, it.left)
                 }?.world ?: world

@@ -12,7 +12,14 @@ package pl.pelotasplus.eyeofbeholder.data.model
  * counting at a champion picked at random and works round the party from
  * there, so the front rank are no likelier to take it than the back.
  */
-class WhereASpellLands(private val dice: Dice = Dice.random) {
+class WhereASpellLands(
+    private val dice: Dice = Dice.random,
+    // Nobody casts these, so there is no caster to ask how practised they are.
+    // The floor answers instead, and answers the same thing it answers for a
+    // trap: what is thrown at a party this deep is thrown by something this
+    // good at it.
+    private val level: Int = 1,
+) {
 
     /** The world afterwards, and what has to be said about it. */
     data class Landed(
@@ -25,7 +32,15 @@ class WhereASpellLands(private val dice: Dice = Dice.random) {
 
     data class Left(val whose: PartySlot, val what: WhatABlowLeaves)
 
-    fun of(spell: MonsterSpell, world: GameState): Landed = when (spell) {
+    /**
+     * @param from the quarter it came down on, which is how the spells that
+     *   pick one champion pick them. Ignored by the rest.
+     */
+    fun of(
+        spell: MonsterSpell,
+        world: GameState,
+        from: SquarePlace = SquarePlace.MIDDLE,
+    ): Landed = when (spell) {
         MonsterSpell.HOLD_PERSON, MonsterSpell.HOLD_MONSTER -> held(world)
         MonsterSpell.MONSTER_DEATH_SPELL -> struckDead(world)
         MonsterSpell.MONSTER_DISINTEGRATE -> disintegrated(world)
@@ -36,8 +51,27 @@ class WhereASpellLands(private val dice: Dice = Dice.random) {
         MonsterSpell.MONSTER_FIREBALL -> everybodyTakes(world, A_DRAGONS_FIREBALL)
         MonsterSpell.MONSTER_LESSER_FIREBALL -> everybodyTakes(world, A_LESSER_FIREBALL)
 
+        MonsterSpell.FIREBALL -> everybodyTakes(world, A_DIE_OF_SIX, times = castAt)
+
+        // The two that pick somebody out. A missile is the one thing in the
+        // game there is no throwing off at all.
+        MonsterSpell.LIGHTNING_BOLT ->
+            oneOfThemTakes(world, from, A_DIE_OF_SIX, times = castAt, against = SavingThrow.A_SPELL)
+
+        MonsterSpell.MAGIC_MISSILE ->
+            oneOfThemTakes(world, from, A_MISSILE, times = missiles, against = null)
+
         else -> Landed(world)
     }
+
+    /**
+     * How practised whatever cast it is, which nothing about the monster says
+     * — the floor says it, and says the same for a trap.
+     */
+    private val castAt get() = Projectile.trapStrength(level)
+
+    /** And how many missiles come of that, which is one for every two levels. */
+    private val missiles get() = (castAt - 1) / 2
 
     /**
      * Everybody in the party hurt, each rolled for separately and each given
@@ -51,14 +85,14 @@ class WhereASpellLands(private val dice: Dice = Dice.random) {
      * Everyone counts, including whoever is already down — this is what
      * finishes off a champion lying at the party's feet.
      */
-    private fun everybodyTakes(world: GameState, dealing: DamageDice): Landed {
+    private fun everybodyTakes(world: GameState, dealing: DamageDice, times: Int = 1): Landed {
         var after = world
         val hurt = mutableListOf<PartySlot>()
 
         world.champions.forEachIndexed { slot, who ->
             if (!who.inTheParty) return@forEachIndexed
 
-            val rolled = dice.roll(dealing.times, dealing.pips, dealing.base)
+            val rolled = dice.roll(dealing.times, dealing.pips, dealing.base) * times
             val taken = if (who.saves(SavingThrow.A_SPELL, dice)) rolled / 2 else rolled
             if (taken <= 0) return@forEachIndexed
 
@@ -68,6 +102,44 @@ class WhereASpellLands(private val dice: Dice = Dice.random) {
         }
 
         return Landed(after, hurt)
+    }
+
+    /**
+     * One champion hurt, chosen by the quarter the thing came down on.
+     *
+     * The quarter names one of the four in front. A thing arriving on the far
+     * right can carry past them to the back rank instead, half the time and
+     * only where somebody is standing there — which is the one way anybody at
+     * the back is reached by something that picks a single champion.
+     *
+     * [against] is the throw they get, or none: a missile cannot be thrown off
+     * at all, and is the only thing in the game that cannot.
+     */
+    private fun oneOfThemTakes(
+        world: GameState,
+        from: SquarePlace,
+        dealing: DamageDice,
+        times: Int,
+        against: SavingThrow?,
+    ): Landed {
+        val quarter = from.onAQuarter().asSeenFacing(world.party.facing) ?: return Landed(world)
+        var slot = quarter.ordinal
+
+        val anybodyBehind = world.champions.getOrNull(BACK_LEFT)?.inTheParty == true ||
+            world.champions.getOrNull(BACK_RIGHT)?.inTheParty == true
+
+        if (slot > FRONT_OF_THE_FOUR && anybodyBehind && dice.roll(1, 2, -1) == 1) {
+            slot += BEHIND_THEM
+        }
+
+        val who = world.champions.getOrNull(slot)?.takeIf { it.inTheParty } ?: return Landed(world)
+
+        val rolled = dice.roll(dealing.times, dealing.pips, dealing.base) * times
+        val taken = if (against != null && who.saves(against, dice)) rolled / 2 else rolled
+        if (taken <= 0) return Landed(world)
+
+        val whose = PartySlot(slot)
+        return Landed(world.championHurt(whose, Damage(taken)), listOf(whose))
     }
 
     /**
@@ -198,5 +270,18 @@ class WhereASpellLands(private val dice: Dice = Dice.random) {
 
         /** And the hell hounds', which rolls nothing: eighteen, every time. */
         val A_LESSER_FIREBALL = DamageDice(times = 0, pips = 0, base = 18)
+
+        /** What a fireball and a bolt of lightning both roll, once per level. */
+        val A_DIE_OF_SIX = DamageDice(times = 1, pips = 6, base = 0)
+
+        /** And what one magic missile is worth, before it is counted out. */
+        val A_MISSILE = DamageDice(times = 1, pips = 4, base = 1)
+
+        /** The last of the four in front, and the only one carried past. */
+        const val FRONT_OF_THE_FOUR = 2
+
+        const val BEHIND_THEM = 2
+        const val BACK_LEFT = 4
+        const val BACK_RIGHT = 5
     }
 }
