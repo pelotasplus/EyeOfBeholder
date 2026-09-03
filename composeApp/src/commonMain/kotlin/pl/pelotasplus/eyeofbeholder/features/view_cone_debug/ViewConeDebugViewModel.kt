@@ -2073,11 +2073,11 @@ class ViewConeDebugViewModel(
      */
     private fun sayWhatWasRuined(lost: MonstersTurn.Ruined) {
         val world = _state.value.game
-        val names = itemNames ?: return
         val item = world.item(lost.what) ?: return
         val whose = world.championIn(lost.whose) ?: return
+        val called = itemNamed(item) ?: return
 
-        say(ItemMessages.ruined(whose.name, whose.sex, names.of(item, itemTypes)))
+        say(ItemMessages.ruined(whose.name, whose.sex, called))
     }
 
     private fun monstersTurn() = MonstersTurn(
@@ -2420,11 +2420,22 @@ class ViewConeDebugViewModel(
 
     /** Whatever comes into the hand says what it is. */
     private fun announceTaking(item: Item?) {
-        val names = itemNames ?: return
         if (item == null) return
 
-        say(ItemMessages.taken(names.of(item, itemTypes)))
+        itemNamed(item)?.let { say(ItemMessages.taken(it)) }
     }
+
+    /**
+     * What to call an item, or null with no names loaded.
+     *
+     * A thing the party have not identified is called what it looks like,
+     * unless the debug switch is set — see [Debugging.everythingIdentified].
+     */
+    private fun itemNamed(item: Item): String? = itemNames?.of(
+        item = item,
+        types = itemTypes,
+        evenIfUnknown = debugging.everythingIdentified.value,
+    )
 
     /** A line about one champion, which wants their name in it. */
     /**

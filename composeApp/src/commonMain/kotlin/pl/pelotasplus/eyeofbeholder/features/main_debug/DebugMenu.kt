@@ -78,6 +78,7 @@ private fun DebugMenuPanel(
     val wallsArePassable by debugging.wallsArePassable.collectAsState()
     val monstersMayWalk by debugging.monstersMayWalk.collectAsState()
     val floorsKeepTime by debugging.floorsKeepTime.collectAsState()
+    val everythingIdentified by debugging.everythingIdentified.collectAsState()
     val showingMap by debugging.showingMap.collectAsState()
 
     Column(
@@ -119,6 +120,13 @@ private fun DebugMenuPanel(
             modifier = Modifier.fillMaxWidth(),
         ) {
             Text(if (showingMap) "Map: on" else "Map: off")
+        }
+
+        Button(
+            onClick = { debugging.identifyEverything(!everythingIdentified) },
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text(if (everythingIdentified) "Names: true" else "Names: as known")
         }
 
 

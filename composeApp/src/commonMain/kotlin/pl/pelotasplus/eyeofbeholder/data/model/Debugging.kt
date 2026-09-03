@@ -61,6 +61,23 @@ class Debugging {
         _floorsKeepTime.value = may
     }
 
+    private val _everythingIdentified = MutableStateFlow(false)
+
+    /**
+     * Whether every item reads by its true name, known or not.
+     *
+     * Off, because knowing what a thing is before picking it up is most of
+     * what an unidentified item is for. On, a pack can be searched for one
+     * particular thing without turning the dungeon out. It changes nothing
+     * but what things are called — not what they do, not what is cursed, not
+     * what is stuck to its slot.
+     */
+    val everythingIdentified: StateFlow<Boolean> = _everythingIdentified.asStateFlow()
+
+    fun identifyEverything(all: Boolean) {
+        _everythingIdentified.value = all
+    }
+
     private val _showingMap = MutableStateFlow(true)
 
     /** Whether the little map of where the party have been is drawn. */

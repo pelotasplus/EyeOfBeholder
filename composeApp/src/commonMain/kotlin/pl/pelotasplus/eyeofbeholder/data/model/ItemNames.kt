@@ -27,10 +27,13 @@ data class ItemNames(private val names: List<String>) {
      *   means. On a weapon or a piece of armour it is a bonus; on a potion, a
      *   ring or a wand it picks the effect out of a list; on a scroll it is
      *   the spell written on it.
+     * @param evenIfUnknown answers with the true name for a thing the party
+     *   have not identified, which is for searching a pack rather than for
+     *   playing.
      */
-    fun of(item: Item, types: ItemTypes?): String {
+    fun of(item: Item, types: ItemTypes?, evenIfUnknown: Boolean = false): String {
         val looksLike = get(item.nameUnidentified)
-        if (!item.identified) return looksLike
+        if (!item.identified && !evenIfUnknown) return looksLike
 
         val known = get(item.nameIdentified)
         if (known.isNotEmpty()) return known
@@ -200,6 +203,9 @@ object ItemMessages {
 
     /** A gem, a key, a set of bones, the lock picks. */
     const val NOT_USED_THIS_WAY = "This item is not used in this way."
+
+    /** What a wand with nothing left in it says, which is not that it is spent. */
+    const val NO_APPARENT_EFFECT = "The wand has no apparent magical effect"
 
     /**
      * What the plate says to anything that is not rations — a potion among
