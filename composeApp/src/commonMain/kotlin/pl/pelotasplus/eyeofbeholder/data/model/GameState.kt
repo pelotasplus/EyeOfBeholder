@@ -1555,6 +1555,20 @@ data class GameState(
     )
 
     /**
+     * And with it put out of use for the shorter wait a wand or a scroll
+     * costs, which reports nothing.
+     *
+     * It is what stops a wand being spent as fast as the mouse can be clicked.
+     * Shorter than a swing, and nothing is said at the end of it: a blow has
+     * an outcome worth reading in the slot, where reading something aloud has
+     * only whatever the room makes of it.
+     */
+    fun handCast(whose: PartySlot, hand: CarrySlot) = copy(
+        recovering = recovering.filterNot { it.whose == whose && it.hand == hand } +
+            HandRecovering(whose, hand, HandRecovering.AFTER_CASTING.value, came = null),
+    )
+
+    /**
      * What the weapon slots show between them, which is what says whether a
      * tick of the clock changed anything worth redrawing for.
      */

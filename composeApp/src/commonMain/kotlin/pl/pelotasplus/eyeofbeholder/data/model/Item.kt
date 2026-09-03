@@ -213,6 +213,8 @@ data class ItemTypes(private val types: List<ItemType>) {
 
     fun kindOf(item: Item): ItemKind? = this[item.type]?.extraProperties?.kind
 
+    private val scrolls = setOf(ItemKind.MAGE_SCROLL, ItemKind.CLERIC_SCROLL)
+
     /**
      * What a hand does with [held], which is one thing — see [HandUse].
      *
@@ -226,6 +228,20 @@ data class ItemTypes(private val types: List<ItemType>) {
 
         whatIsOn(held)?.let { return HandUse.Read(it) }
         hornBlown(held)?.let { return HandUse.Blow(it) }
+
+        // A scroll's worth is the spell written on it rather than any money it
+        // would fetch, and both kinds number their spells in the same run.
+        if (kindOf(held) in scrolls) {
+            return Spell.of(held.value)?.let { HandUse.Cast(it) } ?: HandUse.NotUsedThisWay
+        }
+
+        // A wand says which of eight it is rather than which spell it casts,
+        // so what it does is looked up rather than read off it.
+        if (kindOf(held) == ItemKind.WAND) {
+            return Wand.of(held.value)?.casts
+                ?.let { HandUse.Cast(it) }
+                ?: HandUse.NothingLeftInIt
+        }
 
         return when (kindOf(held)) {
             ItemKind.SWUNG_BY_HAND,
@@ -245,13 +261,14 @@ data class ItemTypes(private val types: List<ItemType>) {
 
             ItemKind.SPELLBOOK,
             ItemKind.HOLY_SYMBOL,
-            ItemKind.MAGE_SCROLL,
-            ItemKind.CLERIC_SCROLL,
             ItemKind.WAND,
             ItemKind.AMULET,
             ItemKind.SOMETHING_TO_READ,
             ItemKind.A_HORN,
             null -> HandUse.NotWrittenYet
+
+            // Answered above, where the spell written on it is read off.
+            ItemKind.MAGE_SCROLL, ItemKind.CLERIC_SCROLL -> HandUse.NotWrittenYet
         }
     }
 

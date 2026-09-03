@@ -37,6 +37,24 @@ sealed interface HandUse {
      */
     data class Read(val what: OnAParchment) : HandUse
 
+    /**
+     * Read aloud, which casts the spell written on it.
+     *
+     * A scroll carries the number of one spell and nothing else, so reading it
+     * needs none of the apparatus a champion casting from memory needs — no
+     * book, no slots, no night's sleep spent preparing. [spell] is that
+     * number, and the two kinds of scroll number their spells separately, so
+     * the same number means one thing off a mage's scroll and another off a
+     * cleric's.
+     *
+     * What the spell then does is between the square the party stand on and
+     * whatever is written there.
+     */
+    data class Cast(val spell: Spell) : HandUse
+
+    /** A wand with nothing left in it, which says so and does nothing. */
+    data object NothingLeftInIt : HandUse
+
     /** Nothing, and says so: it is worn to work, not used. */
     data object WorksByBeingWorn : HandUse
 

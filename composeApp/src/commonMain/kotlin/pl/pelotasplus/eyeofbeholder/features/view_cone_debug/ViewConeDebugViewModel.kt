@@ -114,6 +114,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.ScriptTimer
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptQuestion
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterSpell
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptSpeech
+import pl.pelotasplus.eyeofbeholder.data.model.Spell
 import pl.pelotasplus.eyeofbeholder.data.model.SpellMessages
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptStage
 import pl.pelotasplus.eyeofbeholder.data.model.TELEPORTER_PULSE
@@ -1430,15 +1431,18 @@ class ViewConeDebugViewModel(
             return
         }
 
-        // Whether this champion is of a class that may use the thing at all.
-        // It is said and then ignored: the game warns and lets them try, so a
-        // fighter told they cannot use the lock picks still takes them to the
-        // wall in front and the wall still answers.
-        var said = false
+        // Whether this champion is of a class that may use the thing at all,
+        // which refuses the whole click: they are told, and nothing else
+        // happens — no swing, no casting, and the wall in front is not offered
+        // it either. A wand of lightning is a mage's, and a fighter waving one
+        // should not set off what a wall would have answered.
         if (held != null && itemTypes?.isUsableBy(champion, held) == false) {
             say(ItemMessages.cannotUse(champion.name))
-            said = true
+            drawWords()
+            return
         }
+
+        var said = false
 
         // And what kind of thing it is, for the two answers that are nothing
         // but something to say. A kind nothing here has been written for yet
@@ -1447,6 +1451,7 @@ class ViewConeDebugViewModel(
         val aboutTheKind = when (doing) {
             HandUse.WorksByBeingWorn -> ItemMessages.WORKS_BY_BEING_WORN
             HandUse.NotUsedThisWay -> ItemMessages.NOT_USED_THIS_WAY
+            HandUse.NothingLeftInIt -> ItemMessages.NO_APPARENT_EFFECT
             else -> null
         }
         aboutTheKind?.let {
@@ -1482,9 +1487,12 @@ class ViewConeDebugViewModel(
 
             HandUse.Swing -> if (slot.slot.isAHand) strike(whose, slot.slot)
 
+            is HandUse.Cast -> castFromAScroll(whose, slot.slot, doing.spell)
+
             is HandUse.Read,
             HandUse.WorksByBeingWorn,
             HandUse.NotUsedThisWay,
+            HandUse.NothingLeftInIt,
             HandUse.NotWrittenYet -> Unit
         }
 
@@ -1971,23 +1979,6 @@ class ViewConeDebugViewModel(
      * was written to show. So a line is kept back while it would repeat, and
      * the next one that differs is printed.
      */
-    /**
-     * The line for something a monster has just loosed.
-     *
-     * Named rather than described, because which of the fourteen it was is the
-     * one thing the screen will not tell you: four of them are the same
-     * picture and the same sound, so a beholder's ray is only ever identified
-     * here.
-     */
-    private fun whatWasLoosed(tick: Int, flying: Projectile): String {
-        val who = (flying.thrownBy as? Projectile.Thrower.AMonster)?.slot
-
-        return "$tick\tm$who SHOOTS" +
-            "\t${flying.spell?.name ?: flying.what?.let { "thrown item $it" } ?: "?"}" +
-            "\t${flying.at.x}x${flying.at.y} ${flying.place} ${flying.going}" +
-            "\treach=${flying.squaresLeft} heard=${flying.spell?.heardAs?.value}"
-    }
-
     private fun whatItDidWithItsTurn(
         tick: Int,
         before: MonsterInstance,
@@ -2016,6 +2007,23 @@ class ViewConeDebugViewModel(
         lastTurnLine[after.index] = line
 
         return "$tick\t$line"
+    }
+
+    /**
+     * The line for something a monster has just loosed.
+     *
+     * Named rather than described, because which of the fourteen it was is the
+     * one thing the screen will not tell you: four of them are the same
+     * picture and the same sound, so a beholder's ray is only ever identified
+     * here.
+     */
+    private fun whatWasLoosed(tick: Int, flying: Projectile): String {
+        val who = (flying.thrownBy as? Projectile.Thrower.AMonster)?.slot
+
+        return "$tick\tm$who SHOOTS" +
+            "\t${flying.spell?.name ?: flying.what?.let { "thrown item $it" } ?: "?"}" +
+            "\t${flying.at.x}x${flying.at.y} ${flying.place} ${flying.going}" +
+            "\treach=${flying.squaresLeft} heard=${flying.spell?.heardAs?.value}"
     }
 
     /** The clocks the sublevel the party are standing in keeps. */
@@ -2866,6 +2874,41 @@ class ViewConeDebugViewModel(
     private fun GameState.withWhoeverStandsThere(live: GameState): GameState =
         if (scriptHasTheParty) this else copy(party = live.party)
 
+    /**
+     * A spell read off a scroll, which the square the party stand on is asked
+     * what it makes of.
+     *
+     * The square rather than the wall ahead: casting is not aimed at anything,
+     * so a carving that answers a spell answers it from wherever the party are
+     * standing. Which way they face is a question the script asks for itself,
+     * and level 11's two carvings both ask it.
+     *
+     * The scroll is not spent. That is ours and not the game's: there is one
+     * scroll in the whole dungeon carrying the spell those carvings want, and
+     * six squares that each need a casting to open.
+     */
+    private fun castFromAScroll(whose: PartySlot, hand: CarrySlot, spell: Spell) {
+        if (_state.value.game.isRecovering(whose, hand)) return
+
+        Logger.d(TAG) { "Casts ${spell.name} at ${_state.value.game.party.position}" }
+
+        _state.update { it.copy(game = it.game.handCast(whose, hand)) }
+        keepHandsRecovering()
+
+        sayOf(whose) { SpellMessages.casts(it, spell.calledIt) }
+
+        // What is not here is the sparks: sixteen of them about the view for
+        // forty-four frames, which is a picture with tables of its own and is
+        // not worth approximating.
+        spell.heardAs?.let { heard -> viewModelScope.launch { playTrack(heard) } }
+
+        runTriggersAt(
+            at = _state.value.game.party.position,
+            event = ScriptEvent.A_SPELL_WAS_CAST,
+            cast = spell,
+        )
+    }
+
     private fun runTriggersAt(
         at: Location,
         event: ScriptEvent,
@@ -2876,6 +2919,8 @@ class ViewConeDebugViewModel(
          * all — neither a line nor a frame.
          */
         byItself: Boolean = false,
+        /** Which spell was cast, where the event is one being cast. */
+        cast: Spell? = null,
     ): Boolean {
         val inf = _state.value.inf ?: return false
         val runner = scriptRunner ?: return false
@@ -2890,6 +2935,7 @@ class ViewConeDebugViewModel(
                 stage = stage,
                 at = at,
                 used = used,
+                cast = cast,
                 byItself = byItself,
             )
             // Whatever the script left on screen goes with it. Scripts end

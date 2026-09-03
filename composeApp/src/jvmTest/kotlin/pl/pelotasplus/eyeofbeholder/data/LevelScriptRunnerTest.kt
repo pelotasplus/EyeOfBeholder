@@ -774,7 +774,7 @@ class LevelScriptRunnerTest {
         val stage = Notices()
 
         val outcome = runFully(
-            0 to Eval(listOf(Conditional.OnSpell), ScriptOffset(20)),
+            0 to Eval(listOf(Conditional.HasAlignment), ScriptOffset(20)),
             10 to changeLevelToken(5),
             20 to changeLevelToken(9),
             stage = stage,

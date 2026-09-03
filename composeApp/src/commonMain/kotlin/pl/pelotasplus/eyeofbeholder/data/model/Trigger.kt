@@ -58,6 +58,17 @@ enum class ScriptEvent(val mask: Int) {
      * merely pointed at — one reads a carving, the other takes a sword to it.
      */
     ITEM_USED_ON_WALL(0x100),
+
+    /**
+     * A spell was cast, and the square the party stand on is being asked what
+     * it makes of that.
+     *
+     * The square, not the wall in front — casting is not aimed, so a carving
+     * that answers a spell answers it from wherever the party happen to be
+     * standing when they cast. Which spell it was is a question the script
+     * asks separately, and which way they were facing another.
+     */
+    A_SPELL_WAS_CAST(0x800),
 }
 
 /**

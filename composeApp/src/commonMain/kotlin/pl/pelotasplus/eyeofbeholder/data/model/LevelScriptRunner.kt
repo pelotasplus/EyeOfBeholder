@@ -373,6 +373,12 @@ class LevelScriptRunner(
         /** What was used, for the questions a script asks about it. */
         used: ItemIndex? = null,
         /**
+         * Which spell was just cast, where one was. A square that answers a
+         * spell nearly always cares which, so this is the difference between
+         * dispelling a carving and reading anything else aloud at it.
+         */
+        cast: Spell? = null,
+        /**
          * Whether the floor set this off rather than anybody did, which is
          * what lets a run that left no mark go unsaid — see [worthNoticing].
          */
@@ -380,7 +386,7 @@ class LevelScriptRunner(
     ): ScriptRun {
         writingDown = if (byItself) mutableListOf() else null
 
-        val run = onEvent(triggers, event, state, stage, at, depth = 0, used = used)
+        val run = onEvent(triggers, event, state, stage, at, depth = 0, used = used, cast = cast)
 
         writingDown?.also { written ->
             writingDown = null
@@ -410,6 +416,7 @@ class LevelScriptRunner(
         position: Location,
         depth: Int,
         used: ItemIndex? = null,
+        cast: Spell? = null,
     ): ScriptRun {
         val here = triggers.filter { it.location == position }
         val trigger = here.firstOrNull { it.flags.reactsTo(event) }
@@ -427,7 +434,9 @@ class LevelScriptRunner(
         say {
             "$event on ${position.xy} runs the script at ${trigger.script.offset.value}"
         }
-        return runScript(trigger.script.offset, state, stage, triggers, depth, event, used).also { result ->
+        return runScript(
+            trigger.script.offset, state, stage, triggers, depth, event, used, cast,
+        ).also { result ->
             say {
                 val party = result.state.party
                 "The script at ${trigger.script.offset.value} left the party " +
@@ -444,6 +453,7 @@ class LevelScriptRunner(
         depth: Int,
         event: ScriptEvent,
         used: ItemIndex?,
+        cast: Spell?,
     ): ScriptRun {
         var state = initial
 
@@ -538,7 +548,8 @@ class LevelScriptRunner(
 
                 is Eval -> {
                     // a true condition falls through, a false one jumps
-                    val condition = evaluate(token.tokens, state, dialogAnswer, event, used, stage)
+                    val condition =
+                        evaluate(token.tokens, state, dialogAnswer, event, used, stage, cast)
                     say {
                         val went =
                             if (condition.isTrue) "yes, carrying on"
@@ -1238,6 +1249,7 @@ class LevelScriptRunner(
         event: ScriptEvent,
         used: ItemIndex?,
         stage: ScriptStage,
+        cast: Spell?,
     ): ConditionValue {
         val stack = ArrayDeque<ConditionValue>()
         fun pop() = stack.removeLastOrNull() ?: ConditionValue.FALSE
@@ -1315,6 +1327,11 @@ class LevelScriptRunner(
                     push(ConditionValue.of(state.party.facing.ordinal))
 
                 is Conditional.DialogResult -> push(ConditionValue.of(dialogAnswer?.number ?: 0))
+
+                // Nothing cast is nothing, which no spell's number is — so a
+                // square that answers a spell answers nothing else by
+                // accident.
+                is Conditional.OnSpell -> push(ConditionValue.of(cast?.asWritten ?: 0))
 
                 // Whether the party hold anybody of a class, or of a race. A
                 // script asks before putting a question that only such a

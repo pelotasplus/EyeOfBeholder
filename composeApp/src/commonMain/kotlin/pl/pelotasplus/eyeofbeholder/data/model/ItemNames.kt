@@ -189,12 +189,12 @@ object ItemMessages {
 
     /**
      * What a hand says when it is asked to use what it holds and that is not
-     * something to be used that way. Transcribed, and the three of them are
-     * the whole of what the game says about it.
+     * something to be used that way. The three of them are the whole of what
+     * is ever said about it.
      *
-     * The first is a warning rather than a refusal: it is said and then
-     * whatever was going to happen happens anyway, so a fighter told they
-     * cannot use the lock picks still takes them to the wall in front.
+     * This one refuses rather than warns: a champion told they cannot use a
+     * thing does not then use it, and the wall in front is not offered it
+     * either.
      */
     fun cannotUse(whose: String) = "$whose can not use this item."
 
@@ -248,6 +248,9 @@ object ChampionMessages {
  */
 object SpellMessages {
     fun disintegrated(whose: String) = "$whose has been disintegrated!"
+
+    /** Said whenever anybody casts anything, before whatever comes of it. */
+    fun casts(whose: String, spell: String) = "$whose casts $spell."
 
     /** The one attack with nothing to see: it is heard, read, and felt. */
     const val A_MIND_BLAST = "The party is hit with a psychic mind blast!"

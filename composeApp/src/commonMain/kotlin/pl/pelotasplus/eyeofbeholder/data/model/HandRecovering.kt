@@ -41,6 +41,13 @@ data class HandRecovering(
         /** How long a hand is out of use altogether. */
         val AFTER_A_SWING = Ticks(REPORTING.value + AFTER_THE_REPORT.value)
 
+        /**
+         * And how long after reading something aloud out of it, which is the
+         * shorter of the two: long enough that a wand cannot be spent as fast
+         * as it can be clicked, and short enough not to feel like a swing.
+         */
+        val AFTER_CASTING = Ticks(18)
+
         /** How often the wait is counted down, which is what the clock does. */
         val STEP = Ticks(3)
     }
