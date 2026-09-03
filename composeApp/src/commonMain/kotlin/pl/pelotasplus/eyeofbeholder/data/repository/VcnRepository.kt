@@ -91,8 +91,6 @@ class VcnRepositoryImpl(
         }
 
         return Vcn(
-            name = name,
-            tilesCount = tilesCount,
             backdropPalette = backdropPaletteColor.map { PaletteIndex(it) },
             wallPalette = wallPaletteColor.map { PaletteIndex(it) },
             tiles = tiles

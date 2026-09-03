@@ -19,13 +19,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import pl.pelotasplus.eyeofbeholder.features.cps_debug.CpsDebugScreen
-import pl.pelotasplus.eyeofbeholder.features.dec_debug.DecDebugScreen
-import pl.pelotasplus.eyeofbeholder.features.inf_debug.InfDebugScreen
 import pl.pelotasplus.eyeofbeholder.features.levels_debug.LevelsDebugScreen
 import pl.pelotasplus.eyeofbeholder.features.main_debug.DebugMenu
-import pl.pelotasplus.eyeofbeholder.features.maz_debug.MazDebugScreen
-import pl.pelotasplus.eyeofbeholder.features.pal_debug.PalDebugScreen
-import pl.pelotasplus.eyeofbeholder.features.vcn_debug.VcnDebugScreen
 import pl.pelotasplus.eyeofbeholder.features.view_cone_debug.ViewConeDebugScreen
 import pl.pelotasplus.eyeofbeholder.navigation.Route
 
@@ -72,21 +67,6 @@ fun App() = CompositionLocalProvider(LocalPlayFieldFocus provides remember { Pla
                 }
                 composable<Route.CpsDebug> {
                     CpsDebugScreen()
-                }
-                composable<Route.DecDebug> {
-                    DecDebugScreen()
-                }
-                composable<Route.PalDebug> {
-                    PalDebugScreen()
-                }
-                composable<Route.InfDebug> {
-                    InfDebugScreen()
-                }
-                composable<Route.MazDebug> {
-                    MazDebugScreen()
-                }
-                composable<Route.VcnDebug> {
-                    VcnDebugScreen()
                 }
             }
 

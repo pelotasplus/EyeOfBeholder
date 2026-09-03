@@ -25,8 +25,6 @@ import pl.pelotasplus.eyeofbeholder.data.model.Dec.DecorationRectangle
  */
 interface DecRepository {
     suspend fun loadDec(name: String): Result<Dec>
-
-    suspend fun getAllDecNames(): Result<List<String>>
 }
 
 class DecRepositoryImpl(
@@ -81,10 +79,6 @@ class DecRepositoryImpl(
                 rectangles = rectangles,
             )
         }
-    }
-
-    override suspend fun getAllDecNames(): Result<List<String>> {
-        return resourceRepository.listResources(".DEC")
     }
 
     companion object {

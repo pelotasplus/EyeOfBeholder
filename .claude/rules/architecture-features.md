@@ -24,12 +24,7 @@ composeApp/src/commonMain/kotlin/pl/pelotasplus/eyeofbeholder/
 │                          # (golden-image tests live in composeApp/src/jvmTest/)
 │   ├── main_debug/       # DebugMenu — the global top-right navigation menu
 │   ├── levels_debug/     # Level (INF) picker
-│   ├── inf_debug/        # Level information debugging
-│   ├── maz_debug/        # Maze layout debugging
-│   ├── vcn_debug/        # Tile set debugging
-│   ├── pal_debug/        # Palette debugging
 │   ├── cps_debug/        # Graphics debugging
-│   ├── dec_debug/        # Decoration debugging
 │   └── view_cone_debug/  # 3D viewport rendering — the start destination
 └── navigation/           # Navigation routing
 ```
@@ -66,7 +61,7 @@ val sharedFeaturesMyModule = module {
 
 Type-safe navigation using `androidx.navigation.compose` with `@Serializable`
 routes in `navigation/Route.kt`: `ViewConeDebug(level)`, `LevelsDebug`,
-`DecDebug`, `PalDebug`, `CpsDebug`, `InfDebug`, `MazDebug`, `VcnDebug`.
+`CpsDebug`.
 
 `ViewConeDebug()` is the start destination — the app opens on the rendered
 level rather than a menu. `DebugMenu` is drawn in `App.kt` outside the
@@ -83,13 +78,8 @@ The project uses Koin for DI with a modular structure:
 
 Currently registered modules:
 - `sharedDataModule` — all repositories
-- `sharedFeaturesPalDebugModule`
 - `sharedFeaturesCpsDebugModule`
-- `sharedFeaturesDecDebugModule`
-- `sharedFeaturesInfDebugModule`
 - `sharedFeaturesLevelsDebugModule`
-- `sharedFeaturesMazDebugModule`
-- `sharedFeaturesVcnDebugModule`
 - `sharedFeaturesViewConeDebugModule`
 
 To add a new feature:

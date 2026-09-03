@@ -25,16 +25,11 @@ package pl.pelotasplus.eyeofbeholder.data.model
  * - wallPalette: 16 bytes (palette indices for wall tiles)
  * - tile data: tileCount × 32 bytes (each byte = 2 pixels, high nibble first)
  *
- * @property name Original filename (e.g. "DUNG.VCN")
- * @property tilesCount Total number of tiles in this set
  * @property tiles The actual tile pixel data (each tile is 64 pixels = 8×8)
  * @property backdropPalette 16-entry palette remap table for floor/ceiling rendering
  * @property wallPalette 16-entry palette remap table for wall rendering
  */
 data class Vcn(
-    val name: String,
-
-    val tilesCount: Int,
     val tiles: List<Tile>, // list of 8x8 tiles of pixels
 
     val backdropPalette: List<PaletteIndex>,

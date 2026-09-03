@@ -102,8 +102,6 @@ interface InfRepository {
      * or graphics a full [loadInf] pulls in.
      */
     suspend fun loadScript(name: String): Result<List<Script>>
-
-    suspend fun getAllInfNames(): Result<List<String>>
 }
 
 class InfRepositoryImpl(
@@ -732,9 +730,5 @@ class InfRepositoryImpl(
         }
 
         return monsters
-    }
-
-    override suspend fun getAllInfNames(): Result<List<String>> {
-        return resourceRepository.listResources(".INF")
     }
 }

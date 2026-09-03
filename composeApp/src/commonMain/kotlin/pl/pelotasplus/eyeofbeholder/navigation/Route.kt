@@ -7,22 +7,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.LevelEntryPoint
 sealed interface Route {
 
     @Serializable
-    data object DecDebug : Route
-
-    @Serializable
-    data object PalDebug : Route
-
-    @Serializable
     data object CpsDebug : Route
-
-    @Serializable
-    data object InfDebug : Route
-
-    @Serializable
-    data object MazDebug : Route
-
-    @Serializable
-    data object VcnDebug : Route
 
     @Serializable
     data object LevelsDebug : Route

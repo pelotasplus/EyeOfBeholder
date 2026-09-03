@@ -1672,7 +1672,7 @@ class ViewConeDebugViewModel(
                     by = GameState.CLOCK_STEP,
                     // a script owns the screen while it runs, and a waking
                     // that talked over it would take down what it had up
-                    held = !debugging.floorsKeepTime.value || playing?.isActive == true,
+                    held = playing?.isActive == true,
                 )
 
                 val aFrame = untilTheNextFrame <= 0
@@ -2057,9 +2057,8 @@ class ViewConeDebugViewModel(
 
         // A floor with a clock of its own never finishes: its squares go on
         // being woken with nobody near them, which is what a floor that does
-        // something by itself is. Stopping the clock from the debug menu is
-        // the one thing that lets this settle.
-        if (debugging.floorsKeepTime.value && timersHere().isNotEmpty()) return true
+        // something by itself is.
+        if (timersHere().isNotEmpty()) return true
 
         // Poison outlasts whatever gave it: this clock is the only thing that
         // winds it, so it has to keep running for a party standing perfectly

@@ -28,11 +28,6 @@ private data class DebugDestination(val label: String, val route: Route)
 private val debugDestinations = listOf(
     DebugDestination("Levels", Route.LevelsDebug),
     DebugDestination("CPS Debug", Route.CpsDebug),
-    DebugDestination("DEC Debug", Route.DecDebug),
-    DebugDestination("PAL Debug", Route.PalDebug),
-    DebugDestination("INF Debug", Route.InfDebug),
-    DebugDestination("MAZ Debug", Route.MazDebug),
-    DebugDestination("VCN Debug", Route.VcnDebug),
 )
 
 /**
@@ -77,7 +72,6 @@ private fun DebugMenuPanel(
 ) {
     val wallsArePassable by debugging.wallsArePassable.collectAsState()
     val monstersMayWalk by debugging.monstersMayWalk.collectAsState()
-    val floorsKeepTime by debugging.floorsKeepTime.collectAsState()
     val everythingIdentified by debugging.everythingIdentified.collectAsState()
     val showingMap by debugging.showingMap.collectAsState()
 
@@ -106,13 +100,6 @@ private fun DebugMenuPanel(
             modifier = Modifier.fillMaxWidth(),
         ) {
             Text(if (monstersMayWalk) "Monsters: hunt" else "Monsters: rooted")
-        }
-
-        Button(
-            onClick = { debugging.letFloorsKeepTime(!floorsKeepTime) },
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Text(if (floorsKeepTime) "Floor clock: running" else "Floor clock: stopped")
         }
 
         Button(

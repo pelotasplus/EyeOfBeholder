@@ -21,8 +21,6 @@ import pl.pelotasplus.eyeofbeholder.data.model.RGB
  */
 interface PalRepository {
     suspend fun loadPal(name: String): Result<Palette>
-
-    suspend fun getAllPalNames(): Result<List<String>>
 }
 
 class PalRepositoryImpl(
@@ -49,10 +47,6 @@ class PalRepositoryImpl(
 
             Palette(name = name, colors = colors.toImmutableList())
         }
-    }
-
-    override suspend fun getAllPalNames(): Result<List<String>> {
-        return resourceRepository.listResources(".PAL")
     }
 
     private fun convert6bitTo8bit(byte: Int): Int {

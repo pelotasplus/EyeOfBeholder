@@ -73,11 +73,7 @@ data class Maz(
         val east: WallType,
         val south: WallType,
         val west: WallType,
-    ) {
-        val blockedAllSides: Boolean
-            get() = north is WallType.FixedWall && east is WallType.FixedWall
-                    && south is WallType.FixedWall && west is WallType.FixedWall
-    }
+    )
 
     sealed class WallType {
         data object NoWall : WallType()
