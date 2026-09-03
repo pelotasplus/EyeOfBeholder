@@ -116,6 +116,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.MonsterSpell
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptSpeech
 import pl.pelotasplus.eyeofbeholder.data.model.Spell
 import pl.pelotasplus.eyeofbeholder.data.model.SpellMessages
+import pl.pelotasplus.eyeofbeholder.data.model.SparksInTheRoom
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptStage
 import pl.pelotasplus.eyeofbeholder.data.model.TELEPORTER_PULSE
 import pl.pelotasplus.eyeofbeholder.data.model.TeleporterPulse
@@ -235,6 +236,13 @@ class ViewConeDebugViewModel(
     private var recoveringHands: Job? = null
     private var fadingDamage: Job? = null
     private var burning: Job? = null
+
+    /**
+     * A casting, from the sparks going up to the square being asked what it
+     * makes of the spell. One at a time, so a second click while the first is
+     * still sparking does not have two squares answering at once.
+     */
+    private var casting: Job? = null
 
     /** Taking the silhouette off whatever was struck. */
     private var fading: Job? = null
@@ -2193,11 +2201,26 @@ class ViewConeDebugViewModel(
     }
 
     /**
-     * Takes the splat off a champion's portrait once its moment has passed.
+     * Scatters a casting's sparks, and does not come back until they have gone
+     * out.
      *
-     * The same countdown the weapon hands report on, and the same length:
-     * both hang on one timer.
+     * Waiting is the point. A casting is one beat — heard, seen, and only then
+     * answered — and the square is asked what it makes of the spell after this
+     * returns. Asking it while the sparks are still going lets its answer talk
+     * over them: one effect sounds at a time, so a square that answers with a
+     * sound cuts the spell's own off in its first frame.
      */
+    private suspend fun showTheSparks() {
+        _state.update { it.copy(game = it.game.sparksBegun()) }
+
+        while (_state.value.game.sparkling != null) {
+            delay(SparksInTheRoom.A_FRAME)
+
+            _state.update { it.copy(game = it.game.sparksStepped()) }
+            drawViewPort()
+        }
+    }
+
     /**
      * Burns the bursts down on a clock of their own, faster than the world's.
      *
@@ -2255,6 +2278,12 @@ class ViewConeDebugViewModel(
         viewModelScope.launch { playTrack(track) }
     }
 
+    /**
+     * Takes the splat off a champion's portrait once its moment has passed.
+     *
+     * The same countdown the weapon hands report on, and the same length:
+     * both hang on one timer.
+     */
     private fun letTheDamageFade() {
         if (fadingDamage?.isActive == true) return
 
@@ -2647,13 +2676,12 @@ class ViewConeDebugViewModel(
     }
 
     /**
-     * A click in the view means the wall of the square ahead that faces the
-     * party, whatever part of the view it landed on. Where it landed decides
-     * only whether it hit what hangs there.
-     */
-    /**
      * The wall ahead answering a click, and whether it had anything to answer
      * with.
+     *
+     * A click in the view means the wall of the square ahead that faces the
+     * party, whatever part of the view it landed on: where it landed decides
+     * only whether it hit what hangs there.
      *
      * Saying so is what keeps a full hand from throwing everything: a key held
      * at a keyhole is a key put in a keyhole, and only a wall with nothing to
@@ -2889,6 +2917,7 @@ class ViewConeDebugViewModel(
      */
     private fun castFromAScroll(whose: PartySlot, hand: CarrySlot, spell: Spell) {
         if (_state.value.game.isRecovering(whose, hand)) return
+        if (casting?.isActive == true) return
 
         Logger.d(TAG) { "Casts ${spell.name} at ${_state.value.game.party.position}" }
 
@@ -2897,16 +2926,17 @@ class ViewConeDebugViewModel(
 
         sayOf(whose) { SpellMessages.casts(it, spell.calledIt) }
 
-        // What is not here is the sparks: sixteen of them about the view for
-        // forty-four frames, which is a picture with tables of its own and is
-        // not worth approximating.
         spell.heardAs?.let { heard -> viewModelScope.launch { playTrack(heard) } }
 
-        runTriggersAt(
-            at = _state.value.game.party.position,
-            event = ScriptEvent.A_SPELL_WAS_CAST,
-            cast = spell,
-        )
+        casting = viewModelScope.launch {
+            if (spell.throwsSparks) showTheSparks()
+
+            runTriggersAt(
+                at = _state.value.game.party.position,
+                event = ScriptEvent.A_SPELL_WAS_CAST,
+                cast = spell,
+            )
+        }
     }
 
     private fun runTriggersAt(
@@ -3006,8 +3036,7 @@ class ViewConeDebugViewModel(
      * the same: a speaker working perfectly and a track nobody rendered are
      * both silence. Each says which one it was, so the difference can be read
      * rather than guessed at.
-     */
-    /**
+     *
      * @param alongside whether this may sound over whatever is still playing
      *   rather than taking its place. For the few effects written to be heard
      *   together: a pair meant as one noise is two clicks if the second stops
@@ -3473,6 +3502,7 @@ class ViewConeDebugViewModel(
             holding = _state.value.game.inHand.takeIf { it.isSomething },
             inFlight = _state.value.game.inFlight,
             bursting = _state.value.game.bursting,
+            sparkling = _state.value.game.sparkling,
         ).onSuccess { viewPort ->
             drawn = viewPort
             paint(viewPort, sublevel.palette)

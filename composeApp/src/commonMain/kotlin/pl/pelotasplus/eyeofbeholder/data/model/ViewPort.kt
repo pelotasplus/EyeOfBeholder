@@ -628,6 +628,16 @@ class ViewPort(
         }
     }
 
+    /**
+     * One spark of a casting, put down flat where the table says.
+     *
+     * No distance and no scaling: these are not in the room, they are over it,
+     * so nothing is nearer than they are and nothing hides them.
+     */
+    fun drawSpark(icon: Cps.ItemIcon, at: ScreenX, and: ScreenY) {
+        drawIcon(icon, at, and)
+    }
+
     private fun drawIcon(
         icon: Cps.ItemIcon,
         startX: ScreenX,

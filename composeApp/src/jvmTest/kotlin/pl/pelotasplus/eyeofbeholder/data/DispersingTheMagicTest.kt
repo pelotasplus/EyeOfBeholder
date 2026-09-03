@@ -10,7 +10,9 @@ import pl.pelotasplus.eyeofbeholder.data.model.LevelScriptRunner
 import pl.pelotasplus.eyeofbeholder.data.model.Location
 import pl.pelotasplus.eyeofbeholder.data.model.PartyState
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptEvent
+import pl.pelotasplus.eyeofbeholder.data.model.ScriptStage
 import pl.pelotasplus.eyeofbeholder.data.model.Spell
+import pl.pelotasplus.eyeofbeholder.data.model.TrackIndex
 import pl.pelotasplus.eyeofbeholder.data.model.WallSide
 import pl.pelotasplus.eyeofbeholder.data.repository.CpsRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.DecRepositoryImpl
@@ -157,6 +159,38 @@ class DispersingTheMagicTest {
         val after = world().dispelled(Spell.A_CLERICS_DISPEL_MAGIC)
 
         assertEquals(0, after.wallAt(FIRST_TO_GO), "a cleric could not open it")
+    }
+
+    /**
+     * The carving answers with two sounds of its own, one either side of what
+     * it says.
+     *
+     * Which is why a casting is a whole beat — heard and seen through — before
+     * the square it was cast on is asked anything. Only one effect sounds at a
+     * time, so a square asked while the spell is still being heard talks over
+     * it, and the player never hears the spell at all.
+     */
+    @Test
+    fun `and it answers with sounds of its own`() {
+        val heard = mutableListOf<TrackIndex>()
+        val stage = object : ScriptStage by ScriptStage.silent() {
+            override suspend fun play(track: TrackIndex) {
+                heard += track
+            }
+        }
+
+        runBlocking {
+            LevelScriptRunner(level.script, level = LEVEL).onEvent(
+                triggers = level.triggers,
+                event = ScriptEvent.A_SPELL_WAS_CAST,
+                state = world(),
+                stage = stage,
+                at = THE_WESTERN_CARVING,
+                cast = Spell.DISPEL_MAGIC,
+            )
+        }
+
+        assertEquals(listOf(TrackIndex(13), TrackIndex(79)), heard)
     }
 
     private companion object {

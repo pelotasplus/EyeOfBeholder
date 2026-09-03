@@ -22,6 +22,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.Maz
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterInstance
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterSlot
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterSpell
+import pl.pelotasplus.eyeofbeholder.data.model.SparksInTheRoom
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterTypeId
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterPose
 import pl.pelotasplus.eyeofbeholder.data.model.NpcId
@@ -1972,6 +1973,46 @@ class ViewPortGoldenTest {
                     ),
                 )
             }
+    }
+
+    /**
+     * The sparks a casting throws about the room, at four points of their life.
+     *
+     * Sixteen places, fixed in the view rather than anywhere in the corridor,
+     * each showing one of three pictures or none. They light in a spreading
+     * wave and go out the same way, so the four frames here are a beginning,
+     * two middles and an end — one frame alone would say nothing about whether
+     * the wave moves.
+     */
+    @Test
+    fun `the sparks of a casting`() {
+        listOf(0, 8, 20, 36).forEach { frame ->
+            checkGolden(
+                "sparks-$frame",
+                sparkling("LEVEL2.INF", 3, 11, Direction.NORTH, frame),
+            )
+        }
+    }
+
+    private fun sparkling(
+        level: String,
+        x: Int,
+        y: Int,
+        direction: Direction,
+        frame: Int,
+    ): ViewPort = runBlocking {
+        val repository = repository()
+        val inf = repository.loadLevel(level).getOrThrow()
+
+        repository.renderPosition(
+            items = dungeonItems,
+            monsters = emptyList(),
+            sublevel = inf.subLevels[inf.subLevelAt(0, x, y, direction)],
+            playerX = x,
+            playerY = y,
+            direction = direction,
+            sparkling = SparksInTheRoom(frame),
+        ).getOrThrow()
     }
 
     /** @param messages the level's own message ids, each with the ink to write it in. */

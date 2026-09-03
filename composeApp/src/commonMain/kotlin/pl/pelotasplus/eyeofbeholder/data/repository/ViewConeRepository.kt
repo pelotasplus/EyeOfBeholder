@@ -29,6 +29,9 @@ import pl.pelotasplus.eyeofbeholder.data.model.getWall
 import pl.pelotasplus.eyeofbeholder.data.model.ItemIndex
 import pl.pelotasplus.eyeofbeholder.data.model.Projectile
 import pl.pelotasplus.eyeofbeholder.data.model.ScaleSteps
+import pl.pelotasplus.eyeofbeholder.data.model.ScreenX
+import pl.pelotasplus.eyeofbeholder.data.model.ScreenY
+import pl.pelotasplus.eyeofbeholder.data.model.SparksInTheRoom
 import pl.pelotasplus.eyeofbeholder.data.model.SquarePlace
 import pl.pelotasplus.eyeofbeholder.data.model.itemScaleStepsAt
 import pl.pelotasplus.eyeofbeholder.data.model.nudgeOf
@@ -102,6 +105,7 @@ interface ViewConeRepository {
         inFlight: List<Projectile> = emptyList(),
         /** And whatever is going off on one. */
         bursting: List<Burst> = emptyList(),
+        sparkling: SparksInTheRoom? = null,
     ): Result<ViewPort>
 }
 
@@ -139,6 +143,27 @@ class ViewConeRepositoryImpl(
         }
     }
 
+    /**
+     * The sparks of a casting, all sixteen places asked what they show now.
+     *
+     * The three pictures sit side by side on the sheet the interface art comes
+     * from, sixteen pixels square and sixteen apart.
+     */
+    private fun drawSparks(viewPort: ViewPort, sparks: SparksInTheRoom, sheet: Cps) {
+        val pictures = List(SparksInTheRoom.PICTURES) {
+            sheet.cut(FIRST_SPARK + it * SPARK_SIDE, 0, SPARK_SIDE, SPARK_SIDE)
+        }
+
+        repeat(SparksInTheRoom.HOW_MANY) { which ->
+            val showing = sparks.showing(which)
+            if (showing == 0) return@repeat
+
+            pictures.getOrNull(showing - 1)?.let {
+                viewPort.drawSpark(it, ScreenX(sparks.x(which)), ScreenY(sparks.y(which)))
+            }
+        }
+    }
+
     /** The sheet the interface art is cut from, which also holds the teleporter blobs. */
     private suspend fun getDecorations(): Cps {
         return decorationShapes ?: cpsRepository.loadCps("DECORATE.CPS").getOrThrow().also {
@@ -159,6 +184,7 @@ class ViewConeRepositoryImpl(
         holding: ItemIndex?,
         inFlight: List<Projectile>,
         bursting: List<Burst>,
+        sparkling: SparksInTheRoom?,
     ): Result<ViewPort> {
         // The sublevel is on the line because which one is showing decides
         // what is drawn and what is not, and a trace without it cannot say why
@@ -356,6 +382,11 @@ class ViewConeRepositoryImpl(
                 whereItWouldLand(viewPort, held, slot, smallIcons, largeIcons, direction)
             }
         }
+
+        // A casting's sparks go over everything, last of all. They belong to
+        // the spell rather than to the room, so nothing in the corridor hides
+        // them and no wall is nearer than they are.
+        sparkling?.let { drawSparks(viewPort, it, getDecorations()) }
 
         return Result.success(viewPort)
     }
@@ -863,6 +894,10 @@ class ViewConeRepositoryImpl(
 
         /** The dim of the row the party stand on, which everything shrinks from. */
         private const val NEAREST_DIM = 3
+
+        /** Where the three spark pictures begin on the sheet, and how big. */
+        private const val FIRST_SPARK = 232
+        private const val SPARK_SIDE = 16
 
         /**
          * The middle of the three view slots on the party's own row, which is

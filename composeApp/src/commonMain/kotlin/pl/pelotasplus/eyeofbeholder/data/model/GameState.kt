@@ -58,6 +58,14 @@ data class GameState(
     val bursting: List<Burst> = emptyList(),
 
     /**
+     * The sparks a casting throws about the room, while they last.
+     *
+     * One at a time: a second casting begins them again rather than running
+     * two sets at once, there being one view for them to be scattered over.
+     */
+    val sparkling: SparksInTheRoom? = null,
+
+    /**
      * What the player is holding, which is the mouse cursor itself. It belongs to nobody in the party: it has been picked up out of
      * a hand or off the floor and not yet put anywhere.
      */
@@ -1547,6 +1555,12 @@ data class GameState(
     /** Whether that hand is still coming back to rest from its last swing. */
     fun isRecovering(whose: PartySlot, hand: CarrySlot): Boolean =
         recovering.any { it.whose == whose && it.hand == hand }
+
+    /** The world with a casting's sparks begun, or begun again. */
+    fun sparksBegun() = copy(sparkling = SparksInTheRoom())
+
+    /** And a frame on, which is how they go out. */
+    fun sparksStepped() = copy(sparkling = sparkling?.next())
 
     /** The world with that hand put out of use for as long as a swing costs. */
     fun handSwung(whose: PartySlot, hand: CarrySlot, came: WhatTheBlowCameTo) = copy(

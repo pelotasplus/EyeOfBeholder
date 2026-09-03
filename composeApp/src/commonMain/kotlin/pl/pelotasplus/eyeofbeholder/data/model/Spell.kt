@@ -22,11 +22,15 @@ package pl.pelotasplus.eyeofbeholder.data.model
  * @property asWritten the number a scroll, a wand or a script names it by
  * @property calledIt what a player sees it called, capitals and all
  * @property heardAs what is heard when it is cast, or nothing for the silent
+ * @property throwsSparks whether casting it scatters [SparksInTheRoom] across
+ *   the view. Four of the seventy do, and the rest are either shown on the
+ *   portrait of whoever cast them or not shown at all.
  */
 enum class Spell(
     val asWritten: Int,
     val calledIt: String,
     val heardAs: TrackIndex? = null,
+    val throwsSparks: Boolean = false,
 ) {
     ARMOUR(1, "armor", TrackIndex(92)),
     BURNING_HANDS(2, "burning hands", TrackIndex(87)),
@@ -39,7 +43,7 @@ enum class Spell(
     IMPROVED_IDENTIFY(9, "improved identify", TrackIndex(20)),
     INVISIBILITY(10, "invisibility", TrackIndex(94)),
     MELFS_ACID_ARROW(11, "melf's acid arrow", TrackIndex(96)),
-    DISPEL_MAGIC(12, "dispel magic", TrackIndex(97)),
+    DISPEL_MAGIC(12, "dispel magic", TrackIndex(97), throwsSparks = true),
     FIREBALL(13, "fireball", TrackIndex(99)),
     HASTE(14, "haste", TrackIndex(100)),
     HOLD_PERSON(15, "Hold Person", TrackIndex(101)),
@@ -53,7 +57,7 @@ enum class Spell(
     CONE_OF_COLD(23, "cone of cold", TrackIndex(118)),
     HOLD_MONSTER(24, "hold monster", TrackIndex(101)),
     WALL_OF_FORCE(25, "wall of force", TrackIndex(74)),
-    DISINTEGRATE(26, "disintegrate", TrackIndex(119)),
+    DISINTEGRATE(26, "disintegrate", TrackIndex(119), throwsSparks = true),
     FLESH_TO_STONE(27, "flesh to stone", TrackIndex(68)),
     STONE_TO_FLESH(28, "stone to flesh", TrackIndex(69)),
     TRUE_SEEING(29, "true seeing", TrackIndex(73)),
@@ -74,7 +78,7 @@ enum class Spell(
     A_CLERICS_HOLD_PERSON(41, "hold person", TrackIndex(101)),
     SLOW_POISON(42, "slow poison", TrackIndex(111)),
     CREATE_FOOD(43, "create food", TrackIndex(112)),
-    A_CLERICS_DISPEL_MAGIC(44, "dispel magic", TrackIndex(97)),
+    A_CLERICS_DISPEL_MAGIC(44, "dispel magic", TrackIndex(97), throwsSparks = true),
     MAGICAL_VESTMENT(45, "magical vestment", TrackIndex(113)),
     PRAYER(46, "prayer", TrackIndex(91)),
     REMOVE_PARALYSIS(47, "remove paralysis", TrackIndex(114)),
@@ -92,7 +96,7 @@ enum class Spell(
     HEAL(59, "heal", TrackIndex(84)),
     RESURRECTION(60, "ressurection"),
     LAY_ON_HANDS(61, "lay on hands", TrackIndex(91)),
-    TURN_UNDEAD(62, "turn undead", TrackIndex(103)),
+    TURN_UNDEAD(62, "turn undead", TrackIndex(103), throwsSparks = true),
 
     // And the seven nobody learns. They have no names in the game because no
     // player is ever shown one.
