@@ -364,7 +364,12 @@ private val atEachQuarter = listOf(
             return struck.mapNotNull {
                 val kind = kinds.getOrNull(it.type.value)
                 if (!lands(world, flying, kind)) null
-                else Hurt.AMonster(it.index, damageOf(world, flying, kind))
+                else Hurt.AMonster(
+                    it.index,
+                    thrownAgainst(damageOf(world, flying, kind), flying) { off ->
+                        kind?.saves(off, dice) == true
+                    },
+                )
             }
         }
 
@@ -434,7 +439,33 @@ private val atEachQuarter = listOf(
         // thrown thing finds whoever is standing where it came through.
         val struck = if (flying.harm.everybody) canBeHurt else whoItFound(world, flying, canBeHurt)
 
-        return struck.map { Hurt.AChampion(it, damageOf(world, flying, null)) }
+        // Each of them rolled for separately: a burning thing is thrown off by
+        // whoever manages it and takes the rest whole, so a party do not share
+        // one throw between them.
+        return struck.map { whose ->
+            Hurt.AChampion(
+                whose,
+                thrownAgainst(damageOf(world, flying, null), flying) { off ->
+                    world.championIn(whose)?.saves(off, dice) == true
+                },
+            )
+        }
+    }
+
+    /**
+     * What is left of [harm] once whoever it found has had their throw.
+     *
+     * A thing that allows no throw at all is left whole — [makes] is not even
+     * asked, so nothing rolls a die it was never going to be given.
+     */
+    private fun thrownAgainst(
+        harm: Damage,
+        flying: Projectile,
+        makes: (SavingThrow) -> Boolean,
+    ): Damage {
+        val off = flying.harm.thrownOff ?: return harm
+
+        return if (makes(off)) flying.harm.aMadeThrowIsWorth.of(harm) else harm
     }
 
     /**

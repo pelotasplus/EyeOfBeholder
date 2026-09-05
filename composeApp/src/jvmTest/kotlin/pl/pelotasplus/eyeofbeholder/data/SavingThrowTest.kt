@@ -261,6 +261,42 @@ class SavingThrowTest {
         )
     }
 
+    /**
+     * Nobody gets worse at shrugging things off as they go on — save in the
+     * one place the game says otherwise.
+     *
+     * The tables are transcribed by hand and most of what they hold is pinned
+     * nowhere else, so this asks the one thing the numbers must satisfy
+     * whatever they are. A digit typed wrongly nearly always shows up as a
+     * champion who saved better before they gained a level.
+     *
+     * The exception is real and is the game's: a thief of the twentieth level
+     * wants a seven against a wand where one of the sixteenth wanted a six.
+     */
+    @Test
+    fun `saving throws only ever improve, bar the one that does not`() {
+        val slipsBack = mutableListOf<String>()
+
+        CharacterClass.entries.forEach { isA ->
+            SavingThrow.entries.forEach { against ->
+                (1..25).map { champion(isA = isA, level = it).needsAgainst(against) }
+                    .zipWithNext()
+                    .filter { (earlier, later) -> later > earlier }
+                    .forEach { (earlier, later) ->
+                        slipsBack += "$isA against $against went $earlier -> $later"
+                    }
+            }
+        }
+
+        assertEquals(
+            listOf(
+                "THIEF against A_ROD_STAFF_OR_WAND went 6 -> 7",
+                "THIEF_MAGE against A_ROD_STAFF_OR_WAND went 6 -> 7",
+            ),
+            slipsBack,
+        )
+    }
+
     private companion object {
         /** What a blow that allows no throw names. */
         const val NO_THROW = 5

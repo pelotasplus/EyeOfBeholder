@@ -172,6 +172,12 @@ data class Projectile(
          * which is what makes casting one down a short corridor a mistake.
          */
         val takesEitherSide: Boolean = false,
+
+        /** What may be thrown against it, or nothing where none is allowed. */
+        val thrownOff: SavingThrow? = null,
+
+        /** And what making that throw is worth. */
+        val aMadeThrowIsWorth: WhatAMadeThrowIsWorth = WhatAMadeThrowIsWorth.HALF_OF_IT,
     ) {
         companion object {
             /** A dart or a rock: it hurts what it hits, and rolls as itself. */

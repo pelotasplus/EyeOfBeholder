@@ -33,6 +33,22 @@ data class ThrownSpell(
      * be a long one.
      */
     val takesEitherSide: Boolean = false,
+
+    /**
+     * Whether it takes everything on the square it comes down on rather than
+     * picking one. A burning one does; a missile finds a single mark.
+     */
+    val takesTheWholeSquare: Boolean = false,
+
+    /**
+     * What may be thrown against it, or nothing for the ones there is no
+     * shrugging off. A missile is the only thing in the game with no throw
+     * against it at all.
+     */
+    val thrownOff: SavingThrow? = null,
+
+    /** And what making that throw is worth, for the ones that allow one. */
+    val aMadeThrowIsWorth: WhatAMadeThrowIsWorth = WhatAMadeThrowIsWorth.HALF_OF_IT,
 ) {
     /**
      * The whole of what it does to one creature, for a caster of [casterLevel].
@@ -45,6 +61,9 @@ data class ThrownSpell(
         times = counted.forACasterOf(casterLevel),
         hurting = hurting,
         takesEitherSide = takesEitherSide,
+        everybody = takesTheWholeSquare,
+        thrownOff = thrownOff,
+        aMadeThrowIsWorth = aMadeThrowIsWorth,
     )
 
     companion object {

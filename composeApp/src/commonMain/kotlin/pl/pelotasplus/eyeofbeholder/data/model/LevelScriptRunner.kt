@@ -1205,9 +1205,14 @@ class LevelScriptRunner(
         )
 
         val loosed = when (token) {
-            // A burst goes until it meets something rather than running out
-            // of speed, and takes the whole square it bursts on. Nobody cast
-            // it, so its strength is the one the game gives a trap.
+            // What a trap looses is one of the same numbered things a champion
+            // casts, so it is the same spell in every way but one: nobody cast
+            // it, and its strength is the one the game gives a trap.
+            //
+            // It carries no spell of its own. A spell on a projectile is what
+            // the arrival table answers to, and that table is for what
+            // monsters throw — it would hurt the party a second time, and by
+            // the depth of the floor rather than by anything here.
             is Launcher.MagicObject -> Projectile(
                 what = null,
                 at = token.location,
@@ -1215,7 +1220,7 @@ class LevelScriptRunner(
                 going = Direction.entries[token.dir % Direction.entries.size],
                 squaresLeft = Projectile.UNTIL_IT_HITS,
                 thrownBy = Projectile.Thrower.TheLevel,
-                harm = Projectile.Harm.ofABurst(Projectile.trapStrength(level)),
+                harm = looseningOf(token) ?: Projectile.Harm.ofABurst(strengthOfATrap),
             )
 
             is Launcher.PhysicalItem -> Projectile(
@@ -1229,6 +1234,23 @@ class LevelScriptRunner(
 
         return state.copy(inFlight = state.inFlight + loosed)
     }
+
+    /**
+     * How hard the floor throws, which is all a trap has instead of a caster:
+     * five above the seventh floor and nine from there down.
+     */
+    private val strengthOfATrap get() = Projectile.trapStrength(level)
+
+    /**
+     * What [token] does where it comes down, for a number the flight table
+     * knows and a spell somebody has written out.
+     *
+     * Null for the rest, which fall back to a plain burst — the numbers a trap
+     * looses are the same numbers a champion casts, and the ones nobody has
+     * written yet have nothing better to say than that they went off.
+     */
+    private fun looseningOf(token: Launcher.MagicObject): Projectile.Harm? =
+        ConjuredObject.of(token.itemId)?.casts?.throws?.dealtBy(strengthOfATrap)
 
     /**
      * A door the script works, set going and then left to it.
