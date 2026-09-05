@@ -41,6 +41,17 @@ data class ThrownSpell(
     val takesTheWholeSquare: Boolean = false,
 
     /**
+     * Whether it carries on past whatever it found rather than being spent on
+     * it.
+     *
+     * One spell of the fourteen is written this way, and by name rather than
+     * by any rule: a bolt of lightning goes the length of the corridor and
+     * takes what is standing in it, where everything else stops at the first
+     * thing it touches.
+     */
+    val carriesOn: Boolean = false,
+
+    /**
      * What may be thrown against it, or nothing for the ones there is no
      * shrugging off. A missile is the only thing in the game with no throw
      * against it at all.
@@ -62,6 +73,7 @@ data class ThrownSpell(
         hurting = hurting,
         takesEitherSide = takesEitherSide,
         everybody = takesTheWholeSquare,
+        carriesOn = carriesOn,
         thrownOff = thrownOff,
         aMadeThrowIsWorth = aMadeThrowIsWorth,
     )

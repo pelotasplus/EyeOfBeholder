@@ -16,10 +16,13 @@ import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.Flight
 import pl.pelotasplus.eyeofbeholder.data.model.Food
 import pl.pelotasplus.eyeofbeholder.data.model.GameState
+import pl.pelotasplus.eyeofbeholder.data.model.HandUse
 import pl.pelotasplus.eyeofbeholder.data.model.HarmKind
 import pl.pelotasplus.eyeofbeholder.data.model.HitPoints
 import pl.pelotasplus.eyeofbeholder.data.model.Inf
+import pl.pelotasplus.eyeofbeholder.data.model.Item
 import pl.pelotasplus.eyeofbeholder.data.model.ItemIndex
+import pl.pelotasplus.eyeofbeholder.data.model.ItemKind
 import pl.pelotasplus.eyeofbeholder.data.model.LevelScriptRunner
 import pl.pelotasplus.eyeofbeholder.data.model.Location
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterImmunities
@@ -35,11 +38,15 @@ import pl.pelotasplus.eyeofbeholder.data.model.ScriptEvent
 import pl.pelotasplus.eyeofbeholder.data.model.Spell
 import pl.pelotasplus.eyeofbeholder.data.model.SquarePlace
 import pl.pelotasplus.eyeofbeholder.data.model.ThrownSpell
+import pl.pelotasplus.eyeofbeholder.data.model.Wand
 import pl.pelotasplus.eyeofbeholder.data.model.WhatAMadeThrowIsWorth
+import pl.pelotasplus.eyeofbeholder.data.model.WhatCastingCosts
 import pl.pelotasplus.eyeofbeholder.data.model.XpPoints
 import pl.pelotasplus.eyeofbeholder.data.repository.CpsRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.DecRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.InfRepositoryImpl
+import pl.pelotasplus.eyeofbeholder.data.repository.ItemTypesRepositoryImpl
+import pl.pelotasplus.eyeofbeholder.data.repository.ItemsRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.MazRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.PalRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.ResourceRepositoryImpl
@@ -104,6 +111,53 @@ class AFireballGoingOffTest {
     @Test
     fun `a scroll throws nine dice of six`() {
         assertEquals(9, CountedBy.EVERY_LEVEL.forACasterOf(ThrownSpell.AS_READ_FROM_A_SCROLL))
+    }
+
+    // --- and where the party get one from ------------------------------------
+
+    /**
+     * Off a scroll, and only off a scroll. There is a wand of fire in the
+     * game's list of eight, but no wand in the dungeon is one: the four that
+     * are actually lying about are missiles, lightning, dispelling and
+     * defence. So a scroll is the whole of the party's fire.
+     */
+    @Test
+    fun `a scroll casts it, and no wand in the dungeon does`() = runBlocking {
+        val itemTypes = ItemTypesRepositoryImpl(resources).loadItemTypes().getOrThrow()
+        val dungeon = ItemsRepositoryImpl(resources).loadItems().getOrThrow()
+
+        val scroll = dungeon.items.first {
+            itemTypes.kindOf(it) in setOf(ItemKind.MAGE_SCROLL, ItemKind.CLERIC_SCROLL) &&
+                Spell.of(it.value) == Spell.FIREBALL
+        }
+
+        assertEquals(
+            HandUse.Cast(Spell.FIREBALL),
+            itemTypes.whatAHandDoesWith(scroll),
+            "a scroll of it does not cast it",
+        )
+
+        assertEquals(
+            emptyList(),
+            dungeon.items
+                .filter { itemTypes.kindOf(it) == ItemKind.WAND && it.location != Item.CARRIED }
+                .filter { Wand.of(it.value) == Wand.OF_FIRE },
+            "a wand of fire turned up after all",
+        )
+    }
+
+    /** A scroll goes up with the words, so each of the seven is one fireball. */
+    @Test
+    fun `reading the scroll costs the whole scroll`() = runBlocking {
+        val itemTypes = ItemTypesRepositoryImpl(resources).loadItemTypes().getOrThrow()
+        val dungeon = ItemsRepositoryImpl(resources).loadItems().getOrThrow()
+
+        val scroll = dungeon.items.first {
+            itemTypes.kindOf(it) in setOf(ItemKind.MAGE_SCROLL, ItemKind.CLERIC_SCROLL) &&
+                Spell.of(it.value) == Spell.FIREBALL
+        }
+
+        assertEquals(WhatCastingCosts.AllOfIt, itemTypes.whatCastingCosts(scroll))
     }
 
     // --- what it does to what it lands on ------------------------------------

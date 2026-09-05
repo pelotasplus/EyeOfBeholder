@@ -113,6 +113,21 @@ private fun SquarePlace.endTowards(going: Direction, coming: Boolean): SquarePla
 private fun SquarePlace.atTheFarEndGoing(going: Direction) =
     endTowards(going, coming = false) == onAQuarter()
 
+/**
+ * Whether this reaches something big enough to fill the square it is crossing.
+ *
+ * Only over the near half of it — the half it came in by. A thing that has
+ * passed the middle is past the creature as well, so a bolt down a corridor
+ * touches what fills a square on its way in and not on its way out, and which
+ * corners those are depends on which way it is going.
+ *
+ * Something already over the middle reaches it wherever it stands, having no
+ * side of the square to be on the wrong end of.
+ */
+private val Projectile.reachesTheMiddle: Boolean
+    get() = place == SquarePlace.MIDDLE ||
+        place == place.endTowards(going, coming = true)
+
 
 /**
  * Who stands under each quarter of a square, in the order a thing coming
@@ -205,10 +220,18 @@ private val atEachQuarter = listOf(
 
             if (met.isEmpty()) {
                 stillGoing += now.copy(alreadyTried = triedHere(carried, now))
+                return
+            }
+
+            hurt += met
+            met.forEach { carried = struckDown(carried, it) }
+
+            // Unless it is a bolt, which goes on — see [Harm.carriesOn].
+            carried = if (now.harm.carriesOn) {
+                stillGoing += now.copy(alreadyTried = triedHere(carried, now))
+                carried
             } else {
-                hurt += met
-                met.forEach { carried = struckDown(carried, it) }
-                carried = cameToRest(carried, now)
+                cameToRest(carried, now)
             }
         }
 
@@ -254,9 +277,13 @@ private val atEachQuarter = listOf(
                 if (met.isNotEmpty()) {
                     hurt += met
                     met.forEach { carried = struckDown(carried, it) }
-                    carried = cameToRest(carried, now)
-                    stopped = true
-                    continue
+
+                    // Unless it is a bolt, which goes on — see [Harm.carriesOn].
+                    if (!now.harm.carriesOn) {
+                        carried = cameToRest(carried, now)
+                        stopped = true
+                        continue
+                    }
                 }
 
                 now = now.copy(alreadyTried = triedHere(carried, now))
@@ -396,7 +423,7 @@ private val atEachQuarter = listOf(
         .filter {
             flying.harm.everybody ||
                 it.place == flying.place ||
-                it.place == SquarePlace.MIDDLE
+                (it.place == SquarePlace.MIDDLE && flying.reachesTheMiddle)
         }
 
     /**

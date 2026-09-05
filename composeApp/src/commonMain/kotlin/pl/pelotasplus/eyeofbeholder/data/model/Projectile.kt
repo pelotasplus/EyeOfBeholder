@@ -173,6 +173,18 @@ data class Projectile(
          */
         val takesEitherSide: Boolean = false,
 
+        /**
+         * Whether it goes on after finding something rather than being spent
+         * on it.
+         *
+         * Nearly nothing does. A bolt of lightning goes the length of the
+         * corridor and takes whatever else is standing in it, which is what
+         * makes it worth loosing down a line of monsters rather than at the
+         * front of one. Nothing is struck twice for standing still: a square
+         * remembers what has already been rolled against on it.
+         */
+        val carriesOn: Boolean = false,
+
         /** What may be thrown against it, or nothing where none is allowed. */
         val thrownOff: SavingThrow? = null,
 
