@@ -30,15 +30,16 @@ class Debugging {
         _wallsArePassable.value = may
     }
 
-    private val _monstersMayWalk = MutableStateFlow(false)
+    private val _monstersMayWalk = MutableStateFlow(true)
 
     /**
      * Whether monsters go anywhere, or fight only from where they were placed.
      *
-     * Off by default, which is the opposite of the game: something that walks
-     * arrives while a scene is being looked at, and every other switch here
-     * exists so that what is on the screen stays still long enough to be read.
-     * Turned on, they hunt.
+     * On by default, because a floor that stands still is not the game and no
+     * longer even plays like it: some of what a floor does needs something
+     * wandering about, and a plate held down by a monster's weight cannot be
+     * worked any other way. Turned off, they stay where they were placed,
+     * which is how a scene is held long enough to be read.
      */
     val monstersMayWalk: StateFlow<Boolean> = _monstersMayWalk.asStateFlow()
 

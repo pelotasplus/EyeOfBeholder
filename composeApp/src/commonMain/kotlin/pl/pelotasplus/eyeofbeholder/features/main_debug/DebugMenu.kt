@@ -20,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
 import org.koin.compose.koinInject
+import pl.pelotasplus.eyeofbeholder.BuildInfo
 import pl.pelotasplus.eyeofbeholder.data.model.Debugging
 import pl.pelotasplus.eyeofbeholder.navigation.Route
 
@@ -113,7 +114,7 @@ private fun DebugMenuPanel(
             onClick = { debugging.identifyEverything(!everythingIdentified) },
             modifier = Modifier.fillMaxWidth(),
         ) {
-            Text(if (everythingIdentified) "Names: true" else "Names: as known")
+            Text(if (everythingIdentified) "Names: as identified" else "Names: all are identified")
         }
 
 
@@ -128,5 +129,14 @@ private fun DebugMenuPanel(
                 Text(destination.label)
             }
         }
+
+        // Which build this is. The point of it is the deployed page: a tab
+        // that has been open for a while looks exactly like one loaded a
+        // minute ago, and this is the only thing that tells them apart.
+        Text(
+            text = "${BuildInfo.COMMIT} · ${BuildInfo.COMMITTED_AT}",
+            style = MaterialTheme.typography.labelSmall,
+            modifier = Modifier.fillMaxWidth(),
+        )
     }
 }

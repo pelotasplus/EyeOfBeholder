@@ -12,6 +12,54 @@ plugins {
     alias(libs.plugins.composeHotReload)
 }
 
+/**
+ * Which commit a build came from, so a page that has been deployed can say
+ * which one it is.
+ *
+ * Read here rather than in a task so the value is a configuration input and
+ * the generated file is rewritten when it changes. Deliberately not
+ * `git status`: that answers differently after every edit, and asking it here
+ * would throw away the configuration cache on every build.
+ */
+private val gitCommit = providers.exec {
+    commandLine("git", "rev-parse", "--short=8", "HEAD")
+    isIgnoreExitValue = true
+}.standardOutput.asText.map { it.trim().ifBlank { "unknown" } }
+
+private val gitCommittedAt = providers.exec {
+    commandLine("git", "log", "-1", "--format=%cd", "--date=format:%Y-%m-%d %H:%M")
+    isIgnoreExitValue = true
+}.standardOutput.asText.map { it.trim().ifBlank { "unknown" } }
+
+val generateBuildInfo by tasks.registering {
+    val commit = gitCommit
+    val committedAt = gitCommittedAt
+    val into = layout.buildDirectory.dir("generated/buildInfo")
+
+    inputs.property("commit", commit)
+    inputs.property("committedAt", committedAt)
+    outputs.dir(into)
+
+    doLast {
+        val file = into.get().asFile
+            .resolve("pl/pelotasplus/eyeofbeholder/BuildInfo.kt")
+
+        file.parentFile.mkdirs()
+        file.writeText(
+            """
+            package pl.pelotasplus.eyeofbeholder
+
+            /** Written by Gradle at build time. See generateBuildInfo. */
+            object BuildInfo {
+                const val COMMIT = "${commit.get()}"
+                const val COMMITTED_AT = "${committedAt.get()}"
+            }
+
+            """.trimIndent(),
+        )
+    }
+}
+
 kotlin {
     sourceSets.all {
         languageSettings.optIn("kotlin.ExperimentalUnsignedTypes")
@@ -82,6 +130,9 @@ kotlin {
             implementation(compose.preview)
             implementation(libs.androidx.activity.compose)
             implementation(libs.koin.android)
+        }
+        commonMain {
+            kotlin.srcDir(generateBuildInfo)
         }
         commonMain.dependencies {
             implementation(compose.runtime)
