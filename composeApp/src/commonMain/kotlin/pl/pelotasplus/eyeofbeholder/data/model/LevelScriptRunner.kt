@@ -457,7 +457,7 @@ class LevelScriptRunner(
             "$event on ${position.xy} runs the script at ${trigger.script.offset.value}"
         }
         return runScript(
-            trigger.script.offset, state, stage, triggers, depth, event, used, cast,
+            trigger.script.offset, state, stage, triggers, depth, event, used, cast, position,
         ).also { result ->
             say {
                 val party = result.state.party
@@ -476,6 +476,8 @@ class LevelScriptRunner(
         event: ScriptEvent,
         used: ItemIndex?,
         cast: Spell?,
+        /** The square this script is being run for, which a few tokens ask about. */
+        ranFor: Location,
     ): ScriptRun {
         var state = initial
 
@@ -875,9 +877,19 @@ class LevelScriptRunner(
                     state = state.partyTurnedTo(state.party.facing.turnedBy(token.dir))
                 }
 
-                // The other kind turns what is already in flight, which
-                // nothing here keeps track of yet.
-                is Turn -> notYet(token, "turning", "nothing turns")
+                // The other kind turns what is in the air over this very
+                // square, and by rather than to. It is how a room sends a
+                // fireball round and round: four corners of it each give
+                // whatever crosses them a quarter turn, and what was loosed
+                // down one wall comes back along the next.
+                is Turn.TurnFlyingObjects -> state = state.copy(
+                    inFlight = state.inFlight.map {
+                        if (it.at == ranFor) it.copy(going = it.going.turnedBy(token.dir))
+                        else it
+                    },
+                )
+
+                is Turn.Unknown -> notYet(token, "turning", "nothing turns")
 
                 // The things on a square carried to another, on this level or
                 // onto another. A null level in the token is this one.
