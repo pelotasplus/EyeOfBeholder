@@ -60,6 +60,19 @@ enum class ScriptEvent(val mask: Int) {
     ITEM_USED_ON_WALL(0x100),
 
     /**
+     * A monster stepped onto the square, and [A_MONSTER_LEFT] for stepping off
+     * it again. Both fire per step, the square left before the square reached.
+     *
+     * A monster weighs what the party weight: a plate set into the floor asks
+     * how many are standing on it, and something wandering across one works it
+     * exactly as a foot does. That is how a plate is held down with nobody
+     * near it and nothing left lying on it — the eleventh floor's pit is
+     * floored over that way.
+     */
+    A_MONSTER_ARRIVED(0x200),
+    A_MONSTER_LEFT(0x400),
+
+    /**
      * A spell was cast, and the square the party stand on is being asked what
      * it makes of that.
      *

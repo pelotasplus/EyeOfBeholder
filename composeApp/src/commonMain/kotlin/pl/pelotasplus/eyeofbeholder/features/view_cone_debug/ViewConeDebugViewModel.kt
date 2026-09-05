@@ -635,6 +635,7 @@ class ViewConeDebugViewModel(
                                 ),
                         )
                     }
+                    monstersFoundStandingSomewhere(inf)
                     renderViewPort()
                     autosave()
                     if (walkingIn) runTriggers()
@@ -1713,6 +1714,9 @@ class ViewConeDebugViewModel(
                 var swungAndMissed = emptyList<MonsterSlot>()
                 var roused = emptyList<MonsterInstance>()
                 var walked = emptyList<MonsterInstance>()
+
+                /** Where each of [walked] was standing before it took its step. */
+                var cameFrom = emptyMap<MonsterSlot, Location>()
                 var took = emptyList<String>()
                 var loosed = emptyList<Projectile>()
                 var moved = false
@@ -1783,6 +1787,7 @@ class ViewConeDebugViewModel(
                         walked = world.monsters.filter {
                             stood[it.index]?.let { at -> at != it.location } == true
                         }
+                        cameFrom = stood
 
                         loosed = world.inFlight.drop(flyingAlready)
 
@@ -1964,6 +1969,21 @@ class ViewConeDebugViewModel(
                         movingSound(monster)?.let { playTrack(it, asFarOffAs(monster)) }
                     }
                 }
+
+                // And the two squares each of them crossed between get their
+                // say, the one left before the one arrived on. A monster's
+                // weight is the party's weight as far as the floor is
+                // concerned, so this is what lets something wandering hold a
+                // plate down that nobody is standing on.
+                walked.forEach { monster ->
+                    cameFrom[monster.index]?.let { from ->
+                        Logger.d(TAG) { "$tickNow  m${monster.index.value} left $from" }
+                        runTriggersAt(from, ScriptEvent.A_MONSTER_LEFT)
+                    }
+                    Logger.d(TAG) { "$tickNow  m${monster.index.value} arrived ${monster.location}" }
+                    runTriggersAt(monster.location, ScriptEvent.A_MONSTER_ARRIVED)
+                }
+
                 if (moved) drawViewPort()
             }
 
@@ -2938,6 +2958,45 @@ class ViewConeDebugViewModel(
         }
     }
 
+    /**
+     * Every square that already has a monster standing on it is told so, as
+     * the floor is peopled.
+     *
+     * Weight is weight whether it walked there or was placed there, and most
+     * of them were placed: a floor arrives with its monsters already standing
+     * about, and one that came into being on a plate is holding it down before
+     * anybody has seen the square.
+     *
+     * These are run here rather than through [runTriggersAt] because they come
+     * in a batch and that one takes down the run before it — a batch put
+     * through it would leave only the last square answered, and the party's
+     * own arrival would then take down that.
+     */
+    private suspend fun monstersFoundStandingSomewhere(inf: Inf) {
+        val runner = scriptRunner ?: return
+
+        _state.value.game.monsters
+            .map { it.location }
+            .distinct()
+            .filter { at ->
+                inf.triggers.any {
+                    it.location == at && it.flags.reactsTo(ScriptEvent.A_MONSTER_ARRIVED)
+                }
+            }
+            .forEach { at ->
+                Logger.d(TAG) { "Something is already standing on $at" }
+
+                val run = runner.onEvent(
+                    triggers = inf.triggers,
+                    event = ScriptEvent.A_MONSTER_ARRIVED,
+                    state = _state.value.game,
+                    stage = stage,
+                    at = at,
+                )
+                _state.update { it.copy(game = run.state) }
+            }
+    }
+
     private fun runTriggersAt(
         at: Location,
         event: ScriptEvent,
@@ -2953,6 +3012,14 @@ class ViewConeDebugViewModel(
     ): Boolean {
         val inf = _state.value.inf ?: return false
         val runner = scriptRunner ?: return false
+
+        // A square with no answer to this is not a reason to stop the script
+        // that is running. Asking is cheap and constant: a monster pacing an
+        // empty corridor raises an event on every square it crosses, and every
+        // one of those would otherwise take down whatever the party are
+        // watching before it had drawn a frame.
+        val answered = inf.triggers.any { it.location == at && it.flags.reactsTo(event) }
+        if (!answered) return false
 
         playing?.cancel()
         scriptHasTheParty = false
