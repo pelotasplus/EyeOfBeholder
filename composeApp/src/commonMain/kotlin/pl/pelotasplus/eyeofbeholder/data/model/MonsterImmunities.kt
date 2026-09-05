@@ -11,12 +11,24 @@ import kotlin.jvm.JvmInline
  * cannot wear the thing down by swinging for longer. The floor 11 guardian is
  * one of these — plain steel and a bare fist go through it.
  *
- * The rest of the word names kinds of damage and spells that a creature
- * shrugs off, cold among them. Nothing asks about those, because nothing the
- * party cast damages a monster yet.
+ * Other bits name kinds of harm the creature shrugs off — see [shrugsOff] —
+ * and the rest name spells it cannot be held or frightened by, which nothing
+ * asks about yet.
  */
 @JvmInline
 value class MonsterImmunities(private val written: Int) {
+
+    /**
+     * Whether harm of these [kinds] does nothing at all to this.
+     *
+     * A spell is several kinds at once, and shrugging off any one of them is
+     * enough: a creature immune to cold takes nothing from a cone of cold,
+     * magical though that is too.
+     */
+    fun shrugsOff(kinds: Set<HarmKind>): Boolean =
+        kinds.any { kind ->
+            kind.asACreatureTurnsItAside?.let { written and it != 0 } == true
+        }
 
     /**
      * Whether a weapon carrying [enchantment] can land on this at all — a

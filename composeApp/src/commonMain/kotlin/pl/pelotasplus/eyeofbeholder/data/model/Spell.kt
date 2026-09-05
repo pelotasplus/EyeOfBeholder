@@ -25,17 +25,31 @@ package pl.pelotasplus.eyeofbeholder.data.model
  * @property throwsSparks whether casting it scatters [SparksInTheRoom] across
  *   the view. Four of the seventy do, and the rest are either shown on the
  *   portrait of whoever cast them or not shown at all.
+ * @property throws what it sends down the corridor, for the few that send
+ *   anything. Null is not "does nothing" — it is "does nothing that flies",
+ *   which covers mending a champion as well as a spell nobody has written yet.
  */
 enum class Spell(
     val asWritten: Int,
     val calledIt: String,
     val heardAs: TrackIndex? = null,
     val throwsSparks: Boolean = false,
+    val throws: ThrownSpell? = null,
 ) {
     ARMOUR(1, "armor", TrackIndex(92)),
     BURNING_HANDS(2, "burning hands", TrackIndex(87)),
     DETECT_MAGIC(3, "detect magic", TrackIndex(95)),
-    MAGIC_MISSILE(4, "magic missile", TrackIndex(85)),
+    MAGIC_MISSILE(
+        4,
+        "magic missile",
+        TrackIndex(85),
+        throws = ThrownSpell(
+            flies = MonsterSpell.MAGIC_MISSILE,
+            dealing = DamageDice(times = 1, pips = 4, base = 1),
+            counted = CountedBy.EVERY_SECOND_LEVEL,
+            hurting = setOf(HarmKind.MAGIC),
+        ),
+    ),
     SHIELD(5, "shield", TrackIndex(92)),
     SHOCKING_GRASP(6, "shocking grasp", TrackIndex(88)),
     BLUR(7, "blur", TrackIndex(75)),

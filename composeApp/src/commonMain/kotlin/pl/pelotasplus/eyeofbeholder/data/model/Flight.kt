@@ -172,7 +172,16 @@ private val atEachQuarter = listOf(
             // A spell does whatever it does here and nowhere else. One that
             // stopped short — against a wall, or on a monster it was allowed
             // to touch — has simply failed to arrive.
-            val after = if (flying.spell != null && flying.at == world.party.position) {
+            //
+            // What arrives is what somebody else sent. This table is how hard
+            // the floor throws, so running it on the party's own spell would
+            // hurt them by the depth they are at rather than by anything their
+            // caster did.
+            val arrived = flying.spell != null &&
+                flying.at == world.party.position &&
+                !sparesThem(flying)
+
+            val after = if (arrived && flying.spell != null) {
                 landing?.of(flying.spell, world, flying.place)?.also {
                     left += it.left
                     landed += Landing(flying.spell, it.hurt, it.left)
@@ -332,10 +341,16 @@ private val atEachQuarter = listOf(
      * who it finds is where it went.
      */
     private fun whatItHit(world: GameState, flying: Projectile): List<Hurt> {
-        // A spell goes over the head of whatever it crosses unless it is one
-        // of the three that are already burning as they travel. It is why a
-        // corridor of monsters never thins itself out.
-        val overThem = flying.spell?.hurtsWhatItPasses == false
+        // A spell nobody in the party cast goes over the head of the monsters
+        // it crosses, unless it is one of the ones already burning as they
+        // travel. It is why a corridor of monsters never thins itself out, and
+        // why a trap's bolt sails over them to reach the party behind.
+        //
+        // What the party throw is under no such rule: their spell takes the
+        // first thing it comes to, which is the whole point of throwing it.
+        val fromTheParty = flying.thrownBy is Projectile.Thrower.AChampion
+        val overThem = !fromTheParty && flying.spell?.hurtsWhatItPasses == false
+
 
         val monsters = if (overThem) {
             emptyList()
@@ -397,6 +412,7 @@ private val atEachQuarter = listOf(
      */
     private fun whoTheyWalkedInto(world: GameState, flying: Projectile): List<Hurt> {
         if (flying.at != world.party.position) return emptyList()
+        if (sparesThem(flying)) return emptyList()
 
         // Being down is not being out of the way. A burst takes everybody in
         // the party, awake or not, and is what finishes off somebody already
@@ -420,6 +436,22 @@ private val atEachQuarter = listOf(
 
         return struck.map { Hurt.AChampion(it, damageOf(world, flying, null)) }
     }
+
+    /**
+     * Whether a spell the party cast passes through them rather than touching
+     * them.
+     *
+     * A spell knows whose it is: walking into your own missile costs nothing.
+     * Two of theirs are not so careful — a fireball and a bolt of lightning
+     * take either side — and those say so.
+     *
+     * Only a spell. A thrown thing is a thrown thing wherever it came from,
+     * and hits whoever is standing where it went.
+     */
+    private fun sparesThem(flying: Projectile) =
+        flying.spell != null &&
+            flying.thrownBy is Projectile.Thrower.AChampion &&
+            !flying.harm.takesEitherSide
 
     /**
      * Which of the party a thing in the air comes through.
@@ -477,6 +509,11 @@ private val atEachQuarter = listOf(
      * them, which is the whole reason a miss is worth telling from a hit.
      */
     private fun lands(world: GameState, flying: Projectile, kind: MonsterProperty?): Boolean {
+        // A conjured thing is not aimed. It goes where it was sent and takes
+        // whatever is standing there, so there is nothing to roll: a missile
+        // is the one thing in the game that never misses.
+        if (flying.spell != null) return true
+
         val threw = (flying.thrownBy as? Projectile.Thrower.AChampion) ?: return true
         val champion = world.championIn(threw.slot) ?: return true
 
@@ -497,6 +534,11 @@ private val atEachQuarter = listOf(
 
     /** What the thing does where it lands, which is what kind of thing it is. */
     private fun damageOf(world: GameState, flying: Projectile, kind: MonsterProperty?): Damage {
+        // Something that shrugs this kind of harm off takes none of it, and
+        // still stops the thing: a bolt is spent on a creature it cannot hurt
+        // rather than carrying on through it to the next one.
+        if (kind?.immunities?.shrugsOff(flying.harm.hurting) == true) return Damage(0)
+
         flying.harm.dice?.let { own ->
             val rolled = dice.roll(own.times, own.pips, own.base) * flying.harm.times
             return Damage(rolled.coerceAtLeast(0))

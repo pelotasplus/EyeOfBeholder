@@ -55,6 +55,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.DoorSounds
 import pl.pelotasplus.eyeofbeholder.data.model.FloorClocks
 import pl.pelotasplus.eyeofbeholder.data.model.FloorReach
 import pl.pelotasplus.eyeofbeholder.data.model.Projectile
+import pl.pelotasplus.eyeofbeholder.data.model.ThrownSpell
 import pl.pelotasplus.eyeofbeholder.data.model.ViewPlace
 import pl.pelotasplus.eyeofbeholder.data.model.ForcingADoor
 import pl.pelotasplus.eyeofbeholder.data.model.Font
@@ -1497,10 +1498,14 @@ class ViewConeDebugViewModel(
 
             is HandUse.Cast -> castFromAScroll(whose, slot.slot, doing.spell)
 
+            // A wand with nothing in it is waved and says so, which is all it
+            // says: the line does not admit the thing is a wand, so waving one
+            // tells the party nothing they could not have guessed.
+            HandUse.NothingLeftInIt -> say(ItemMessages.NO_APPARENT_EFFECT)
+
             is HandUse.Read,
             HandUse.WorksByBeingWorn,
             HandUse.NotUsedThisWay,
-            HandUse.NothingLeftInIt,
             HandUse.NotWrittenYet -> Unit
         }
 
@@ -2933,6 +2938,13 @@ class ViewConeDebugViewModel(
         _state.update { it.copy(game = it.game.handCast(whose, hand)) }
         keepHandsRecovering()
 
+        spell.throws?.let { thrown -> loose(whose, thrown) }
+
+        // Read last, because reading it is what may take it out of the hand.
+        itemTypes?.let { types ->
+            _state.update { it.copy(game = it.game.castOutOf(whose, hand, types)) }
+        }
+
         sayOf(whose) { SpellMessages.casts(it, spell.calledIt) }
 
         spell.heardAs?.let { heard -> viewModelScope.launch { playTrack(heard) } }
@@ -2944,6 +2956,40 @@ class ViewConeDebugViewModel(
                 at = _state.value.game.party.position,
                 event = ScriptEvent.A_SPELL_WAS_CAST,
                 cast = spell,
+            )
+        }
+    }
+
+    /**
+     * A spell put in the air, going the way the party face.
+     *
+     * It leaves from the caster's own quarter of the square, the way a thrown
+     * thing does. Which quarter is not how it is drawn — a conjured bolt is
+     * drawn down the middle whoever cast it — but it is what decides who a
+     * spell that takes either side comes back through.
+     *
+     * How hard it lands is not the reader's doing. Anything cast out of a
+     * scroll or a wand is cast as a ninth-level caster would cast it, however
+     * new the champion holding it — which is why a scroll is worth carrying to
+     * somebody who could never learn the spell.
+     */
+    private fun loose(whose: PartySlot, thrown: ThrownSpell) {
+        val party = _state.value.game.party
+
+        _state.update {
+            it.copy(
+                game = it.game.inTheAir(
+                    Projectile(
+                        what = null,
+                        at = party.position,
+                        place = whose.standsIn.onASquareFacing(party.facing),
+                        going = party.facing,
+                        squaresLeft = thrown.flies.reach,
+                        thrownBy = Projectile.Thrower.AChampion(whose),
+                        harm = thrown.dealtBy(ThrownSpell.AS_READ_FROM_A_SCROLL),
+                        spell = thrown.flies,
+                    ),
+                ),
             )
         }
     }

@@ -155,6 +155,23 @@ data class Projectile(
 
         /** Whether it takes the whole square rather than one of the people on it. */
         val everybody: Boolean = false,
+
+        /**
+         * What kinds of harm it does, where it is of a kind at all. A thrown
+         * rock is none of them and nothing shrugs it off.
+         */
+        val hurting: Set<HarmKind> = emptySet(),
+
+        /**
+         * Whether it takes the side that loosed it as well as the other.
+         *
+         * Nearly nothing does, and a spell that does not simply passes through
+         * whoever cast it: walking into your own missile costs nothing. Two of
+         * the party's own are the exception — a fireball and a bolt of
+         * lightning burn the party as readily as what they were aimed at,
+         * which is what makes casting one down a short corridor a mistake.
+         */
+        val takesEitherSide: Boolean = false,
     ) {
         companion object {
             /** A dart or a rock: it hurts what it hits, and rolls as itself. */

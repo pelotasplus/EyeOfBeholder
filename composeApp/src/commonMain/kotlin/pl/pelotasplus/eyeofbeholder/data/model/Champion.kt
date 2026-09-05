@@ -358,7 +358,24 @@ enum class Alignment {
 /** Which of the six places in the party, filled or not. */
 @JvmInline
 @Serializable
-value class PartySlot(val index: Int)
+value class PartySlot(val index: Int) {
+
+    /**
+     * Which quarter of their square this champion stands in, as they see it.
+     *
+     * A square has four quarters and a party has six, so the back rank stand
+     * behind the middle two rather than in quarters of their own: a champion
+     * behind is loosed from the quarter of whoever stands in front of them.
+     */
+    val standsIn: ViewPlace
+        get() = ViewPlace.entries[if (index > LAST_WITH_ITS_OWN) index - BEHIND_THEM else index]
+
+    private companion object {
+        /** The last slot with a quarter to itself; past this is the back rank. */
+        const val LAST_WITH_ITS_OWN = 3
+        const val BEHIND_THEM = 2
+    }
+}
 
 /**
  * Which of a champion's twenty-seven slots: the two hands, the fourteen

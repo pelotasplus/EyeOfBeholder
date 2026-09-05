@@ -73,6 +73,18 @@ data class Item(
     /** Whether the party know what this really is, and so what to call it. */
     val identified: Boolean get() = flags and IDENTIFIED != 0
 
+    /**
+     * How many uses are left in a wand, which shares the word its other marks
+     * are written in. Meaningless on anything that is not one.
+     *
+     * Two wands off the same shelf are not equally full: what each carries is
+     * written on the item rather than on its kind.
+     */
+    val chargesLeft: Int get() = flags and CHARGES
+
+    /** The same wand a use worse off. */
+    fun oneChargeSpent() = copy(flags = flags - 1)
+
     companion object {
         /**
          * The square an item that is on none lies on: the packed word 0xFFFF,
@@ -102,6 +114,9 @@ data class Item(
 
         private const val STUCK = 0x20
         private const val IDENTIFIED = 0x40
+
+        /** The low six bits, which a wand keeps its remaining uses in. */
+        private const val CHARGES = 0x3F
 
         fun read(reader: ByteReader) = Item(
             nameUnidentified = ItemNameId(reader.readU8()),
@@ -378,6 +393,25 @@ data class ItemTypes(private val types: List<ItemType>) {
         return CharacterClass.CLERIC !in CharacterClass.setOf(allowed)
     }
 
+    /**
+     * What casting out of [item] costs it.
+     *
+     * The types are named by number because the game names them by number:
+     * nothing about a wand's entry says it is a wand, and which of them are
+     * spent by being read from is written only in this table. Transcribed —
+     * two kinds of wand and three of scroll, and the wand that defends is let
+     * off by its value rather than by its type.
+     */
+    fun whatCastingCosts(item: Item): WhatCastingCosts = when (item.type) {
+        in WANDS_THAT_SPEND ->
+            if (Wand.of(item.value) == Wand.OF_DEFENCE) WhatCastingCosts.Nothing
+            else WhatCastingCosts.OneCharge
+
+        in SCROLLS_READ_ONCE -> WhatCastingCosts.AllOfIt
+
+        else -> WhatCastingCosts.Nothing
+    }
+
     private fun allows(champion: Champion, item: Item?): Boolean {
         if (item == null) return true
         val allowed = this[item.type]?.allowedClasses ?: return false
@@ -390,6 +424,12 @@ data class ItemTypes(private val types: List<ItemType>) {
 
         /** The one type a champion eats. Its value is the food it restores. */
         val RATIONS = ItemTypeId(31)
+
+        /** The two kinds of wand a use comes off — see [whatCastingCosts]. */
+        val WANDS_THAT_SPEND = setOf(ItemTypeId(48), ItemTypeId(62))
+
+        /** And the three kinds of scroll that go up with the words. */
+        val SCROLLS_READ_ONCE = setOf(ItemTypeId(26), ItemTypeId(34), ItemTypeId(35))
     }
 }
 

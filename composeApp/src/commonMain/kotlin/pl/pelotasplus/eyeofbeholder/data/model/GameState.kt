@@ -1582,6 +1582,33 @@ data class GameState(
             HandRecovering(whose, hand, HandRecovering.AFTER_CASTING.value, came = null),
     )
 
+    /** One more thing crossing the room, whoever loosed it. */
+    fun inTheAir(loosed: Projectile) = copy(inFlight = inFlight + loosed)
+
+    /**
+     * The world with what was read from worn down by the reading — see
+     * [WhatCastingCosts].
+     *
+     * A wand on its last use goes the way a scroll does, so the hand is empty
+     * rather than holding something that answers nothing.
+     */
+    fun castOutOf(whose: PartySlot, hand: CarrySlot, types: ItemTypes): GameState {
+        val held = item(champions.getOrNull(whose.index)?.holding(hand) ?: return this)
+            ?: return this
+
+        return when (types.whatCastingCosts(held)) {
+            WhatCastingCosts.Nothing -> this
+            WhatCastingCosts.AllOfIt -> slotEmptied(whose, hand)
+            WhatCastingCosts.OneCharge ->
+                if (held.chargesLeft <= 1) slotEmptied(whose, hand)
+                else withItemChanged(held) { it.oneChargeSpent() }
+        }
+    }
+
+    private fun withItemChanged(what: Item, worn: (Item) -> Item) = copy(
+        items = items.map { if (it === what) worn(it) else it },
+    )
+
     /**
      * What the weapon slots show between them, which is what says whether a
      * tick of the clock changed anything worth redrawing for.

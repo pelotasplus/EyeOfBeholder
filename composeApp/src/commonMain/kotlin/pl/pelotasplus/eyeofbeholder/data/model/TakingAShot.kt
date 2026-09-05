@@ -171,8 +171,6 @@ class TakingAShot(
         )
     }
 
-    private fun GameState.inTheAir(loosed: Projectile) = copy(inFlight = inFlight + loosed)
-
     /**
      * Whether the party are somewhere this monster can shoot them: near
      * enough, straight ahead of it, and with the way clear.
