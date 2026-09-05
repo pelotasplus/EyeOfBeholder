@@ -16,6 +16,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.Trigger
 import pl.pelotasplus.eyeofbeholder.data.model.TriggerFlags
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterDecorationSetId
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterGfx
+import pl.pelotasplus.eyeofbeholder.data.model.MonsterImmunities
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterInstance
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterSlot
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterTypeId
@@ -666,7 +667,7 @@ class InfRepositoryImpl(
                 )
             }
 
-            val immunityFlags = reader.readU16LE()
+            val immunities = MonsterImmunities(reader.readU16LE())
             val capsFlags = reader.readU16LE()
             val typeFlags = reader.readU16LE()
             val experience = reader.readU16LE()
@@ -709,7 +710,7 @@ class InfRepositoryImpl(
                     hpDcBase = hpDcBase,
                     attacksPerRound = attacksPerRound,
                     dmgDc = dmgDc,
-                    immunityFlags = immunityFlags,
+                    immunities = immunities,
                     capsFlags = capsFlags,
                     typeFlags = typeFlags,
                     experience = experience,

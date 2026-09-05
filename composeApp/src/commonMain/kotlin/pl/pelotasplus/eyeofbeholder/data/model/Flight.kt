@@ -481,6 +481,14 @@ private val atEachQuarter = listOf(
         val champion = world.championIn(threw.slot) ?: return true
 
         val weapon = flying.what?.let { world.item(it) }
+
+        // A thrown weapon is refused by a creature too good for it in the same
+        // way a swung one is, before the roll. Only a thrown thing is asked:
+        // nobody aimed a trap's bolt, and it has already landed above.
+        if (weapon != null && kind != null && !kind.immunities.canBeHitBy(weapon.value)) {
+            return false
+        }
+
         val bonus = champion.abilities.dexterityToHitBonus + (weapon?.value ?: 0)
         val needed = champion.needsToHit(kind?.armorClass ?: 0) - bonus
 

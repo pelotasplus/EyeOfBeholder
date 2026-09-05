@@ -26,7 +26,8 @@ package pl.pelotasplus.eyeofbeholder.data.model
  * @property hpDcBase Hit point bonus (e.g. 2 in "4d8+2")
  * @property attacksPerRound Number of melee attacks per combat round
  * @property dmgDc 3 damage dice definitions for the monster's attacks
- * @property immunityFlags Bitmask of damage types the monster is immune to
+ * @property immunities What cannot harm it, weapons too plain to touch it
+ *   included
  * @property capsFlags Capability flags (flying, invisible, etc.)
  * @property typeFlags Type classification (undead, dragon, giant, etc.)
  * @property experience XP awarded when defeated
@@ -49,7 +50,7 @@ data class MonsterProperty(
     val hpDcBase: Int,
     val attacksPerRound: Int,
     val dmgDc: List<DamageDice>,
-    val immunityFlags: Int,
+    val immunities: MonsterImmunities,
     val capsFlags: Int,
     val typeFlags: Int,
     val experience: Int,

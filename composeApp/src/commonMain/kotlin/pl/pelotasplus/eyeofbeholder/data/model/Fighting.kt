@@ -116,6 +116,15 @@ class Fighting(
         val kind = kinds.firstOrNull { it.id == target.type.value }
 
         val weapon = world.item(champion.holding(hand))
+
+        // Some things are reached only by a weapon of a certain quality, and
+        // that is settled before the die rather than by it: no roll can land a
+        // plain blade on one, however long the party keep swinging. It reads
+        // as an ordinary miss, which is all the original ever says about it.
+        if (kind != null && !kind.immunities.canBeHitBy(weapon?.value ?: 0)) {
+            return Blow.Missed(target.index)
+        }
+
         val bonus = champion.abilities.strengthToHitBonus + (weapon?.value ?: 0)
         val needed = champion.needsToHit(kind?.armorClass ?: 0) - bonus
 

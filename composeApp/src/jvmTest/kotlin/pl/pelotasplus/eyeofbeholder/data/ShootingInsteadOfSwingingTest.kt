@@ -12,6 +12,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.Location
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterInstance
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterMode
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterPathing
+import pl.pelotasplus.eyeofbeholder.data.model.MonsterImmunities
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterProperty
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterSize
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterSlot
@@ -80,7 +81,7 @@ class ShootingInsteadOfSwingingTest {
         armorClass = 5, hitChance = 13, level = 5,
         hpDcTimes = 1, hpDcPips = 1, hpDcBase = 0,
         attacksPerRound = 1, dmgDc = emptyList(),
-        immunityFlags = 0, capsFlags = 0, typeFlags = 0, experience = 100,
+        immunities = MonsterImmunities(0), capsFlags = 0, typeFlags = 0, experience = 100,
         size = MonsterSize.FOUR_TO_A_SQUARE,
         sound1 = 0, sound2 = 0,
         numRemoteAttacks = 4,

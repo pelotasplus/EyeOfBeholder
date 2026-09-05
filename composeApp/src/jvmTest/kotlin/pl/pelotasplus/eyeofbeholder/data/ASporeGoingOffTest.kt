@@ -9,6 +9,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.GameState
 import pl.pelotasplus.eyeofbeholder.data.model.HitPoints
 import pl.pelotasplus.eyeofbeholder.data.model.Location
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterInstance
+import pl.pelotasplus.eyeofbeholder.data.model.MonsterImmunities
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterProperty
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterSize
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterSlot
@@ -186,7 +187,7 @@ class ASporeGoingOffTest {
         armorClass = 9, hitChance = 13, level = 1,
         hpDcTimes = 0, hpDcPips = 0, hpDcBase = 1,
         attacksPerRound = 1, dmgDc = emptyList(),
-        immunityFlags = 0, capsFlags = capsFlags, typeFlags = 2, experience = 120,
+        immunities = MonsterImmunities(0), capsFlags = capsFlags, typeFlags = 2, experience = 120,
         size = MonsterSize.FILLS_THE_SQUARE,
         sound1 = 0, sound2 = 0,
         numRemoteAttacks = 0, remoteWeaponChangeMode = null, numRemoteWeapons = null,
