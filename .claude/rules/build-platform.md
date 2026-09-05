@@ -39,7 +39,7 @@ brew install adplay
 scripts/render-adlib.py ../EOB2 composeApp/src/commonMain/composeResources/files/audio
 ```
 
-Ten banks give 745 tracks, which fold down to about 181 files — a door sounds
+Ten banks give 748 tracks, which fold down to about 184 files — a door sounds
 the same on every floor — named by the hash of their samples, with
 `clips.json` beside them putting bank and track back together. Rendering takes
 a few minutes. Tracks that come out silent are left out rather than written as
