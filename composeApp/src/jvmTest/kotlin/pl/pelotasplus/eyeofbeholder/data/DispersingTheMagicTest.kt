@@ -13,6 +13,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.ScriptEvent
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptStage
 import pl.pelotasplus.eyeofbeholder.data.model.Spell
 import pl.pelotasplus.eyeofbeholder.data.model.TrackIndex
+import pl.pelotasplus.eyeofbeholder.data.model.Volume
 import pl.pelotasplus.eyeofbeholder.data.model.WallSide
 import pl.pelotasplus.eyeofbeholder.data.repository.CpsRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.DecRepositoryImpl
@@ -174,7 +175,7 @@ class DispersingTheMagicTest {
     fun `and it answers with sounds of its own`() {
         val heard = mutableListOf<TrackIndex>()
         val stage = object : ScriptStage by ScriptStage.silent() {
-            override suspend fun play(track: TrackIndex) {
+            override suspend fun play(track: TrackIndex, volume: Volume) {
                 heard += track
             }
         }

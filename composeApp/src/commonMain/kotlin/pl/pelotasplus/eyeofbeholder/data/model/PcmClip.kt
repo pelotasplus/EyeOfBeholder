@@ -47,9 +47,11 @@ value class Volume(val raw: Int) {
          * as loud as being there and what is fifteen away is not heard at all.
          */
         fun asFarOffAs(squares: Int): Volume =
-            Volume((AS_FAR_AS_IT_CARRIES - squares).coerceAtLeast(0) shl 4)
+            Volume(QUIETER_PER_SQUARE * (AS_FAR_AS_IT_CARRIES - squares).coerceAtLeast(0))
 
         /** Which is as far as any of it carries. */
         const val AS_FAR_AS_IT_CARRIES = 15
+
+        private const val QUIETER_PER_SQUARE = 16
     }
 }

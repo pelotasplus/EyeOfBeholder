@@ -7,6 +7,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.ScriptSpeech
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptStage
 import pl.pelotasplus.eyeofbeholder.data.model.Ticks
 import pl.pelotasplus.eyeofbeholder.data.model.TrackIndex
+import pl.pelotasplus.eyeofbeholder.data.model.Volume
 
 /**
  * A screen that draws nothing and answers instantly, but remembers everything
@@ -43,7 +44,7 @@ class RecordingStage(answers: List<Int> = emptyList()) : ScriptStage {
         data class Shown(val world: GameState) : Beat
         data class Said(val speech: ScriptSpeech) : Beat
         data class Held(val ticks: Ticks) : Beat
-        data class Played(val track: TrackIndex) : Beat
+        data class Played(val track: TrackIndex, val volume: Volume) : Beat
         data class Asked(val question: ScriptQuestion, val answered: DialogAnswer) : Beat
         data object OpenedThePortal : Beat
     }
@@ -68,8 +69,8 @@ class RecordingStage(answers: List<Int> = emptyList()) : ScriptStage {
         beats += Beat.Held(ticks)
     }
 
-    override suspend fun play(track: TrackIndex) {
-        beats += Beat.Played(track)
+    override suspend fun play(track: TrackIndex, volume: Volume) {
+        beats += Beat.Played(track, volume)
     }
 
     override suspend fun ask(question: ScriptQuestion): DialogAnswer {

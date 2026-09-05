@@ -251,8 +251,11 @@ interface ScriptStage {
      * Start a sound and carry on without waiting for it. A script that means
      * a sound to be over before the next thing happens says so itself, with a
      * wait of its own.
+     *
+     * [volume] is how loud it is from where the party stand. Something made
+     * too far off arrives [Volume.SILENT] and is not worth starting.
      */
-    suspend fun play(track: TrackIndex)
+    suspend fun play(track: TrackIndex, volume: Volume = Volume.FULL)
 
     /** Put a question up, and wait for it to be answered. */
     suspend fun ask(question: ScriptQuestion): DialogAnswer
@@ -285,12 +288,31 @@ interface ScriptStage {
             override suspend fun show(world: GameState) = Unit
             override suspend fun say(speech: ScriptSpeech) = Unit
             override suspend fun hold(ticks: Ticks) = Unit
-            override suspend fun play(track: TrackIndex) = Unit
+            override suspend fun play(track: TrackIndex, volume: Volume) = Unit
             override suspend fun ask(question: ScriptQuestion) = answer
             override suspend fun opensThePortal() = Unit
         }
     }
 }
+
+/**
+ * How loud a sound made on [where] is from where the party are standing.
+ *
+ * Distance is all that quietens it — walls in this dungeon do not — and past
+ * fifteen squares it is not heard at all, which is why a lever thrown at the
+ * far end of the floor stays over there. The party's own square is read at the
+ * moment the sound is made, so a script that walks them somewhere first is
+ * heard from where it left them.
+ *
+ * A script that names no square at all means a sound the party carry with
+ * them rather than one coming from somewhere, and that is heard in full
+ * wherever they are.
+ */
+private fun GameState.hears(where: Location): Volume =
+    if (where == NO_SQUARE) Volume.FULL
+    else Volume.asFarOffAs(where.blocksFrom(party.position))
+
+private val NO_SQUARE = Location.ofBlock(0)
 
 /**
  * Where a script's luck comes from, so that a test can decide how it falls.
@@ -747,7 +769,7 @@ class LevelScriptRunner(
 
                 is Wait -> stage.hold(Ticks(token.delay))
 
-                is Sound -> stage.play(TrackIndex(token.soundId))
+                is Sound -> stage.play(TrackIndex(token.soundId), state.hears(token.location))
 
                 UpdateScreen -> stage.show(state)
 

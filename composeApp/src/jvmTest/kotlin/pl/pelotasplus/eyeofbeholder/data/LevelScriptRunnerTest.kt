@@ -20,6 +20,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.ScriptSpeech
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptStage
 import pl.pelotasplus.eyeofbeholder.data.model.Ticks
 import pl.pelotasplus.eyeofbeholder.data.model.TrackIndex
+import pl.pelotasplus.eyeofbeholder.data.model.Volume
 import pl.pelotasplus.eyeofbeholder.data.model.WallByte
 import pl.pelotasplus.eyeofbeholder.data.model.WallSide
 import pl.pelotasplus.eyeofbeholder.data.model.Trigger
@@ -795,7 +796,7 @@ class LevelScriptRunnerTest {
         override suspend fun show(world: GameState) = Unit
         override suspend fun say(speech: ScriptSpeech) = Unit
         override suspend fun hold(ticks: Ticks) = Unit
-        override suspend fun play(track: TrackIndex) = Unit
+        override suspend fun play(track: TrackIndex, volume: Volume) = Unit
         override suspend fun opensThePortal() = Unit
         override suspend fun ask(question: ScriptQuestion) = DialogAnswer(1)
     }

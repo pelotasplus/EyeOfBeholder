@@ -69,7 +69,10 @@ class TouchingAlainTest {
         override suspend fun show(world: GameState) = Unit
         override suspend fun say(speech: pl.pelotasplus.eyeofbeholder.data.model.ScriptSpeech) = Unit
         override suspend fun hold(ticks: pl.pelotasplus.eyeofbeholder.data.model.Ticks) = Unit
-        override suspend fun play(track: pl.pelotasplus.eyeofbeholder.data.model.TrackIndex) = Unit
+        override suspend fun play(
+            track: pl.pelotasplus.eyeofbeholder.data.model.TrackIndex,
+            volume: pl.pelotasplus.eyeofbeholder.data.model.Volume,
+        ) = Unit
         override suspend fun opensThePortal() = Unit
 
         override suspend fun ask(question: ScriptQuestion): DialogAnswer {

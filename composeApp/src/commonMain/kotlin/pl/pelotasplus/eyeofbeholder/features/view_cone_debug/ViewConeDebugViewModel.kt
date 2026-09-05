@@ -106,7 +106,6 @@ import pl.pelotasplus.eyeofbeholder.data.model.sleptAnHour
 import pl.pelotasplus.eyeofbeholder.data.model.SoundBank
 import pl.pelotasplus.eyeofbeholder.data.model.TrackIndex
 import pl.pelotasplus.eyeofbeholder.data.model.Volume
-import kotlin.math.abs
 import pl.pelotasplus.eyeofbeholder.data.model.SavedGame
 import pl.pelotasplus.eyeofbeholder.data.model.rightNow
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptEvent
@@ -2173,18 +2172,9 @@ class ViewConeDebugViewModel(
         }
     }
 
-    /**
-     * How far off something is, as the game measures what can be heard: the
-     * shorter way halved and added to the longer, so a thing on the diagonal
-     * is nearer than counting both ways would make it.
-     */
-    private fun squaresOff(monster: MonsterInstance): Int {
-        val party = _state.value.game.party.position
-        val across = abs(monster.x - party.x)
-        val along = abs(monster.y - party.y)
-
-        return maxOf(across, along) + minOf(across, along) / 2
-    }
+    /** How far off a monster is, as the game measures what can be heard. */
+    private fun squaresOff(monster: MonsterInstance) =
+        monster.location.blocksFrom(_state.value.game.party.position)
 
     /** And so how loud it is here, or silent for something too far off. */
     private fun asFarOffAs(monster: MonsterInstance) = Volume.asFarOffAs(squaresOff(monster))
@@ -3118,6 +3108,14 @@ class ViewConeDebugViewModel(
             return
         }
 
+        // Too far off is not heard quietly, it is not heard. One effect holds
+        // the voice at a time (below), so starting a silent one would take it
+        // from whatever is sounding nearby.
+        if (volume == Volume.SILENT) {
+            Logger.d(TAG) { "Not playing $track: too far off to be heard" }
+            return
+        }
+
         val inf = _state.value.inf ?: run {
             Logger.d(TAG) { "Not playing $track: no level loaded" }
             return
@@ -3170,8 +3168,8 @@ class ViewConeDebugViewModel(
          * next step cancels, and a lever thrown on the way past would lose its
          * click halfway through being fetched.
          */
-        override suspend fun play(track: TrackIndex) {
-            viewModelScope.launch { playTrack(track) }
+        override suspend fun play(track: TrackIndex, volume: Volume) {
+            viewModelScope.launch { playTrack(track, volume) }
         }
 
         /**

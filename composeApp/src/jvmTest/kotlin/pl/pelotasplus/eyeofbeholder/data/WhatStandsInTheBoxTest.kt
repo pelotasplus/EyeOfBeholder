@@ -15,6 +15,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.ScriptSpeech
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptStage
 import pl.pelotasplus.eyeofbeholder.data.model.Ticks
 import pl.pelotasplus.eyeofbeholder.data.model.TrackIndex
+import pl.pelotasplus.eyeofbeholder.data.model.Volume
 import pl.pelotasplus.eyeofbeholder.data.model.Trigger
 import pl.pelotasplus.eyeofbeholder.data.model.TriggerFlags
 import pl.pelotasplus.eyeofbeholder.data.model.script.Dialog
@@ -122,7 +123,7 @@ class WhatStandsInTheBoxTest {
         override fun notImplemented(what: String) = Unit
         override suspend fun show(world: GameState) = Unit
         override suspend fun hold(ticks: Ticks) = Unit
-        override suspend fun play(track: TrackIndex) = Unit
+        override suspend fun play(track: TrackIndex, volume: Volume) = Unit
         override suspend fun opensThePortal() = Unit
 
         override suspend fun say(speech: ScriptSpeech) {
