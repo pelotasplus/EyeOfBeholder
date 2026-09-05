@@ -1,5 +1,8 @@
 package pl.pelotasplus.eyeofbeholder.data.model
 
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+
 /**
  * Something in flight down a corridor.
  *
@@ -12,7 +15,15 @@ package pl.pelotasplus.eyeofbeholder.data.model
  * over, so a party looking down the corridor see it on the floor the way they
  * would see anything dropped there, and it stops being in flight by simply
  * being left where it landed.
+ *
+ * It goes into a save whole. The game keeps a shorter record and builds the
+ * rest back from the kind of thing it was, which we could do too — but a
+ * conjured thing's strength is the caster's and is not written on its kind, so
+ * rebuilding would need that saved anyway, and would then have to agree with
+ * whatever loosed it. Writing out what is actually flying is the shorter way
+ * to be sure a save comes back as the room the party left.
  */
+@Serializable
 data class Projectile(
     /**
      * The thing itself, where there is one.
@@ -119,9 +130,14 @@ data class Projectile(
     val alreadyTried: Set<MonsterSlot> = emptySet(),
 ) {
     /** Who answers for the damage, which decides whether anybody aims. */
+    @Serializable
     sealed interface Thrower {
+        @Serializable
+        @SerialName("champion")
         data class AChampion(val slot: PartySlot) : Thrower
 
+        @Serializable
+        @SerialName("monster")
         data class AMonster(val slot: MonsterSlot) : Thrower
 
         /**
@@ -131,6 +147,8 @@ data class Projectile(
          * strikes. It is the only one of the three that can hit the party
          * without a monster being in the room.
          */
+        @Serializable
+        @SerialName("the level")
         data object TheLevel : Thrower
     }
 
@@ -142,6 +160,7 @@ data class Projectile(
      * everybody standing there takes it, each rolled for separately, and there
      * is nothing to duck behind on your own square.
      */
+    @Serializable
     data class Harm(
         /** Rolled once per victim, or null to let a thrown item roll its own. */
         val dice: DamageDice? = null,

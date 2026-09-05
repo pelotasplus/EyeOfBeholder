@@ -115,6 +115,24 @@ class TheCirclingFireballsTest {
         )
     }
 
+    /**
+     * And they survive being saved and loaded.
+     *
+     * What set them going is a square across the room, and treading on it is
+     * the only thing that ever does. So a save that forgets what was in the
+     * air does not merely lose a picture — it disarms the room, and leaves the
+     * party walking onto the plate through a trap that has stopped.
+     */
+    @Test
+    fun `a save keeps them going`() {
+        val going = flownFor(HALF_A_LAP).world
+        assertEquals(2, going.inFlight.size, "nothing was in the air to save")
+
+        val loaded = GameState.restoredFrom(going.saved(), on = LEVEL)
+
+        assertEquals(going.inFlight, loaded.inFlight, "the room came back quiet")
+    }
+
     // --- the fixture ---------------------------------------------------------
 
     private class Flown(
@@ -175,5 +193,8 @@ class TheCirclingFireballsTest {
          * turns of the clock, and they are half a lap apart.
          */
         const val TWO_LAPS = 36
+
+        /** Far enough in that both are somewhere awkward to be caught. */
+        const val HALF_A_LAP = 9
     }
 }

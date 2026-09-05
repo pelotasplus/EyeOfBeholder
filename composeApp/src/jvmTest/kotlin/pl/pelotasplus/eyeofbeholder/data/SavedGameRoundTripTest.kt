@@ -10,7 +10,11 @@ import pl.pelotasplus.eyeofbeholder.data.model.Location
 import pl.pelotasplus.eyeofbeholder.data.model.Maz
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterInstance
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterSlot
+import pl.pelotasplus.eyeofbeholder.data.model.MonsterSpell
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterTypeId
+import pl.pelotasplus.eyeofbeholder.data.model.Projectile
+import pl.pelotasplus.eyeofbeholder.data.model.Spell
+import pl.pelotasplus.eyeofbeholder.data.model.ThrownSpell
 import pl.pelotasplus.eyeofbeholder.data.model.PaletteIndex
 import pl.pelotasplus.eyeofbeholder.data.model.PartyState
 import pl.pelotasplus.eyeofbeholder.data.model.SquarePlace
@@ -52,6 +56,20 @@ class SavedGameRoundTripTest {
             .party
     }
 
+    /** Something conjured and still crossing the room when the game was saved. */
+    private val stillFlying = Projectile(
+        what = null,
+        at = Location(9, 22),
+        place = SquarePlace.NORTH_WEST,
+        going = Direction.SOUTH,
+        squaresLeft = 200,
+        thrownBy = Projectile.Thrower.TheLevel,
+        harm = Spell.FIREBALL.throws!!.dealtBy(ThrownSpell.AS_READ_FROM_A_SCROLL),
+        spell = MonsterSpell.FIREBALL,
+        leaving = false,
+        alreadyTried = setOf(MonsterSlot(3)),
+    )
+
     private val world = GameState(PartyState(Location(10, 8), Direction.WEST))
         .arrivingAt(6, monsters(onLevel = 6))
         .levelFlagSet(6, FlagBit(2))
@@ -61,6 +79,23 @@ class SavedGameRoundTripTest {
         .globalFlagSet(FlagBit(30))
         .wallsChanged(5, Location(9, 8), to = WallByte(44))
         .wallChanged(6, Location(1, 2), WallSide.EAST, to = WallByte(0))
+        // And something still crossing the room, with everything a conjured
+        // thing carries: who loosed it, what it rolls, what kinds of harm it
+        // is, and what may be thrown against it.
+        .copy(inFlight = listOf(stillFlying))
+
+    /**
+     * The one that would go quietly. A thing in the air is usually gone in a
+     * moment, but a floor can keep one going for ever, and losing it on
+     * loading disarms the room it belongs to.
+     */
+    @Test
+    fun `what was still in the air comes back with it`() = runBlocking {
+        val slot = SaveSlot.numbered[4]
+        repository.save(slot, "flying", 0, 5, champions = champions, world = world).getOrThrow()
+
+        assertEquals(listOf(stillFlying), repository.load(slot).getOrThrow().world.inFlight)
+    }
 
     @Test
     fun `a world saved and loaded is the world that was saved`() = runBlocking {

@@ -1696,6 +1696,7 @@ data class GameState(
             ChangedWall(where.level, where.at, where.side, to)
         },
         visited = visited.map { (level, squares) -> VisitedFloor(level, squares) },
+        inFlight = inFlight,
     )
 
     companion object {
@@ -1761,6 +1762,10 @@ data class GameState(
             visited = saved.visited.groupBy { it.level }.mapValues { (_, rows) ->
                 rows.flatMapTo(mutableSetOf()) { it.squares }
             },
+            // Back into the air where they were. A save written before these
+            // were kept has none, and its party walk into a room that has
+            // stopped rather than one that never started.
+            inFlight = saved.inFlight,
         )
 
         /**

@@ -81,6 +81,19 @@ data class SavedWorld(
      * map existed has none, and its party start again with a blank one.
      */
     val visited: List<VisitedFloor> = emptyList(),
+
+    /**
+     * Whatever was still crossing the room, so that a save comes back as the
+     * room the party left rather than as a quiet one.
+     *
+     * It matters more than it sounds. A thing in the air is usually a moment
+     * old and gone before anybody would save, but a floor can keep one going
+     * for ever — the twelfth sends a pair round and round the plate, and they
+     * are loosed by treading on a square across the room. Lose them on
+     * loading and the trap is disarmed until the party walk all the way back
+     * and set it off again.
+     */
+    val inFlight: List<Projectile> = emptyList(),
 )
 
 /** One floor, and what the party have seen of it. */

@@ -1,5 +1,7 @@
 package pl.pelotasplus.eyeofbeholder.data.model
 
+import kotlinx.serialization.Serializable
+
 /**
  * AD&D dice roll notation: [times]d[pips]+[base].
  *
@@ -12,6 +14,7 @@ package pl.pelotasplus.eyeofbeholder.data.model
  * @property pips Number of faces per die (the "M" in NdM+B)
  * @property base Flat bonus added after rolling (the "B" in NdM+B)
  */
+@Serializable
 data class DamageDice(
     val times: Int,
     val pips: Int,
