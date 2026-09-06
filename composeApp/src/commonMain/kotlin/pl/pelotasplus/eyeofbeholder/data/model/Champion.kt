@@ -104,6 +104,23 @@ data class Champion(
     val canAct: Boolean get() = inTheParty && !dead && !heldFast
 
     /**
+     * Whether this one is still on their feet, which is what the party are
+     * counted by when the question is whether they are lost.
+     *
+     * Less is asked than of somebody who can act — being held is a trouble a
+     * party recover from, and does not count as being down. More is asked than
+     * of somebody who can be raised: knocked out counts, and so does stone.
+     *
+     * That last part reads like a fault and is not. A champion at less than
+     * nothing could be rested back up, so a party all senseless look as though
+     * they should be able to save themselves — but the game asks this question
+     * on every frame it draws, and answers it before a menu can be opened. The
+     * camp they would need is never reachable, and softening this to only
+     * count the past-raising would hand the party a way out they never had.
+     */
+    val onTheirFeet: Boolean get() = inTheParty && !dead && !flags.petrified
+
+    /**
      * Whether this one can be fed: in the party, still standing, and not stone.
      *
      * Less is asked here than of somebody putting a shoulder to a door. Being

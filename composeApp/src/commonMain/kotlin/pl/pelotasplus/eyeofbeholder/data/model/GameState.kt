@@ -1375,6 +1375,20 @@ data class GameState(
      * past raising at ten below are what the panel already reads off the
      * number, so taking it away is the whole of the change.
      */
+    /**
+     * Whether the party are lost: not one of them still on their feet.
+     *
+     * Asked of the whole party rather than of one, and asked after anything
+     * that takes hit points — a blow, a bolt, venom, a fall, a script. A
+     * party can be lost without a monster in the room.
+     *
+     * A world with no party in it at all is not a lost one: it is a game that
+     * has not finished starting, and the roster arrives a moment after the
+     * floor does.
+     */
+    val nobodyIsStanding: Boolean
+        get() = champions.any { it.inTheParty } && champions.none { it.onTheirFeet }
+
     fun championHurt(whose: PartySlot, by: Damage): GameState {
         if (!by.landed) return this
         val who = champions.getOrNull(whose.index) ?: return this

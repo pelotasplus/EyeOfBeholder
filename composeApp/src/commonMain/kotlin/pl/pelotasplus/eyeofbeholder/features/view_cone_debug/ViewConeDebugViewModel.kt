@@ -526,6 +526,11 @@ class ViewConeDebugViewModel(
         if (!AUTOSAVES) return
         val inf = _state.value.inf ?: return
 
+        // A lost party are not somewhere to come back to. Written, the tab
+        // would reopen onto a dead game with nothing running to notice it and
+        // nothing the player could do about it.
+        if (_state.value.game.nobodyIsStanding) return
+
         autosaving?.cancel()
         autosaving = viewModelScope.launch {
             delay(AUTOSAVE_SETTLES.inMilliseconds)
@@ -755,6 +760,76 @@ class ViewConeDebugViewModel(
      */
     private fun whoeverSpeaks(): Champion? =
         roster.speakerFrom(Random.nextInt(Champion.PARTY_SLOTS))
+
+    /**
+     * Whether the party have just been lost, and offering the way out if so.
+     *
+     * Asked after anything that takes hit points, and asked of the whole party
+     * at once: a champion knocked senseless or turned to stone counts as down
+     * along with one past raising, so a party can be lost with every one of
+     * them still raisable and nobody left to do it.
+     *
+     * What is offered is the load screen, which is where the game goes from
+     * here. Declining it quits the game outright in the original; there is no
+     * quitting a tab, so declining begins again where a new game begins. That
+     * half is a stand-in and not a rule of the game — nothing in the original
+     * ever restarts a party.
+     *
+     * The twelfth floor has a scene that belongs here too. Agreeing to the
+     * plan on that floor sets a flag, and dying with it set is answered by
+     * Dran rather than by the load screen — he laughs, and the plan turns out
+     * to have been his all along. That is not built.
+     */
+    private suspend fun theyAreLost(): Boolean {
+        if (!_state.value.game.nobodyIsStanding) return false
+        if (offeredAfterLosing) return true
+
+        Logger.i(TAG) { "The party are lost" }
+        offeredAfterLosing = true
+        say("The party has been defeated.")
+
+        // Nothing is cancelled here. One of the two places this is asked from
+        // is the clock's own coroutine, and cancelling that from inside it
+        // takes down the suspend call below with it — the menu is asked for
+        // and never arrives. The clock stops of its own accord instead: a menu
+        // being up is already the thing that stops it.
+        showSlots(saving = false)
+        return true
+    }
+
+    /**
+     * Whether the load screen that is up was put there by the party being lost
+     * rather than by the player asking for it, which is what decides where
+     * leaving it goes.
+     */
+    private var offeredAfterLosing = false
+
+    /** The party as a new game has them, standing where a new game starts. */
+    private suspend fun startAgain() {
+        offeredAfterLosing = false
+        fighting?.cancel()
+        _state.update {
+            it.copy(
+                game = GameState(
+                    party = PartyState(
+                        position = Location(DEFAULT_PLAYER_X, DEFAULT_PLAYER_Y),
+                        facing = DEFAULT_DIRECTION,
+                    ),
+                ),
+                messages = emptyList(),
+                menu = null,
+                dialog = null,
+            )
+        }
+
+        resumeNothing()
+        onVmpSelected(
+            name = DEFAULT_LEVEL,
+            playerX = DEFAULT_PLAYER_X,
+            playerY = DEFAULT_PLAYER_Y,
+            direction = DEFAULT_DIRECTION,
+        )
+    }
 
     /** Opens the camp menu, or shuts it if it is already open. */
     private fun onCamped() {
@@ -1027,7 +1102,11 @@ class ViewConeDebugViewModel(
         when (choice) {
             MenuChoice.Close -> showMenu(null)
             MenuChoice.OpenCamp -> showMenu(CampMenu.camp())
-            MenuChoice.OpenGameOptions -> showMenu(CampMenu.gameOptions())
+            // Leaving the load screen is ordinarily going back to the menu it
+            // was reached from. Over a lost party there is no menu behind it
+            // and nothing to go back to — see [theyAreLost].
+            MenuChoice.OpenGameOptions ->
+                if (offeredAfterLosing) startAgain() else showMenu(CampMenu.gameOptions())
             MenuChoice.OpenPreferences -> showMenu(CampMenu.preferences(_state.value.preferences))
 
             // the line that was clicked is the setting, so the menu is put up
@@ -1195,6 +1274,7 @@ class ViewConeDebugViewModel(
             .onFailure { Logger.e(it) { "Could not load slot $slot" } }
             .getOrNull() ?: return
 
+        offeredAfterLosing = false
         resume(saved)
         showMenu(null)
         onVmpSelected(
@@ -1863,6 +1943,8 @@ class ViewConeDebugViewModel(
                 }
 
                 heardTakingIt(stoodBefore, _state.value.game.champions)
+
+                if (theyAreLost()) return@launch
 
                 // A monster lit by anything at all has to be put out again,
                 // and a hand is not the only thing that lights one: something
@@ -3096,6 +3178,11 @@ class ViewConeDebugViewModel(
 
             if (run.hurt.isNotEmpty()) letTheDamageFade()
             heardTakingIt(stood.champions, _state.value.game.champions)
+
+            // A script kills as readily as a monster — the lightning on the
+            // twelfth takes the whole party where they stand — so the same
+            // question is asked here as after a turn of the clock.
+            if (theyAreLost()) return@launch
 
             val change = run.changeLevel
             if (change == null) {
