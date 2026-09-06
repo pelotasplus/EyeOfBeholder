@@ -181,11 +181,6 @@ class ThrowingAtAButtonTest {
 
     // --- walking into one ----------------------------------------------------
 
-    /**
-     * A thing in the air is asked what it is over on every turn of the clock,
-     * not only when it crosses onto a new square — so somebody who steps into
-     * the path of one that is already going steps into the thing.
-     */
     /** Six of them, so which one is found is a real answer. */
     private fun sixOfThem() = List(6) { slot ->
         Champion.NOBODY.copy(name = "Name$slot", flags = ChampionFlags(1))
@@ -217,6 +212,11 @@ class ThrowingAtAButtonTest {
         .filterIsInstance<Flight.Hurt.AChampion>()
         .map { it.slot.index }
 
+    /**
+     * A thing in the air is asked what it is over on every turn of the clock,
+     * not only when it crosses onto a new square — so somebody who steps into
+     * the path of one that is already going steps into the thing.
+     */
     @Test
     fun `somebody who walks into the path of one is hit by it`() {
         val moved = Flight(sublevel = here, level = LEVEL).onward(overThem(SquarePlace.SOUTH_EAST))

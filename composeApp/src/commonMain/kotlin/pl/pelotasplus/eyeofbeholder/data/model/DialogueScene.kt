@@ -324,15 +324,16 @@ data class DialogueScene(
             readOff = ReadOff.APictureAlone,
         )
 
-        /**
-         * Where the answers go, both rows transcribed: a pair sits inset,
-         * three spread across the full width. Asking three questions with the
-         * pair's positions puts the third on top of the second.
-         */
         /** Where one answer's button goes, relative to the row they start on. */
         private data class Place(val left: Int, val down: Int)
 
-        /** Two answers stand side by side, wider apart than three would. */
+        /**
+         * Two answers stand side by side, wider apart than three would.
+         *
+         * Both rows are transcribed: a pair sits inset and three spread across
+         * the full width. Laying a pair out with the positions meant for three
+         * puts the second answer on top of the third.
+         */
         private val TWO_ACROSS = listOf(Place(59, 0), Place(166, 0))
 
         /**

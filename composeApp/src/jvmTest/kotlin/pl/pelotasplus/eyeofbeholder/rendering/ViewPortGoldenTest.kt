@@ -1762,9 +1762,6 @@ class ViewPortGoldenTest {
      * that always land the same would throw all thirty-five to one pixel and
      * there would be nothing to look at. These are neither.
      */
-    /** So the goldens sort into the order the animation runs in. */
-    private fun Int.twoDigits() = toString().padStart(2, '0')
-
     private fun seededDice(): Dice {
         var seed = 1L
         return Dice { times, pips, modifier ->
@@ -1776,6 +1773,9 @@ class ViewPortGoldenTest {
             total
         }
     }
+
+    /** So the goldens sort into the order the animation runs in. */
+    private fun Int.twoDigits() = toString().padStart(2, '0')
 
     /**
      * And one that went off on the party themselves, which is a different
