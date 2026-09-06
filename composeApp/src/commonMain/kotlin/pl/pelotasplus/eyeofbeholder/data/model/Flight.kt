@@ -366,8 +366,30 @@ private val atEachQuarter = listOf(
      * The monsters on the square take it; failing them the party do, if they
      * are standing there. Nothing aims — the thing is already in the air, and
      * who it finds is where it went.
+     *
+     * A spreading one reaches the four squares beside that one as well — see
+     * [Projectile.Harm.spreads].
      */
     private fun whatItHit(world: GameState, flying: Projectile): List<Hurt> {
+        val here = whatItFoundOverIt(world, flying)
+
+        if (here.isEmpty() || !flying.harm.spreads) return here
+
+        // Each of the four taken as if it had come down on that square
+        // instead, which is what makes a wall between them no help.
+        return here + besideIt(flying.at).flatMap {
+            whatItFoundOverIt(world, flying.copy(at = it))
+        }
+    }
+
+    /** The four squares beside [at] that are on the map at all. */
+    private fun besideIt(at: Location): List<Location> =
+        Direction.entries
+            .map { it.oneStepFrom(at) }
+            .filter { it.x in 0 until sublevel.maz.width && it.y in 0 until sublevel.maz.height }
+
+    /** The same question asked of one square, which is where it comes down. */
+    private fun whatItFoundOverIt(world: GameState, flying: Projectile): List<Hurt> {
         // A spell nobody in the party cast goes over the head of the monsters
         // it crosses, unless it is one of the ones already burning as they
         // travel. It is why a corridor of monsters never thins itself out, and

@@ -217,6 +217,18 @@ data class Projectile(
          */
         val carriesOn: Boolean = false,
 
+        /**
+         * Whether it takes the four squares beside the one it came down on as
+         * well as that one.
+         *
+         * One spell settles rather than stopping, and it is what makes that
+         * one worth casting into a room instead of down a passage. It reaches
+         * the four through whatever stands between — a wall does not keep it
+         * out — and only where it found something on the square itself: one
+         * that comes down on an empty square spreads nothing.
+         */
+        val spreads: Boolean = false,
+
         /** What may be thrown against it, or nothing where none is allowed. */
         val thrownOff: SavingThrow? = null,
 

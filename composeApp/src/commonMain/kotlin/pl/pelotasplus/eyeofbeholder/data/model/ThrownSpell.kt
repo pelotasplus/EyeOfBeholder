@@ -52,6 +52,15 @@ data class ThrownSpell(
     val carriesOn: Boolean = false,
 
     /**
+     * Whether it takes the four squares beside the one it came down on as
+     * well — see [Projectile.Harm.spreads].
+     *
+     * A storm alone, and it is the difference between a spell for a corridor
+     * and a spell for a room.
+     */
+    val spreads: Boolean = false,
+
+    /**
      * What may be thrown against it, or nothing for the ones there is no
      * shrugging off. A missile is the only thing in the game with no throw
      * against it at all.
@@ -74,6 +83,7 @@ data class ThrownSpell(
         takesEitherSide = takesEitherSide,
         everybody = takesTheWholeSquare,
         carriesOn = carriesOn,
+        spreads = spreads,
         thrownOff = thrownOff,
         aMadeThrowIsWorth = aMadeThrowIsWorth,
     )
