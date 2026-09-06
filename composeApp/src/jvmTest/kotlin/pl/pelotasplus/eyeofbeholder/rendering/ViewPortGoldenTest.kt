@@ -20,6 +20,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.ItemIndex
 import pl.pelotasplus.eyeofbeholder.data.model.ItemKind
 import pl.pelotasplus.eyeofbeholder.data.repository.ItemTypesRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.model.Maz
+import pl.pelotasplus.eyeofbeholder.data.model.asByte
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterInstance
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterSlot
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterSpell
@@ -53,6 +54,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.ScriptEvent
 import pl.pelotasplus.eyeofbeholder.data.model.TeleporterPulse
 import pl.pelotasplus.eyeofbeholder.data.model.ViewPort
 import pl.pelotasplus.eyeofbeholder.data.model.toImageBitmap
+import pl.pelotasplus.eyeofbeholder.data.model.CutScene
 import pl.pelotasplus.eyeofbeholder.data.model.DialogueScene
 import pl.pelotasplus.eyeofbeholder.data.model.DialogueTextId
 import pl.pelotasplus.eyeofbeholder.data.model.PlayField
@@ -954,6 +956,34 @@ class ViewPortGoldenTest {
             ),
         )
 
+    /**
+     * Every beat of the scene a party get for taking the twelfth floor's
+     * advice, in the order they are played.
+     *
+     * Four cuts of one sheet, and the only place in the game they are ever
+     * seen. Which corner is cut for which beat is transcribed, and cutting the
+     * wrong one gives a picture that is still a picture — the sort of mistake
+     * only a rendered frame catches.
+     */
+    @Test
+    fun `the scene that answers a party who take the twelfth's advice`() {
+        CutScene.THE_TRICK_ON_THE_TWELFTH.beats.forEachIndexed { beat, it ->
+            checkGolden(
+                "kheldran-$beat",
+                dialogueOver(
+                    level = "LEVEL12.INF", x = 14, y = 31,
+                    picture = "${it.shows.pictureName}.CPS",
+                    sourceLeft = it.shows.x * ViewPort.TILE_SIZE,
+                    sourceTop = it.shows.y,
+                    goes = DialogueScene.PictureFrame.SPEAKER,
+                    textId = it.says?.number,
+                    buttons = listOfNotNull(it.readOn),
+                    waitsToBeRead = it.readOn != null,
+                ),
+            )
+        }
+    }
+
     @Test
     fun `dialogue with a picture across the top`() =
         checkGolden(
@@ -1123,6 +1153,40 @@ class ViewPortGoldenTest {
         checkGolden(
             "item-behind-a-side-wall",
             anItemOnTheNextSquareOver(level = "LEVEL12.INF", x = 14, y = 30),
+        )
+
+    /**
+     * A monster standing in an open doorway, drawn over the frame around it.
+     *
+     * **This golden records a fault rather than the right answer.** The
+     * monster's head reaches above the lintel and is painted across the
+     * stonework, where it should be hidden by it.
+     *
+     * It is here because the scene is worth pinning while the fault is open:
+     * it is the one the fault was reported from, and freezing it proved the
+     * fault older than the change it was blamed on — this render is identical
+     * with that change backed out.
+     *
+     * Nothing in the renderer cuts a sprite to the opening it is seen through.
+     * Distance cannot do it, since above the opening the frame paints nothing
+     * for a nearer thing to be measured against, and the band each square has
+     * left is only ever narrowed side to side. The game's own vertical cut
+     * exists but is armed by a door taking a bite out of a square *beyond* it,
+     * and a door takes no bite out of the square it stands on — so it does not
+     * reach this.
+     */
+    @Test
+    fun `a monster in a doorway is drawn over the frame`() =
+        checkGolden(
+            "level12-monster-past-a-doorway",
+            aMonsterThroughADoorway(
+                level = "LEVEL12.INF",
+                standingOn = Location(14, 31),
+                facing = Direction.NORTH,
+                doorway = Location(15, 29),
+                doorOn = WallSide.SOUTH,
+                monsterOn = Location(15, 29),
+            ),
         )
 
     /**
@@ -1507,6 +1571,52 @@ class ViewPortGoldenTest {
             playerY = y,
             direction = facing,
         ).getOrThrow().toImage()
+    }
+
+    /**
+     * The level with one of its doors slid open and a monster on the square
+     * behind it, which is the pair of things a doorway is for looking at.
+     *
+     * The door is opened here rather than found open: every door in the file
+     * starts shut, and a shut one is a wall like any other.
+     */
+    private fun aMonsterThroughADoorway(
+        level: String,
+        standingOn: Location,
+        facing: Direction,
+        doorway: Location,
+        doorOn: WallSide,
+        monsterOn: Location,
+    ): ViewPort = runBlocking {
+        val repository = repository()
+        val inf = repository.loadLevel(level).getOrThrow()
+        val sublevel =
+            inf.subLevels[inf.subLevelAt(0, standingOn.x, standingOn.y, facing)]
+
+        val shut = sublevel.maz.square(doorway).getWall(doorOn) as Maz.WallType.Door
+        val open = shut.copy(state = Maz.WallType.Door.TRAVEL).asByte()
+
+        repository.renderPosition(
+            items = dungeonItems,
+            monsters = listOf(
+                inf.monsterInstances.first().copy(
+                    subLevel = sublevel.index,
+                    location = monsterOn,
+                    place = SquarePlace.MIDDLE,
+                ),
+            ),
+            sublevel = sublevel,
+            playerX = standingOn.x,
+            playerY = standingOn.y,
+            direction = facing,
+            wallAt = { at, side ->
+                if (at == doorway && side == doorOn) {
+                    Maz.WallType.of(open)
+                } else {
+                    sublevel.maz.square(at).getWall(side)
+                }
+            },
+        ).getOrThrow()
     }
 
     /**

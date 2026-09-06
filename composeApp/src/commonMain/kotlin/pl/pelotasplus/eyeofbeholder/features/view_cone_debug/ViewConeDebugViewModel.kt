@@ -16,6 +16,8 @@ import kotlin.random.Random
 import pl.pelotasplus.eyeofbeholder.data.model.CampMenu
 import pl.pelotasplus.eyeofbeholder.data.model.CarrySlot
 import pl.pelotasplus.eyeofbeholder.data.model.Champion
+import pl.pelotasplus.eyeofbeholder.data.model.CutScene
+import pl.pelotasplus.eyeofbeholder.data.model.FlagBit
 import pl.pelotasplus.eyeofbeholder.data.model.PartySlot
 import pl.pelotasplus.eyeofbeholder.data.model.PaletteIndex
 import pl.pelotasplus.eyeofbeholder.data.model.CharacterSheet
@@ -775,10 +777,10 @@ class ViewConeDebugViewModel(
      * half is a stand-in and not a rule of the game — nothing in the original
      * ever restarts a party.
      *
-     * The twelfth floor has a scene that belongs here too. Agreeing to the
-     * plan on that floor sets a flag, and dying with it set is answered by
-     * Dran rather than by the load screen — he laughs, and the plan turns out
-     * to have been his all along. That is not built.
+     * A party who took the twelfth floor's advice are answered before any of
+     * that, by the one whose advice it was — see [CutScene.THE_TRICK_ON_THE_TWELFTH].
+     * The floor sets a flag when they agree to it, and dying with it set is
+     * the only way to see the scene.
      */
     private suspend fun theyAreLost(): Boolean {
         if (!_state.value.game.nobodyIsStanding) return false
@@ -787,6 +789,10 @@ class ViewConeDebugViewModel(
         Logger.i(TAG) { "The party are lost" }
         offeredAfterLosing = true
         say("The party has been defeated.")
+
+        val tricked = _state.value.game.isGlobalFlagSet(TOOK_THE_TWELFTHS_ADVICE)
+        Logger.i(TAG) { "Took the twelfth's advice: $tricked" }
+        if (tricked) play(CutScene.THE_TRICK_ON_THE_TWELFTH)
 
         // Nothing is cancelled here. One of the two places this is asked from
         // is the clock's own coroutine, and cancelling that from inside it
@@ -803,6 +809,78 @@ class ViewConeDebugViewModel(
      * leaving it goes.
      */
     private var offeredAfterLosing = false
+
+    /**
+     * Plays a scene, a picture at a time, and comes back when it is over.
+     *
+     * Each beat is put up the way a script's own picture-and-speech is, which
+     * is the whole of why this is short: a scene is not a kind of thing the
+     * game did not already have, only one that no level holds. A beat with a
+     * word on its button waits for that to be pressed; one without is held for
+     * its own count and then replaced.
+     */
+    private suspend fun play(scene: CutScene) = try {
+        aSceneIsPlaying = true
+
+        // Whatever the floor was making a noise about is not part of this.
+        // Nothing is cancelled: one of the two places a scene is played from
+        // is the clock's own coroutine, and the flag above is what stops that
+        // — it reads it at the top of its next turn and gives up.
+        silenceEffects()
+        Logger.i(TAG) { "Playing a scene of ${scene.beats.size} beats" }
+
+        scene.beats.forEachIndexed { which, beat ->
+            Logger.i(TAG) {
+                "  beat $which: ${beat.shows.pictureName} at ${beat.shows.x}x${beat.shows.y}, " +
+                    "says ${beat.says ?: beat.spoken}, read on ${beat.readOn}, " +
+                    "held ${beat.holdsFor.value}"
+            }
+            beat.heardAs?.let { playTrack(it) }
+
+            if (beat.readOn == null) {
+                showDialog(
+                    ScriptQuestion(
+                        textId = beat.says,
+                        buttons = emptyList(),
+                        scene = listOf(beat.shows),
+                        spoken = beat.spoken,
+                    ),
+                )
+                delay(beat.holdsFor.inMilliseconds)
+                return@forEachIndexed
+            }
+
+            // Held for its own count first even where it is read off, so the
+            // last picture has settled before the words that go with it.
+            if (beat.holdsFor.value > 0) delay(beat.holdsFor.inMilliseconds)
+
+            awaiting.ask {
+                showDialog(
+                    ScriptQuestion(
+                        textId = beat.says,
+                        buttons = emptyList(),
+                        scene = listOf(beat.shows),
+                        spoken = beat.spoken,
+                        words = listOf(beat.readOn),
+                    ),
+                )
+            }
+        }
+
+        speaker = null
+        standingInTheBox = emptyList()
+        linesReadInTheBox = 0
+        _state.update { it.copy(dialog = null) }
+        drawWords()
+    } finally {
+        aSceneIsPlaying = false
+    }
+
+    /**
+     * Whether a scene is being played over the view, which holds the world
+     * still while it runs — see [stillFighting].
+     */
+    private var aSceneIsPlaying = false
 
     /** The party as a new game has them, standing where a new game starts. */
     private suspend fun startAgain() {
@@ -2158,6 +2236,22 @@ class ViewConeDebugViewModel(
         // The hours a rest passes are counted by the rest itself and are the
         // only time that goes by in here.
         if (_state.value.menu != null) return false
+
+        // And so does anything read in a box, which is the same rule: a
+        // conversation is not a moment the party stand in a corridor being
+        // shot at. The game holds its dungeon still for as long as a box is
+        // up and starts winding it again on the click that takes the box
+        // down, so a speech cannot be interrupted by a blow and nothing gets
+        // a free turn out of a party who stopped to read.
+        //
+        // A box rather than a script, because most scripts put nothing up: one
+        // that only opens a door or moves a wall is over in an instant and has
+        // no business stopping anybody.
+        if (_state.value.dialog != null) return false
+
+        // A scene is played over the view rather than in it, and holds
+        // everything for the same reason.
+        if (aSceneIsPlaying) return false
 
         val monsters = _state.value.game.monsters
 
@@ -3784,6 +3878,14 @@ class ViewConeDebugViewModel(
         val viewPort = drawn ?: return
 
         paint(viewPort, inf.subLevels[_state.value.subLevel].palette)
+
+        // A box going up stops the floor and a box coming down has to start it
+        // again, and the words are what is redrawn either way. Drawing the
+        // view would do it too, but a box is taken down without redrawing the
+        // view — that is the whole point of writing over it — so nothing else
+        // here would wind the clock again and the dungeon would stay stopped
+        // for the rest of the game.
+        keepTheFightGoing()
     }
 
     private fun paint(viewPort: ViewPort, palette: Palette) {
@@ -4096,6 +4198,14 @@ class ViewConeDebugViewModel(
 
         /** The blast a mindflayer throws, which is all there is to notice of it. */
         private val MIND_BLAST = TrackIndex(103)
+
+        /**
+         * Set by the twelfth floor when the party agree to its advice, and
+         * read only when they die — see [CutScene.THE_TRICK_ON_THE_TWELFTH].
+         * One of the flags that belongs to the game rather than to a floor,
+         * because the floor that sets it is not the one they die on.
+         */
+        private val TOOK_THE_TWELFTHS_ADVICE = FlagBit(20)
 
         /** How long a struck monster is drawn as a silhouette. */
         private val FLASH = Ticks(2)
