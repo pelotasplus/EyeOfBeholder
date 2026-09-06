@@ -17,6 +17,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.GameState
 import pl.pelotasplus.eyeofbeholder.data.model.Inf
 import pl.pelotasplus.eyeofbeholder.data.model.Item
 import pl.pelotasplus.eyeofbeholder.data.model.ItemIndex
+import pl.pelotasplus.eyeofbeholder.data.model.ItemKind
 import pl.pelotasplus.eyeofbeholder.data.repository.ItemTypesRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.model.Maz
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterInstance
@@ -1108,6 +1109,23 @@ class ViewPortGoldenTest {
         checkGolden("floor-reach", itemsInReach(level = "LEVEL4.INF", x = 15, y = 11))
 
     /**
+     * Things lying on the squares diagonally ahead, with the walls of those
+     * squares standing between them and the party.
+     *
+     * The wall wins: what is behind one is not seen through it. This is the
+     * scene a step sideways makes — a thing that was lying in front of the
+     * party is suddenly round a corner — and it is where measuring a wall at
+     * its square rather than at the wall itself gives out, since the square is
+     * further off than the very thing the wall has to hide.
+     */
+    @Test
+    fun `a thing round the corner is behind the wall`() =
+        checkGolden(
+            "item-behind-a-side-wall",
+            anItemOnTheNextSquareOver(level = "LEVEL12.INF", x = 14, y = 30),
+        )
+
+    /**
      * A hand its champion cannot strike with is drawn over with a grid. The
      * paladin has been handed the mage's spellbook, which is for a class he
      * is not; the mage keeps hers, where it is no trouble at all.
@@ -1472,6 +1490,48 @@ class ViewPortGoldenTest {
             direction = facing,
         ).getOrThrow().toImage()
     }
+
+    /**
+     * The level with an item in every corner of both squares diagonally ahead.
+     *
+     * Every corner rather than one, because nothing chose these: a thing a
+     * monster dropped where it died lies wherever it fell, so each of the eight
+     * is a place the party can find one. The two squares are asked together so
+     * that the left and the right of the view answer in the same frame — a
+     * table of corners written out mirrored shows here and nowhere else.
+     */
+    private fun anItemOnTheNextSquareOver(level: String, x: Int, y: Int): BufferedImage =
+        runBlocking {
+            val repository = repository()
+            val inf = repository.loadLevel(level).getOrThrow()
+            val sublevel = inf.subLevels[inf.subLevelAt(0, x, y, Direction.NORTH)]
+
+            // A key, because that is what the scene is about: the small bright
+            // thing a monster leaves behind, which is exactly the size that
+            // shows through a wall without anybody noticing.
+            val itemTypes = ItemTypesRepositoryImpl(ResourceRepositoryImpl())
+                .loadItemTypes().getOrThrow()
+            val key = dungeonItems.first { itemTypes.kindOf(it) == ItemKind.KEY }
+
+            val dropped = listOf(x - 1, x + 1).flatMap { acrossFrom ->
+                SquarePlace.entries.filter { it.onTheFloor }.map { corner ->
+                    key.copy(
+                        level = sublevel.level,
+                        location = Location(acrossFrom, y - 1),
+                        place = corner,
+                    )
+                }
+            }
+
+            repository.renderPosition(
+                items = dungeonItems + dropped,
+                monsters = emptyList(),
+                sublevel = sublevel,
+                playerX = x,
+                playerY = y,
+                direction = Direction.NORTH,
+            ).getOrThrow().toImage()
+        }
 
     /** @param slot which of the six the page belongs to. */
     private fun sheetOver(

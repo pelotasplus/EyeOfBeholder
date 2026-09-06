@@ -62,12 +62,18 @@
   diagonally ahead, 200 two rows back. Measuring to the square is the point —
   a tree straight ahead (100) hides what lies on the square beside it (141),
   which a row number alone cannot say
-- A wall is measured at the far end of its square, 30 past the contents, which
-  is well inside the 41 between the square ahead and the one diagonal to it. A
-  side wall runs away from the party rather than standing at one distance, and
-  the far end is the end that says what it hides: nothing standing on its own
-  row is behind it. Measuring one at its near end instead cuts the sprites
-  beside it — a wolf loses its tail, a cleric its arm
+- A face is measured **at the face**, half a square in front of the middle it
+  belongs to, and not at the square. Measuring one at its square plus a margin
+  puts it behind that square's own contents, so a thing lying round a corner
+  paints over the wall that should hide it
+- A side wall has no single distance: it runs away from the party, its two
+  ends most of a square apart. `Depth.Receding` carries both ends and the
+  columns they fall in, and is read at the column being painted — the near end
+  is the outer one, since a side wall is seen from the edge of the view
+  towards the middle
+- What is set into a face is not what stands on the floor behind it: a niche's
+  contents are measured at the wall they are cut into (`shelvedInThatFace`),
+  a hair in front of it, or the wall covers them
 - Scope everything through `ViewPort.at(distance) { }`; nothing outside it
   needs to know the buffer exists
 

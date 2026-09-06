@@ -106,6 +106,28 @@ data class ViewSlot(
      * drawn on it can be cut to what that square has left showing.
      */
     val block: Int get() = visibleBlocks.indexOf(BlockOffset(relativeX, relativeY))
+
+    /**
+     * How far off this face is.
+     *
+     * A wall the party face stands across the view at the face itself, half a
+     * square in front of the middle it belongs to — measuring it at the square
+     * would put it behind that square's own contents, and a thing lying round
+     * the corner would paint over the wall that hides it.
+     *
+     * A wall seen side-on is deliberately measured out at the far end instead.
+     * It runs alongside its square rather than across the view, so what stands
+     * on the next square along is beside it and not behind it: a wolf in the
+     * corridor is not covered by the corridor's own wall, however near the end
+     * of that wall comes. How much of a square such a wall leaves showing is
+     * not a matter of distance at all — see [viewWindow].
+     */
+    val howFarOff: DistanceFromParty
+        get() = if (isFrontWall) {
+            DistanceFromParty.faceTowardsTheParty(relativeX, relativeY)
+        } else {
+            DistanceFromParty.farSideOfSquare(relativeX, relativeY)
+        }
 }
 
 /**

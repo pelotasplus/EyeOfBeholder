@@ -259,13 +259,7 @@ class ViewConeRepositoryImpl(
             val actualWallSide = direction.transformWallSide(slot.wallSide)
             val wallType = wallAt(Location(mazX, mazY), actualWallSide)
 
-            // A wall is measured at the far end of its square. A side wall runs
-            // away from the party rather than standing at one distance, and it
-            // is the far end that says what it hides: nothing standing on its
-            // own row is behind it, only what stands on the rows past it.
-            val distance = DistanceFromParty.farSideOfSquare(slot.relativeX, slot.relativeY)
-
-            viewPort.at(distance) {
+            viewPort.at(slot.howFarOff) {
                 when (wallType) {
                     is Maz.WallType.Decoration -> {
                         val levelDecoration = sublevel.decorations
@@ -298,7 +292,7 @@ class ViewConeRepositoryImpl(
                         // cut to what the walls in front leave of its square —
                         // to nothing at all where they leave nothing. A face
                         // the party see side-on is cut by its own square too.
-                        viewPort.at(distance, within = windows[slot.block]) {
+                        viewPort.at(slot.howFarOff, within = windows[slot.block]) {
                             viewPort.drawDecoration(
                                 decoration = levelDecoration,
                                 wallPosition = wallPosition,
@@ -345,6 +339,7 @@ class ViewConeRepositoryImpl(
             mazX = playerX, mazY = playerY,
             blockIndex = ViewPort.OWN_BLOCK_INDEX, dim = 3,
             partyFacing = direction,
+            shelved = DistanceFromParty.shelvedInThatFace(0, 0),
         )
 
         // And whatever is in the air over it, which is where a thing the party
@@ -530,6 +525,10 @@ class ViewConeRepositoryImpl(
                     mazX = playerX + dx, mazY = playerY + dy,
                     blockIndex = block.blockIndex, dim = dim,
                     partyFacing = direction,
+                    shelved = DistanceFromParty.shelvedInThatFace(
+                        block.relativeX,
+                        block.relativeY,
+                    ),
                 )
 
             }
@@ -728,6 +727,8 @@ class ViewConeRepositoryImpl(
         blockIndex: Int,
         dim: Int,
         partyFacing: Direction,
+        /** How far off a thing set into this square's face is, rather than lying on it. */
+        shelved: DistanceFromParty,
     ) {
         // the slot is the item's place in the world's table, which is what its
         // nudge is taken from, so it is carried along with it
@@ -751,7 +752,11 @@ class ViewConeRepositoryImpl(
                     // niche items are hidden when too far (dim 0) or on the own square (dim 3)
                     if (dim == 1 || dim == 2) {
                         sheetFor(item.icon, smallIcons, largeIcons)?.let { sheet ->
-                            viewPort.drawNicheItem(sheet, item.icon, blockIndex, dim, nudge)
+                            // Set into the wall rather than standing on the
+                            // floor behind it, so it is measured at the wall.
+                            viewPort.at(shelved, hiddenByCloserThings = true) {
+                                viewPort.drawNicheItem(sheet, item.icon, blockIndex, dim, nudge)
+                            }
                         }
                     }
                 }

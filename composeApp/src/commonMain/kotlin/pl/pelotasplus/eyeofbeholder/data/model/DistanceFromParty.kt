@@ -18,8 +18,8 @@ import kotlin.math.roundToInt
  *
  * Measuring to the square is what makes the diagonal square further than the one
  * straight ahead, so a tree directly in front of the party (100) hides what lies
- * on the square beside it (141). A square's contents and the wall at the end of
- * it sit a fraction apart, never far enough to reorder two squares.
+ * on the square beside it (141). A square's contents and the faces of it sit a
+ * fraction apart, never far enough to reorder two squares.
  */
 @JvmInline
 value class DistanceFromParty(private val hundredthsOfASquare: Int) :
@@ -36,18 +36,60 @@ value class DistanceFromParty(private val hundredthsOfASquare: Int) :
         fun standingOnSquare(relativeX: Int, relativeY: Int) =
             DistanceFromParty(distanceTo(relativeX, relativeY))
 
-        /** The face of a square turned away from the party. */
+        /**
+         * The face a square turns towards the party, half a square in front of
+         * its middle, which is where a wall across the view stands.
+         *
+         * In front of the middle rather than behind it, because that is where
+         * the face is: measured at the square instead, a wall would sort behind
+         * its own square's contents and a thing lying round the corner would
+         * paint over the very wall that hides it.
+         */
+        fun faceTowardsTheParty(relativeX: Int, relativeY: Int) =
+            DistanceFromParty(distanceToPoint(relativeX.toDouble(), relativeY + HALF_A_SQUARE))
+
+        /**
+         * And what is set into that face, which is a hair in front of it.
+         *
+         * A niche is cut into the wall rather than standing on the floor behind
+         * it. Measured at its square it would be further off than the very wall
+         * it sits in, and the wall would cover it.
+         */
+        fun shelvedInThatFace(relativeX: Int, relativeY: Int) =
+            DistanceFromParty(
+                faceTowardsTheParty(relativeX, relativeY).hundredthsOfASquare - A_HAIR,
+            )
+
+        /**
+         * A wall seen side-on, measured out at the far end of its square.
+         *
+         * Deliberately the far end, and deliberately not where the wall
+         * actually is. Such a wall runs alongside its square rather than across
+         * the view, so what stands on the next square along is beside it rather
+         * than behind it, however near its near end comes. Measured honestly it
+         * would cut those sprites — a wolf loses its tail, a cleric an arm. How
+         * much of a square a side wall leaves showing is settled before
+         * anything is drawn, and not by distance.
+         */
         fun farSideOfSquare(relativeX: Int, relativeY: Int) =
             DistanceFromParty(distanceTo(relativeX, relativeY) + FACE)
 
         private fun distanceTo(relativeX: Int, relativeY: Int): Int =
-            (hypot(relativeX.toDouble(), relativeY.toDouble()) * 100).roundToInt()
+            distanceToPoint(relativeX.toDouble(), relativeY.toDouble())
+
+        private fun distanceToPoint(x: Double, y: Double): Int =
+            (hypot(x, y) * 100).roundToInt()
+
+        private const val HALF_A_SQUARE = 0.5
 
         /**
-         * How far a square's faces sit from its middle. Comfortably inside the
-         * 41 hundredths between the square ahead and the one diagonal to it, so
-         * a face never overtakes a neighbouring square.
+         * How far a side wall is pushed past its square's middle. Comfortably
+         * inside the 41 hundredths between the square ahead and the one
+         * diagonal to it, so it never overtakes a neighbouring square.
          */
         private const val FACE = 30
+
+        /** Enough to sort in front of the face, and not enough to sort in front of anything else. */
+        private const val A_HAIR = 1
     }
 }
