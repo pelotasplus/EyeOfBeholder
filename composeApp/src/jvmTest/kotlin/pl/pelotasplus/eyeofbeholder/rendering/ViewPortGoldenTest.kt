@@ -1156,6 +1156,42 @@ class ViewPortGoldenTest {
         )
 
     /**
+     * The same monster beyond the same open door, walked back and then stepped
+     * sideways from. Nothing moves between the three but the party.
+     *
+     * A doorway is a hole to look through rather than a gap to look past, and
+     * these are the three standpoints that say so. Square on to it the monster
+     * is straight ahead; a step back leaves it straight ahead and smaller; a
+     * step to the side takes it away altogether, because the way to its square
+     * from there is a dogleg — up the corridor, across, and only then through
+     * the door — and nothing is in line any more.
+     *
+     * The last of the three is the one worth keeping. It looks like a monster
+     * that has gone missing and is a monster correctly out of sight, so it is
+     * exactly what a change to how far a square is seen would break first.
+     */
+    @Test
+    fun `a monster beyond a door, from three standpoints`() {
+        listOf(
+            "level12-through-a-door-15x30" to Location(15, 30),
+            "level12-through-a-door-15x31" to Location(15, 31),
+            "level12-through-a-door-14x31" to Location(14, 31),
+        ).forEach { (name, standingOn) ->
+            checkGolden(
+                name,
+                aMonsterThroughADoorway(
+                    level = "LEVEL12.INF",
+                    standingOn = standingOn,
+                    facing = Direction.NORTH,
+                    doorway = Location(15, 29),
+                    doorOn = WallSide.SOUTH,
+                    monsterOn = Location(15, 28),
+                ),
+            )
+        }
+    }
+
+    /**
      * A monster standing in an open doorway, drawn over the frame around it.
      *
      * **This golden records a fault rather than the right answer.** The
