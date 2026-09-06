@@ -116,6 +116,22 @@ class TheCirclingFireballsTest {
     }
 
     /**
+     * And they do not tire.
+     *
+     * Most things in the air carry a count of squares and drop out of it when
+     * that runs out. These carry the number that means "not counting", and
+     * spending it like any other is the one way this room can fail that looks
+     * like nothing at all: the party walk in a minute later, nobody is hit,
+     * and the trap is simply not there.
+     */
+    @Test
+    fun `they do not run out of distance`() {
+        val after = flownFor(PAST_ANY_COUNT).world
+
+        assertEquals(2, after.inFlight.size, "they tired and fell out of the air")
+    }
+
+    /**
      * And they survive being saved and loaded.
      *
      * What set them going is a square across the room, and treading on it is
@@ -196,5 +212,11 @@ class TheCirclingFireballsTest {
 
         /** Far enough in that both are somewhere awkward to be caught. */
         const val HALF_A_LAP = 9
+
+        /**
+         * More laps than the largest number of squares a thing in the air can
+         * be given to cross, which is 255 — about forty of this ring.
+         */
+        const val PAST_ANY_COUNT = 45 * 18
     }
 }

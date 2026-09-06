@@ -351,7 +351,7 @@ private val atEachQuarter = listOf(
             at = onto,
             // it comes in at the end of the square nearest where it came from
             place = flying.place.endTowards(flying.going, coming = true),
-            squaresLeft = flying.squaresLeft - 1,
+            squaresLeft = flying.squaresLeftAfterOneMore,
             untilItSteps = Projectile.A_STEP,
             leaving = false,
             // a new square is a new set of things to be asked about

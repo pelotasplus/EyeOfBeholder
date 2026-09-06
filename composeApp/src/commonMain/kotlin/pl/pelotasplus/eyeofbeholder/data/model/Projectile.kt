@@ -129,6 +129,19 @@ data class Projectile(
      */
     val alreadyTried: Set<MonsterSlot> = emptySet(),
 ) {
+    /**
+     * What it has left after crossing one more square.
+     *
+     * [UNTIL_IT_HITS] is not a count but a standing exemption from counting,
+     * and has to be left alone rather than worn down: a bolt carrying it is
+     * stopped by what it meets and by nothing else. Spend it like a number
+     * and a floor built to keep one going for ever — the twelfth turns a pair
+     * back at every corner — quietly empties itself after a few dozen laps,
+     * with nobody hit and nothing to see.
+     */
+    val squaresLeftAfterOneMore: Int
+        get() = if (squaresLeft == UNTIL_IT_HITS) UNTIL_IT_HITS else squaresLeft - 1
+
     /** Who answers for the damage, which decides whether anybody aims. */
     @Serializable
     sealed interface Thrower {
@@ -259,6 +272,10 @@ data class Projectile(
         /**
          * How far a burst carries, which is as far as the corridor goes: it is
          * stopped by hitting something rather than by tiring.
+         *
+         * A number in the same field rather than a flag beside it, so it is
+         * only a distance where nothing is counting — see
+         * [squaresLeftAfterOneMore].
          */
         const val UNTIL_IT_HITS = 255
 
