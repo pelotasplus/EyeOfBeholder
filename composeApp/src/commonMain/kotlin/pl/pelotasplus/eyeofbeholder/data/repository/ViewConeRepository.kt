@@ -292,7 +292,17 @@ class ViewConeRepositoryImpl(
                         // cut to what the walls in front leave of its square —
                         // to nothing at all where they leave nothing. A face
                         // the party see side-on is cut by its own square too.
-                        viewPort.at(slot.howFarOff, within = windows[slot.block]) {
+                        //
+                        // One that lies on the floor is measured where it lies
+                        // rather than where its face would be, so that what
+                        // stands on the square stands on top of it.
+                        val painted = if (levelDecoration.lyingOnTheFloor) {
+                            DistanceFromParty.paintedOnTheFloorOf(slot.relativeX, slot.relativeY)
+                        } else {
+                            slot.howFarOff
+                        }
+
+                        viewPort.at(painted, within = windows[slot.block]) {
                             viewPort.drawDecoration(
                                 decoration = levelDecoration,
                                 wallPosition = wallPosition,

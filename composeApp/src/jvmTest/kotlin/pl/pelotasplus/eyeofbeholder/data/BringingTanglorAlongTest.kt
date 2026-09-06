@@ -120,7 +120,14 @@ class BringingTanglorAlongTest {
     // --- the scene the script plays ------------------------------------------
 
     /**
-     * What the script does with the three answers, read off its own branches:
+     * The answers one run of the scene gives, with the speeches in front.
+     *
+     * He makes two speeches before he asks anything, and a speech is read off
+     * rather than answered — but it is put through the same door, so each one
+     * takes an answer with it. They go in front of every real answer here.
+     *
+     * What the script does with the answers that follow, read off its own
+     * branches:
      *
      * ```
      * 5962  if the answer given == 1     the join
@@ -134,11 +141,6 @@ class BringingTanglorAlongTest {
      *
      * So the square is swept by turning him down and by nothing else. His
      * shield and his short sword are lying on it, and they leave with him.
-     */
-    /**
-     * He makes two speeches before he asks anything, and a speech is read off
-     * rather than answered — but it is put through the same door, so each one
-     * takes an answer with it. They go in front of every real answer here.
      */
     private fun theScene(vararg answers: Int) = listOf(READ_ON, READ_ON) + answers.toList()
 

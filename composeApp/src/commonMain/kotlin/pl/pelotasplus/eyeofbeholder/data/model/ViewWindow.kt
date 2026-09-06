@@ -57,7 +57,7 @@ fun SubLevel.sightThrough(wall: Maz.WallType): WallSight = when (wall) {
         when {
             mapped == null -> WallSight.CLEAR
             mapped.flags.seenThrough -> WallSight.OPEN_FRAME
-            mapped.wallType == NO_WALL_BEHIND -> WallSight.CLEAR
+            mapped.lyingOnTheFloor -> WallSight.CLEAR
             else -> WallSight.SOLID
         }
     }
@@ -82,7 +82,7 @@ fun SubLevel.showsWhatIsOnIt(wall: Maz.WallType): Boolean = when (wall) {
         val mapped = decorations.firstOrNull { it.decorationWallIndex == wall.decorationWallIndex }
         when {
             mapped == null -> true
-            mapped.wallType == NO_WALL_BEHIND -> true
+            mapped.lyingOnTheFloor -> true
             else -> mapped.flags.showsItsContents
         }
     }
@@ -158,12 +158,6 @@ fun SubLevel.canBeWalkedOntoByAMonster(wall: Maz.WallType): Boolean = when (wall
  * straight off what the file says.
  */
 private const val SHOWS_ITS_CONTENTS = 0x80
-
-/**
- * A decoration with no wall type behind it is painted straight onto whatever
- * the square already shows — a floor plate, a stain — so it hides nothing.
- */
-private const val NO_WALL_BEHIND = 0
 
 private const val SEEN_THROUGH = 8
 

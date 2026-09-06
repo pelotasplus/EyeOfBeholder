@@ -1126,6 +1126,24 @@ class ViewPortGoldenTest {
         )
 
     /**
+     * A monster standing on a plate set into the floor, walked up to a square
+     * at a time.
+     *
+     * The plate is under it and stays under it. A floor decoration is kept as
+     * a face of its square like any wall is, but it is not one: it lies flat
+     * on the ground rather than standing across the view, and whatever is on
+     * that square is on top of it. Three squares because the mistake is a
+     * matter of how far off the square is, and shows at some distances and
+     * not others.
+     */
+    @Test
+    fun `a monster stands on the plate rather than under it`() {
+        listOf(14, 13, 12).forEach { y ->
+            checkGolden("level12-plate-7x$y-north", "LEVEL12.INF", 7, y, Direction.NORTH)
+        }
+    }
+
+    /**
      * A hand its champion cannot strike with is drawn over with a grid. The
      * paladin has been handed the mage's spellbook, which is for a class he
      * is not; the mage keeps hers, where it is no trouble at all.

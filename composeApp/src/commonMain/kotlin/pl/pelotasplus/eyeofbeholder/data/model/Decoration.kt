@@ -36,7 +36,22 @@ data class Decoration(
     val dec: Dec,
     val cps: Cps
 ) {
+    /**
+     * Whether this lies flat on its square's floor rather than standing on a
+     * wall across the view — a pressure plate, a stain.
+     *
+     * Such a one has no base wall behind it and is painted straight onto
+     * whatever the square already shows. It is therefore under anything
+     * standing on that square, which is the opposite of what a face is.
+     */
+    val lyingOnTheFloor: Boolean get() = wallType == NO_WALL_BEHIND
+
     override fun toString(): String {
         return "Decoration(decorationWallIndex=$decorationWallIndex, wallType=$wallType, decorationID=$decorationID, specialType=$specialType, flags=$flags, dec=..., cps=...)"
+    }
+
+    private companion object {
+        /** The base wall index a decoration carries when it has no wall at all. */
+        const val NO_WALL_BEHIND = 0
     }
 }

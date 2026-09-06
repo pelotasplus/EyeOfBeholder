@@ -1369,13 +1369,6 @@ data class GameState(
     }
 
     /**
-     * The world with one champion [by] hit points worse off.
-     *
-     * Nothing else happens to them here: going down at nothing left and being
-     * past raising at ten below are what the panel already reads off the
-     * number, so taking it away is the whole of the change.
-     */
-    /**
      * Whether the party are lost: not one of them still on their feet.
      *
      * Asked of the whole party rather than of one, and asked after anything
@@ -1389,6 +1382,13 @@ data class GameState(
     val nobodyIsStanding: Boolean
         get() = champions.any { it.inTheParty } && champions.none { it.onTheirFeet }
 
+    /**
+     * The world with one champion [by] hit points worse off.
+     *
+     * Nothing else happens to them here: going down at nothing left and being
+     * past raising at ten below are what the panel already reads off the
+     * number, so taking it away is the whole of the change.
+     */
     fun championHurt(whose: PartySlot, by: Damage): GameState {
         if (!by.landed) return this
         val who = champions.getOrNull(whose.index) ?: return this

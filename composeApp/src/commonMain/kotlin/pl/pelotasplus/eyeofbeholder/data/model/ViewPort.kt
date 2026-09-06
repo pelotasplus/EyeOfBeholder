@@ -786,15 +786,6 @@ class ViewPort(
 
 
     /**
-     * Something crossing a square rather than lying on it.
-     *
-     * A thing in the air is not stood on the floor and is not placed like one.
-     * It comes down the middle of the square at the height of the party's
-     * eyes, centred on that point both ways rather than resting its feet on a
-     * baseline, and only its size changes as it nears — which is the whole of
-     * the effect of something being thrown at you.
-     */
-    /**
      * A thing in the air, drawn at the height of it.
      *
      * [over] is the quarter of the square it is crossing as the party see it,

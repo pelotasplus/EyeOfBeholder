@@ -61,6 +61,17 @@ value class DistanceFromParty(private val hundredthsOfASquare: Int) :
             )
 
         /**
+         * A decoration painted flat on a square's floor — a plate, a stain.
+         *
+         * A hair further off than what stands on that square, because that is
+         * where it is: underneath. Measured at the face like the wall it is
+         * kept as, it would sort in front of whatever is standing there and be
+         * painted across it — a plate drawn over a monster's feet.
+         */
+        fun paintedOnTheFloorOf(relativeX: Int, relativeY: Int) =
+            DistanceFromParty(distanceTo(relativeX, relativeY) + A_HAIR)
+
+        /**
          * A wall seen side-on, measured out at the far end of its square.
          *
          * Deliberately the far end, and deliberately not where the wall

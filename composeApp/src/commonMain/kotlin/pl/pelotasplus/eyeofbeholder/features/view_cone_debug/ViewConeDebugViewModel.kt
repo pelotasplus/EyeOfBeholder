@@ -2570,7 +2570,6 @@ class ViewConeDebugViewModel(
         evenIfUnknown = debugging.everythingIdentified.value,
     )
 
-    /** A line about one champion, which wants their name in it. */
     /**
      * The line a spell puts up on arriving, for the three that have one.
      *
@@ -2593,6 +2592,7 @@ class ViewConeDebugViewModel(
         }
     }
 
+    /** A line about one champion, which wants their name in it. */
     private fun sayOf(whose: PartySlot, line: (String) -> String) {
         _state.value.game.championIn(whose)?.let { say(line(it.name)) }
     }
