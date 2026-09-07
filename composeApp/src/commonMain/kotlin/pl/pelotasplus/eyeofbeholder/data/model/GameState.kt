@@ -1257,6 +1257,68 @@ data class GameState(
     }
 
     /**
+     * The world with every thing of [ofType] worth [worth] taken off the party
+     * and put nowhere.
+     *
+     * A search rather than a trade: every champion in the party, every slot
+     * one can fill — worn, held and packed alike — and more than one from the
+     * same champion if that is what they have. Whatever is under the pointer
+     * goes too, that being where a thing on its way somewhere sits and not any
+     * champion's. Being down is no defence: the pack of one lying dead is gone
+     * through like anybody else's.
+     *
+     * Either half of the question may be [ANYTHING], as in [championsCarrying].
+     *
+     * Given [types] the armour class is worked out again, since a search that
+     * takes the breastplate off somebody leaves them easier to hit.
+     */
+    fun partyRelievedOf(
+        ofType: ItemTypeId,
+        worth: Int,
+        types: ItemTypes? = null,
+    ): GameState {
+        fun matches(slot: ItemIndex): Boolean = item(slot)?.let {
+            (ofType.value == ANYTHING || it.type == ofType) &&
+                (worth == ANYTHING || it.value == worth)
+        } == true
+
+        val taken = champions.filter { it.inTheParty }
+            .flatMap { it.carrying }
+            .plus(inHand)
+            .filter { matches(it) }
+            .map { it.value }
+            .toSet()
+
+        if (taken.isEmpty()) return this
+
+        val emptied = copy(
+            items = items.mapIndexed { at, item ->
+                if (at in taken) item.copy(location = Item.NOWHERE) else item
+            },
+            champions = champions.map { champion ->
+                if (!champion.inTheParty) {
+                    champion
+                } else {
+                    champion.copy(
+                        carrying = champion.carrying.map {
+                            if (it.value in taken) ItemIndex(ItemIndex.NOTHING) else it
+                        },
+                    )
+                }
+            },
+            inHand = if (inHand.value in taken) ItemIndex(ItemIndex.NOTHING) else inHand,
+        )
+
+        if (types == null) return emptied
+
+        return emptied.copy(
+            champions = emptied.champions.map {
+                if (!it.inTheParty) it else it.copy(armorClass = types.armourClassOf(it, emptied.items))
+            },
+        )
+    }
+
+    /**
      * The world with [what] left on a champion by a blow, or null where
      * nothing was left.
      *

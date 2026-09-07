@@ -851,6 +851,20 @@ class LevelScriptRunner(
 
                 SpecialEvent.CharacterLevelGain -> state = aLevelGiven(state, dialogAnswer)
 
+                // The two coins the fifteenth floor's giant asks for. Which
+                // two is not in the script: the instruction says only "take
+                // what you came for", and the pair is written into the engine.
+                SpecialEvent.DeletePartyItems -> {
+                    val before = state.championsCarrying(WHAT_A_GIANT_TAKES, ANYTHING)
+                    state = COINS_A_GIANT_TAKES.fold(state) { world, worth ->
+                        world.partyRelievedOf(WHAT_A_GIANT_TAKES, worth, itemTypes)
+                    }
+                    say {
+                        "        took the coins off the party, who had them between " +
+                            "$before of them"
+                    }
+                }
+
                 is SpecialEvent -> notYet(
                     token,
                     "this set piece",
@@ -1554,6 +1568,18 @@ class LevelScriptRunner(
 
         /** What anything being loosed down a corridor sounds like. */
         val LOOSED = TrackIndex(11)
+
+        /**
+         * The kind of thing the fifteenth floor's giant searches the party
+         * for, and the two of that kind it takes. The script names neither:
+         * the instruction it runs says only that a search happens, and what is
+         * looked for is written into the engine.
+         */
+        val WHAT_A_GIANT_TAKES = ItemTypeId(46)
+        val COINS_A_GIANT_TAKES = listOf(5, 6)
+
+        /** Either half of a search left open, which asks only about the other. */
+        const val ANYTHING = -1
 
         /** And what a champion losing hit points sounds like. */
         val HURT = TrackIndex(21)
