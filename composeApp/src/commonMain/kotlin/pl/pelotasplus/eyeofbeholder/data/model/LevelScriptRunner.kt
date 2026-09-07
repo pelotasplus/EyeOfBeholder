@@ -587,8 +587,25 @@ class LevelScriptRunner(
                     }
                 }
 
-                is CreateMonster ->
+                // Asking for one is not getting one: the square may be full,
+                // the party may be standing on it, or the floor may be holding
+                // all thirty it can. So the trace says what came of the asking
+                // as well as what was asked — a floor that quietly makes
+                // nothing looks exactly like a floor that was never told to.
+                is CreateMonster -> {
+                    val before = state.monsters.map { it.index }.toSet()
                     state = state.monsterCreated(token, subLevel, kinds, dice, level)
+
+                    say {
+                        val made = state.monsters.firstOrNull { it.index !in before }
+                        if (made == null) {
+                            "        nothing was made: no room on ${token.location.xy}"
+                        } else {
+                            "        made m${made.index.value} on ${made.location.xy}, " +
+                                "${state.monsters.size} standing on the floor"
+                        }
+                    }
+                }
 
                 // A script makes a thing by pointing at another like it. Where
                 // it lands can be a square outright, or the hand, or the floor
