@@ -1194,22 +1194,15 @@ class ViewPortGoldenTest {
     /**
      * A monster standing in an open doorway, drawn over the frame around it.
      *
-     * **This golden records a fault rather than the right answer.** The
-     * monster's head reaches above the lintel and is painted across the
-     * stonework, where it should be hidden by it.
+     * This looks like a fault and is not one. A doorway does cut what is seen
+     * through it, top and bottom as well as at the sides — but only for a
+     * square *beyond* the doorway. The door on a square takes nothing at all
+     * off that same square, so a creature standing in the opening is drawn
+     * across the stonework, and the original draws it exactly so.
      *
-     * It is here because the scene is worth pinning while the fault is open:
-     * it is the one the fault was reported from, and freezing it proved the
-     * fault older than the change it was blamed on — this render is identical
-     * with that change backed out.
-     *
-     * Nothing in the renderer cuts a sprite to the opening it is seen through.
-     * Distance cannot do it, since above the opening the frame paints nothing
-     * for a nearer thing to be measured against, and the band each square has
-     * left is only ever narrowed side to side. The game's own vertical cut
-     * exists but is armed by a door taking a bite out of a square *beyond* it,
-     * and a door takes no bite out of the square it stands on — so it does not
-     * reach this.
+     * That asymmetry is the whole of it, and it is worth a picture because it
+     * reads as broken: see `a door on a square does not cut what stands on
+     * that same square`, which is the same rule stated in numbers.
      */
     @Test
     fun `a monster in a doorway is drawn over the frame`() =
