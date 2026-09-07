@@ -334,35 +334,40 @@ class MonstersTurn(
         val left = mutableListOf<Left>()
 
         world.monsters.filter { it.index in byWhom }.forEach { monster ->
-            val blow = strike(after, monster) ?: return@forEach
+            val blows = blowsFrom(after, monster)
+            if (blows.isEmpty()) return@forEach
 
-            if (!blow.damage.landed) {
+            if (blows.none { it.damage.landed }) {
                 missed += monster.index
                 return@forEach
             }
 
-            struck += blow
+            for (blow in blows) {
+                if (!blow.damage.landed) continue
 
-            // What it ruins, it ruins on the way in: a champion the same blow
-            // finishes still loses it.
-            ruins(after, monster, blow.at)?.let {
-                after = it.first
-                ruined += it.second
-            }
+                struck += blow
 
-            after = after.championHurt(blow.at, blow.damage)
-
-            // Venom, a grip, stone: all three go with a blow that drew blood
-            // and none of them with one that did not, and each is thrown
-            // against on its own before it takes hold.
-            kinds.firstOrNull { it.id == monster.type.value }
-                ?.whatItsBlowLeaves
-                .orEmpty()
-                .forEach { what ->
-                    val took = after.championLeftWith(blow.at, what, dice) ?: return@forEach
-                    after = took
-                    left += Left(blow.at, what)
+                // What it ruins, it ruins on the way in: a champion the same
+                // blow finishes still loses it.
+                ruins(after, monster, blow.at)?.let {
+                    after = it.first
+                    ruined += it.second
                 }
+
+                after = after.championHurt(blow.at, blow.damage)
+
+                // Venom, a grip, stone: all three go with a blow that drew
+                // blood and none of them with one that did not, and each is
+                // thrown against on its own before it takes hold.
+                kinds.firstOrNull { it.id == monster.type.value }
+                    ?.whatItsBlowLeaves
+                    .orEmpty()
+                    .forEach { what ->
+                        val took = after.championLeftWith(blow.at, what, dice) ?: return@forEach
+                        after = took
+                        left += Left(blow.at, what)
+                    }
+            }
         }
 
         return Taken(struck, after, missed, ruined, left)
@@ -412,42 +417,61 @@ class MonstersTurn(
         return canReach(party, size)
     }
 
-    private fun strike(world: GameState, monster: MonsterInstance): Struck? {
-        if (!monster.reaches(world.party)) return null
+    /**
+     * What one swing comes to: a blow at each champion it falls on, in the
+     * order the monster reaches them.
+     *
+     * Nearly always that is one champion and the rest of the party are behind
+     * a wall of their own front rank. A monster that strikes everyone it
+     * reaches turns the same swing into six, each rolled to hit and rolled for
+     * damage on its own, so the party's order stops protecting anybody.
+     */
+    private fun blowsFrom(world: GameState, monster: MonsterInstance): List<Struck> {
+        if (!monster.reaches(world.party)) return emptyList()
 
-        val kind = kinds.firstOrNull { it.id == monster.type.value } ?: return null
-        val whom = whoItReaches(world, monster) ?: return null
-        val champion = world.championIn(whom) ?: return null
+        val kind = kinds.firstOrNull { it.id == monster.type.value } ?: return emptyList()
+        val reached = whoItReaches(world, monster)
+            .let { if (kind.strikesEveryoneItReaches) it else it.take(1) }
 
-        var damage = 0
-        repeat(kind.attacksPerRound) { attack ->
-            val roll = dice.roll(1, 20, 0)
-            val lands = roll == NATURALLY_ALWAYS ||
-                roll >= kind.hitChance - champion.armorClass.value
+        return reached.mapIndexedNotNull { nth, whom ->
+            val champion = world.championIn(whom) ?: return@mapIndexedNotNull null
 
-            if (lands) {
-                kind.dmgDc.getOrNull(attack)?.let { damage += dice.roll(it.times, it.pips, it.base) }
+            var damage = 0
+            repeat(kind.attacksPerRound) { attack ->
+                val roll = dice.roll(1, 20, 0)
+                val lands = roll == NATURALLY_ALWAYS ||
+                    roll >= kind.hitChance - champion.armorClass.value
+
+                if (lands) {
+                    kind.dmgDc.getOrNull(attack)
+                        ?.let { damage += dice.roll(it.times, it.pips, it.base) }
+                }
             }
-        }
 
-        // A monster is heard swinging whether or not it connects, which is the
-        // one sound a monster has ever been given.
-        return Struck(
-            monster = monster.index,
-            at = whom,
-            damage = Damage(damage),
-            heard = TrackIndex(kind.sound1).takeIf { kind.sound1 > 0 },
-        )
+            Struck(
+                monster = monster.index,
+                at = whom,
+                damage = Damage(damage),
+                // One swing is one sound, however many it falls on, and it is
+                // heard whether or not it connects — the one sound a monster
+                // has ever been given.
+                heard = TrackIndex(kind.sound1).takeIf { nth == 0 && kind.sound1 > 0 },
+            )
+        }
     }
 
     /**
-     * Which champion the blow falls on: the first of the six still standing,
-     * in the order this monster reaches them from where it is.
+     * The champions the blow can fall on, in the order this monster reaches
+     * them from where it is.
+     *
+     * Not the ones still standing — see [Champion.canStillBeStruck]. One who
+     * has already gone down is beaten on where they lie, and is passed over
+     * only once there is nothing left to raise.
      */
-    private fun whoItReaches(world: GameState, monster: MonsterInstance): PartySlot? =
+    private fun whoItReaches(world: GameState, monster: MonsterInstance): List<PartySlot> =
         WhoTheMonsterReaches
             .inOrder(world.party.facing, monster.direction, monster.place, dice)
-            .firstOrNull { world.championIn(it)?.dead == false }
+            .filter { world.championIn(it)?.canStillBeStruck == true }
 
     private companion object {
         /** A twenty lands on anything, however well armoured. */

@@ -89,6 +89,18 @@ data class Champion(
     val deadForGood: Boolean get() = hitPoints.current <= BEYOND_RAISING
 
     /**
+     * Whether a blow aimed at them still has anywhere to land.
+     *
+     * Falling is not leaving the fight. A champion at nought or below lies
+     * where they dropped and is beaten on there, ten points further down,
+     * until there is nothing left to raise — which is how a party that loses
+     * its front rank loses the rest of it rather than fighting on behind a
+     * body. Only stone and death for good put one out of reach.
+     */
+    val canStillBeStruck: Boolean
+        get() = flags.inTheParty && !deadForGood && !flags.petrified
+
+    /**
      * Whether a message can be put in this one's mouth: in the party, still
      * raisable, and not stone. Being knocked out is no bar: those three
      * things are all that is asked of whoever speaks.

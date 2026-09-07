@@ -113,6 +113,19 @@ data class MonsterProperty(
     val poisonsWhatItHits: Boolean get() = capsFlags and POISONS != 0
 
     /**
+     * Whether one swing of its comes down on everybody it can reach rather
+     * than on the first of them.
+     *
+     * An ordinary monster picks the nearest champion still standing and stops
+     * there, so a party's back rank is safe behind its front. One of these
+     * takes its swing at all six in turn, each with its own roll to hit and
+     * its own dice of damage — which is what puts a healer with no armour in
+     * the same danger as the fighter standing in front of her. The frost
+     * giants of the fourteenth floor are these.
+     */
+    val strikesEveryoneItReaches: Boolean get() = capsFlags and STRIKES_THEM_ALL != 0
+
+    /**
      * Whether being hurt at all bursts it instead of wounding it.
      *
      * The gas spores on the eighth floor are these: nine armour class, one
@@ -143,6 +156,7 @@ data class MonsterProperty(
         const val OPENS_DOORS = 0x1000
         const val PARALYSES = 0x20
         const val BURSTS_WHEN_HURT = 0x2000
+        const val STRIKES_THEM_ALL = 0x4000
         const val PETRIFIES = 0x8000
     }
 }
