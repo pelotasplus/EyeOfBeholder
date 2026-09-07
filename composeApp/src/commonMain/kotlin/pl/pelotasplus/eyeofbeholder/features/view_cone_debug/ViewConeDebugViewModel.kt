@@ -3391,9 +3391,9 @@ class ViewConeDebugViewModel(
         }
 
         /**
-         * A script's sound outlives the script. Triggers are run in a job the
-         * next step cancels, and a lever thrown on the way past would lose its
-         * click halfway through being fetched.
+         * A script's sound outlives the script, which is over long before the
+         * clip it asked for has been fetched and played: a lever thrown on the
+         * way past would otherwise lose its click halfway through.
          */
         override suspend fun play(track: TrackIndex, volume: Volume) {
             viewModelScope.launch { playTrack(track, volume) }
