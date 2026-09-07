@@ -1236,6 +1236,22 @@ class ViewPortGoldenTest {
      * matter of how far off the square is, and shows at some distances and
      * not others.
      */
+    /**
+     * The fourteenth floor's riddle, which is two rooms and a comparison.
+     *
+     * The west room's squares are cut into the ceiling and the east room's
+     * into the floor — two decorations of the same shape hung at opposite
+     * ends of the view, and the only difference between them in the file is
+     * where their shapes sit: one set at the top of the frame, the other at
+     * the bottom. Rendering one and not the other is a thing that can happen
+     * without any of it looking wrong, so both are frozen.
+     */
+    @Test
+    fun `the riddle rooms are cut into the ceiling and the floor`() {
+        checkGolden("level14-ceiling-holes-11x2-south", "LEVEL14.INF", 11, 2, Direction.SOUTH)
+        checkGolden("level14-floor-holes-21x2-south", "LEVEL14.INF", 21, 2, Direction.SOUTH)
+    }
+
     @Test
     fun `a monster stands on the plate rather than under it`() {
         listOf(14, 13, 12).forEach { y ->
