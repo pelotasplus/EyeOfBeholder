@@ -38,6 +38,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.nudgeOf
 import pl.pelotasplus.eyeofbeholder.data.model.showsWhatIsOnIt
 import pl.pelotasplus.eyeofbeholder.data.model.sightThrough
 import pl.pelotasplus.eyeofbeholder.data.model.teleportersInView
+import pl.pelotasplus.eyeofbeholder.data.model.wallsOfForceInView
 import pl.pelotasplus.eyeofbeholder.data.model.viewBlockRows
 import pl.pelotasplus.eyeofbeholder.data.model.viewWindow
 import pl.pelotasplus.eyeofbeholder.data.model.visibleBlocks
@@ -204,7 +205,12 @@ class ViewConeRepositoryImpl(
         val largeIcons = getLargeItemIcons()
         val monsterSheets = loadMonsterSheets(sublevel)
         val teleporters = teleportersInView(Location(playerX, playerY), direction, wallAt)
-        val decorations = if (teleporters.isEmpty()) null else getDecorations()
+        val forceWalls = wallsOfForceInView(Location(playerX, playerY), direction, wallAt)
+        val decorations = if (teleporters.isEmpty() && forceWalls.isEmpty()) {
+            null
+        } else {
+            getDecorations()
+        }
 
         // Only fetched when there is something to draw with it: nothing is in
         // the air on most frames, and the sheet is a whole screen of pixels.
@@ -237,6 +243,7 @@ class ViewConeRepositoryImpl(
                         relY, viewPort, monsters, monsterSheets, sublevel,
                         playerX, playerY, direction, windows, wallAt,
                     )
+                    drawWallsOfForceAtRow(relY, viewPort, forceWalls, decorations, pulse, windows)
                     drawWhatIsFlyingAtRow(
                         relY, viewPort, items, smallIcons, largeIcons, sublevel,
                         playerX, playerY, direction, windows, wallAt,
@@ -505,6 +512,43 @@ class ViewConeRepositoryImpl(
                 within = window,
             ) {
                 viewPort.drawTeleporter(decorations, block.blockIndex, dim, pulse)
+            }
+        }
+    }
+
+    /**
+     * The curtains hanging in the doorways of one depth row.
+     *
+     * Measured at the face rather than at the square, a curtain being a wall
+     * and not something standing on the floor behind one: what is on that
+     * square is behind it and is covered by it.
+     */
+    private fun drawWallsOfForceAtRow(
+        relativeY: Int,
+        viewPort: ViewPort,
+        forceWalls: List<ViewBlock>,
+        decorations: Cps?,
+        pulse: TeleporterPulse,
+        windows: List<ViewWindow>,
+    ) {
+        if (decorations == null) return
+
+        val dim = when (relativeY) {
+            -3 -> 0
+            -2 -> 1
+            else -> 2
+        }
+
+        for (block in forceWalls.filter { it.relativeY == relativeY }) {
+            val window = windows[block.blockIndex]
+            if (window.closed) continue
+
+            viewPort.at(
+                DistanceFromParty.faceTowardsTheParty(block.relativeX, block.relativeY),
+                hiddenByCloserThings = true,
+                within = window,
+            ) {
+                viewPort.drawWallOfForce(decorations, block.blockIndex, dim, pulse)
             }
         }
     }

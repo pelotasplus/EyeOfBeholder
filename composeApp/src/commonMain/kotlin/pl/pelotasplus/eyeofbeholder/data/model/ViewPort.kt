@@ -629,6 +629,38 @@ class ViewPort(
     }
 
     /**
+     * Draws the curtain a wall of force fills its doorway with.
+     *
+     * Woven rather than scaled: each depth has its own tile at the size it
+     * needs, laid out in a grid across the doorway.
+     *
+     * @param decorations DECORATE.CPS, which the tiles are cut from
+     * @param blockIndex Visible-block index 0-17 into [forceCurtainX]
+     * @param dim Depth row 0-3; the party's own row shows nothing
+     * @param pulse Which half of the flicker to draw
+     */
+    fun drawWallOfForce(
+        decorations: Cps,
+        blockIndex: Int,
+        dim: Int,
+        pulse: TeleporterPulse,
+    ) {
+        val curtain = forceCurtains.getOrNull(dim) ?: return
+        val left = forceCurtainX.getOrNull(blockIndex) ?: return
+
+        var top = curtain.top
+        repeat(curtain.down) { row ->
+            val tile = curtain.tileFor(row, pulse)
+            val woven = decorations.cut(tile.x, tile.y, tile.w, tile.h)
+
+            repeat(curtain.across) { column ->
+                drawIcon(woven, ScreenX(left + column * tile.w), top)
+            }
+            top += tile.h
+        }
+    }
+
+    /**
      * One spark of a casting, put down flat where the table says.
      *
      * No distance and no scaling: these are not in the room, they are over it,

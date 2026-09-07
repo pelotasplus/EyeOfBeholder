@@ -1246,6 +1246,27 @@ class ViewPortGoldenTest {
     }
 
     /**
+     * The curtain a wall of force fills its doorway with, on the fifteenth
+     * floor at 26x18.
+     *
+     * The level names no appearance for the byte at all, so before this the
+     * square was an empty doorway that could not be walked through. Both
+     * halves of its weave are frozen: the pair of tiles swaps over on the
+     * pulse, and nothing else on the two frames may differ.
+     */
+    @Test
+    fun `a wall of force hangs a curtain in its doorway`() {
+        checkGolden(
+            "level15-wall-of-force-26x18-south",
+            renderFrame("LEVEL15.INF", 26, 18, Direction.SOUTH),
+        )
+        checkGolden(
+            "level15-wall-of-force-traded",
+            renderFrame("LEVEL15.INF", 26, 18, Direction.SOUTH, pulse = TeleporterPulse.TRADED),
+        )
+    }
+
+    /**
      * A hole in the floor of the square the party are standing on, drawn along
      * the bottom edge of the view.
      *
@@ -2705,6 +2726,7 @@ class ViewPortGoldenTest {
         y: Int,
         direction: Direction,
         arrivedIn: Int = 0,
+        pulse: TeleporterPulse = TeleporterPulse.AS_LAID_OUT,
     ): ViewPort =
         runBlocking {
             val repository = repository()
@@ -2716,7 +2738,8 @@ class ViewPortGoldenTest {
                 sublevel = sublevel,
                 playerX = x,
                 playerY = y,
-                direction = direction
+                direction = direction,
+                pulse = pulse,
             ).getOrThrow()
         }
 
