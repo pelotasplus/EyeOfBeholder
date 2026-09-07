@@ -5,10 +5,15 @@ import org.junit.experimental.categories.Category
 import pl.pelotasplus.eyeofbeholder.NeedsGameData
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.GameState
+import pl.pelotasplus.eyeofbeholder.data.model.HitPoints
 import pl.pelotasplus.eyeofbeholder.data.model.LevelScriptRunner
 import pl.pelotasplus.eyeofbeholder.data.model.Location
+import pl.pelotasplus.eyeofbeholder.data.model.MonsterInstance
+import pl.pelotasplus.eyeofbeholder.data.model.MonsterSlot
+import pl.pelotasplus.eyeofbeholder.data.model.MonsterTypeId
 import pl.pelotasplus.eyeofbeholder.data.model.PartyState
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptEvent
+import pl.pelotasplus.eyeofbeholder.data.model.SquarePlace
 import pl.pelotasplus.eyeofbeholder.data.model.WallSide
 import pl.pelotasplus.eyeofbeholder.data.model.script.SetFlag
 import pl.pelotasplus.eyeofbeholder.data.repository.CpsRepositoryImpl
@@ -115,6 +120,52 @@ class TheTreasureTrapTest {
             sprung.swinging.map { it.at to it.opening },
         )
     }
+
+    /**
+     * But not onto anything standing in it. A door never comes down on a
+     * monster, and one of the five just let out has a clear walk to that
+     * doorway — so the trap's own guards can hold the way out open.
+     *
+     * The refusal is the door's alone: the rest of the script runs, and the
+     * cages open behind them as they always do.
+     */
+    @Test
+    fun `and does not shut it on a monster standing in the doorway`() {
+        val blocked = world()
+            .withAMonsterOn(WAY_OUT)
+            .onTheSquare(ScriptEvent.ITEM_TAKEN)
+
+        assertEquals(emptyList(), blocked.swinging, "the door came down on a monster")
+        assertTrue(blocked.cagesAreOpen(), "the refusal stopped the rest of the script")
+    }
+
+    /** And the party in a doorway hold it open the same way. */
+    @Test
+    fun `nor on the party themselves`() {
+        assertTrue(world().doorwayIsClear(WAY_OUT))
+        assertFalse(
+            world().copy(party = PartyState(WAY_OUT, Direction.EAST)).doorwayIsClear(WAY_OUT),
+        )
+    }
+
+    private fun GameState.withAMonsterOn(at: Location) = copy(
+        monsters = listOf(
+            MonsterInstance(
+                index = MonsterSlot(0),
+                unit = 0,
+                location = at,
+                place = SquarePlace.MIDDLE,
+                direction = Direction.SOUTH,
+                type = MonsterTypeId(0),
+                gfxIndex = 0,
+                mode = 0,
+                pause = 0,
+                weapon = 0,
+                pocketItem = 0,
+                hitPoints = HitPoints(20, 20),
+            ),
+        ),
+    )
 
     /** The square is not stepped on to spring it — it is robbed. */
     @Test

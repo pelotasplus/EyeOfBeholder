@@ -294,6 +294,21 @@ data class GameState(
             it.x == at.x && it.y == at.y && (inSubLevel == null || it.subLevel == inSubLevel)
         }
 
+    /**
+     * Whether a doorway is empty enough for its door to be worked.
+     *
+     * A door never comes down on anything. The party standing in the frame
+     * refuse it, and so does a monster standing there — and the refusal is
+     * whole rather than half done: the door does not start and stop, it simply
+     * does not move.
+     *
+     * The frame has to be clear for a door to be shut. A switch wants it clear
+     * either way, so a button pressed with something in the doorway opens
+     * nothing either; only a script may open one onto a monster.
+     */
+    fun doorwayIsClear(at: Location, inSubLevel: Int? = null): Boolean =
+        at != party.position && !anythingStandingOn(at, inSubLevel)
+
     /** Who is in one of the six places, or null where nobody is. */
     fun championIn(slot: PartySlot): Champion? =
         champions.getOrNull(slot.index)?.takeIf { it.inTheParty }

@@ -1205,8 +1205,7 @@ class LevelScriptRunner(
      * which would be a door coming down on a monster.
      */
     private fun doorSwitched(state: GameState, at: Location): GameState {
-        if (at == state.party.position) return state
-        if (state.anythingStandingOn(at, subLevel)) return state
+        if (!state.doorwayIsClear(at, subLevel)) return state
 
         val side = state.doorFacing(level, at) ?: run {
             Logger.w(TAG) { "No door at $at for a switch to work" }
@@ -1292,6 +1291,14 @@ class LevelScriptRunner(
      * seen shutting at all.
      */
     private fun doorSent(state: GameState, at: Location, opening: Boolean): GameState {
+        // Shutting one is refused with anything standing in the frame — see
+        // [GameState.doorwayIsClear]. Opening one never is, which is how a
+        // script lets a floor's guards out through a door they are stood in.
+        if (!opening && !state.doorwayIsClear(at, subLevel)) {
+            say { "        the doorway at ${at.xy} is not empty, so it stays as it is" }
+            return state
+        }
+
         val side = state.doorFacing(level, at) ?: run {
             Logger.w(TAG) { "No door at $at to ${if (opening) "open" else "close"}" }
             return state

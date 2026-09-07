@@ -78,6 +78,9 @@ class WorkingAWallTest {
     /** Level 8's doorway at 20x1, which has a button on both of its faces. */
     private val doorway = Location(20, 1)
 
+    /** Where the party watch it from, a door not being shut onto anybody. */
+    private val besideTheDoorway = Location(20, 2)
+
     private fun theDoor(world: GameState) =
         world.wall(8, doorway, WallSide.EAST) as Maz.WallType.Door
 
@@ -347,6 +350,10 @@ class WorkingAWallTest {
     /**
      * The world a script leaves, having worked level 8's doorway.
      *
+     * The party stand beside the doorway rather than in it, because a door is
+     * not shut onto anybody — see [GameState.doorwayIsClear]. In the doorway
+     * the close is refused and there is nothing to hear.
+     *
      * @param from whether the door stands open before the script runs
      */
     private fun scripted(
@@ -354,7 +361,7 @@ class WorkingAWallTest {
         from: Boolean,
         stage: RecordingStage = RecordingStage(),
     ): GameState = runBlocking {
-        val shut = world("LEVEL8.INF", on = 8, at = doorway)
+        val shut = world("LEVEL8.INF", on = 8, at = besideTheDoorway)
         val standing = if (!from) shut
         else (1..Maz.WallType.Door.TRAVEL).fold(shut) { world, _ ->
             world.doorStepped(8, doorway, WallSide.EAST, opening = true)

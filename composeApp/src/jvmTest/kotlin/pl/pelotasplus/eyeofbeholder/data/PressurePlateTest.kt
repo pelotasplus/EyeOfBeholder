@@ -67,6 +67,13 @@ class PressurePlateTest {
     private val plate = Location(11, 8)
     private val doorway = Location(13, 8)
 
+    /**
+     * Where the party wait while a weight does the work: off the plate, which
+     * is what the script asks about, and out of the doorway, since a door is
+     * not shut onto anybody — see [GameState.doorwayIsClear].
+     */
+    private val betweenThem = Location(12, 8)
+
     private fun world(standingOn: Location, itemsOnThePlate: Int = 0) = GameState(
         party = PartyState(standingOn, Direction.EAST),
         items = List(itemsOnThePlate) { onThePlate },
@@ -137,7 +144,7 @@ class PressurePlateTest {
      */
     @Test
     fun `something left on the plate holds the door open`() {
-        val weighted = world(standingOn = doorway, itemsOnThePlate = 1)
+        val weighted = world(standingOn = betweenThem, itemsOnThePlate = 1)
 
         val putDown = ran(ScriptEvent.ITEM_PUT_DOWN, weighted, plate)
         assertTrue(putDown.theDoor().isOpen, "a weight did not open the door")
@@ -179,7 +186,7 @@ class PressurePlateTest {
     /** Take the weight off and it shuts again. */
     @Test
     fun `taking it away closes the door`() {
-        val weighted = world(standingOn = doorway, itemsOnThePlate = 1)
+        val weighted = world(standingOn = betweenThem, itemsOnThePlate = 1)
         val putDown = ran(ScriptEvent.ITEM_PUT_DOWN, weighted, plate)
 
         val takenBack = ran(

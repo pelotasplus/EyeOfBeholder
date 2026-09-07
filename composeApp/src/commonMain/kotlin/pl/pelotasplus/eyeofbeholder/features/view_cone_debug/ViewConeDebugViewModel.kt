@@ -3010,7 +3010,14 @@ class ViewConeDebugViewModel(
     private fun swingsTheDoor(level: Int, at: Location, side: WallSide, opening: Boolean) {
         viewModelScope.launch {
             playTrack(DOOR_BUTTON)
-            _state.update { it.copy(game = it.game.doorSetGoing(level, at, side, opening)) }
+
+            // The button is pressed and heard whatever comes of it, and a
+            // doorway with something standing in it is what comes of nothing —
+            // see [GameState.doorwayIsClear]. Both ways: a button is refused
+            // whole, so one held down on a monster does not open either.
+            if (_state.value.game.doorwayIsClear(at, _state.value.subLevel)) {
+                _state.update { it.copy(game = it.game.doorSetGoing(level, at, side, opening)) }
+            }
             renderViewPort()
         }
     }
