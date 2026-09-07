@@ -6,12 +6,15 @@ import pl.pelotasplus.eyeofbeholder.NeedsGameData
 import pl.pelotasplus.eyeofbeholder.data.model.Dice
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.GameState
+import pl.pelotasplus.eyeofbeholder.data.model.ItemIndex
 import pl.pelotasplus.eyeofbeholder.data.model.Location
 import pl.pelotasplus.eyeofbeholder.data.model.ItemTypeId
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterInstance
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterSlot
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterTypeId
+import pl.pelotasplus.eyeofbeholder.data.model.PartySlot
 import pl.pelotasplus.eyeofbeholder.data.model.PartyState
+import pl.pelotasplus.eyeofbeholder.data.model.Projectile
 import pl.pelotasplus.eyeofbeholder.data.model.SquarePlace
 import pl.pelotasplus.eyeofbeholder.data.repository.ItemsRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.ResourceRepositoryImpl
@@ -72,6 +75,66 @@ class MovingThingsTest {
 
         assertEquals(0, after.count(type = null, at = store), "something stayed")
     }
+
+    // --- and what is still in the air ------------------------------------------
+
+    /**
+     * A thing over the square goes with the things on it, and goes on flying
+     * from where it arrives. That is what a teleporter is: it does not put
+     * anything down, it moves the flight, and whatever the thing runs into at
+     * the far end is what puts it down — see [ThePressurePlatePuzzleTest].
+     */
+    @Test
+    fun `a thing still in the air is carried too`() {
+        val store = Location(15, 0)
+        val after = world.copy(inFlight = listOf(inTheAirOver(store))).itemsMoved(
+            ofType = null, fromLevel = 1, from = store, toLevel = 1, to = Location(16, 2),
+        )
+
+        assertEquals(listOf(Location(16, 2)), after.inFlight.map { it.at }, "it was left behind")
+        assertEquals(Direction.NORTH, after.inFlight.single().going, "it should still be going")
+    }
+
+    /** Whatever kind it is: a square carries the air over it whole. */
+    @Test
+    fun `naming a kind does not spare what is in the air`() {
+        val store = Location(15, 0)
+        val after = world.copy(inFlight = listOf(inTheAirOver(store))).itemsMoved(
+            ofType = ItemTypeId(999), fromLevel = 1, from = store, toLevel = 1, to = Location(16, 2),
+        )
+
+        assertEquals(listOf(Location(16, 2)), after.inFlight.map { it.at })
+    }
+
+    /** Carried onto another floor it is simply gone: there is no flying there. */
+    @Test
+    fun `one carried onto another floor stops flying`() {
+        val store = Location(15, 0)
+        val after = world.copy(inFlight = listOf(inTheAirOver(store))).itemsMoved(
+            ofType = null, fromLevel = 1, from = store, toLevel = 2, to = Location(16, 2), onLevel = 1,
+        )
+
+        assertEquals(emptyList(), after.inFlight, "it went on flying over the wrong floor")
+    }
+
+    /** And a square shuffling things about elsewhere touches nothing here. */
+    @Test
+    fun `a move on another floor leaves the air here alone`() {
+        val store = Location(15, 0)
+        val after = world.copy(inFlight = listOf(inTheAirOver(store))).itemsMoved(
+            ofType = null, fromLevel = 2, from = store, toLevel = 2, to = Location(16, 2), onLevel = 1,
+        )
+
+        assertEquals(listOf(store), after.inFlight.map { it.at })
+    }
+
+    private fun inTheAirOver(where: Location) = Projectile(
+        what = ItemIndex(1),
+        at = where,
+        place = SquarePlace.NORTH_WEST,
+        going = Direction.NORTH,
+        thrownBy = Projectile.Thrower.AChampion(PartySlot(0)),
+    )
 
     // --- what a monster leaves behind -----------------------------------------
 

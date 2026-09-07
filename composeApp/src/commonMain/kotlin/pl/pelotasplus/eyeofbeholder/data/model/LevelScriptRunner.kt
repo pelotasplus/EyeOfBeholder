@@ -899,6 +899,7 @@ class LevelScriptRunner(
                     from = token.from,
                     toLevel = token.toLevel ?: level,
                     to = token.to,
+                    onLevel = level,
                 )
 
                 is Teleport.MoveMonster ->

@@ -557,6 +557,19 @@ data class GameState(
      * The things lying on [from] carried over to [to]: all of them, or only
      * those of [ofType]. A lever that makes a key appear does this, taking it
      * from a square off the edge of the map where it was kept.
+     *
+     * What is still in the air over [from] goes with them, and goes whatever
+     * kind it is: [ofType] picks out what is lying on the floor, and a thing
+     * in flight is carried across on the strength of being there at all. It
+     * arrives still flying, so it goes on from [to] in whatever direction it
+     * was going and comes to rest at the far end of that — which is the whole
+     * of how a square can throw something somewhere the thrower cannot reach.
+     * Carried onto another floor it is simply gone, there being nothing here
+     * for it to go on flying over.
+     *
+     * @param onLevel the floor the party are on, which is the floor anything
+     *   in flight is over. A square that shuffles things about on some other
+     *   floor moves nothing that is in the air here.
      */
     fun itemsMoved(
         ofType: ItemTypeId?,
@@ -564,11 +577,19 @@ data class GameState(
         from: Location,
         toLevel: Int,
         to: Location,
+        onLevel: Int = fromLevel,
     ): GameState = copy(
         items = items.map {
             val carried = it.level == fromLevel && it.location == from &&
                 (ofType == null || it.type == ofType)
             if (carried) it.copy(level = toLevel, location = to) else it
+        },
+        inFlight = if (fromLevel != onLevel) inFlight else inFlight.mapNotNull {
+            when {
+                it.at != from -> it
+                toLevel != onLevel -> null
+                else -> it.copy(at = to)
+            }
         },
     )
 

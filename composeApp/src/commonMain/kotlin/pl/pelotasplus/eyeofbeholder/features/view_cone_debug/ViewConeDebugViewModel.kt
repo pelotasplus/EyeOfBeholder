@@ -120,6 +120,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.Spell
 import pl.pelotasplus.eyeofbeholder.data.model.SpellMessages
 import pl.pelotasplus.eyeofbeholder.data.model.SparksInTheRoom
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptStage
+import pl.pelotasplus.eyeofbeholder.data.model.ScriptsInTurn
 import pl.pelotasplus.eyeofbeholder.data.model.TELEPORTER_PULSE
 import pl.pelotasplus.eyeofbeholder.data.model.TeleporterPulse
 import pl.pelotasplus.eyeofbeholder.data.model.Ticks
@@ -210,8 +211,8 @@ class ViewConeDebugViewModel(
     /** The archway standing over the view, while one is opening. */
     private var portalShowing: ThePortal.Showing? = null
 
-    /** The script holding the world, if one is running. */
-    private var playing: Job? = null
+    /** The scripts the floor has set off, the front one holding the world. */
+    private val playing = ScriptsInTurn(viewModelScope)
 
     /**
      * Whether the script running has taken the party over.
@@ -1835,7 +1836,7 @@ class ViewConeDebugViewModel(
                     by = GameState.CLOCK_STEP,
                     // a script owns the screen while it runs, and a waking
                     // that talked over it would take down what it had up
-                    held = playing?.isActive == true,
+                    held = playing.running,
                 )
 
                 val aFrame = untilTheNextFrame <= 0
@@ -3179,10 +3180,10 @@ class ViewConeDebugViewModel(
      * about, and one that came into being on a plate is holding it down before
      * anybody has seen the square.
      *
-     * These are run here rather than through [runTriggersAt] because they come
-     * in a batch and that one takes down the run before it — a batch put
-     * through it would leave only the last square answered, and the party's
-     * own arrival would then take down that.
+     * These are run here rather than through [runTriggersAt] because they have
+     * to be finished with before the floor is drawn: what they hold down is
+     * part of the room the party walk into, and [runTriggersAt] queues a run
+     * to happen after the arrival rather than before it.
      */
     private suspend fun monstersFoundStandingSomewhere(inf: Inf) {
         val runner = scriptRunner ?: return
@@ -3233,9 +3234,8 @@ class ViewConeDebugViewModel(
         val answered = inf.triggers.any { it.location == at && it.flags.reactsTo(event) }
         if (!answered) return false
 
-        playing?.cancel()
-        scriptHasTheParty = false
-        playing = viewModelScope.launch {
+        playing.next {
+            scriptHasTheParty = false
             val run = runner.onEvent(
                 triggers = inf.triggers,
                 event = event,
@@ -3276,7 +3276,7 @@ class ViewConeDebugViewModel(
             // A script kills as readily as a monster — the lightning on the
             // twelfth takes the whole party where they stand — so the same
             // question is asked here as after a turn of the clock.
-            if (theyAreLost()) return@launch
+            if (theyAreLost()) return@next
 
             val change = run.changeLevel
             if (change == null) {
@@ -3856,7 +3856,7 @@ class ViewConeDebugViewModel(
                     delay(TELEPORTER_PULSE.inMilliseconds)
                     // a script owns the screen while it runs, and draws the
                     // frames it wants seen itself
-                    if (playing?.isActive == true) continue
+                    if (playing.running) continue
 
                     pulse = pulse.next
                     drawViewPort()
