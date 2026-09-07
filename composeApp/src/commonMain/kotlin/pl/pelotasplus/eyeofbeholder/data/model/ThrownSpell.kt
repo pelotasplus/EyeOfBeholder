@@ -61,6 +61,16 @@ data class ThrownSpell(
     val spreads: Boolean = false,
 
     /**
+     * The hold it lays rather than the harm it does, for the two spells that
+     * stop a creature instead of hurting it.
+     *
+     * Such a one rolls no damage at all, and what it does is decided entirely
+     * by [AHold]: which kinds it will take hold of, what they may throw to
+     * shrug it off, and how long it lasts.
+     */
+    val holds: AHold? = null,
+
+    /**
      * What may be thrown against it, or nothing for the ones there is no
      * shrugging off. A missile is the only thing in the game with no throw
      * against it at all.
@@ -84,6 +94,7 @@ data class ThrownSpell(
         everybody = takesTheWholeSquare,
         carriesOn = carriesOn,
         spreads = spreads,
+        holds = holds,
         thrownOff = thrownOff,
         aMadeThrowIsWorth = aMadeThrowIsWorth,
     )
@@ -99,6 +110,22 @@ data class ThrownSpell(
          * spell.
          */
         const val AS_READ_FROM_A_SCROLL = 9
+
+        /**
+         * A spell that stops a creature rather than hurting it: the same bolt
+         * as anything else, and nothing rolled where it lands.
+         *
+         * How practised the caster is buys nothing here. A hold either takes
+         * or it does not, and the creature's own throw is the whole of what
+         * decides which — so the count and the dice below are both nothing.
+         */
+        fun thatHolds(flies: MonsterSpell, hold: AHold) = ThrownSpell(
+            flies = flies,
+            dealing = DamageDice(times = 0, pips = 0, base = 0),
+            counted = CountedBy.EVERY_LEVEL,
+            hurting = emptySet(),
+            holds = hold,
+        )
     }
 }
 

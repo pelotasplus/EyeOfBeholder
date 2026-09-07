@@ -101,6 +101,18 @@ data class MonsterInstance(
     /** Where it is in its looking-about, for the two modes that stray. */
     val straying: Straying = Straying.TURNED_AWAY,
     /**
+     * How many more turns a hold on it has to run, or none where it is free.
+     *
+     * A held creature spends its turn running this down and does nothing else
+     * whatever: it does not step, does not swing, does not shoot, and is not
+     * roused by anything the party do to it. When it runs out the creature
+     * takes up the hunt, which is where everything ends up.
+     *
+     * It still animates. That is the game's, and it is what makes a held thing
+     * read as held rather than as a picture that has stopped.
+     */
+    val heldFor: Int = 0,
+    /**
      * How many more times it may shoot, or [SHOOTS_FOREVER].
      *
      * A kind says how many its sort get; the count is this one's own and goes
@@ -124,7 +136,21 @@ data class MonsterInstance(
     val nextRemoteWeapon: Int = 0,
 ) {
     /** What it does with a turn nobody has provoked it into taking. */
-    val whatItDoes: MonsterMode get() = MonsterMode.of(mode)
+    val whatItDoes: MonsterMode get() = if (isHeld) MonsterMode.HELD else MonsterMode.of(mode)
+
+    /** Whether a hold is on it, which is the whole of what it does this turn. */
+    val isHeld: Boolean get() = heldFor > 0
+
+    /** Taken hold of, and stopped for as long as the hold runs. */
+    fun heldFor(turns: Int) = copy(heldFor = turns, striking = null)
+
+    /**
+     * A turn of a hold spent. The last of them puts the creature on the hunt
+     * rather than back to whatever it was doing before — a thing let go of
+     * has had the party standing over it and is nobody's patrol any more.
+     */
+    fun theHoldRunningDown() =
+        if (heldFor <= 1) copy(heldFor = 0).takingUpTheHunt() else copy(heldFor = heldFor - 1)
     val x: Int get() = location.x
     val y: Int get() = location.y
 

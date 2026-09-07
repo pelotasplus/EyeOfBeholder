@@ -158,6 +158,15 @@ private val atEachQuarter = listOf(
     sealed interface Hurt {
         data class AChampion(val slot: PartySlot, val by: Damage) : Hurt
         data class AMonster(val slot: MonsterSlot, val by: Damage) : Hurt
+
+        /**
+         * Not hurt at all: stopped where it stands, for [forTurns] turns.
+         *
+         * It is one of these because it happens where the harm would, and a
+         * spell that arrives has to say it arrived — a hold that took is what
+         * stops the bolt going on, exactly as a wound would.
+         */
+        data class AMonsterHeld(val slot: MonsterSlot, val forTurns: Int) : Hurt
     }
 
     /**
@@ -410,6 +419,10 @@ private val atEachQuarter = listOf(
         if (monsters.isNotEmpty()) {
             val struck = if (flying.harm.everybody) monsters else monsters.take(1)
 
+            flying.harm.holds?.let { hold ->
+                return struck.mapNotNull { takesHold(hold, it) }
+            }
+
             return struck.mapNotNull {
                 val kind = kinds.getOrNull(it.type.value)
                 if (!lands(world, flying, kind)) null
@@ -423,6 +436,30 @@ private val atEachQuarter = listOf(
         }
 
         return whoTheyWalkedInto(world, flying)
+    }
+
+    /**
+     * Whether [hold] takes hold of [monster], asked in the game's own order.
+     *
+     * Five questions, and the order is transcribed rather than tidied because
+     * it decides how many dice are thrown and so what everything after it
+     * rolls. A creature quick enough gets out of the way before anything else
+     * is asked; one this magic does not reach is passed over next. Then comes
+     * the throw — made by every creature, even one the spell was never going
+     * to take hold of. Only after that is the kind asked about, and last of
+     * all whether it can be held at all, which costs a die and changes
+     * nothing.
+     */
+    private fun takesHold(hold: AHold, monster: MonsterInstance): Hurt.AMonsterHeld? {
+        val kind = kinds.getOrNull(monster.type.value) ?: return null
+
+        if (dice.roll(1, 100, 0) < kind.dmgModifierEvade) return null
+        if (kind.immunities.untouchedByThisMagic) return null
+        if (kind.saves(AHold.THROWN_OFF_BY, dice)) return null
+        if (!hold.takesHoldOf(kind)) return null
+        if (kind.immunities.cannotBeHeld) return null
+
+        return Hurt.AMonsterHeld(monster.index, AHold.FOR_THIS_LONG)
     }
 
     /**
@@ -634,6 +671,7 @@ private val atEachQuarter = listOf(
     private fun struckDown(world: GameState, hurt: Hurt): GameState = when (hurt) {
         is Hurt.AMonster -> world.monsterHurt(hurt.slot, hurt.by, kinds, itemTypes, dice)
         is Hurt.AChampion -> world.championHurt(hurt.slot, hurt.by)
+        is Hurt.AMonsterHeld -> world.monsterHeld(hurt.slot, hurt.forTurns)
     }
 
     /**

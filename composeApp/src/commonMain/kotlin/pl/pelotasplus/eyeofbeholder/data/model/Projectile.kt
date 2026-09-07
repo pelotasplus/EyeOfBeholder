@@ -229,6 +229,16 @@ data class Projectile(
          */
         val spreads: Boolean = false,
 
+        /**
+         * The hold it lays on what it finds, where it holds rather than hurts.
+         *
+         * A spell is one or the other. One that holds rolls no damage at all,
+         * so what it does to a creature is decided entirely by [AHold] and the
+         * throw that creature makes — and it does nothing whatever to the
+         * party, who are held by their own spells and not by this.
+         */
+        val holds: AHold? = null,
+
         /** What may be thrown against it, or nothing where none is allowed. */
         val thrownOff: SavingThrow? = null,
 

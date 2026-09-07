@@ -1522,6 +1522,16 @@ data class GameState(
         },
     )
 
+    /**
+     * The world with a hold laid on one monster for [turns] turns.
+     *
+     * A fresh hold rather than a longer one: a second cast on something
+     * already held sets the count again rather than adding to it.
+     */
+    fun monsterHeld(slot: MonsterSlot, turns: Int) = copy(
+        monsters = monsters.map { if (it.index == slot) it.heldFor(turns) else it },
+    )
+
     /** The world with those monsters turned to face where they are told. */
     fun monstersTurnedToFace(ways: List<Pair<MonsterSlot, Direction>>): GameState {
         if (ways.isEmpty()) return this

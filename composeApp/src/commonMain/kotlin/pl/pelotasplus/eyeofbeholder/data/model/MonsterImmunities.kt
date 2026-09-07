@@ -39,6 +39,23 @@ value class MonsterImmunities(private val written: Int) {
      */
     fun canBeHitBy(enchantment: Int): Boolean = enchantment >= leastThatTells
 
+    /**
+     * Whether it cannot be held at all, however the throw goes.
+     *
+     * Asked after the throw is made rather than before it, which costs a die
+     * and changes nothing — the order is the game's.
+     */
+    val cannotBeHeld: Boolean get() = written and NEVER_HELD != 0
+
+    /**
+     * Whether this kind of magic passes it by entirely: no throw, no effect,
+     * and nothing said.
+     *
+     * Distinct from [cannotBeHeld], which is about the holding; this is about
+     * the spell reaching it at all.
+     */
+    val untouchedByThisMagic: Boolean get() = written and NOTHING_OF_THE_SORT != 0
+
     private val leastThatTells: Int
         get() = when {
             written and NOTHING_UNDER_PLUS_TWO != 0 -> 2
@@ -49,5 +66,8 @@ value class MonsterImmunities(private val written: Int) {
     private companion object {
         const val NOTHING_UNDER_PLUS_ONE = 0x200
         const val NOTHING_UNDER_PLUS_TWO = 0x1000
+
+        const val NEVER_HELD = 0x2
+        const val NOTHING_OF_THE_SORT = 0x10
     }
 }

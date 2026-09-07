@@ -122,6 +122,12 @@ class MonstersTurn(
                 if (it.striking != null) return@filter false
                 if (group != null && it.turnGroup != group) return@filter false
 
+                // A held one takes its turn whatever else is true, because
+                // running the hold down is what its turn is for. Without this
+                // a hold laid on something that was never roused would never
+                // expire.
+                if (it.isHeld) return@filter true
+
                 // Rooted, only a fight is going on at all. Once monsters walk,
                 // everything with somewhere to be takes its turn.
                 it.provoked || (walking != null && it.whatItDoes.wanders)
@@ -159,6 +165,11 @@ class MonstersTurn(
         wayRound: MonsterPathing.WayRound,
         blasted: (TakingAShot.MindBlast) -> Unit,
     ): GameState {
+        // A hold is the whole of the turn. Nothing below this happens: it
+        // neither steps nor swings nor shoots, and it is not woken by being
+        // stood over.
+        if (monster.isHeld) return world.holding(monster.theHoldRunningDown())
+
         if (walking != null && !monster.provoked) {
             return wandering(world, monster, walking)
         }
