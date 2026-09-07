@@ -3435,6 +3435,27 @@ class ViewConeDebugViewModel(
         }
 
         /**
+         * A page or the camp menu comes down before a set piece begins, and
+         * the field is drawn again without it — the whole screen is one
+         * picture, so what a set piece paints over would otherwise be painted
+         * over an open page.
+         *
+         * A rest is broken rather than covered up. The loop that runs one puts
+         * its menu back on every hour, so taking the menu away and leaving the
+         * rest going would raise it again over the set piece an hour later.
+         */
+        override suspend fun takesTheScreen() {
+            sleeping?.cancel()
+            sleeping = null
+            sleepingOnHungry = null
+
+            if (_state.value.sheet == null && _state.value.menu == null) return
+
+            _state.update { it.copy(sheet = null, menu = null) }
+            drawViewPort()
+        }
+
+        /**
          * A script's sound outlives the script, which is over long before the
          * clip it asked for has been fetched and played: a lever thrown on the
          * way past would otherwise lose its click halfway through.

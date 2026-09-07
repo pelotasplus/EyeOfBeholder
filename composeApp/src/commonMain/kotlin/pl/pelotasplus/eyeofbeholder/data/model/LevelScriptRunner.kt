@@ -261,6 +261,17 @@ interface ScriptStage {
     suspend fun ask(question: ScriptQuestion): DialogAnswer
 
     /**
+     * A set piece is about to take the screen, so whatever the player had
+     * standing over the play field comes down first: a champion's page, the
+     * camp menu.
+     *
+     * Only a set piece does this. A script that writes a line or opens a door
+     * leaves the screen as it found it, and a page can be read through the
+     * whole of one.
+     */
+    suspend fun takesTheScreen() = Unit
+
+    /**
      * Open the archway over the view and hold until it has finished opening.
      *
      * The script puts the party down somewhere else the moment this returns,
@@ -846,26 +857,36 @@ class LevelScriptRunner(
                     "the script will read its result as unanswered",
                 )
 
-                is Encounter.NpcSequence -> {
-                    val meeting = NpcMeeting.called(token.npc)
+                // A set piece takes the screen and the party with it: whatever
+                // the player had open comes down before it starts, and they
+                // cannot be steered out from under it while it plays.
+                is Encounter -> {
+                    stage.takesTheScreen()
+                    stage.takesTheParty()
 
-                    if (meeting == null) {
-                        notYet(token, "this meeting", "it counts as seen anyway")
-                    } else {
-                        state = met(meeting, state, stage)
+                    when (token) {
+                        is Encounter.NpcSequence -> {
+                            val meeting = NpcMeeting.called(token.npc)
+
+                            if (meeting == null) {
+                                notYet(token, "this meeting", "it counts as seen anyway")
+                            } else {
+                                state = met(meeting, state, stage)
+                            }
+                        }
+
+                        // The archway a stone gem opens, which the script waits
+                        // out before it puts the party down on another floor.
+                        Encounter.PortalSequence -> stage.opensThePortal()
+
+                        // The last set piece: the way the party are told they
+                        // have died. Skipping it is quiet in a way that
+                        // matters — the script has usually just set the flag
+                        // that says it has happened, so nothing brings it round
+                        // again and the scene is gone for that game.
+                        else -> notYet(token, "this set piece", "it counts as seen anyway")
                     }
                 }
-
-                // The archway a stone gem opens, which the script waits out
-                // before it puts the party down on another floor.
-                Encounter.PortalSequence -> stage.opensThePortal()
-
-                // The last set piece: the way the party are told they have
-                // died. Skipping it is quiet in a way that matters — the script
-                // has usually just set the flag that says it has happened, so
-                // nothing brings it round again and the scene is gone for that
-                // game.
-                is Encounter -> notYet(token, "this set piece", "it counts as seen anyway")
 
                 // A pit, a trap, a column of lightning. The dice are rolled
                 // per champion rather than once for the party.
