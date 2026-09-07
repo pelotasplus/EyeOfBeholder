@@ -142,11 +142,28 @@ class MonsterStepping(
         )
 
     /**
-     * A shut door in the way, for a monster whose kind can work one.
+     * A door in the way, for a monster whose kind can work one.
      *
-     * Opening it is the whole of its step: it ends the turn facing the door
-     * and standing where it started, and walks through on the next one. What
-     * it does not do is make its own noise over the door's.
+     * The kind is half of it; the door is the other half, and two things about
+     * it decide the rest.
+     *
+     * It must be a door with a button — the same doors a hand can open. One
+     * with a button on neither face belongs to whatever plate or script drives
+     * it, and a monster stands at it as helplessly as the party would. A
+     * button on one face alone is enough for whoever is on that side, which is
+     * how a door can open for a monster and never by hand.
+     *
+     * And it must be standing fully shut. One caught halfway is left to finish
+     * whatever it was already doing.
+     *
+     * Either way the turn is spent: the monster ends facing the door and
+     * standing where it started, and comes through on a later one, by which
+     * time the door has had its own clock to travel on. What it does not do is
+     * make its own noise over the door's.
+     *
+     * Sent open rather than opened, so it slides the way any door does. Being
+     * shut is what a doorway with something in it refuses — nothing refuses
+     * this.
      */
     private fun openingTheDoor(
         world: GameState,
@@ -156,10 +173,13 @@ class MonsterStepping(
         wall: Maz.WallType,
     ): Stepped {
         if (kind(monster)?.opensDoors != true) return Stepped.Refused
-        if (wall !is Maz.WallType.Door || wall.isOpen) return Stepped.Refused
+        if (wall !is Maz.WallType.Door || !wall.hasButton) return Stepped.Refused
+
+        val turned = world.monsterTurned(monster.index, way)
+        if (!wall.isShut) return Stepped.Turned(turned, opened = null)
 
         return Stepped.Turned(
-            world = world.monsterTurned(monster.index, way),
+            world = turned.doorSetGoing(level, onto, way.wallSideFacingBack, opening = true),
             opened = onto,
         )
     }

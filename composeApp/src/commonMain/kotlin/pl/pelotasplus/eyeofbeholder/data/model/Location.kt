@@ -34,8 +34,9 @@ data class Location(
      * How many squares away [other] is, counting a diagonal as one.
      *
      * It is how far something has to walk rather than how far away it looks,
-     * which is what a monster deciding whether the party are worth noticing
-     * wants to know.
+     * and it is not the measure the dungeon's own rules are written in. That
+     * is [blocksFrom], and anything gating or ordering by distance wants that
+     * one instead.
      */
     fun squaresFrom(other: Location) =
         maxOf(abs(other.x - x), abs(other.y - y))

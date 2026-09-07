@@ -81,7 +81,11 @@ data class Maz(
 
         /**
          * @property doorIndex Which door definition to use (0 or 1 → [SubLevel.doors])
-         * @property hasButton Whether the door has a clickable open/close button
+         * @property hasButton Whether the door has a clickable open/close
+         *   button. It says more than where to draw one: a door with a button
+         *   is a door that can be worked at all, so it is also the only kind a
+         *   monster opens. One with none on either face belongs to whatever
+         *   plate or script drives it and opens for nothing else
          * @property state How far the door has slid out of its frame: 0 shut,
          *   4 open, the three between them the steps it opens through. A door
          *   jammed in its frame is not one of these — that is a decoration with

@@ -241,13 +241,20 @@ data class MonsterInstance(
      * Whether the party are near enough, and far enough in front, to be worth
      * setting off after.
      *
-     * Three squares is as far as anything sees. Within that, the party are
-     * still missed if they are behind it and not right beside it, which is
-     * what lets a party creep past something's back — and what makes walking
-     * round one worth doing.
+     * Three squares is as far as anything sees, measured by
+     * [Location.blocksFrom]: a diagonal costs more than a straight line, so a
+     * corner shelters the party where a corridor of the same length would not.
+     * Within that, the party are still missed if they are behind it and not
+     * right beside it, which is what lets a party creep past something's back
+     * — and what makes walking round one worth doing.
+     *
+     * Nothing here asks about the walls between them, and that is not an
+     * oversight to be tidied up with a line of sight: a monster notices the
+     * party through a shut door and comes to it, which is the only way a room
+     * that opens from the inside is ever opened at all.
      */
     fun notices(party: PartyState): Boolean {
-        val away = Location(x, y).squaresFrom(party.position)
+        val away = Location(x, y).blocksFrom(party.position)
         if (away >= OUT_OF_SIGHT) return false
         if (away < CLOSE_ENOUGH_TO_FEEL) return true
 

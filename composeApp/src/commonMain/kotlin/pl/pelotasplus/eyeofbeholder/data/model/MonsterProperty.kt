@@ -120,8 +120,8 @@ data class MonsterProperty(
      * there, so a party's back rank is safe behind its front. One of these
      * takes its swing at all six in turn, each with its own roll to hit and
      * its own dice of damage — which is what puts a healer with no armour in
-     * the same danger as the fighter standing in front of her. The frost
-     * giants of the fourteenth floor are these.
+     * the same danger as the fighter standing in front of her. Two kinds in
+     * the whole dungeon carry it, and they are the two worth being afraid of.
      */
     val strikesEveryoneItReaches: Boolean get() = capsFlags and STRIKES_THEM_ALL != 0
 

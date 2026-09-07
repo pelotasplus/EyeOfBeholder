@@ -359,6 +359,34 @@ class MonstersHuntingTest {
     }
 
     /**
+     * And a diagonal costs more than a straight line, distance being counted
+     * as the engine counts it: the whole of the larger gap plus half the
+     * smaller. So the party three squares along and three across are four
+     * away and go unnoticed, where three straight down the corridor would not
+     * — a corner shelters them and a corridor of the same length does not.
+     *
+     * The two ways of measuring part company exactly here, which is why this
+     * is the case worth pinning.
+     */
+    @Test
+    fun `a corner is further off than the corridor it turns out of`() {
+        val watching = world(
+            at = Location(13, 8),
+            facing = Direction.SOUTH,
+            party = Location(13, 11),
+        ).theCleric()
+
+        assertTrue(
+            watching.notices(PartyState(Location(13, 11), Direction.NORTH)),
+            "it missed the party three squares straight ahead",
+        )
+        assertFalse(
+            watching.notices(PartyState(Location(16, 11), Direction.NORTH)),
+            "it saw the party round a corner three squares each way",
+        )
+    }
+
+    /**
      * Behind it and not right beside it, the party go unnoticed — which is
      * what makes stepping round something worth the trouble.
      */
