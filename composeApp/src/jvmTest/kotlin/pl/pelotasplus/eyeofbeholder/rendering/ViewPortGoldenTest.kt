@@ -1245,6 +1245,25 @@ class ViewPortGoldenTest {
         checkGolden("level14-floor-holes-21x2-south", "LEVEL14.INF", 21, 2, Direction.SOUTH)
     }
 
+    /**
+     * A hole in the floor of the square the party are standing on, drawn along
+     * the bottom edge of the view.
+     *
+     * Their own square has no wall in the view and is drawn for this alone, so
+     * anything painted on its floor was invisible until it was given a
+     * position of its own: a plate underfoot, and a pit that a script opens
+     * under the party before dropping them through it. That warning is the
+     * whole of what they get, and losing it turns a trap into a teleport.
+     *
+     * The square before it is frozen beside it, where the same hole is seen
+     * ahead rather than underneath.
+     */
+    @Test
+    fun `a hole underfoot is drawn as well as one ahead`() {
+        checkGolden("level14-hole-ahead-21x3-south", "LEVEL14.INF", 21, 3, Direction.SOUTH)
+        checkGolden("level14-hole-underfoot-21x4-south", "LEVEL14.INF", 21, 4, Direction.SOUTH)
+    }
+
     @Test
     fun `a monster stands on the plate rather than under it`() {
         listOf(14, 13, 12).forEach { y ->

@@ -259,6 +259,28 @@ class ViewConeRepositoryImpl(
             val actualWallSide = direction.transformWallSide(slot.wallSide)
             val wallType = wallAt(Location(mazX, mazY), actualWallSide)
 
+            // The square underfoot has no wall, no door and no flight of
+            // stairs to show: what is painted on its floor is the whole of it,
+            // and it is nearer than anything else on screen.
+            if (slot.wall == null) {
+                val underfoot = (wallType as? Maz.WallType.Decoration)?.let { here ->
+                    sublevel.decorations
+                        .find { it.decorationWallIndex == here.decorationWallIndex }
+                }
+                if (underfoot != null) {
+                    viewPort.at(
+                        DistanceFromParty.paintedOnTheFloorOf(slot.relativeX, slot.relativeY),
+                        within = windows[slot.block],
+                    ) {
+                        viewPort.drawDecoration(
+                            decoration = underfoot,
+                            wallPosition = wallPosition,
+                        )
+                    }
+                }
+                return@forEachIndexed
+            }
+
             viewPort.at(slot.howFarOff) {
                 when (wallType) {
                     is Maz.WallType.Decoration -> {

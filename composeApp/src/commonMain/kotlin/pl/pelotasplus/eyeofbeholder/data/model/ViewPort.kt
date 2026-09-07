@@ -180,7 +180,7 @@ class ViewPort(
     fun drawUndrawableWall(wallPosition: Int) {
         if (!SHOW_UNDRAWABLE_WALLS) return
 
-        val renderData = viewSlots[wallPosition].wall
+        val renderData = viewSlots[wallPosition].wall ?: return
 
         for (y in 0 until renderData.heightInTiles) {
             for (x in 0 until renderData.widthInTiles) {
@@ -203,7 +203,7 @@ class ViewPort(
     ) {
 //        Logger.d(TAG) { "drawWall wallPosition: $wallPosition wallSetIndex: $wallSetIndex" }
 
-        val renderData = viewSlots[wallPosition].wall
+        val renderData = viewSlots[wallPosition].wall ?: return
 
         val flipX = renderData.flipFlag == 1
         var offset = renderData.baseOffset
@@ -277,7 +277,7 @@ class ViewPort(
         // to draw.
         if (!slot.isFrontWall) return
 
-        val size = slot.door.rectangleIndex
+        val size = (slot.door ?: return).rectangleIndex
         val doorway = doorwayRows(size)
         val panel = door.rectangles[size]
 

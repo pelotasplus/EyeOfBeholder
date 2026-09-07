@@ -73,8 +73,8 @@ data class DecorationPosition(
 )
 
 /**
- * Everything the renderer knows about one of the 25 wall positions in the
- * 3D viewport, in a single row:
+ * Everything the renderer knows about one position in the 3D viewport, in a
+ * single row:
  * - WHERE in the maze to look: [relativeX]/[relativeY]/[wallSide] (game logic)
  * - HOW to draw a solid wall there: [wall] (viewport tile geometry)
  * - HOW to draw a door there: [door] (screen pixel offsets)
@@ -85,6 +85,9 @@ data class DecorationPosition(
  * @property relativeY Y offset from the player when facing NORTH; negative = forward
  * @property wallSide Which wall of the target square to check, in absolute maze
  *           coordinates (rotated by player facing at render time)
+ * @property wall null where nothing stands across the view to be drawn — the
+ *           square underfoot, which is in the list for its floor alone
+ * @property door null for the same reason, and for the same one position
  * @property floorDecorationX Screen X shift for floor decorations (pits,
  *           pressure plates) at this view position; 0 = centered/none
  */
@@ -93,8 +96,8 @@ data class ViewSlot(
     val relativeX: Int,
     val relativeY: Int,
     val wallSide: WallSide,
-    val wall: WallRenderData,
-    val door: DoorRenderData,
+    val wall: WallRenderData?,
+    val door: DoorRenderData?,
     val decoration: DecorationPosition,
     val floorDecorationX: Int = 0,
 ) {
@@ -131,7 +134,8 @@ data class ViewSlot(
 }
 
 /**
- * The single source of truth for all 25 view positions.
+ * The single source of truth for the view: 25 wall positions, and the square
+ * the party stand on, which has no wall and is here for its floor.
  *
  * ```
  * Layer 5 (backdrop)
@@ -325,6 +329,18 @@ val viewSlots: List<ViewSlot> = listOf(
         door = DoorRenderData(0, 9),
         decoration = DecorationPosition(xFlip = 1, wall = 4, xDelta = 0),
     ),
+
+    // ── The square underfoot ─────────────────────────────────────────────
+    // Nothing of it stands across the view: it is in the list for what is
+    // painted on its floor, which is the nearest thing on screen and the last
+    // thing drawn. A pit opening under the party is drawn here, along the very
+    // bottom edge, and it is the whole of the warning they get before falling.
+    ViewSlot(
+        label = "^-south", relativeX = 0, relativeY = 0, wallSide = WallSide.SOUTH,
+        wall = null,
+        door = null,
+        decoration = DecorationPosition(xFlip = 0, wall = 0, xDelta = 0),
+    ),
 )
 
 /** Every wall the party can see from [from], facing [facing]. */
@@ -332,7 +348,7 @@ fun wallsInSight(
     from: Location,
     facing: Direction,
     wallAt: (Location, WallSide) -> Maz.WallType,
-): List<Maz.WallType> = viewSlots.map { slot ->
+): List<Maz.WallType> = viewSlots.filter { it.wall != null }.map { slot ->
     val (dx, dy) = facing.transformCoordinates(slot.relativeX, slot.relativeY)
     wallAt(Location(from.x + dx, from.y + dy), facing.transformWallSide(slot.wallSide))
 }
