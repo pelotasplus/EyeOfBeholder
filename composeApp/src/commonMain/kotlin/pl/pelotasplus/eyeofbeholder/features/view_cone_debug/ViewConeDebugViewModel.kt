@@ -214,6 +214,9 @@ class ViewConeDebugViewModel(
     /** The scripts the floor has set off, the front one holding the world. */
     private val playing = ScriptsInTurn(viewModelScope)
 
+    /** Steps taken since the floor last restocked — see [countedTheStep]. */
+    private var stepsWalked = 0
+
     /**
      * Whether the script running has taken the party over.
      *
@@ -745,10 +748,44 @@ class ViewConeDebugViewModel(
         // A square with something to say draws for itself, and may draw
         // something other than the view — putting the new position up first
         // shows the party standing where the script is about to explain.
-        if (!runTriggers() && !toldLeaving) {
+        val toldArriving = runTriggers()
+
+        // And the floor counts the step, whoever else did. It is asked last
+        // because what it does is not about this square: a floor restocking
+        // itself has nothing to say about where the party have just put their
+        // feet, and would talk over the square that has.
+        val restocked = countedTheStep()
+
+        if (!toldArriving && !toldLeaving && !restocked) {
             renderViewPort()
             autosave()
         }
+    }
+
+    /**
+     * One step counted against the floor's own reckoning, and the floor told
+     * when enough of them have been walked.
+     *
+     * The count is the party's rather than each square's, and it is kept here
+     * rather than in the world because it is not part of the world: a save
+     * does not carry it, and a floor arrived at starts counting afresh — which
+     * is the game's, and is why walking back and forth across a threshold does
+     * not restock a floor faster than walking through it.
+     */
+    private fun countedTheStep(): Boolean {
+        val every = _state.value.inf
+            ?.subLevels
+            ?.getOrNull(_state.value.subLevel)
+            ?.stepsUntilScriptCall
+            ?: return false
+
+        if (every <= 0) return false
+
+        stepsWalked++
+        if (stepsWalked <= every) return false
+
+        stepsWalked = 0
+        return runTriggersAt(THE_FLOOR_ITSELF, ScriptEvent.ENOUGH_STEPS_WALKED)
     }
 
     private val party get() = _state.value.game.party
@@ -4215,6 +4252,12 @@ class ViewConeDebugViewModel(
 
         /** And how often a monster's group takes a turn. Also transcribed. */
         private val A_MONSTER_TURN = Ticks(20)
+
+        /**
+         * The square a floor talks to itself through: a corner of the map
+         * nobody can walk onto, click, or throw anything at.
+         */
+        private val THE_FLOOR_ITSELF = Location(0, 0)
 
         /**
          * How far into the first turn each of the four groups first acts.

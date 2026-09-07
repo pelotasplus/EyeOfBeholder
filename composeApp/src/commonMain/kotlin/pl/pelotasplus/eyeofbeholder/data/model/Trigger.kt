@@ -34,6 +34,21 @@ enum class ScriptEvent(val mask: Int) {
      */
     SOMETHING_FLEW_IN(0x10),
 
+    /**
+     * The party have walked far enough for the floor to be asked what it wants
+     * doing about it — see [SubLevel.stepsUntilScriptCall].
+     *
+     * It reaches one square only, 0x0, which is a corner of the map nobody can
+     * stand on or click. That square is the floor talking to itself, and what
+     * it nearly always says is: put the monsters back. A floor cleared of what
+     * it shipped with fills up again this way, and without it a level is
+     * emptied for good the first time it is walked through.
+     *
+     * Steps rather than time, so a party who stand still are not restocked
+     * around, and a party who pace a corridor are.
+     */
+    ENOUGH_STEPS_WALKED(0x20),
+
     /** The wall facing the party was clicked, wherever the party stand. */
     WALL_CLICKED(0x40),
 

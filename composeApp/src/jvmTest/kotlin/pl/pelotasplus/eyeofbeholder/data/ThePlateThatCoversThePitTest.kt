@@ -255,6 +255,11 @@ class ThePlateThatCoversThePitTest {
      * The square marks itself as answering a monster, which is what makes the
      * two events worth raising: without them the plate has no third way to be
      * held down and the puzzle cannot be solved without a spare item.
+     *
+     * The last four of these are not the square's doing. The top bits of the
+     * accepted set are forced on for every square there is, so each of them
+     * answers a click, the floor's clock, and the floor's step count whether
+     * it says so or not — see [TriggerFlags].
      */
     @Test
     fun `the plate is marked as answering a monster's step`() {
@@ -266,10 +271,11 @@ class ThePlateThatCoversThePitTest {
                 ScriptEvent.PARTY_LEFT,
                 ScriptEvent.ITEM_PUT_DOWN,
                 ScriptEvent.ITEM_TAKEN,
-                ScriptEvent.WALL_CLICKED,
-                ScriptEvent.THE_CLOCK_CAME_ROUND,
                 ScriptEvent.A_MONSTER_ARRIVED,
                 ScriptEvent.A_MONSTER_LEFT,
+                ScriptEvent.ENOUGH_STEPS_WALKED,
+                ScriptEvent.WALL_CLICKED,
+                ScriptEvent.THE_CLOCK_CAME_ROUND,
             ).sortedBy { it.mask },
             ScriptEvent.entries.filter { plate.flags.reactsTo(it) }.sortedBy { it.mask },
         )

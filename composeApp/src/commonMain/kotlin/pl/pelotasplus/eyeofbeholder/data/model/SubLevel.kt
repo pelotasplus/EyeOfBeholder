@@ -31,6 +31,21 @@ data class SubLevel(
     val vcn: Vcn,
     val palette: Palette,
     val scriptTimers: List<ScriptTimer>,
+    /**
+     * How many steps the party take before the floor is asked to restock
+     * itself, or none where it never is.
+     *
+     * The floor's second clock, and it does not run on time: it runs on the
+     * party walking. Every so many steps the square at 0x0 — which nobody can
+     * stand on and nobody can click — is told so, and what it does about it is
+     * its own business. On most floors that is where the monsters come from
+     * after the ones the file shipped have been killed.
+     *
+     * It is the only thing that ever reaches 0x0 on a floor with no timers of
+     * its own, and the thirteenth is one of those: without it that floor is
+     * emptied for good the first time it is cleared.
+     */
+    val stepsUntilScriptCall: Int,
     val monsters: List<MonsterProperty>,
     val monsterGfx: List<MonsterGfx>,
     val sound: String,

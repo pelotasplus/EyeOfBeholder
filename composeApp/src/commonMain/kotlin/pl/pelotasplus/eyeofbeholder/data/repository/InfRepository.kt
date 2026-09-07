@@ -295,6 +295,7 @@ class InfRepositoryImpl(
                     vmp = vmp,
                     vcn = vcn,
                     scriptTimers = scriptTimers,
+                    stepsUntilScriptCall = stepsUntilScriptCall,
                     monsters = monsters,
                     monsterGfx = monsterGfx,
                     sound = sound,
