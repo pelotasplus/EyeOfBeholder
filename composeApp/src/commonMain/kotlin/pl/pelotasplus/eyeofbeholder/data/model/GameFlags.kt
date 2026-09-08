@@ -80,6 +80,21 @@ import kotlinx.serialization.Serializable
  *                   a dwarf present, and then sets it. Not the global bit 29
  *                   below, which this floor also sets, and the clearest
  *                   example on hand of why these are read per level
+ *
+ * level 16  bit 0   the one at the end of the dungeon has had his say, on
+ *                   (28,5) of the inner half. The same square also stops the
+ *                   party resting there
+ *           bit 1   the dying mage on (23,8) has gasped his line and dropped
+ *                   what he was carrying
+ *           bit 2   the four let out of the walls at (16,5), (16,11),
+ *                   (13,8) and (19,8) have been let out. One subroutine
+ *                   serves all four squares: it opens every side of all four
+ *                   and puts one of them on each
+ *           bit 4   which of its two frames the pair of magical fields are
+ *                   drawn on
+ *           bit 5   the field in (22,7)'s west face has been destroyed
+ *           bit 6   ... and the one in (22,9)'s
+ *           bit 7   the seven conjured around (8,8) have been conjured
  * ```
  *
  * Not every bit is a memory. Level 4's bit 7 is how a subroutine answers the
@@ -132,6 +147,15 @@ import kotlinx.serialization.Serializable
  * (11,2), set the same bit and do nothing else — so a party that wanders into
  * the corridor from the side rather than straight up from the stairs never
  * meets him at all, and cannot afterwards.
+ *
+ * Level 16's bits 4, 5 and 6 are the one place a flag is used as an animation.
+ * A square there is woken every eighteen ticks and does nothing but flip bit 4
+ * and repaint two wall faces from it, so the fields in (22,7) and (22,9) go on
+ * alternating between their two shapes for as long as the party are on the
+ * floor — and out of step with each other, since one takes the frame the other
+ * has just left. Bits 5 and 6 are what takes a face out of that: a field
+ * destroyed is left at its own wall, and once both are the flicker has nothing
+ * to paint and the door between them opens.
  *
  * The global word is mostly one level leaving word for another:
  *
