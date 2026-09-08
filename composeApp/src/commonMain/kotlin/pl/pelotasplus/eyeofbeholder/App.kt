@@ -78,9 +78,17 @@ fun App() = CompositionLocalProvider(LocalPlayFieldFocus provides remember { Pla
                 expanded = debugMenuExpanded,
                 onExpandedChange = { debugging.openMenu(it) },
                 onDestinationClick = { route ->
-                    navController.navigate(route) {
-                        popUpTo<Route.ViewConeDebug>()
-                        launchSingleTop = true
+                    // The dungeon is not navigated to but returned to. It is
+                    // still on the stack and still running underneath, and
+                    // arriving at a fresh one would load the level again and
+                    // put the party back at its entrance.
+                    if (route is Route.ViewConeDebug) {
+                        navController.popBackStack<Route.ViewConeDebug>(inclusive = false)
+                    } else {
+                        navController.navigate(route) {
+                            popUpTo<Route.ViewConeDebug>()
+                            launchSingleTop = true
+                        }
                     }
                 },
             )

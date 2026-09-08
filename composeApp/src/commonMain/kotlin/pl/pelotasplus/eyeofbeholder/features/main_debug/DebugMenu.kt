@@ -28,6 +28,10 @@ import pl.pelotasplus.eyeofbeholder.navigation.Route
 private data class DebugDestination(val label: String, val route: Route)
 
 private val debugDestinations = listOf(
+    // The way back. This panel is the only navigation there is, so without a
+    // line for the dungeon the two screens below it are one-way doors — the
+    // game carries on underneath, audibly, with no way to return to it.
+    DebugDestination("Dungeon", Route.ViewConeDebug()),
     DebugDestination("Levels", Route.LevelsDebug),
     DebugDestination("CPS Debug", Route.CpsDebug),
 )
@@ -76,6 +80,7 @@ private fun DebugMenuPanel(
     val monstersMayWalk by debugging.monstersMayWalk.collectAsState()
     val everythingIdentified by debugging.everythingIdentified.collectAsState()
     val showingMap by debugging.showingMap.collectAsState()
+    val whereTheyStand by debugging.whereTheyStand.collectAsState()
 
     Column(
         modifier = modifier
@@ -132,6 +137,15 @@ private fun DebugMenuPanel(
             ) {
                 Text(destination.label)
             }
+        }
+
+        whereTheyStand?.let {
+            Text(
+                text = it,
+                style = MaterialTheme.typography.labelMedium,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth(),
+            )
         }
 
         // Which build this is. The point of it is the deployed page: a tab

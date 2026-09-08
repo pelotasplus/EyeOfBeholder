@@ -9,8 +9,6 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -69,7 +67,17 @@ fun ViewConeDebugScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val showingMap by debugging.showingMap.collectAsState()
-    val debugMenuOpen by debugging.menuIsOpen.collectAsState()
+
+    // Left where the panel of switches can read it: the panel covers the
+    // corner this used to be written in, so it is shown there instead.
+    val party = state.game.party
+    LaunchedEffect(state.inf?.name, party.position, party.facing) {
+        debugging.standingAt(
+            state.inf?.let {
+                "${it.name.removeSuffix(".INF")}  ${party.position.x}x${party.position.y}  ${party.facing}"
+            },
+        )
+    }
 
     LaunchedEffect(level, startX, startY, startDirection) {
         viewModel.onEvent(
@@ -118,7 +126,6 @@ fun ViewConeDebugScreen(
         },
         onTyping = { viewModel.onEvent(ViewConeDebugViewModel.Event.Typed(it)) },
         showingMap = showingMap,
-        debugMenuOpen = debugMenuOpen,
     )
 }
 
@@ -133,7 +140,6 @@ private fun ViewConeDebugContent(
     onFrontRankStrike: () -> Unit = {},
     onTyping: (Typing) -> Unit = {},
     showingMap: Boolean = true,
-    debugMenuOpen: Boolean = false,
 ) {
     val keyboard = remember { FocusRequester() }
     val playFieldFocus = LocalPlayFieldFocus.current
@@ -311,24 +317,6 @@ private fun ViewConeDebugContent(
             }
         }
 
-        // Where the party are standing, for whoever is building the game. It
-        // comes and goes with the panel of switches rather than sitting over
-        // the corner of the dungeon for a player who never asked for it.
-        state.inf?.takeIf { debugMenuOpen }?.let { inf ->
-            Text(
-                text = with(state.game.party) {
-                    "${inf.name.removeSuffix(".INF")}  ${position.x}x${position.y}  $facing"
-                },
-                color = Color.White,
-                style = MaterialTheme.typography.labelMedium,
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    // clears the Debug button above it
-                    .padding(top = 56.dp, end = 12.dp)
-                    .background(Color.Black.copy(alpha = 0.6f))
-                    .padding(horizontal = 8.dp, vertical = 4.dp),
-            )
-        }
     }
 }
 

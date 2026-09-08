@@ -80,6 +80,21 @@ class Debugging {
         _menuIsOpen.value = open
     }
 
+    private val _whereTheyStand = MutableStateFlow<String?>(null)
+
+    /**
+     * Where the party are, written for whoever is building the game.
+     *
+     * It is read in the panel rather than over the corner of the view, which
+     * is the one place it cannot be covered by the panel itself — and it is
+     * the view that knows it, so it is left here on the way past.
+     */
+    val whereTheyStand: StateFlow<String?> = _whereTheyStand.asStateFlow()
+
+    fun standingAt(where: String?) {
+        _whereTheyStand.value = where
+    }
+
     private val _showingMap = MutableStateFlow(false)
 
     /**
