@@ -51,14 +51,18 @@ data class CutScene(val beats: List<Beat>) {
         val THE_TRICK_ON_THE_TWELFTH = CutScene(
             listOf(
                 Beat(
-                    shows = frameAt(FIRST, TOP),
+                    shows = frameOf(TRICKED, FIRST, TOP),
                     spoken = "    Such trusting whelps!",
                     readOn = MORE,
                 ),
-                Beat(shows = frameAt(SECOND, TOP), holdsFor = Ticks(10), heardAs = TrackIndex(56)),
-                Beat(shows = frameAt(FIRST, BOTTOM), holdsFor = Ticks(10)),
                 Beat(
-                    shows = frameAt(SECOND, BOTTOM),
+                    shows = frameOf(TRICKED, SECOND, TOP),
+                    holdsFor = Ticks(10),
+                    heardAs = TrackIndex(56),
+                ),
+                Beat(shows = frameOf(TRICKED, FIRST, BOTTOM), holdsFor = Ticks(10)),
+                Beat(
+                    shows = frameOf(TRICKED, SECOND, BOTTOM),
                     holdsFor = Ticks(7),
                     says = DialogueTextId(76),
                     readOn = ALL_RIGHT,
@@ -67,16 +71,46 @@ data class CutScene(val beats: List<Beat>) {
         )
 
         /**
-         * One of the four cuts. [column] is in eighths of the width the way a
-         * picture instruction gives it, [row] in whole pixels.
+         * What the party see when the thing at the end of the dungeon is
+         * killed and does not die.
+         *
+         * Laid out exactly as the twelfth floor's scene is — four cuts of one
+         * sheet in a two-by-two grid, the same laugh on the second — and the
+         * only difference is that nothing waits at the end of it: the last
+         * picture is held and then the fight is simply on again, against
+         * something else. All of it is transcribed.
          */
-        private fun frameAt(column: Int, row: Int) = Dialog.DisplayPicture(
-            pictureName = "KHELDRAN",
+        val WHAT_THE_LAST_ONE_TURNS_INTO = CutScene(
+            listOf(
+                Beat(
+                    shows = frameOf(CHANGING, FIRST, TOP),
+                    says = DialogueTextId(120),
+                    readOn = MORE,
+                ),
+                Beat(
+                    shows = frameOf(CHANGING, SECOND, TOP),
+                    holdsFor = Ticks(7),
+                    heardAs = TrackIndex(56),
+                ),
+                Beat(shows = frameOf(CHANGING, FIRST, BOTTOM), holdsFor = Ticks(7)),
+                Beat(shows = frameOf(CHANGING, SECOND, BOTTOM), holdsFor = Ticks(18)),
+            ),
+        )
+
+        /**
+         * One of the four cuts of [sheet]. [column] is in eighths of the width
+         * the way a picture instruction gives it, [row] in whole pixels.
+         */
+        private fun frameOf(sheet: String, column: Int, row: Int) = Dialog.DisplayPicture(
+            pictureName = sheet,
             rect = IN_THE_SPEAKERS_FRAME,
             x = column,
             y = row,
             flags = 0,
         )
+
+        private const val TRICKED = "KHELDRAN"
+        private const val CHANGING = "DRANX"
 
         private const val IN_THE_SPEAKERS_FRAME = 0
 

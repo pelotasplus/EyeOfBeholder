@@ -126,6 +126,17 @@ data class MonsterProperty(
     val strikesEveryoneItReaches: Boolean get() = capsFlags and STRIKES_THEM_ALL != 0
 
     /**
+     * Whether a killing blow changes it rather than ending it.
+     *
+     * One creature in the dungeon has this, on both of the forms it takes.
+     * The first is never killed: the blow that would kill it brings back the
+     * next kind on its floor's list instead, whole, drawn off the next sheet
+     * and worse to fight. The second has nothing after it to come back as, and
+     * dies.
+     */
+    val changesRatherThanDying: Boolean get() = capsFlags and CHANGES_RATHER_THAN_DYING != 0
+
+    /**
      * Whether being hurt at all bursts it instead of wounding it.
      *
      * The gas spores on the eighth floor are these: nine armour class, one
@@ -149,6 +160,7 @@ data class MonsterProperty(
 
     private companion object {
         const val LARGE = 0x01
+        const val CHANGES_RATHER_THAN_DYING = 0x04
         const val POISONS = 0x10
         const val HITS_AS_IT_MOVES = 0x08
         const val RUINS_WHAT_IT_HITS = 0x80

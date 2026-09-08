@@ -984,6 +984,33 @@ class ViewPortGoldenTest {
         }
     }
 
+    /**
+     * Every beat of the scene the party are shown when the thing at the end of
+     * the dungeon is cut down and gets up again, in the order they are played.
+     *
+     * Four cuts of one sheet, seen nowhere else, and the same sort of mistake
+     * is possible here as on the twelfth: a wrongly cut corner is still a
+     * picture, and only a rendered frame says which one it is.
+     */
+    @Test
+    fun `the scene the last one turns into`() {
+        CutScene.WHAT_THE_LAST_ONE_TURNS_INTO.beats.forEachIndexed { beat, it ->
+            checkGolden(
+                "dranx-$beat",
+                dialogueOver(
+                    level = "LEVEL16.INF", x = 28, y = 3, subLevel = 1,
+                    picture = "${it.shows.pictureName}.CPS",
+                    sourceLeft = it.shows.x * ViewPort.TILE_SIZE,
+                    sourceTop = it.shows.y,
+                    goes = DialogueScene.PictureFrame.SPEAKER,
+                    textId = it.says?.number,
+                    buttons = listOfNotNull(it.readOn),
+                    waitsToBeRead = it.readOn != null,
+                ),
+            )
+        }
+    }
+
     @Test
     fun `dialogue with a picture across the top`() =
         checkGolden(
@@ -2339,12 +2366,13 @@ class ViewPortGoldenTest {
         direction: Direction = Direction.NORTH,
         waitsToBeRead: Boolean = false,
         readOff: DialogueScene.ReadOff.Written = DialogueScene.ReadOff.TheStripBelow,
+        subLevel: Int = 0,
     ): BufferedImage = runBlocking {
         val resources = ResourceRepositoryImpl()
         val cps = CpsRepositoryImpl(resources)
         val repository = repository()
         val inf = repository.loadLevel(level).getOrThrow()
-        val sublevel = inf.subLevels[0]
+        val sublevel = inf.subLevels[subLevel]
 
         val viewPort = repository.renderPosition(
             items = dungeonItems,

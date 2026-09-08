@@ -55,7 +55,12 @@ class Fighting(
                 after = after.rousedBy(blow.monster)
                     .monsterHurt(blow.monster, blow.damage, kinds, itemTypes, dice)
 
-                val killed = struck != null && after.monsters.none { it.index == blow.monster }
+                // Gone from the list, or still standing there as something
+                // else. The one creature that comes back from a killing blow
+                // is paid for and searched all the same: what fell is the form
+                // it was, whatever took its place.
+                val left = after.monsters.firstOrNull { it.index == blow.monster }
+                val killed = struck != null && (left == null || left.type != struck.type)
                 if (killed) {
                     val worth = kinds.firstOrNull { it.id == struck.type.value }?.experience ?: 0
                     after = after.partyEarns(XpPoints(worth.toLong()), dice)

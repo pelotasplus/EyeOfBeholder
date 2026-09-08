@@ -1152,6 +1152,10 @@ data class GameState(
      * its record and puts it on no square, which is the same thing said the
      * long way — nothing left in it is ever read, and the slot it frees is the
      * next slot a script's conjuring takes.
+     *
+     * Except for the one creature a killing blow does not kill. It stays in
+     * its slot and comes back as the next kind on the floor's list — see
+     * [MonsterProperty.changesRatherThanDying].
      */
     fun monsterHurt(
         slot: MonsterSlot,
@@ -1171,11 +1175,25 @@ data class GameState(
         if (kind?.burstsWhenHurt == true) return burstOf(hit, types, dice)
 
         val after = hit.hurt(by)
+        if (after.hitPoints.current > 0) {
+            return copy(monsters = monsters.map { if (it.index == slot) after else it })
+        }
+
+        val next = after.takeIf { kind?.changesRatherThanDying == true }
+            ?.takeIf { kinds.any { other -> other.id == hit.type.value + 1 } }
+            ?.inItsOtherForm()
+
         return copy(
-            monsters = if (after.hitPoints.current <= 0) monsters - hit
-            else monsters.map { if (it.index == slot) after else it },
+            monsters = if (next == null) monsters - hit
+            else monsters.map { if (it.index == slot) next else it },
         )
     }
+
+    /** Whichever monster is owed the scene that shows it changing, if any. */
+    val anythingChanging: MonsterInstance? get() = monsters.firstOrNull { it.changing }
+
+    /** The world with that scene taken as played. */
+    fun theChangeShown(): GameState = copy(monsters = monsters.map { it.theChangeShown() })
 
     /**
      * The world with a thing that goes off having gone off, which it does

@@ -1815,7 +1815,28 @@ class ViewConeDebugViewModel(
         letTheDamageFade()
         letTheFlashFade()
         keepTheFightGoing()
+        viewModelScope.launch { showAnyChangeOwed() }
         return true
+    }
+
+    /**
+     * Plays the scene a creature that came back from a killing blow is owed,
+     * and puts the fight back on afterwards.
+     *
+     * The blow has already been struck and the thing already changed when this
+     * runs: the scene is what the party are shown about it, not what decides
+     * it. Nothing is owed on almost every blow ever struck, so this is a read
+     * of one flag and out again.
+     */
+    private suspend fun showAnyChangeOwed() {
+        val changed = _state.value.game.anythingChanging ?: return
+
+        Logger.i(TAG) { "m${changed.index.value} came back as kind ${changed.type.value}" }
+        _state.update { it.copy(game = it.game.theChangeShown()) }
+
+        play(CutScene.WHAT_THE_LAST_ONE_TURNS_INTO)
+        renderViewPort()
+        keepTheFightGoing()
     }
 
     /**
@@ -2072,6 +2093,10 @@ class ViewConeDebugViewModel(
                 // — and a monster roused by the blow is what keeps it running.
                 if (struckInFlight.isNotEmpty()) letTheFlashFade()
                 ruined.forEach { sayWhatWasRuined(it) }
+
+                // A spell can be what kills the thing that does not die, so
+                // the scene is owed from here as much as from a hand's swing.
+                showAnyChangeOwed()
 
                 // A square something has just flown over gets its say. This is
                 // how a trap reaches further than it stands: the bolt is what

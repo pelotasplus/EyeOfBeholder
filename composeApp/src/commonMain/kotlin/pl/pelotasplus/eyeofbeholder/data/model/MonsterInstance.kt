@@ -134,6 +134,11 @@ data class MonsterInstance(
      * that take them in turn rather than at random.
      */
     val nextRemoteWeapon: Int = 0,
+    /**
+     * Whether it has just come back as its other self, and so is owed the
+     * scene that shows it happening. Cleared once that has been played.
+     */
+    val changing: Boolean = false,
 ) {
     /** What it does with a turn nobody has provoked it into taking. */
     val whatItDoes: MonsterMode get() = if (isHeld) MonsterMode.HELD else MonsterMode.of(mode)
@@ -202,6 +207,26 @@ data class MonsterInstance(
         struck = true,
         provoked = true,
     )
+
+    /**
+     * The same creature come back as the next kind on its floor's list, drawn
+     * off the next sheet along.
+     *
+     * What it comes back with is a flat number rather than a roll, so it is
+     * the same fight every time, and it throws what it throws without counting
+     * — starting again from the first of its kind's weapons.
+     */
+    fun inItsOtherForm() = copy(
+        type = MonsterTypeId(type.value + 1),
+        gfxIndex = gfxIndex + 1,
+        hitPoints = HitPoints(WHAT_IT_COMES_BACK_WITH, WHAT_IT_COMES_BACK_WITH),
+        shotsLeft = SHOOTS_FOREVER,
+        nextRemoteWeapon = 0,
+        changing = true,
+    )
+
+    /** The same creature with the scene it was owed already played. */
+    fun theChangeShown() = copy(changing = false)
 
     /**
      * Whether it is waiting to see what the party do rather than doing
@@ -301,6 +326,13 @@ data class MonsterInstance(
 
         /** What a monster nobody has rolled for carries instead of hit points. */
         val UNROLLED = HitPoints(current = 0, max = 0)
+
+        /**
+         * What the one creature that comes back from being killed comes back
+         * with. Transcribed, and nothing to do with the dice its second kind
+         * would otherwise be rolled from.
+         */
+        const val WHAT_IT_COMES_BACK_WITH = 150
 
         /**
          * The monster a script's [CreateMonster] asks for, in a free [slot],
