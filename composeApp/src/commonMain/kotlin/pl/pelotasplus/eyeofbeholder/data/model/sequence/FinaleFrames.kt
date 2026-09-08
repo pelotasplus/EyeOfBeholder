@@ -4,10 +4,11 @@ package pl.pelotasplus.eyeofbeholder.data.model.sequence
  * How the ending moves: twenty-one short lists of instructions, and the shapes
  * five of its sheets are cut into.
  *
- * All of it is transcribed from the original game, number for number. None of
- * it can be derived from anything and none of it is in the level data, so a
- * digit changed by eye would move a figure to the wrong part of the room with
- * nothing to say it had.
+ * These are data, not a formula. Nothing here can be worked out from anything
+ * else — not from the sheets, not from the level files — so there is no way to
+ * check a number by reasoning about it, and a digit changed by eye moves a
+ * figure to the wrong part of the room with nothing to say it has. The frozen
+ * frames of the ending are what would notice.
  */
 object FinaleFrames {
 

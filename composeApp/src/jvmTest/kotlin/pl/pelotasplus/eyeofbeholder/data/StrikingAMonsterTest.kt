@@ -327,11 +327,11 @@ class StrikingAMonsterTest {
     // --- what a hand may swing -----------------------------------------------
 
     /**
-     * The original sorts a hand by the kind of thing in it, and only three of
-     * the twenty kinds are swung: the one that stays in the hand, the one that
-     * is thrown, and the one that is fired from. Everything else is worn,
-     * drunk, read or blown, and asking it to strike answers with a line of
-     * text rather than a blow.
+     * A hand is sorted by the kind of thing in it, and only three of the
+     * twenty kinds are swung: the one that stays in the hand, the one that is
+     * thrown, and the one that is fired from. Everything else is worn, drunk,
+     * read or blown, and asking it to strike answers with a line of text
+     * rather than a blow.
      *
      * [holding] takes the first thing in the dungeon of [kind] and puts it in
      * the first champion's first hand.

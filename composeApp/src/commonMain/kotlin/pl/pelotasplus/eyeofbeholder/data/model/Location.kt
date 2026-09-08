@@ -42,15 +42,16 @@ data class Location(
         maxOf(abs(other.x - x), abs(other.y - y))
 
     /**
-     * How far off [other] is, counted the way the engine counts it: the whole
-     * of the larger gap, plus half the smaller.
+     * How far off [other] is, counted the dungeon's way: the whole of the
+     * larger gap, plus half the smaller.
      *
      * Not [squaresFrom], which is the larger gap on its own. The two agree on
      * whether a thing is on this square or beside it, and part company past
      * that — something three squares along both axes is three away by
-     * [squaresFrom] and four away by this. Transcribed rather than derived,
-     * and wanted wherever the engine's own ordering by distance is what
-     * decides something.
+     * [squaresFrom] and four away by this. It is the measure everything that
+     * ranks by distance uses: what a monster notices, how far a sound carries,
+     * how far a spell reaches. A diagonal costs more than a straight line
+     * here, which is what makes a corner shelter.
      */
     fun blocksFrom(other: Location): Int {
         val across = abs(other.x - x)

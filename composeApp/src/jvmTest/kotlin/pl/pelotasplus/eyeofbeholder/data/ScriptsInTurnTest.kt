@@ -14,9 +14,9 @@ import kotlin.test.assertTrue
  * The floor raises more than one script at a time as a matter of course: the
  * twelfth's own clock comes round every few turns, and a thing thrown across
  * that floor lands on a plate in one of them sooner or later. Both are
- * accounts of something that has already happened, so both have to be run —
- * the original runs each one where it is raised and returns, and nothing
- * there can cut anything else short.
+ * accounts of something that has already happened, so both have to be run.
+ * Each is run where it is raised and returns there, and nothing one of them
+ * does can cut another short.
  *
  * Dropping one is the failure this guards against, and it is invisible while
  * it happens: the thing is drawn lying on the plate, the plate stays up, and

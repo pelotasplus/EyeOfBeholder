@@ -53,11 +53,10 @@ data class ItemNames(private val names: List<String>) {
             ItemKind.POTION -> named(POTION_NAME, potionEffects, value)
             ItemKind.RING -> named(RING_NAME, ringEffects, value)
 
-            // One wand goes by its effect alone. The game keeps a word of its
-            // own for that one — "Stick" — which the English text never
-            // reaches, so whether it is meant to read "Stick of Starfire" or
-            // just "Starfire" is not settled; this is the latter, which is
-            // what the reverse-engineered engine produces.
+            // One wand goes by its effect alone. There is a word for it in the
+            // data — "Stick" — that the English text never reaches, so whether
+            // it is meant to read "Stick of Starfire" or just "Starfire"
+            // cannot be settled from what is there. This is the latter.
             ItemKind.WAND -> if (value == GOES_BY_ITS_EFFECT) {
                 wandEffects.getOrNull(value).orEmpty()
             } else {

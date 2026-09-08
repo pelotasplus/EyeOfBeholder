@@ -3,11 +3,11 @@ package pl.pelotasplus.eyeofbeholder.data.model.sequence
 /**
  * The ending, beat by beat, in the order it is played.
  *
- * Transcribed from the original and nothing else: which sheet is open when,
- * which list of moves is run how many times, where each line is spoken, and
- * where it is taken off again. The numbers are meaningless on their own — six
- * of one move and then two of another is not a rule, it is a piece of
- * choreography — so this reads as a list rather than as logic.
+ * Which sheet is open when, which list of moves is run how many times, where
+ * each line is spoken and where it is taken off again. None of it is logic and
+ * none of it is in the level data: six of one move and then two of another is
+ * choreography, not a rule, and there is nothing to derive it from. So it
+ * reads as a list, and it is meant to be edited as one.
  *
  * The waits are here rather than dropped, since without them the whole thing
  * is over in a second and reads as a flicker.

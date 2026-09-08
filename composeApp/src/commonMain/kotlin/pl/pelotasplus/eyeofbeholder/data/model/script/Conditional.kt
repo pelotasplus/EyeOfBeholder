@@ -27,8 +27,6 @@ import pl.pelotasplus.eyeofbeholder.data.model.Location
  * ```
  * Eval(tokens=[GetWallNumber(5,3), ImmediateShort(1), Equals], goto=0x42)
  * ```
- *
- * Reference: https://github.com/scummvm/scummvm/blob/master/engines/kyra/script/script_eob.cpp
  */
 sealed interface Conditional {
 

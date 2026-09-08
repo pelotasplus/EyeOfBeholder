@@ -674,11 +674,12 @@ class LevelScriptRunner(
 
                 is ClearFlag.GlobalFlag -> state = state.globalFlagCleared(FlagBit(token.flag))
 
-                // The two are the wrong way round, and it is the original's
-                // doing: its "set" leaves the party free to sleep, and its
-                // "remove" is what forbids it. So a dangerous stretch of floor
-                // says the party cannot rest by removing the flag, and the safe
-                // ground after says they can by setting it.
+                // These two read backwards and are not a mistake. The flag in
+                // the data means *no resting*, so setting it is what lets a
+                // party sleep and clearing it is what stops them: a dangerous
+                // stretch of floor forbids rest by clearing, and the safe
+                // ground after allows it by setting. The names here say what
+                // each does rather than which bit it writes.
                 is SetFlag.RestingAllowed -> state = state.copy(preventRest = false)
                 is ClearFlag.RestingForbidden -> state = state.copy(preventRest = true)
 

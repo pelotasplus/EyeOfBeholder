@@ -831,10 +831,10 @@ class ViewConeDebugViewModel(
      * them still raisable and nobody left to do it.
      *
      * What is offered is the load screen, which is where the game goes from
-     * here. Declining it quits the game outright in the original; there is no
-     * quitting a tab, so declining begins again where a new game begins. That
-     * half is a stand-in and not a rule of the game — nothing in the original
-     * ever restarts a party.
+     * here. Declining it has nowhere sensible to go — there is no quitting a
+     * tab — so it begins again where a new game begins. That half is a
+     * stand-in rather than a rule: nothing else in the game ever restarts a
+     * party, and if quitting ever means something here, this is what changes.
      *
      * A party who took the twelfth floor's advice are answered before any of
      * that, by the one whose advice it was — see [CutScene.THE_TRICK_ON_THE_TWELFTH].
@@ -1416,11 +1416,11 @@ class ViewConeDebugViewModel(
     /**
      * The party growing hungry as they go.
      *
-     * The original counts this off a clock, a mouthful a minute of play, which
-     * suited a game nobody left running. A tab left open is not that: a party
-     * stood still in an empty corridor would starve while nobody was even
-     * looking at them. So it is the walking that empties a stomach here, and a
-     * party who go nowhere keep what they have.
+     * Hunger is counted in squares walked rather than in time passing, and
+     * that is deliberate. A clock would empty a stomach in a tab left open
+     * overnight, starving a party who are stood still in an empty corridor
+     * with nobody even looking at them. Walking is what costs, so a party who
+     * go nowhere keep what they have.
      */
     private fun theyWalkedASquare() {
         stepsSinceAMeal++
@@ -4516,11 +4516,12 @@ class ViewConeDebugViewModel(
         /**
          * How far the party walk on one mouthful.
          *
-         * The original spends a point of food a minute of play whatever the
-         * party are doing — reading, fighting, standing still — which comes to
-         * a full stomach every hour and a half at the table. Only walking
-         * counts here, and a minute of the original's walking is about this
-         * many squares, so this is that minute with the idle time taken out.
+         * Chosen so that a full stomach lasts about as long as it takes to
+         * work through a floor: a hundred squares is a minute or so of
+         * walking, and a champion holds ninety-odd mouthfuls. It is the one
+         * number here that is a judgement rather than a rule — hunger is
+         * counted in steps instead of in time, so there is nothing to copy it
+         * from, and it is set by how often a party ought to reach for food.
          */
         private const val STEPS_TO_A_MEAL = 100
 

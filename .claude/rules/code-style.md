@@ -61,13 +61,22 @@ Text("Debug")
 val scaleFactor = minOf(...).toInt().coerceAtLeast(1)
 ```
 
-## Don't invoke the original unless the fact is the point
+## Don't invoke the original, or any other source
 
-"The original does X" is worth writing only where knowing it changes what a
-reader would do. Two cases earn it: a table or a number transcribed rather
-than derived, where the note is what stops somebody recomputing it or nudging
-it by eye; and a rule so surprising that a reader would otherwise take it for
-a bug and fix it.
+Never write "the original does X", "the engine does X", or anything that
+settles a question by pointing somewhere the reader is not. Nobody
+cross-references while reading code, and a comment that only makes sense with
+another codebase open explains nothing to the person who has this one open.
+
+That includes the cases that look like they earn it:
+
+- **A table that cannot be derived.** The useful fact is not where it came
+  from, it is that it is *data* — say that reasoning about it will not check
+  it, that a digit changed by eye has nothing to catch it, and what would
+  notice if one were.
+- **A rule surprising enough to look like a bug.** The useful fact is not that
+  somebody else does it too, it is why it is deliberate and what breaks if it
+  is "fixed". State the rule and the consequence.
 
 Everywhere else, say what the code does. The comment is about this code, and
 the reader is here rather than in a reference implementation:
@@ -97,11 +106,11 @@ say it in as few words as the constant needs:
 /** Where the frame and the speaker go. */
 ```
 
-What is worth recording is that a table came from the original game at all —
-so nobody re-derives it or nudges it by eye — and that belongs once, in the
-type's KDoc, not on every constant. When a whole binary layout is transcribed,
-write out the layout (offsets and meanings); that is the reference material,
-not the name of the C++ function that reads it.
+What is worth recording is that a table is *data* — that it cannot be worked
+out, so nobody re-derives it or nudges it by eye — and that belongs once, in
+the type's KDoc, not on every constant. When a whole binary layout is being
+read, write out the layout itself: the offsets and what each one means. That
+is what a reader needs, and it is in front of them.
 
 ## Don't explain a general mechanism with one level's story
 

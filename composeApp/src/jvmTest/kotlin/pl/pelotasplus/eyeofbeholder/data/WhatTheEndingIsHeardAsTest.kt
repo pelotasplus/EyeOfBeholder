@@ -44,9 +44,11 @@ class WhatTheEndingIsHeardAsTest {
      * for, and the ones the sequence asks for itself.
      *
      * One number in the lists has nothing under it, and that is the bank
-     * rather than a mistake: a track that renders to silence is left out
-     * instead of being written as a silent file, so a gap here is a gap in the
-     * original. It is named so that a second gap appearing would be noticed.
+     * rather than a mistake: rendering a bank leaves out any track that comes
+     * out silent instead of writing a silent file, so a missing number means a
+     * sound nobody would have heard anyway. It is named here so that a second
+     * one appearing — which would mean a track that should sound and does not
+     * — is noticed.
      */
     @Test
     fun `every noise it makes is in the bank`() {

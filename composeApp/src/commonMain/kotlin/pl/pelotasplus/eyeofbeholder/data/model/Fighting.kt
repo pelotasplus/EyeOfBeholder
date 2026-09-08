@@ -124,8 +124,10 @@ class Fighting(
 
         // Some things are reached only by a weapon of a certain quality, and
         // that is settled before the die rather than by it: no roll can land a
-        // plain blade on one, however long the party keep swinging. It reads
-        // as an ordinary miss, which is all the original ever says about it.
+        // plain blade on one, however long the party keep swinging. It is
+        // reported as an ordinary miss and not as a refusal — the party are
+        // never told the weapon is the problem, and working that out is the
+        // point of it.
         if (kind != null && !kind.immunities.canBeHitBy(weapon?.value ?: 0)) {
             return Blow.Missed(target.index)
         }

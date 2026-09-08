@@ -1,8 +1,8 @@
 package pl.pelotasplus.eyeofbeholder
 
 /**
- * Marks a test that reads the original game data, which is not in the
- * repository — so a checkout that has none of it cannot run one.
+ * Marks a test that reads the game's own data files, which are not in the
+ * repository — so a checkout without them beside it cannot run one.
  *
  * ```kotlin
  * @Category(NeedsGameData::class)

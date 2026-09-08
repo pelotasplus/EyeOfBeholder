@@ -1190,7 +1190,7 @@ class ViewPortGoldenTest {
      * through it, top and bottom as well as at the sides — but only for a
      * square *beyond* the doorway. The door on a square takes nothing at all
      * off that same square, so a creature standing in the opening is drawn
-     * across the stonework, and the original draws it exactly so.
+     * across the stonework rather than clipped by it.
      *
      * That asymmetry is the whole of it, and it is worth a picture because it
      * reads as broken: see `a door on a square does not cut what stands on

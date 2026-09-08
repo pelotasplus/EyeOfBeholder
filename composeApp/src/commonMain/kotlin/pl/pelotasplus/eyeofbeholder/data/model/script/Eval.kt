@@ -3,8 +3,12 @@ package pl.pelotasplus.eyeofbeholder.data.model.script
 import pl.pelotasplus.eyeofbeholder.data.ByteReader
 
 /**
- * Conditional evaluation script token.
- * See https://github.com/scummvm/scummvm/blob/master/engines/kyra/script/script_eob.cpp
+ * A branch: a condition to work out, and where to carry on if it comes out
+ * false.
+ *
+ * The condition is [tokens] — a little stack machine of its own, described in
+ * [Conditional] — and [goto] is the offset the script jumps to when it does
+ * not hold. Falling through means the condition held.
  */
 data class Eval(
     val tokens: List<Conditional>,
