@@ -10,6 +10,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.PcmClip
 import pl.pelotasplus.eyeofbeholder.data.model.Volume
 import pl.pelotasplus.eyeofbeholder.data.repository.AudioSink
 import pl.pelotasplus.eyeofbeholder.data.repository.CpsRepositoryImpl
+import pl.pelotasplus.eyeofbeholder.data.repository.CreditsRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.DcrRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.DecRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.DialogueTextRepositoryImpl
@@ -84,6 +85,7 @@ class ThePlayField {
         dialogueTextRepository = DialogueTextRepositoryImpl(resources),
         fontRepository = FontRepositoryImpl(resources),
         palRepository = pal,
+        creditsRepository = CreditsRepositoryImpl(resources),
         originalSaveRepository = OriginalSaveRepositoryImpl(resources),
         savedGames = SavedGameRepositoryImpl(saves),
         itemTypesRepository = ItemTypesRepositoryImpl(resources),

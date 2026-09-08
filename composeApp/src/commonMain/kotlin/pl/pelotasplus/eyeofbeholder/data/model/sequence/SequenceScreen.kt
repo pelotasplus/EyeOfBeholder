@@ -58,6 +58,11 @@ class SequenceScreen {
     /** A rectangle lifted off a sheet, drawn with its background left out. */
     private class Shape(val wide: Int, val deep: Int, val pixels: List<PaletteIndex>)
 
+    /** How big one of them is, for whoever has to place it. */
+    data class ShapeSize(val wide: Int, val deep: Int)
+
+    fun sizeOf(shape: Int): ShapeSize? = shapes[shape]?.let { ShapeSize(it.wide, it.deep) }
+
     /**
      * What the indices mean this instant. A sheet brings its own where it
      * carries one, and the fades that light it replace it without touching a
@@ -229,14 +234,20 @@ class SequenceScreen {
      *
      * The centring is by character rather than by pixel — the strip is
      * measured in whole characters and the line is placed in the middle of
-     * them — so an odd number of characters sits half a character left of true
-     * centre, as it does in the original. [row] is which line of a speech that
-     * takes more than one.
+     * them — so a line of an odd length sits half a character left of true
+     * centre. That is the placement and not a rounding error to correct.
+     * [row] is which line of a speech that takes more than one.
      */
-    fun write(line: String, font: Font, colour: PaletteIndex, row: Int = 0) {
-        val left = (STRIP_LEFT + (STRIP_WIDTH - line.length) / 2) * A_CHARACTER_COLUMN
-        val top = STRIP_TOP + row * (font.height + 1)
+    fun write(line: String, font: Font, colour: PaletteIndex, row: Int = 0) = writeAt(
+        line = line,
+        font = font,
+        colour = colour,
+        left = (STRIP_LEFT + (STRIP_WIDTH - line.length) / 2) * A_CHARACTER_COLUMN,
+        top = STRIP_TOP + row * (font.height + 1),
+    )
 
+    /** And a line put exactly where it is asked for, which the credits need. */
+    fun writeAt(line: String, font: Font, colour: PaletteIndex, left: Int, top: Int) {
         line.forEachIndexed { position, character ->
             val glyph = font.glyphFor(character) ?: return@forEachIndexed
             for (y in 0 until font.height) {
@@ -248,6 +259,10 @@ class SequenceScreen {
             }
         }
     }
+
+    /** The picture put back over everything drawn on it, ready for the next frame. */
+    fun restorePicture() =
+        restore(PICTURE_LEFT, PICTURE_TOP, PICTURE_WIDTH, PICTURE_HEIGHT)
 
     /**
      * And rubs the strip out again. It is below the picture rather than over
@@ -269,8 +284,34 @@ class SequenceScreen {
         }
     }
 
+    /**
+     * Everything [what] draws is kept inside the picture window.
+     *
+     * The roll of names needs it and nothing else does: a line of it is still
+     * being drawn while it is half off the top, and without this the half that
+     * has left the window goes on showing in the black above it instead of
+     * disappearing behind the edge.
+     */
+    fun insideThePicture(what: () -> Unit) {
+        clipped = true
+        try {
+            what()
+        } finally {
+            clipped = false
+        }
+    }
+
+    private var clipped = false
+
     private fun put(x: Int, y: Int, colour: PaletteIndex) {
-        if (x in 0 until WIDTH && y in 0 until HEIGHT) shown[y * WIDTH + x] = colour
+        if (x !in 0 until WIDTH || y !in 0 until HEIGHT) return
+        if (clipped &&
+            (x !in PICTURE_LEFT until PICTURE_LEFT + PICTURE_WIDTH ||
+                y !in PICTURE_TOP until PICTURE_TOP + PICTURE_HEIGHT)
+        ) {
+            return
+        }
+        shown[y * WIDTH + x] = colour
     }
 
     companion object {

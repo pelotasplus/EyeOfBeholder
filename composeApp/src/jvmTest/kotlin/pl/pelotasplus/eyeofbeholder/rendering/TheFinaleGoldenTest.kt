@@ -8,10 +8,12 @@ import pl.pelotasplus.eyeofbeholder.data.model.Font
 import pl.pelotasplus.eyeofbeholder.data.model.PaletteIndex
 import pl.pelotasplus.eyeofbeholder.data.model.sequence.FinaleFrames
 import pl.pelotasplus.eyeofbeholder.data.model.sequence.SequenceScreen
+import pl.pelotasplus.eyeofbeholder.data.model.sequence.TheCredits
 import pl.pelotasplus.eyeofbeholder.data.model.sequence.TheFinale
 import pl.pelotasplus.eyeofbeholder.data.model.sequence.TheFinaleScript
 import pl.pelotasplus.eyeofbeholder.data.model.sequence.TheFinaleScript.Beat
 import pl.pelotasplus.eyeofbeholder.data.repository.CpsRepositoryImpl
+import pl.pelotasplus.eyeofbeholder.data.repository.CreditsRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.FontRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.PalRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.ResourceRepositoryImpl
@@ -55,10 +57,10 @@ class TheFinaleGoldenTest {
         var step = 0
         var last: BufferedImage? = null
 
-        // A frame that looks exactly like the one before it is not a step. The
-        // scene runs a list of moves several times over where the original
-        // wants a beat held, and each run ends on the same picture; writing
-        // those out would bury the frames that do move.
+        // A frame that looks exactly like the one before it is not a step. A
+        // beat is held by running the same list of moves several times over,
+        // and each run ends on the same picture; writing those out would bury
+        // the frames that do move.
         fun freeze() {
             val now = screen.toImage()
             if (last?.let { Goldens.countDifferingPixels(it, now) } == 0) return
@@ -110,6 +112,78 @@ class TheFinaleGoldenTest {
         }
 
         assertTrue(step > 100, "the ending came out $step steps long, which is too short to be it")
+    }
+
+    /**
+     * The names rolling up the picture the ending left behind.
+     *
+     * Frozen at three heights rather than one, because what can go wrong here
+     * is where things sit relative to each other: a title centred by a count
+     * of characters instead of by its own width, a shadow on the wrong side of
+     * the letters, or the spacing between two lines taken from the wrong one
+     * of them. None of that shows in a single frame of an empty sky.
+     */
+    @Test
+    fun `the names rolling up the last picture`() = runBlocking {
+        val screen = SequenceScreen()
+        screen.light(pal.loadPal(TheFinale.COLOURS.first()).getOrThrow())
+        screen.load(sheet(TheFinale.THE_ASSAULT))
+        screen.show()
+
+        screen.keepWhatIsShowing()
+        listOf(TheCredits.TITLES, TheCredits.MORE_TITLES).forEach { which ->
+            screen.load(sheet(which))
+            FinaleFrames.SHAPES[which]?.let(screen::cut)
+        }
+        screen.keepWhatIsShowing()
+        screen.light(pal.loadPal(TheCredits.COLOURS).getOrThrow())
+
+        val small = FontRepositoryImpl(resources).loadFont("FONT6.FNT").getOrThrow()
+        val lines = CreditsRepositoryImpl(resources).credits().getOrThrow()
+        val heightOf = { shape: Int -> screen.sizeOf(shape)?.deep ?: 0 }
+        val start = TheCredits.stackedUnder(lines, heightOf)
+
+        // Two heights on the way up, and then where it stops: the roll ends
+        // with the publisher's mark standing in the middle of the window, and
+        // that last frame is the one the game holds before going on.
+        val stops = TheCredits.risesUntil(lines, heightOf)
+
+        listOf(40, 150, stops).forEachIndexed { which, risen ->
+            screen.restorePicture()
+
+            screen.insideThePicture {
+                lines.forEachIndexed { index, line ->
+                    val top = start[index] - risen
+                    val deep = TheCredits.deepOf(line, heightOf)
+                    if (top >= TheCredits.HEIGHT || top + deep <= 0) return@forEachIndexed
+
+                    when (line) {
+                        is TheCredits.Line.Picture -> screen.draw(
+                            shape = line.shape,
+                            left = TheCredits.LEFT + TheCredits.acrossFor(
+                                screen.sizeOf(line.shape)?.wide ?: 0,
+                            ),
+                            top = TheCredits.TOP + top,
+                        )
+
+                        is TheCredits.Line.Words -> {
+                            val used = if (line.small) small else font
+                            val left = TheCredits.LEFT + TheCredits.acrossFor(line)
+                            screen.writeAt(
+                                line.words, used, PaletteIndex(TheCredits.SHADOW),
+                                left - 1, TheCredits.TOP + top + 1,
+                            )
+                            screen.writeAt(
+                                line.words, used, PaletteIndex(TheCredits.INK),
+                                left, TheCredits.TOP + top,
+                            )
+                        }
+                    }
+                }
+            }
+
+            Goldens.check("credits-$which", screen.toImage())
+        }
     }
 
     private fun SequenceScreen.toImage(): BufferedImage {

@@ -14,13 +14,12 @@ package pl.pelotasplus.eyeofbeholder.data.model.sequence
  *
  * ## Where this stops
  *
- * On the picture of the temple coming down, and the game begins again in the
- * forest from there. The original has two more things after that and this has
- * neither: a scroll of credits, which wants a scroller nothing here has, and a
- * last screen of the party's own faces set into six frames, which wants their
- * portraits composed into a sheet. Ending on the assault rather than showing
- * an empty set of frames is a choice, not an oversight — see
- * [TheFinale.THE_HEROES] for the sheet that is waiting.
+ * On the picture of the temple coming down, which is where [TheCredits] takes
+ * over. One thing that belongs between the two is missing: a screen of the
+ * party's own faces set into six frames, which wants their portraits composed
+ * into a sheet first. Going straight to the names rather than showing six
+ * empty frames is a choice, not an oversight — see [TheFinale.THE_HEROES] for
+ * the sheet that is waiting.
  */
 object TheFinaleScript {
 

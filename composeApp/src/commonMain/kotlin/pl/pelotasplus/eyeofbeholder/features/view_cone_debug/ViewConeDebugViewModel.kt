@@ -150,9 +150,11 @@ import pl.pelotasplus.eyeofbeholder.data.repository.SoundRepository
 import pl.pelotasplus.eyeofbeholder.data.model.sequence.FinaleFrames
 import pl.pelotasplus.eyeofbeholder.data.model.sequence.SequenceCommand
 import pl.pelotasplus.eyeofbeholder.data.model.sequence.SequenceScreen
+import pl.pelotasplus.eyeofbeholder.data.model.sequence.TheCredits
 import pl.pelotasplus.eyeofbeholder.data.model.sequence.TheFinale
 import pl.pelotasplus.eyeofbeholder.data.model.sequence.TheFinaleScript
 import pl.pelotasplus.eyeofbeholder.data.model.sequence.toImageBitmap
+import pl.pelotasplus.eyeofbeholder.data.repository.CreditsRepository
 import pl.pelotasplus.eyeofbeholder.data.repository.OriginalSaveRepository
 import pl.pelotasplus.eyeofbeholder.data.repository.OriginalSaveRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.PalRepository
@@ -166,6 +168,7 @@ class ViewConeDebugViewModel(
     private val fontRepository: FontRepository,
     /** For the one scene whose colours come from a file of their own. */
     private val palRepository: PalRepository,
+    private val creditsRepository: CreditsRepository,
     private val originalSaveRepository: OriginalSaveRepository,
     private val savedGames: SavedGameRepository,
     private val itemTypesRepository: ItemTypesRepository,
@@ -319,6 +322,15 @@ class ViewConeDebugViewModel(
         // refused by a wall is still a key that was pressed, and it is the
         // pressing that the speaker is waiting for.
         if (event !is Event.Initialize) audioSink.wake()
+
+        // A scene that has taken the whole screen has taken the keyboard with
+        // it. There is no dungeon on screen to act on, and the party are not
+        // standing anywhere yet — swinging at the room they will be put back
+        // into is how a fight starts in the forest before the ending is over.
+        if (theScreenIsGivenOver && event !is Event.Initialize) {
+            Logger.d(TAG) { "Ignoring $event while a scene has the screen" }
+            return
+        }
 
         // A script running is not a reason to stand still: a door swinging
         // somewhere can be watched, or turned away from, while it swings. Only
@@ -940,50 +952,23 @@ class ViewConeDebugViewModel(
     private var theScreenIsGivenOver = false
 
     /**
-     * Plays the ending, and starts the game again when it is over.
+     * Plays the ending, then the credits, and starts the game again when they
+     * are over.
      *
      * It is not a scene played over the view like the others: it takes the
      * whole screen, so what it paints goes where the play field's picture
      * goes and the play field is simply not drawn while it runs.
-     *
-     * Nothing follows it here. The original ends on a scroll of credits and a
-     * screen of the party's own faces, neither of which exists yet, so the
-     * last picture is the temple gone and the game begins again in the forest
-     * — see [TheFinaleScript].
      */
-    private suspend fun playTheEnding() {
-        // Claimed before anything is read off disk. The first sheet takes a
-        // moment to arrive, and the play field is still being redrawn behind
-        // this by clocks the last blow started; letting any of that through
-        // would put the dungeon back on screen after the ending had begun.
-        aSceneIsPlaying = true
-        theScreenIsGivenOver = true
-        silenceEffects()
-
-        val screen = SequenceScreen()
-        val sheets = mutableMapOf<Int, Cps>()
-
-        // Kept as they are opened: the ending goes back to several of them.
-        suspend fun sheet(which: Int): Cps? {
-            sheets[which]?.let { return it }
-            val loaded = cpsRepository.loadCps(TheFinale.PICTURES[which]).getOrNull() ?: return null
-            sheets[which] = loaded
-            return loaded
-        }
-
-        fun paint() = _state.update { it.copy(viewPort = screen.toImageBitmap()) }
-
+    private suspend fun playTheEnding() = takingTheWholeScreen { screen, sheet, paint ->
         suspend fun heard(track: Int, alongside: Boolean = false) =
             playTrack(TrackIndex(track), alongside = alongside, from = SoundBank(TheFinaleScript.BANK))
 
-        try {
-            val font = fontRepository.loadFont(THE_ENDINGS_FONT).getOrNull()
-                ?: error("the ending has no font to be written in")
-            palRepository.loadPal(TheFinale.COLOURS.first()).getOrNull()?.let { screen.light(it) }
+        val font = fontRepository.loadFont(THE_ENDINGS_FONT).getOrNull()
+            ?: error("the ending has no font to be written in")
 
-            Logger.i(TAG) { "Playing the ending, ${TheFinaleScript.BEATS.size} beats of it" }
+        Logger.i(TAG) { "Playing the ending, ${TheFinaleScript.BEATS.size} beats of it" }
 
-            TheFinaleScript.BEATS.forEach { beat ->
+        TheFinaleScript.BEATS.forEach { beat ->
                 when (beat) {
                     is TheFinaleScript.Beat.Opens -> sheet(beat.scene)?.let {
                         screen.load(it)
@@ -1031,16 +1016,155 @@ class ViewConeDebugViewModel(
 
                     is TheFinaleScript.Beat.Sounds -> heard(beat.track, alongside = true)
                 }
-            }
-        } finally {
-            aSceneIsPlaying = false
-            // Given back before the game begins again, since what starts it is
-            // the play field being drawn.
-            theScreenIsGivenOver = false
         }
 
+        rollTheCredits(screen, sheet, paint)
         startAgain()
     }
+
+    /**
+     * Lends the whole screen to [play], and takes it back afterwards however
+     * that ends.
+     *
+     * Claimed before anything is read off disk. The first sheet takes a moment
+     * to arrive, and the play field is still being redrawn behind this by
+     * clocks the last blow started; letting any of that through would put the
+     * dungeon back on screen after the scene had begun.
+     */
+    private suspend fun takingTheWholeScreen(
+        play: suspend (
+            screen: SequenceScreen,
+            sheet: suspend (Int) -> Cps?,
+            paint: () -> Unit,
+        ) -> Unit,
+    ) {
+        aSceneIsPlaying = true
+        theScreenIsGivenOver = true
+        silenceEffects()
+
+        // The little map is drawn over the corner of the window rather than
+        // into the picture, so refusing the play field the screen does not
+        // take it down. Put back afterwards, since it is the player's switch
+        // and not this scene's to keep.
+        val mapWasShowing = debugging.showingMap.value
+        debugging.showMap(false)
+
+        val screen = SequenceScreen()
+        val sheets = mutableMapOf<Int, Cps>()
+
+        // Kept as they are opened: a scene goes back to several of them.
+        suspend fun sheet(which: Int): Cps? {
+            sheets[which]?.let { return it }
+            val loaded = cpsRepository.loadCps(TheFinale.PICTURES[which]).getOrNull() ?: return null
+            sheets[which] = loaded
+            return loaded
+        }
+
+        fun paint() = _state.update { it.copy(viewPort = screen.toImageBitmap()) }
+
+        try {
+            palRepository.loadPal(TheFinale.COLOURS.first()).getOrNull()?.let { screen.light(it) }
+            play(screen, ::sheet, ::paint)
+        } finally {
+            aSceneIsPlaying = false
+            // Given back before whatever follows, since what puts the dungeon
+            // back is the play field being drawn.
+            theScreenIsGivenOver = false
+            debugging.showMap(mapWasShowing)
+        }
+    }
+
+    /**
+     * The names, rolled up whatever the ending left on screen.
+     *
+     * Two sheets are opened for their titles and neither is shown; what stays
+     * behind the names is the last picture of the ending, which is kept so
+     * that it can be put back under them on every frame of the roll.
+     *
+     * It reads to a tune of its own out of a bank of its own, so the ending's
+     * is stopped rather than played under it.
+     */
+    private suspend fun rollTheCredits(
+        screen: SequenceScreen,
+        sheet: suspend (Int) -> Cps?,
+        paint: () -> Unit,
+    ) {
+        screen.keepWhatIsShowing()
+        listOf(TheCredits.TITLES, TheCredits.MORE_TITLES).forEach { which ->
+            sheet(which)?.let {
+                screen.load(it)
+                FinaleFrames.SHAPES[which]?.let(screen::cut)
+            }
+        }
+        // Opening those sheets replaced what a background is put back from, so
+        // the picture the names roll over is put there again.
+        screen.keepWhatIsShowing()
+
+        // And the light changes: the titles are gold under the table the
+        // ending finishes on and speckled under the one it began in.
+        palRepository.loadPal(TheCredits.COLOURS).getOrNull()?.let { screen.light(it) }
+
+        val small = fontRepository.loadFont(THE_SMALLER_FONT).getOrNull() ?: return
+        val ordinary = fontRepository.loadFont(THE_ENDINGS_FONT).getOrNull() ?: return
+
+        val heightOf = { shape: Int -> screen.sizeOf(shape)?.deep ?: 0 }
+        val items = creditsRepository.credits().getOrNull() ?: return
+        val down = TheCredits.stackedUnder(items, heightOf).toIntArray()
+        Logger.i(TAG) { "Rolling ${items.size} lines of credits" }
+
+        silenceEffects()
+        playTrack(TrackIndex(TheCredits.THE_TUNE), alongside = true, from = SoundBank(TheCredits.BANK))
+
+        var left = TheCredits.risesUntil(items, heightOf)
+        while (left > 0) {
+            left -= TheCredits.A_PIXEL
+            screen.restorePicture()
+
+            screen.insideThePicture {
+                items.forEachIndexed { which, item ->
+                    val top = down[which]
+                    val deep = TheCredits.deepOf(item, heightOf)
+                    if (top >= TheCredits.HEIGHT || top + deep <= 0) return@forEachIndexed
+
+                    when (item) {
+                        is TheCredits.Line.Picture -> screen.draw(
+                            shape = item.shape,
+                            left = TheCredits.LEFT + TheCredits.acrossFor(
+                                screen.sizeOf(item.shape)?.wide ?: 0,
+                            ),
+                            top = TheCredits.TOP + top,
+                        )
+
+                        is TheCredits.Line.Words -> {
+                            val font = if (item.small) small else ordinary
+                            val left = TheCredits.LEFT + TheCredits.acrossFor(item)
+                            // Twice: a shadow a pixel up and to the left, and
+                            // the names over it. Without the shadow they are
+                            // lost against the cloud they roll across.
+                            screen.writeAt(
+                                item.words, font, PaletteIndex(TheCredits.SHADOW),
+                                left - 1, TheCredits.TOP + top + 1,
+                            )
+                            screen.writeAt(
+                                item.words, font, PaletteIndex(TheCredits.INK),
+                                left, TheCredits.TOP + top,
+                            )
+                        }
+                    }
+                }
+            }
+
+            paint()
+            down.indices.forEach { down[it] -= TheCredits.A_PIXEL }
+            delay(Ticks(TheCredits.FRAME_TICKS).inMilliseconds)
+        }
+
+        // The mark that closes it is left standing rather than scrolled away.
+        delay(Ticks(TheCredits.HELD_AT_THE_END).inMilliseconds)
+    }
+
+    /** The smaller of the two fonts, which some lines of the roll ask for. */
+    private val THE_SMALLER_FONT = "FONT6.FNT"
 
     /** The font the ending is written in, which is the larger of the two. */
     private val THE_ENDINGS_FONT = "FONT8.FNT"
@@ -1382,7 +1506,17 @@ class ViewConeDebugViewModel(
             MenuChoice.DropCharacter -> showMenu(whoCouldLeave())
             is MenuChoice.DropThisOne -> dropChampion(choice.whose)
 
-            is MenuChoice.NotYet -> Logger.i(TAG) { "${choice.what} is not implemented" }
+            // Said where the player can see it. A line that is drawn, takes a
+            // click and then does nothing reads as a bug from the outside;
+            // saying so is the difference between missing and broken.
+            is MenuChoice.NotYet -> {
+                Logger.i(TAG) { "${choice.what} is not implemented" }
+                say("${choice.what} is not implemented yet.")
+                // Saying it only puts it in the list; the bar is part of the
+                // screen's one picture, so it is not on screen until that
+                // picture is drawn again.
+                drawWords()
+            }
         }
     }
 

@@ -60,8 +60,7 @@ data class SequenceCommand(
  *
  * [across] and [wide] are in columns of eight pixels and the other two in
  * pixels, which is how the sheets are laid out and not a convention worth
- * tidying. The index the original gives is sometimes negative; the sign says
- * nothing that matters here, so it is dropped.
+ * tidying.
  */
 data class SequenceShape(
     val index: Int,

@@ -383,5 +383,10 @@ sealed class MenuChoice(val label: String) {
     /** Which of the six the party are sending away. */
     data class DropThisOne(val whose: PartySlot) : MenuChoice("")
 
+    /**
+     * A line that is drawn and can be clicked but does nothing yet. Choosing
+     * one says so in the message bar rather than only in the log, so it is
+     * plain from inside the game that the gap is a gap.
+     */
     data class NotYet(val what: String) : MenuChoice(what)
 }

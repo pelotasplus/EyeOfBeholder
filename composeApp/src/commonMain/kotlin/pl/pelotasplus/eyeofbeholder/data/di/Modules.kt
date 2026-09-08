@@ -5,6 +5,8 @@ import org.koin.dsl.module
 import pl.pelotasplus.eyeofbeholder.data.model.Debugging
 import pl.pelotasplus.eyeofbeholder.data.repository.CpsRepository
 import pl.pelotasplus.eyeofbeholder.data.repository.CpsRepositoryImpl
+import pl.pelotasplus.eyeofbeholder.data.repository.CreditsRepository
+import pl.pelotasplus.eyeofbeholder.data.repository.CreditsRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.DialogueTextRepository
 import pl.pelotasplus.eyeofbeholder.data.repository.DialogueTextRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.FontRepository
@@ -51,6 +53,9 @@ val sharedDataModule = module {
     }
     factory<FontRepository> {
         FontRepositoryImpl(get())
+    }
+    factory<CreditsRepository> {
+        CreditsRepositoryImpl(get())
     }
     factory<OriginalSaveRepository> {
         OriginalSaveRepositoryImpl(get())
