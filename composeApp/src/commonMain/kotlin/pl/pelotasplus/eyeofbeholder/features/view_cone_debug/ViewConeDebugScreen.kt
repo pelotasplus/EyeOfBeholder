@@ -69,6 +69,7 @@ fun ViewConeDebugScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val showingMap by debugging.showingMap.collectAsState()
+    val debugMenuOpen by debugging.menuIsOpen.collectAsState()
 
     LaunchedEffect(level, startX, startY, startDirection) {
         viewModel.onEvent(
@@ -117,6 +118,7 @@ fun ViewConeDebugScreen(
         },
         onTyping = { viewModel.onEvent(ViewConeDebugViewModel.Event.Typed(it)) },
         showingMap = showingMap,
+        debugMenuOpen = debugMenuOpen,
     )
 }
 
@@ -131,6 +133,7 @@ private fun ViewConeDebugContent(
     onFrontRankStrike: () -> Unit = {},
     onTyping: (Typing) -> Unit = {},
     showingMap: Boolean = true,
+    debugMenuOpen: Boolean = false,
 ) {
     val keyboard = remember { FocusRequester() }
     val playFieldFocus = LocalPlayFieldFocus.current
@@ -308,7 +311,10 @@ private fun ViewConeDebugContent(
             }
         }
 
-        state.inf?.let { inf ->
+        // Where the party are standing, for whoever is building the game. It
+        // comes and goes with the panel of switches rather than sitting over
+        // the corner of the dungeon for a player who never asked for it.
+        state.inf?.takeIf { debugMenuOpen }?.let { inf ->
             Text(
                 text = with(state.game.party) {
                     "${inf.name.removeSuffix(".INF")}  ${position.x}x${position.y}  $facing"

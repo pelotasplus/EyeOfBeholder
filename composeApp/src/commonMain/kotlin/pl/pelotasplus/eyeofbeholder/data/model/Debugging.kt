@@ -64,9 +64,31 @@ class Debugging {
         _everythingIdentified.value = all
     }
 
-    private val _showingMap = MutableStateFlow(true)
+    private val _menuIsOpen = MutableStateFlow(false)
 
-    /** Whether the little map of where the party have been is drawn. */
+    /**
+     * Whether the panel of these switches is open.
+     *
+     * Kept here rather than in the composition that draws it because the view
+     * reads it too: where the party are standing is written over the corner of
+     * the screen for whoever is building the game, and it belongs there only
+     * while the rest of the scaffolding is on show.
+     */
+    val menuIsOpen: StateFlow<Boolean> = _menuIsOpen.asStateFlow()
+
+    fun openMenu(open: Boolean) {
+        _menuIsOpen.value = open
+    }
+
+    private val _showingMap = MutableStateFlow(false)
+
+    /**
+     * Whether the little map of where the party have been is drawn.
+     *
+     * Off, because the game has none and finding the way is most of what a
+     * floor is. It is the quickest way to see where a party have actually
+     * been when a floor is not behaving, which is what it is for.
+     */
     val showingMap: StateFlow<Boolean> = _showingMap.asStateFlow()
 
     fun showMap(show: Boolean) {

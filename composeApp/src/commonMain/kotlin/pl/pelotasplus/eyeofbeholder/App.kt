@@ -8,16 +8,17 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
+import org.koin.compose.koinInject
+import pl.pelotasplus.eyeofbeholder.data.model.Debugging
 import pl.pelotasplus.eyeofbeholder.features.cps_debug.CpsDebugScreen
 import pl.pelotasplus.eyeofbeholder.features.levels_debug.LevelsDebugScreen
 import pl.pelotasplus.eyeofbeholder.features.main_debug.DebugMenu
@@ -28,7 +29,10 @@ import pl.pelotasplus.eyeofbeholder.navigation.Route
 fun App() = CompositionLocalProvider(LocalPlayFieldFocus provides remember { PlayFieldFocus() }) {
     MaterialTheme {
         val navController = rememberNavController()
-        var debugMenuExpanded by remember { mutableStateOf(false) }
+        // Held outside the composition because the view reads it as well, to
+        // decide whether to write where the party are standing over its corner.
+        val debugging: Debugging = koinInject()
+        val debugMenuExpanded by debugging.menuIsOpen.collectAsState()
         val playFieldFocus = LocalPlayFieldFocus.current
 
         // the menu's buttons take the focus and closing them does not give it
@@ -72,7 +76,7 @@ fun App() = CompositionLocalProvider(LocalPlayFieldFocus provides remember { Pla
 
             DebugMenu(
                 expanded = debugMenuExpanded,
-                onExpandedChange = { debugMenuExpanded = it },
+                onExpandedChange = { debugging.openMenu(it) },
                 onDestinationClick = { route ->
                     navController.navigate(route) {
                         popUpTo<Route.ViewConeDebug>()

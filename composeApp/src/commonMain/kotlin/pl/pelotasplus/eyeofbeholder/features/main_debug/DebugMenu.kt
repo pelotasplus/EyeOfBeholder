@@ -18,6 +18,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import org.koin.compose.koinInject
 import pl.pelotasplus.eyeofbeholder.BuildInfo
@@ -114,7 +115,10 @@ private fun DebugMenuPanel(
             onClick = { debugging.identifyEverything(!everythingIdentified) },
             modifier = Modifier.fillMaxWidth(),
         ) {
-            Text(if (everythingIdentified) "Names: as identified" else "Names: all are identified")
+            Text(
+                text = if (everythingIdentified) "Names: all identified" else "Names: must identify",
+                textAlign = TextAlign.Center,
+            )
         }
 
 
