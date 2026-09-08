@@ -147,8 +147,15 @@ import pl.pelotasplus.eyeofbeholder.data.repository.ItemTypesRepository
 import pl.pelotasplus.eyeofbeholder.data.repository.SaveSlot
 import pl.pelotasplus.eyeofbeholder.data.repository.SavedGameRepository
 import pl.pelotasplus.eyeofbeholder.data.repository.SoundRepository
+import pl.pelotasplus.eyeofbeholder.data.model.sequence.FinaleFrames
+import pl.pelotasplus.eyeofbeholder.data.model.sequence.SequenceCommand
+import pl.pelotasplus.eyeofbeholder.data.model.sequence.SequenceScreen
+import pl.pelotasplus.eyeofbeholder.data.model.sequence.TheFinale
+import pl.pelotasplus.eyeofbeholder.data.model.sequence.TheFinaleScript
+import pl.pelotasplus.eyeofbeholder.data.model.sequence.toImageBitmap
 import pl.pelotasplus.eyeofbeholder.data.repository.OriginalSaveRepository
 import pl.pelotasplus.eyeofbeholder.data.repository.OriginalSaveRepositoryImpl
+import pl.pelotasplus.eyeofbeholder.data.repository.PalRepository
 import pl.pelotasplus.eyeofbeholder.data.repository.ViewConeRepository
 
 @Stable
@@ -157,6 +164,8 @@ class ViewConeDebugViewModel(
     private val cpsRepository: CpsRepository,
     private val dialogueTextRepository: DialogueTextRepository,
     private val fontRepository: FontRepository,
+    /** For the one scene whose colours come from a file of their own. */
+    private val palRepository: PalRepository,
     private val originalSaveRepository: OriginalSaveRepository,
     private val savedGames: SavedGameRepository,
     private val itemTypesRepository: ItemTypesRepository,
@@ -919,6 +928,122 @@ class ViewConeDebugViewModel(
      * still while it runs — see [stillFighting].
      */
     private var aSceneIsPlaying = false
+
+    /**
+     * Whether something has taken the whole screen rather than being drawn
+     * over the view, which stops the play field being painted at all.
+     *
+     * Separate from [aSceneIsPlaying], which the scenes played *in* the frame
+     * also set: those are drawn by the play field and would disappear if it
+     * stopped.
+     */
+    private var theScreenIsGivenOver = false
+
+    /**
+     * Plays the ending, and starts the game again when it is over.
+     *
+     * It is not a scene played over the view like the others: it takes the
+     * whole screen, so what it paints goes where the play field's picture
+     * goes and the play field is simply not drawn while it runs.
+     *
+     * Nothing follows it here. The original ends on a scroll of credits and a
+     * screen of the party's own faces, neither of which exists yet, so the
+     * last picture is the temple gone and the game begins again in the forest
+     * — see [TheFinaleScript].
+     */
+    private suspend fun playTheEnding() {
+        // Claimed before anything is read off disk. The first sheet takes a
+        // moment to arrive, and the play field is still being redrawn behind
+        // this by clocks the last blow started; letting any of that through
+        // would put the dungeon back on screen after the ending had begun.
+        aSceneIsPlaying = true
+        theScreenIsGivenOver = true
+        silenceEffects()
+
+        val screen = SequenceScreen()
+        val sheets = mutableMapOf<Int, Cps>()
+
+        // Kept as they are opened: the ending goes back to several of them.
+        suspend fun sheet(which: Int): Cps? {
+            sheets[which]?.let { return it }
+            val loaded = cpsRepository.loadCps(TheFinale.PICTURES[which]).getOrNull() ?: return null
+            sheets[which] = loaded
+            return loaded
+        }
+
+        fun paint() = _state.update { it.copy(viewPort = screen.toImageBitmap()) }
+
+        suspend fun heard(track: Int, alongside: Boolean = false) =
+            playTrack(TrackIndex(track), alongside = alongside, from = SoundBank(TheFinaleScript.BANK))
+
+        try {
+            val font = fontRepository.loadFont(THE_ENDINGS_FONT).getOrNull()
+                ?: error("the ending has no font to be written in")
+            palRepository.loadPal(TheFinale.COLOURS.first()).getOrNull()?.let { screen.light(it) }
+
+            Logger.i(TAG) { "Playing the ending, ${TheFinaleScript.BEATS.size} beats of it" }
+
+            TheFinaleScript.BEATS.forEach { beat ->
+                when (beat) {
+                    is TheFinaleScript.Beat.Opens -> sheet(beat.scene)?.let {
+                        screen.load(it)
+                        FinaleFrames.SHAPES[beat.scene]?.let(screen::cut)
+                    }
+
+                    is TheFinaleScript.Beat.OpensAlongside ->
+                        sheet(beat.scene)?.let(screen::loadAlongside)
+
+                    TheFinaleScript.Beat.KeepsTheView -> screen.keepWhatIsShowing()
+
+                    TheFinaleScript.Beat.Shows -> {
+                        screen.show()
+                        paint()
+                    }
+
+                    is TheFinaleScript.Beat.Moves ->
+                        FinaleFrames.MOVES[beat.list].forEach { move ->
+                            if (move.what == SequenceCommand.Sounds) heard(move.obj, alongside = true)
+                            screen.perform(move) { paint() }
+                            delay(Ticks(move.delay).inMilliseconds)
+                        }
+
+                    is TheFinaleScript.Beat.Says -> {
+                        screen.clearTheStrip()
+                        TheFinale.WORDS[beat.line]
+                            .split(TheFinale.A_LINE_BREAK)
+                            .forEachIndexed { row, line ->
+                                screen.write(line, font, PaletteIndex(beat.colour), row)
+                            }
+                        paint()
+                    }
+
+                    TheFinaleScript.Beat.Hushes -> {
+                        screen.clearTheStrip()
+                        paint()
+                    }
+
+                    is TheFinaleScript.Beat.Waits -> delay(Ticks(beat.ticks).inMilliseconds)
+
+                    // The tune runs under the whole thing rather than being one
+                    // of its noises, so it is not the single voice the effects
+                    // take turns on.
+                    TheFinaleScript.Beat.Strikes -> heard(TheFinaleScript.THE_TUNE, alongside = true)
+
+                    is TheFinaleScript.Beat.Sounds -> heard(beat.track, alongside = true)
+                }
+            }
+        } finally {
+            aSceneIsPlaying = false
+            // Given back before the game begins again, since what starts it is
+            // the play field being drawn.
+            theScreenIsGivenOver = false
+        }
+
+        startAgain()
+    }
+
+    /** The font the ending is written in, which is the larger of the two. */
+    private val THE_ENDINGS_FONT = "FONT8.FNT"
 
     /** The party as a new game has them, standing where a new game starts. */
     private suspend fun startAgain() {
@@ -1829,6 +1954,12 @@ class ViewConeDebugViewModel(
      * of one flag and out again.
      */
     private suspend fun showAnyChangeOwed() {
+        if (_state.value.game.theEndingIsOwed) {
+            _state.update { it.copy(game = it.game.copy(theEndingIsOwed = false)) }
+            playTheEnding()
+            return
+        }
+
         val changed = _state.value.game.anythingChanging ?: return
 
         Logger.i(TAG) { "m${changed.index.value} came back as kind ${changed.type.value}" }
@@ -3399,10 +3530,16 @@ class ViewConeDebugViewModel(
      *   together: a pair meant as one noise is two clicks if the second stops
      *   the first.
      */
+    /**
+     * @param from which bank to take it out of, for the one scene that is not
+     *   played on a floor and so has no floor's bank to use. Everything else
+     *   takes the bank of the sublevel the party are standing in.
+     */
     private suspend fun playTrack(
         track: TrackIndex,
         volume: Volume = Volume.FULL,
         alongside: Boolean = false,
+        from: SoundBank? = null,
     ) {
         if (!_state.value.preferences.sounds) {
             Logger.d(TAG) { "Not playing $track: sounds are switched off" }
@@ -3417,16 +3554,19 @@ class ViewConeDebugViewModel(
             return
         }
 
-        val inf = _state.value.inf ?: run {
-            Logger.d(TAG) { "Not playing $track: no level loaded" }
-            return
-        }
-        val bank = inf.subLevels.getOrNull(_state.value.subLevel)?.sound ?: run {
-            Logger.d(TAG) { "Not playing $track: sublevel has no sound bank" }
-            return
+        val bank = from ?: run {
+            val inf = _state.value.inf ?: run {
+                Logger.d(TAG) { "Not playing $track: no level loaded" }
+                return
+            }
+            val named = inf.subLevels.getOrNull(_state.value.subLevel)?.sound ?: run {
+                Logger.d(TAG) { "Not playing $track: sublevel has no sound bank" }
+                return
+            }
+            SoundBank(named)
         }
 
-        val clip = soundRepository.clip(SoundBank(bank), track)
+        val clip = soundRepository.clip(bank, track)
             .onFailure { Logger.d(TAG) { "Not playing $track: $bank has nothing under it" } }
             .getOrNull() ?: return
 
@@ -3984,6 +4124,13 @@ class ViewConeDebugViewModel(
     }
 
     private fun paint(viewPort: ViewPort, palette: Palette) {
+        // A scene that has taken the whole screen keeps it. The play field is
+        // still being redrawn behind one for a second or two after it starts —
+        // a blow's flash and the numbers on the portraits each fade on a clock
+        // of their own, and both end in a redraw — and every one of those
+        // would otherwise be a frame of dungeon in the middle of the ending.
+        if (theScreenIsGivenOver) return
+
         val background = playFieldBackground
         val decorations = decorations
 

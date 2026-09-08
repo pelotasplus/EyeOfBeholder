@@ -83,6 +83,7 @@ class ThePlayField {
         cpsRepository = cps,
         dialogueTextRepository = DialogueTextRepositoryImpl(resources),
         fontRepository = FontRepositoryImpl(resources),
+        palRepository = pal,
         originalSaveRepository = OriginalSaveRepositoryImpl(resources),
         savedGames = SavedGameRepositoryImpl(saves),
         itemTypesRepository = ItemTypesRepositoryImpl(resources),

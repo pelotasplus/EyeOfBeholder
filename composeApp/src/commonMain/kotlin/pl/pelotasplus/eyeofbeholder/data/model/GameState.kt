@@ -66,6 +66,15 @@ data class GameState(
     val sparkling: SparksInTheRoom? = null,
 
     /**
+     * Whether the game has been won and the ending not yet played.
+     *
+     * There is one way to set it and one thing to do about it, and the two are
+     * far apart: the blow lands in the model and the ending is played over the
+     * whole screen, so it is left here as a note to whoever owns the screen.
+     */
+    val theEndingIsOwed: Boolean = false,
+
+    /**
      * What the player is holding, which is the mouse cursor itself. It belongs to nobody in the party: it has been picked up out of
      * a hand or off the floor and not yet put anywhere.
      */
@@ -1179,13 +1188,18 @@ data class GameState(
             return copy(monsters = monsters.map { if (it.index == slot) after else it })
         }
 
-        val next = after.takeIf { kind?.changesRatherThanDying == true }
+        val changes = kind?.changesRatherThanDying == true
+        val next = after.takeIf { changes }
             ?.takeIf { kinds.any { other -> other.id == hit.type.value + 1 } }
             ?.inItsOtherForm()
 
         return copy(
             monsters = if (next == null) monsters - hit
             else monsters.map { if (it.index == slot) next else it },
+            // The last form of the thing that comes back has nothing left to
+            // come back as, and killing it is the end of the game rather than
+            // the end of a fight.
+            theEndingIsOwed = theEndingIsOwed || (changes && next == null),
         )
     }
 

@@ -208,6 +208,27 @@ class TheOneThatComesBackTest {
     }
 
     /**
+     * And its death is the end of the game rather than the end of a fight,
+     * which the world says so that whoever owns the screen can play the ending.
+     *
+     * Only that one death. The first form falling is not it, and neither is
+     * anything else in the dungeon.
+     */
+    @Test
+    fun `killing the second form wins the game`() {
+        assertTrue(standing(kind = 1, canTake = 150).cutDown(bothForms).theEndingIsOwed)
+
+        assertFalse(
+            standing(kind = 0, canTake = 93).cutDown(bothForms).theEndingIsOwed,
+            "the ending was owed for the first form, which comes back",
+        )
+        assertFalse(
+            standing(kind = 0, canTake = 68).cutDown(theFlayers).theEndingIsOwed,
+            "the ending was owed for a mind flayer",
+        )
+    }
+
+    /**
      * And nothing else does it. A mind flayer stands on the same floor and is
      * the same species number; it dies of being killed.
      */
