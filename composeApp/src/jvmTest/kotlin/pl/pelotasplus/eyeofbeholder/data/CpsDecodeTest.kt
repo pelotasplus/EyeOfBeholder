@@ -105,20 +105,28 @@ class CpsDecodeTest {
         )
     }
 
+    /**
+     * Every sheet the game ships loads. Not a decoder test — a data test, and
+     * the one that says whether this copy of the game is whole.
+     *
+     * Nine files in an earlier copy were not: two at zero bytes and seven
+     * holding a truncated stream with the front of a zip archive written over
+     * the rest. That went unnoticed for months because nothing asked this, and
+     * the two empty ones had been written down here as something the retail
+     * data does. It does not.
+     */
     @Test
-    fun `files the game ships unusable are rejected with a reason`() {
-        val reasons = runBlocking {
-            UNUSABLE.associateWith { cpsRepository.loadCps(it).exceptionOrNull()?.message }
+    fun `every CPS the game ships can be read`() {
+        val unreadable = runBlocking {
+            resources.listResources(".CPS").getOrThrow().sorted().mapNotNull { name ->
+                cpsRepository.loadCps(name).exceptionOrNull()?.let { "$name -> ${it.message}" }
+            }
         }
 
-        // 0-byte files in the retail data
         assertTrue(
-            reasons.getValue("COIN.CPS")?.contains("too short") == true,
-            "COIN.CPS should be rejected as too short, got: ${reasons["COIN.CPS"]}"
-        )
-        assertTrue(
-            reasons.getValue("KHELBAN2.CPS")?.contains("too short") == true,
-            "KHELBAN2.CPS should be rejected as too short, got: ${reasons["KHELBAN2.CPS"]}"
+            unreadable.isEmpty(),
+            "the game data is damaged; these sheets cannot be read:\n" +
+                unreadable.joinToString("\n"),
         )
     }
 
@@ -139,8 +147,6 @@ class CpsDecodeTest {
     }
 
     private companion object {
-        /** The two the retail data ships as 0-byte files. */
-        val UNUSABLE = listOf("COIN.CPS", "KHELBAN2.CPS")
         val updateGoldens = System.getenv("UPDATE_GOLDENS") != null
     }
 }

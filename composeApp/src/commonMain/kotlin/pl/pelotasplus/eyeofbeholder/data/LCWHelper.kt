@@ -24,10 +24,14 @@ import co.touchlab.kermit.Logger
  *    16-bit values (for large back-references).
  *
  * Decoding stops at the end-of-data marker or as soon as the destination is
- * full, and every count is clamped to the space left. Some shipped EoB2 assets
- * (DRANX.CPS, DOORWAY1.CPS, KHELBAN1.CPS) have streams that run past the end of
- * the image or reference before its start; a decoder clamps rather than
- * failing, producing a partial image, so this does too.
+ * full, and every count is clamped to the space left, so a stream that runs
+ * past the end of the image or reaches back before its start yields a partial
+ * image rather than an error.
+ *
+ * Nothing the game ships needs that clamping, and a file that suddenly does is
+ * a damaged file rather than a stream this misreads. Nine of them were, once,
+ * and the tell was a stray end-of-data marker part way down the picture with
+ * the front of a zip archive written after it.
  */
 object LCWHelper {
     fun decompress(source: UByteArray, dest: UByteArray) {
