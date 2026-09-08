@@ -2134,7 +2134,12 @@ class ViewConeDebugViewModel(
                 // caught, because the second half is the part that matters:
                 // a blast everybody shrugs off is only a noise.
                 blasted.forEach { blast ->
-                    viewModelScope.launch { playTrack(MIND_BLAST) }
+                    // Heard alongside whatever else the tick is making, and
+                    // not launched off on its own. It is the only warning a
+                    // blast gives — nothing crosses the room and nothing is
+                    // drawn — so a second monster winding up later in the same
+                    // tick must not take the voice from it.
+                    playTrack(MIND_BLAST, alongside = true)
                     say(SpellMessages.A_MIND_BLAST)
 
                     blast.held.forEach { whose ->
