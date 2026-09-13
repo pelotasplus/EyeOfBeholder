@@ -234,6 +234,16 @@ const val HOURS_A_MENDED_POINT = 8
 const val HOURS_A_STARVED_POINT = 24
 
 /**
+ * What an hour of rest counts as to a spell still running on the party, which
+ * is far longer than any of them lasts: a single hour ends every one.
+ */
+val AN_HOUR_OF_REST = Ticks(32760)
+
+/** The world as the spells on the party find it after [hours] of rest. */
+fun GameState.spellsRunThroughARest(hours: Int): GameState =
+    if (hours <= 0) this else mysticDefenceRunDown(Ticks(AN_HOUR_OF_REST.value * hours))
+
+/**
  * What a stretch of sleep mends.
  *
  * A workaround until spells. Sleep alone is meant to be a trickle — a single

@@ -49,6 +49,9 @@ class PlayField(
         swapping: PartySlot? = null,
         /** The archway opening over the view, while one is. */
         portal: ThePortal.Showing? = null,
+        /** Whether a mystic defence is up, which frames every box in green. */
+        shielded: Boolean = false,
+        sparksOverTheParty: SparksOverTheParty? = null,
     ): PlayField {
         // Something held up over the view is read off a champion's own page,
         // that being the one place a thing being carried can be clicked, so the
@@ -64,6 +67,7 @@ class PlayField(
         if (sheet == null) {
             drawParty(
                 party, portraits, metPortraits, carrying, recovering, reporting, hurt, swapping,
+                shielded, sparksOverTheParty,
             )
         } else if (!underThePage) {
             drawSheet(sheet, portraits, metPortraits)
@@ -412,6 +416,8 @@ class PlayField(
         reporting: (PartySlot, CarrySlot) -> WhatTheBlowCameTo?,
         hurt: (PartySlot) -> Damage?,
         swapping: PartySlot?,
+        shielded: Boolean,
+        sparks: SparksOverTheParty?,
     ) {
         championBoxes.forEachIndexed { slot, box ->
             val champion = party.getOrNull(slot)?.takeIf { it.inTheParty } ?: return@forEachIndexed
@@ -436,6 +442,35 @@ class PlayField(
                 hurt = hurt(PartySlot(slot)),
                 swapping = swapping?.index == slot,
             )
+
+            if (shielded) drawOutline(box, SHIELDED)
+            sparks?.let { drawSparks(it, PartySlot(slot)) }
+        }
+    }
+
+    /** A box's own border drawn over in one colour, which is how a spell on it is shown. */
+    private fun drawOutline(box: ChampionBox, colour: PaletteIndex) {
+        val right = box.left + ChampionBox.WIDTH - 1
+        val bottom = box.top + ChampionBox.HEIGHT - 1
+        val rgb = palette.colors[colour.value]
+
+        for (x in box.left..right) {
+            draw(x, box.top, rgb)
+            draw(x, bottom, rgb)
+        }
+        for (y in box.top..bottom) {
+            draw(box.left, y, rgb)
+            draw(right, y, rgb)
+        }
+    }
+
+    private fun drawSparks(sparks: SparksOverTheParty, slot: PartySlot) {
+        repeat(SparksOverTheParty.EACH_BOX) { which ->
+            val showing = sparks.showing(which)
+            if (showing == 0) return@repeat
+
+            val picture = decorations.cut(FIRST_SPARK + (showing - 1) * SPARK_SIDE, 0, SPARK_SIDE, SPARK_SIDE)
+            drawIcon(picture, palette, SparksOverTheParty.x(slot, which), SparksOverTheParty.y(slot, which))
         }
     }
 
@@ -1006,6 +1041,13 @@ class PlayField(
         /** Party panel colours. */
         private val NAME_COLOUR = PaletteIndex(12)
         private val NAME_IN_TROUBLE = PaletteIndex(8)
+
+        /** The light green a box is framed in while a mystic defence is up. */
+        private val SHIELDED = PaletteIndex(4)
+
+        /** The three spark pictures, side by side on the interface sheet. */
+        private const val FIRST_SPARK = 232
+        private const val SPARK_SIDE = 16
 
         /** What a champion waiting to change places says, and in what colour. */
         private const val SWAPPING = "Swapping"

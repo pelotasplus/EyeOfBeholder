@@ -119,6 +119,8 @@ import pl.pelotasplus.eyeofbeholder.data.model.ScriptSpeech
 import pl.pelotasplus.eyeofbeholder.data.model.Spell
 import pl.pelotasplus.eyeofbeholder.data.model.SpellMessages
 import pl.pelotasplus.eyeofbeholder.data.model.SparksInTheRoom
+import pl.pelotasplus.eyeofbeholder.data.model.SparksOverTheParty
+import pl.pelotasplus.eyeofbeholder.data.model.spellsRunThroughARest
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptStage
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptsInTurn
 import pl.pelotasplus.eyeofbeholder.data.model.TELEPORTER_PULSE
@@ -252,6 +254,7 @@ class ViewConeDebugViewModel(
 
     /** Counting whatever hands have swung back to rest. */
     private var recoveringHands: Job? = null
+    private var defending: Job? = null
     private var fadingDamage: Job? = null
     private var burning: Job? = null
 
@@ -1447,6 +1450,11 @@ class ViewConeDebugViewModel(
         clock?.cancel()
 
         showMenu(null)
+
+        // The spells on the party are told how long they slept only now they
+        // are up, so one that ran out says so after the rest rather than during
+        // it. Saying so is the spell's own clock's business.
+        _state.update { it.copy(game = it.game.spellsRunThroughARest(hours)) }
 
         // What to say is what actually happened. Nobody hurt is a party fully
         // rested; hurt with nothing left to eat is a party that cannot mend at
@@ -2733,6 +2741,58 @@ class ViewConeDebugViewModel(
      * over them: one effect sounds at a time, so a square that answers with a
      * sound cuts the spell's own off in its first frame.
      */
+    private suspend fun showTheSparksOverTheParty() {
+        _state.update { it.copy(game = it.game.sparksOverThePartyBegun()) }
+
+        while (_state.value.game.sparklingOverTheParty != null) {
+            delay(SparksOverTheParty.A_FRAME)
+
+            _state.update { it.copy(game = it.game.sparksOverThePartyStepped()) }
+            drawViewPort()
+        }
+    }
+
+    /** A shield already up refuses the casting, and says so as a warning is said. */
+    private suspend fun shieldTheParty(whose: PartySlot, spell: Spell) {
+        val shielded = _state.value.game.mysticDefenceCast(whose)
+
+        if (shielded == null) {
+            say(SpellMessages.alreadyOnTheParty(spell.calledIt))
+            viewModelScope.launch { playTrack(WARNING) }
+            drawWords()
+            return
+        }
+
+        _state.update { it.copy(game = shielded) }
+        drawViewPort()
+        keepTheDefenceRunning(spell)
+    }
+
+    private fun keepTheDefenceRunning(spell: Spell) {
+        if (defending?.isActive == true) return
+
+        defending = viewModelScope.launch {
+            while (true) {
+                val before = _state.value.game.mysticDefence ?: return@launch
+                val wasShielded = _state.value.game.partyShielded
+                delay(GameState.CLOCK_STEP.inMilliseconds)
+
+                _state.update { it.copy(game = it.game.mysticDefenceRunDown(GameState.CLOCK_STEP)) }
+
+                if (_state.value.game.mysticDefence == null) {
+                    sayOf(before.castBy) { SpellMessages.expires(it, spell.calledIt) }
+                    playTrack(WARNING)
+                    drawViewPort()
+                    drawWords()
+                    return@launch
+                }
+
+                // Spent by the fire rather than run out, which takes the frame off.
+                if (wasShielded != _state.value.game.partyShielded) drawViewPort()
+            }
+        }
+    }
+
     private suspend fun showTheSparks() {
         _state.update { it.copy(game = it.game.sparksBegun()) }
 
@@ -3467,6 +3527,8 @@ class ViewConeDebugViewModel(
 
         casting = viewModelScope.launch {
             if (spell.throwsSparks) showTheSparks()
+            if (spell.sparksOverTheParty) showTheSparksOverTheParty()
+            if (spell == Spell.MYSTIC_DEFENCE) shieldTheParty(whose, spell)
 
             runTriggersAt(
                 at = _state.value.game.party.position,
@@ -4298,6 +4360,8 @@ class ViewConeDebugViewModel(
                     swapping = _state.value.swapping
                         ?.takeIf { !_state.value.swapShowing },
                     portal = portalShowing,
+                    shielded = _state.value.game.partyShielded,
+                    sparksOverTheParty = _state.value.game.sparklingOverTheParty,
                 )
                 .toImageBitmap()
         } else {
@@ -4571,6 +4635,9 @@ class ViewConeDebugViewModel(
          * the way a monster's swing is.
          */
         private val HURT = TrackIndex(21)
+
+        /** Played under a line that refuses something, or says it has ended. */
+        private val WARNING = TrackIndex(79)
         private val PUT_DOWN = TrackIndex(22)
 
         /** The blast a mindflayer throws, which is all there is to notice of it. */

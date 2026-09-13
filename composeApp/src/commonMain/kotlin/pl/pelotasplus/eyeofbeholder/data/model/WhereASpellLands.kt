@@ -48,7 +48,7 @@ class WhereASpellLands(
         MonsterSpell.MONSTER_FLESH_TO_STONE -> turnedToStone(world)
 
         MonsterSpell.FLAME_STRIKE -> everybodyTakes(world, FLAME_STRIKE)
-        MonsterSpell.MONSTER_FIREBALL -> everybodyTakes(world, A_DRAGONS_FIREBALL)
+        MonsterSpell.MONSTER_FIREBALL -> dragonsFire(world)
         MonsterSpell.MONSTER_LESSER_FIREBALL -> everybodyTakes(world, A_LESSER_FIREBALL)
 
         MonsterSpell.FIREBALL -> everybodyTakes(world, A_DIE_OF_SIX, times = castAt)
@@ -85,6 +85,18 @@ class WhereASpellLands(
      * Everyone counts, including whoever is already down — this is what
      * finishes off a champion lying at the party's feet.
      */
+    /**
+     * A dragon's fire, which a mystic defence takes most of. The shield is
+     * used up by the blast reaching anybody at all, whatever the throws.
+     */
+    private fun dragonsFire(world: GameState): Landed {
+        if (!world.partyShielded) return everybodyTakes(world, A_DRAGONS_FIREBALL)
+
+        val turned = everybodyTakes(world, MysticDefence.A_DRAGONS_FIREBALL_TURNED)
+        if (world.champions.none { it.inTheParty }) return turned
+        return turned.copy(world = turned.world.mysticDefenceSpent())
+    }
+
     private fun everybodyTakes(world: GameState, dealing: DamageDice, times: Int = 1): Landed {
         var after = world
         val hurt = mutableListOf<PartySlot>()

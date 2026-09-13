@@ -25,6 +25,8 @@ package pl.pelotasplus.eyeofbeholder.data.model
  * @property throwsSparks whether casting it scatters [SparksInTheRoom] across
  *   the view. Four of the seventy do, and the rest are either shown on the
  *   portrait of whoever cast them or not shown at all.
+ * @property sparksOverTheParty whether casting it throws [SparksOverTheParty]
+ *   over every portrait, which is what the spells laid on the whole party do.
  * @property throws what it sends down the corridor, for the few that send
  *   anything. Null is not "does nothing" — it is "does nothing that flies",
  *   which covers mending a champion as well as a spell nobody has written yet.
@@ -35,10 +37,11 @@ enum class Spell(
     val heardAs: TrackIndex? = null,
     val throwsSparks: Boolean = false,
     val throws: ThrownSpell? = null,
+    val sparksOverTheParty: Boolean = false,
 ) {
     ARMOUR(1, "armor", TrackIndex(92)),
     BURNING_HANDS(2, "burning hands", TrackIndex(87)),
-    DETECT_MAGIC(3, "detect magic", TrackIndex(95)),
+    DETECT_MAGIC(3, "detect magic", TrackIndex(95), sparksOverTheParty = true),
     MAGIC_MISSILE(
         4,
         "magic missile",
@@ -53,7 +56,7 @@ enum class Spell(
     SHIELD(5, "shield", TrackIndex(92)),
     SHOCKING_GRASP(6, "shocking grasp", TrackIndex(88)),
     BLUR(7, "blur", TrackIndex(75)),
-    DETECT_INVISIBILITY(8, "detect invisibility", TrackIndex(95)),
+    DETECT_INVISIBILITY(8, "detect invisibility", TrackIndex(95), sparksOverTheParty = true),
     IMPROVED_IDENTIFY(9, "improved identify", TrackIndex(20)),
     INVISIBILITY(10, "invisibility", TrackIndex(94)),
     MELFS_ACID_ARROW(11, "melf's acid arrow", TrackIndex(96)),
@@ -72,14 +75,14 @@ enum class Spell(
             thrownOff = SavingThrow.A_SPELL,
         ),
     ),
-    HASTE(14, "haste", TrackIndex(100)),
+    HASTE(14, "haste", TrackIndex(100), sparksOverTheParty = true),
     HOLD_PERSON(
         15,
         "Hold Person",
         TrackIndex(101),
         throws = ThrownSpell.thatHolds(MonsterSpell.HOLD_PERSON, AHold.OF_A_PERSON),
     ),
-    INVISIBILITY_TEN_FEET(16, "invisibility 10' radius", TrackIndex(94)),
+    INVISIBILITY_TEN_FEET(16, "invisibility 10' radius", TrackIndex(94), sparksOverTheParty = true),
     LIGHTNING_BOLT(
         17,
         "lightning bolt",
@@ -124,7 +127,7 @@ enum class Spell(
     DISINTEGRATE(26, "disintegrate", TrackIndex(119), throwsSparks = true),
     FLESH_TO_STONE(27, "flesh to stone", TrackIndex(68)),
     STONE_TO_FLESH(28, "stone to flesh", TrackIndex(69)),
-    TRUE_SEEING(29, "true seeing", TrackIndex(73)),
+    TRUE_SEEING(29, "true seeing", TrackIndex(73), sparksOverTheParty = true),
     FINGER_OF_DEATH(30, "finger of death"),
     POWER_WORD_STUN(31, "power word stun"),
     BIGBYS_CLENCHED_FIST(32, "bigby's clenched fist"),
@@ -132,10 +135,10 @@ enum class Spell(
     // Thirty-three is the gap the two halves are separated by, and is no
     // spell at all.
 
-    BLESS(34, "bless", TrackIndex(91)),
+    BLESS(34, "bless", TrackIndex(91), sparksOverTheParty = true),
     CAUSE_LIGHT_WOUNDS(35, "cause light wounds", TrackIndex(107)),
     CURE_LIGHT_WOUNDS(36, "cure light wounds", TrackIndex(104)),
-    A_CLERICS_DETECT_MAGIC(37, "detect magic", TrackIndex(95)),
+    A_CLERICS_DETECT_MAGIC(37, "detect magic", TrackIndex(95), sparksOverTheParty = true),
     PROTECTION_FROM_EVIL(38, "protection from evil", TrackIndex(110)),
     AID(39, "aid", TrackIndex(91)),
     FLAME_BLADE(40, "flame blade", TrackIndex(99)),
@@ -146,21 +149,26 @@ enum class Spell(
         throws = ThrownSpell.thatHolds(MonsterSpell.HOLD_PERSON, AHold.OF_A_PERSON),
     ),
     SLOW_POISON(42, "slow poison", TrackIndex(111)),
-    CREATE_FOOD(43, "create food", TrackIndex(112)),
+    CREATE_FOOD(43, "create food", TrackIndex(112), sparksOverTheParty = true),
     A_CLERICS_DISPEL_MAGIC(44, "dispel magic", TrackIndex(97), throwsSparks = true),
     MAGICAL_VESTMENT(45, "magical vestment", TrackIndex(113)),
-    PRAYER(46, "prayer", TrackIndex(91)),
-    REMOVE_PARALYSIS(47, "remove paralysis", TrackIndex(114)),
+    PRAYER(46, "prayer", TrackIndex(91), sparksOverTheParty = true),
+    REMOVE_PARALYSIS(47, "remove paralysis", TrackIndex(114), sparksOverTheParty = true),
     CAUSE_SERIOUS_WOUNDS(48, "cause serious wounds", TrackIndex(108)),
     CURE_SERIOUS_WOUNDS(49, "cure serious wounds", TrackIndex(105)),
     NEUTRALIZE_POISON(50, "neutralize poison", TrackIndex(115)),
-    PROTECTION_FROM_EVIL_TEN_FEET(51, "protection from evil 10' radius", TrackIndex(110)),
+    PROTECTION_FROM_EVIL_TEN_FEET(
+        51,
+        "protection from evil 10' radius",
+        TrackIndex(110),
+        sparksOverTheParty = true,
+    ),
     CAUSE_CRITICAL_WOUNDS(52, "cause critical wounds", TrackIndex(109)),
     CURE_CRITICAL_WOUNDS(53, "cure critical wounds", TrackIndex(106)),
     FLAME_STRIKE(54, "flame strike", TrackIndex(98)),
     RAISE_DEAD(55, "raise dead", TrackIndex(117)),
     SLAY_LIVING(56, "slay living", TrackIndex(72)),
-    A_CLERICS_TRUE_SEEING(57, "true seeing", TrackIndex(73)),
+    A_CLERICS_TRUE_SEEING(57, "true seeing", TrackIndex(73), sparksOverTheParty = true),
     HARM(58, "harm", TrackIndex(70)),
     HEAL(59, "heal", TrackIndex(84)),
     RESURRECTION(60, "ressurection"),
@@ -170,7 +178,7 @@ enum class Spell(
     // And the seven nobody learns. They have no names in the game because no
     // player is ever shown one.
     A_MONSTERS_FIREBALL(63, "fireball", TrackIndex(98)),
-    MYSTIC_DEFENCE(64, "mystic defense", TrackIndex(91)),
+    MYSTIC_DEFENCE(64, "mystic defense", TrackIndex(91), sparksOverTheParty = true),
     A_LESSER_FIREBALL(65, "fireball", TrackIndex(98)),
     A_DEATH_SPELL(66, "death spell", TrackIndex(101)),
     A_DISINTEGRATION(67, "disintegrate", TrackIndex(101)),

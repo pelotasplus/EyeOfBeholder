@@ -65,6 +65,12 @@ data class GameState(
      */
     val sparkling: SparksInTheRoom? = null,
 
+    /** The sparks over the portraits of a spell cast on the whole party. */
+    val sparklingOverTheParty: SparksOverTheParty? = null,
+
+    /** Not saved, the way the spell timers of a game put down are not. */
+    val mysticDefence: MysticDefence? = null,
+
     /**
      * Whether the game has been won and the ending not yet played.
      *
@@ -1715,6 +1721,29 @@ data class GameState(
 
     /** And a frame on, which is how they go out. */
     fun sparksStepped() = copy(sparkling = sparkling?.next())
+
+    fun sparksOverThePartyBegun() = copy(sparklingOverTheParty = SparksOverTheParty())
+
+    fun sparksOverThePartyStepped() =
+        copy(sparklingOverTheParty = sparklingOverTheParty?.next())
+
+    val partyShielded: Boolean get() = mysticDefence?.shields == true
+
+    /**
+     * The party shielded by [by]'s casting, or null where a shield is already
+     * up — which refuses the casting outright rather than lengthening it.
+     */
+    fun mysticDefenceCast(by: PartySlot): GameState? =
+        if (partyShielded) null else copy(mysticDefence = MysticDefence(castBy = by))
+
+    /** The spell [by] ticks nearer its end, and gone once it gets there. */
+    fun mysticDefenceRunDown(by: Ticks) = copy(
+        mysticDefence = mysticDefence
+            ?.copy(ticksLeft = mysticDefence.ticksLeft - by.value)
+            ?.takeIf { it.ticksLeft > 0 },
+    )
+
+    fun mysticDefenceSpent() = copy(mysticDefence = mysticDefence?.copy(spent = true))
 
     /** The world with that hand put out of use for as long as a swing costs. */
     fun handSwung(whose: PartySlot, hand: CarrySlot, came: WhatTheBlowCameTo) = copy(

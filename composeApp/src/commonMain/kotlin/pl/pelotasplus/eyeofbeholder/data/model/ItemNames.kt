@@ -258,4 +258,8 @@ object SpellMessages {
     const val A_DEATH_SPELL = "The party has been hit by a death spell!"
 
     fun seriousWounds(whose: String) = "$whose has been hit by cause serious wounds."
+
+    fun alreadyOnTheParty(spell: String) = "The party is already under the effect of a $spell spell."
+
+    fun expires(whose: String, spell: String) = "$whose's $spell spell expires."
 }

@@ -25,6 +25,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.MonsterInstance
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterSlot
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterSpell
 import pl.pelotasplus.eyeofbeholder.data.model.SparksInTheRoom
+import pl.pelotasplus.eyeofbeholder.data.model.SparksOverTheParty
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterTypeId
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterPose
 import pl.pelotasplus.eyeofbeholder.data.model.NpcId
@@ -1547,6 +1548,8 @@ class ViewPortGoldenTest {
         poisoned: List<Int> = emptyList(),
         /** Who is waiting to change places, on the half the word is showing. */
         swapping: Int? = null,
+        shielded: Boolean = false,
+        sparks: SparksOverTheParty? = null,
     ): BufferedImage = runBlocking {
         val resources = ResourceRepositoryImpl()
         val cps = CpsRepositoryImpl(resources)
@@ -1614,6 +1617,8 @@ class ViewPortGoldenTest {
             reporting = { whose, hand -> reported[whose.index to hand.index] },
             hurt = { whose -> splattered[whose.index] },
             swapping = swapping?.let(::PartySlot),
+            shielded = shielded,
+            sparksOverTheParty = sparks,
         ).toImage()
     }
 
@@ -1909,6 +1914,22 @@ class ViewPortGoldenTest {
         checkGolden(
             "party-panel-poisoned",
             partyOver(level = "LEVEL4.INF", x = 15, y = 11, poisoned = listOf(1, 3)),
+        )
+
+    /** A mystic defence up: every box framed in light green until it is spent or ends. */
+    @Test
+    fun `party panel under a mystic defence`() =
+        checkGolden(
+            "party-panel-shielded",
+            partyOver(level = "LEVEL4.INF", x = 15, y = 11, shielded = true),
+        )
+
+    /** The sparks a spell on the whole party throws over the portraits, midway through. */
+    @Test
+    fun `party panel sparkling from a spell on all of them`() =
+        checkGolden(
+            "party-panel-sparks-over-the-party",
+            partyOver(level = "LEVEL4.INF", x = 15, y = 11, sparks = SparksOverTheParty(frame = 12)),
         )
 
     /**
