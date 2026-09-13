@@ -150,7 +150,10 @@ class Fighting(
             ?: dice.roll(1, 2, 0)
 
         val plus = weapon?.value ?: 0
-        return Damage((rolled + champion.abilities.strengthDamageBonus + plus).coerceAtLeast(0))
+        val dealt = Damage((rolled + champion.abilities.strengthDamageBonus + plus).coerceAtLeast(0))
+        return kind?.immunities
+            ?.softened(dealt, DealtBy.AWeapon(enchantment = plus, edged = itemTypes.isEdged(weapon)))
+            ?: dealt
     }
 
     /** The square the party are looking at, which is the one a blow reaches. */

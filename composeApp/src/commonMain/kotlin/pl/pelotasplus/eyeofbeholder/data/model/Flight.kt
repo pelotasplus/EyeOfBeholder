@@ -658,14 +658,19 @@ private val atEachQuarter = listOf(
 
         flying.harm.dice?.let { own ->
             val rolled = dice.roll(own.times, own.pips, own.base) * flying.harm.times
-            return Damage(rolled.coerceAtLeast(0))
+            val dealt = Damage(rolled.coerceAtLeast(0))
+            return kind?.immunities?.softened(dealt, DealtBy.Magic) ?: dealt
         }
 
         val what = flying.what?.let { world.item(it) }
         val rolled = what?.let { itemTypes?.get(it.type)?.damageAgainst(kind, dice) }
             ?: dice.roll(1, 6, 0)
 
-        return Damage((rolled * flying.harm.times).coerceAtLeast(0))
+        val dealt = Damage((rolled * flying.harm.times).coerceAtLeast(0))
+        val edged = itemTypes?.isEdged(what) ?: false
+        return kind?.immunities
+            ?.softened(dealt, DealtBy.AWeapon(enchantment = what?.value ?: 0, edged = edged))
+            ?: dealt
     }
 
     private fun struckDown(world: GameState, hurt: Hurt): GameState = when (hurt) {

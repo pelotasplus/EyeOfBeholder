@@ -11,9 +11,10 @@ import kotlin.jvm.JvmInline
  * cannot wear the thing down by swinging for longer. The floor 11 guardian is
  * one of these — plain steel and a bare fist go through it.
  *
- * Other bits name kinds of harm the creature shrugs off — see [shrugsOff] —
- * and the rest name spells it cannot be held or frightened by, which nothing
- * asks about yet.
+ * Others take some of a blow off rather than all of it — see [softened] — or
+ * name kinds of harm the creature shrugs off entirely — see [shrugsOff]. The
+ * rest name spells it cannot be frightened or slain by, which nothing asks
+ * about yet.
  */
 @JvmInline
 value class MonsterImmunities(private val written: Int) {
@@ -56,6 +57,35 @@ value class MonsterImmunities(private val written: Int) {
      */
     val untouchedByThisMagic: Boolean get() = written and NOTHING_OF_THE_SORT != 0
 
+    /**
+     * What a blow of [damage] comes to once this has turned some of it aside.
+     *
+     * An edge can be halved, for a creature a blade barely cuts. Then a
+     * creature that shrugs off weak weapons takes a quarter from anything
+     * short of +3 and half from a +3; a blow it shrugs off entirely still
+     * costs it the weapon's own bonus. Magic it takes by half.
+     */
+    fun softened(damage: Damage, by: DealtBy): Damage {
+        var points = damage.points
+
+        if (by is DealtBy.AWeapon && by.edged && written and BLADES_HALVED != 0) {
+            points = points shr 1
+        }
+
+        if (written and WEAK_WEAPONS_SHRUGGED_OFF != 0) {
+            points = when (by) {
+                DealtBy.Magic -> points shr 1
+                is DealtBy.AWeapon -> when {
+                    by.enchantment < 3 -> points shr 2
+                    by.enchantment == 3 -> points shr 1
+                    else -> points
+                }.let { if (it == 0) by.enchantment else it }
+            }
+        }
+
+        return Damage(points.coerceAtLeast(0))
+    }
+
     private val leastThatTells: Int
         get() = when {
             written and NOTHING_UNDER_PLUS_TWO != 0 -> 2
@@ -69,5 +99,16 @@ value class MonsterImmunities(private val written: Int) {
 
         const val NEVER_HELD = 0x2
         const val NOTHING_OF_THE_SORT = 0x10
+
+        const val BLADES_HALVED = 0x100
+        const val WEAK_WEAPONS_SHRUGGED_OFF = 0x2000
     }
+}
+
+/** What a blow was dealt with, which is what some creatures care about. */
+sealed interface DealtBy {
+    /** A weapon swung or thrown, or a bare hand, which is a weapon of nothing. */
+    data class AWeapon(val enchantment: Int, val edged: Boolean) : DealtBy
+
+    data object Magic : DealtBy
 }
