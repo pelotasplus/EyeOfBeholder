@@ -260,8 +260,9 @@ data class ItemTypes(private val types: List<ItemType>) {
 
         return when (kindOf(held)) {
             ItemKind.SWUNG_BY_HAND,
-            ItemKind.THROWN,
             ItemKind.A_LAUNCHER -> HandUse.Swing
+
+            ItemKind.THROWN -> HandUse.Throw
 
             ItemKind.POTION -> HandUse.Drink
             ItemKind.FOOD -> HandUse.Eat

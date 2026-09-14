@@ -431,6 +431,9 @@ value class CarrySlot(val index: Int) {
 
         /** The two a ring goes on, which are worth armour between them. */
         val RINGS = listOf(CarrySlot(25), CarrySlot(26))
+
+        /** The three slots down the belt, bottom first, which is the order a hand is refilled in. */
+        val BELT = listOf(CarrySlot(24), CarrySlot(23), CarrySlot(22))
     }
 }
 

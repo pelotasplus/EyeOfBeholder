@@ -1777,6 +1777,20 @@ class ViewConeDebugViewModel(
         keepTheFightGoing()
     }
 
+    /** What [whose] holds in [hand], thrown the way the party face. */
+    private fun throwFrom(whose: PartySlot, hand: CarrySlot) {
+        if (_state.value.game.isRecovering(whose, hand)) return
+        if (_state.value.game.championIn(whose)?.canAct != true) return
+
+        _state.update { it.copy(game = it.game.thrownFromHand(whose, hand, itemTypes)) }
+        Logger.d(TAG) { "$whose throws from $hand ${_state.value.game.party.facing}" }
+
+        viewModelScope.launch { playTrack(LOOSED) }
+        viewModelScope.launch { renderViewPort() }
+        keepHandsRecovering()
+        keepTheFightGoing()
+    }
+
     /** Which champion's which hand a click landed on, if it landed on one. */
     private fun handAt(x: Int, y: Int): HandOnThePanel? {
         championBoxes.forEachIndexed { slot, box ->
@@ -1958,6 +1972,11 @@ class ViewConeDebugViewModel(
             HandUse.Drink -> held?.let { drink(whose, slot.slot, it) }
 
             HandUse.Swing -> if (slot.slot.isAHand) strike(whose, slot.slot)
+
+            HandUse.Throw -> {
+                if (slot.slot.isAHand) throwFrom(whose, slot.slot)
+                return
+            }
 
             is HandUse.Cast -> castFromAScroll(whose, slot.slot, doing.spell)
 

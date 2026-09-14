@@ -18,6 +18,12 @@ sealed interface HandUse {
     /** Swung at whatever stands in front. An empty hand is a fist, and swings. */
     data object Swing : HandUse
 
+    /**
+     * Thrown down the corridor, and the wall in front is not offered it: the
+     * thing is in the air, and what it meets there is the flight's business.
+     */
+    data object Throw : HandUse
+
     /** Drunk, out of the hand it is in. */
     data object Drink : HandUse
 

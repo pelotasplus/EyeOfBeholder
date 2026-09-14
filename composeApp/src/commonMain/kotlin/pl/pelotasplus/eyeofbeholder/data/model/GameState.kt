@@ -1769,6 +1769,41 @@ data class GameState(
     fun inTheAir(loosed: Projectile) = copy(inFlight = inFlight + loosed)
 
     /**
+     * [whose] throwing what is in [hand], the way the party face, from their
+     * own quarter of the square.
+     *
+     * The hand is filled again from the belt: the lowest of its three slots
+     * holding anything, whatever that is, and never from the pack. The hand
+     * is out of use for as long as a swing costs, with nothing to report.
+     */
+    fun thrownFromHand(whose: PartySlot, hand: CarrySlot, types: ItemTypes? = null): GameState {
+        val champion = championIn(whose) ?: return this
+        val thrown = champion.holding(hand)
+        if (!thrown.isSomething) return this
+
+        val loosed = Projectile(
+            what = thrown,
+            at = party.position,
+            place = whose.standsIn.onASquareFacing(party.facing),
+            going = party.facing,
+            thrownBy = Projectile.Thrower.AChampion(whose),
+        )
+
+        var after = inTheAir(loosed).carrying(whose, hand, ItemIndex(ItemIndex.NOTHING), types)
+
+        CarrySlot.BELT.firstOrNull { champion.holding(it).isSomething }?.let { belt ->
+            after = after
+                .carrying(whose, hand, champion.holding(belt), types)
+                .carrying(whose, belt, ItemIndex(ItemIndex.NOTHING), types)
+        }
+
+        return after.copy(
+            recovering = after.recovering.filterNot { it.whose == whose && it.hand == hand } +
+                HandRecovering(whose, hand, HandRecovering.AFTER_A_SWING.value, came = null),
+        )
+    }
+
+    /**
      * The world with what was read from worn down by the reading — see
      * [WhatCastingCosts].
      *
