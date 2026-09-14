@@ -142,6 +142,44 @@ class ThrowingFromAHandTest {
         )
     }
 
+    // --- who throws what is held with the mouse ------------------------------
+
+    @Test
+    fun `a thing taken out of a champion's slot is thrown by that champion`() {
+        val held = world(CarrySlot(2) to dagger).holding(dagger, from = PartySlot(3))
+
+        assertEquals(PartySlot(3), held.throwerOfWhatIsHeld)
+    }
+
+    @Test
+    fun `an arrow taken off a quiver is thrown by whoever's quiver it was`() {
+        val held = world().unstacking(dagger, from = PartySlot(4)).world
+
+        assertEquals(PartySlot(4), held.throwerOfWhatIsHeld)
+    }
+
+    @Test
+    fun `a thing picked up off the floor is thrown by the first of the party`() {
+        assertEquals(PartySlot(0), world().takingUp(rock).throwerOfWhatIsHeld)
+    }
+
+    /** The note is about one thing, and says nothing about the next thing held. */
+    @Test
+    fun `holding something else forgets whose the first thing was`() {
+        val swapped = world().holding(dagger, from = PartySlot(3)).holding(rock)
+
+        assertEquals(PartySlot(0), swapped.throwerOfWhatIsHeld)
+    }
+
+    @Test
+    fun `a champion no longer in the party throws nothing`() {
+        val held = world().holding(dagger, from = PartySlot(3)).let { world ->
+            world.copy(champions = world.champions.toMutableList().also { it[3] = Champion.NOBODY })
+        }
+
+        assertEquals(PartySlot(0), held.throwerOfWhatIsHeld)
+    }
+
     @Test
     fun `an empty hand throws nothing`() {
         val before = world()

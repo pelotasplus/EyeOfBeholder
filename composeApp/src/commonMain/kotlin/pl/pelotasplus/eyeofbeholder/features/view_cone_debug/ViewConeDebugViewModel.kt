@@ -1743,10 +1743,7 @@ class ViewConeDebugViewModel(
         val held = _state.value.game.inHand
         if (!held.isSomething) return
 
-        val thrower = _state.value.game.champions
-            .indexOfFirst { it.inTheParty }
-            .takeIf { it >= 0 }
-            ?: return
+        val thrower = _state.value.game.throwerOfWhatIsHeld ?: return
 
         val from = if (x < ViewPort.COLS / 2) ViewPlace.FAR_LEFT else ViewPlace.FAR_RIGHT
 
@@ -1759,7 +1756,7 @@ class ViewConeDebugViewModel(
                         at = party.position,
                         place = from.onASquareFacing(party.facing),
                         going = party.facing,
-                        thrownBy = Projectile.Thrower.AChampion(PartySlot(thrower)),
+                        thrownBy = Projectile.Thrower.AChampion(thrower),
                     ),
                     inHand = ItemIndex(ItemIndex.NOTHING),
                 ),
@@ -3022,7 +3019,7 @@ class ViewConeDebugViewModel(
 
         _state.update {
             it.copy(
-                game = world.holding(inSlot)
+                game = world.holding(inSlot, from = champion)
                     .carrying(champion, slot.slot, world.inHand, itemTypes),
             )
         }
@@ -3048,7 +3045,7 @@ class ViewConeDebugViewModel(
         } else {
             if (!head.isSomething) return
             announceTaking(world.item(head))
-            world.unstacking(head)
+            world.unstacking(head, from = champion)
         }
 
         _state.update {

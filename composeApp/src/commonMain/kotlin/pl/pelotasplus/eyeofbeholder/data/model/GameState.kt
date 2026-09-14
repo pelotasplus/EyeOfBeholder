@@ -71,6 +71,9 @@ data class GameState(
     /** Not saved, the way the spell timers of a game put down are not. */
     val mysticDefence: MysticDefence? = null,
 
+    /** Whose slot the held thing came out of, while it is still that thing; never saved. */
+    val heldFrom: TakenFrom? = null,
+
     /**
      * Whether the game has been won and the ending not yet played.
      *
@@ -340,6 +343,22 @@ data class GameState(
 
     /** The same world with [slot] in the hand instead of whatever was. */
     fun holding(slot: ItemIndex) = copy(inHand = slot)
+
+    /** The same, taken out of [whose] slot, so that whoever throws it is them. */
+    fun holding(slot: ItemIndex, from: PartySlot) =
+        copy(inHand = slot, heldFrom = TakenFrom(from, slot))
+
+    /**
+     * Who throws what is held: whoever it was taken out of the slot of, while
+     * it is still that thing being held. Anything else — picked up off the
+     * floor, or held since before the note was made — is thrown by the first
+     * of the party.
+     */
+    val throwerOfWhatIsHeld: PartySlot?
+        get() = heldFrom
+            ?.takeIf { it.what == inHand && championIn(it.whose) != null }
+            ?.whose
+            ?: champions.indexOfFirst { it.inTheParty }.takeIf { it >= 0 }?.let(::PartySlot)
 
     /** Whether there is a place in the party for one more. */
     val roomForOneMore: Boolean get() = champions.any { !it.inTheParty }
@@ -797,6 +816,12 @@ data class GameState(
      * Takes the top thing off the stack [head] names into the hand, closing
      * the ring behind it. A stack of one leaves the slot empty.
      */
+    fun unstacking(head: ItemIndex, from: PartySlot): Stacked {
+        val taken = unstacking(head)
+        return if (head.isSomething) taken.copy(world = taken.world.copy(heldFrom = TakenFrom(from, head)))
+        else taken
+    }
+
     fun unstacking(head: ItemIndex): Stacked {
         if (!head.isSomething) return Stacked(this, head)
 
@@ -2027,3 +2052,6 @@ data class GameState(
         private const val MONSTER_SLOTS = 30
     }
 }
+
+/** [what] was taken out of one of [whose] slots. */
+data class TakenFrom(val whose: PartySlot, val what: ItemIndex)
