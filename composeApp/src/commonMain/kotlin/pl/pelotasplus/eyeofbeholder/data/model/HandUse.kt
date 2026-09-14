@@ -24,6 +24,9 @@ sealed interface HandUse {
      */
     data object Throw : HandUse
 
+    /** Shot from, which looses what it shoots rather than the thing in the hand. */
+    data object Shoot : HandUse
+
     /** Drunk, out of the hand it is in. */
     data object Drink : HandUse
 

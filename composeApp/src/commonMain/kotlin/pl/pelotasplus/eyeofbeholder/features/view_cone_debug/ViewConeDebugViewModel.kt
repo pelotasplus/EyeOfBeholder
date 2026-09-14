@@ -1788,6 +1788,21 @@ class ViewConeDebugViewModel(
         keepTheFightGoing()
     }
 
+    private fun shootFrom(whose: PartySlot, hand: CarrySlot) {
+        val types = itemTypes ?: return
+        if (_state.value.game.isRecovering(whose, hand)) return
+        if (_state.value.game.championIn(whose)?.canAct != true) return
+
+        val shooting = _state.value.game.shotFromHand(whose, hand, types)
+        _state.update { it.copy(game = shooting.world) }
+        Logger.d(TAG) { "$whose shoots from $hand: ${shooting.heard?.let { "loosed" } ?: "nothing to shoot"}" }
+
+        shooting.heard?.let { heard -> viewModelScope.launch { playTrack(heard) } }
+        viewModelScope.launch { renderViewPort() }
+        keepHandsRecovering()
+        keepTheFightGoing()
+    }
+
     /** Which champion's which hand a click landed on, if it landed on one. */
     private fun handAt(x: Int, y: Int): HandOnThePanel? {
         championBoxes.forEachIndexed { slot, box ->
@@ -1972,6 +1987,11 @@ class ViewConeDebugViewModel(
 
             HandUse.Throw -> {
                 if (slot.slot.isAHand) throwFrom(whose, slot.slot)
+                return
+            }
+
+            HandUse.Shoot -> {
+                if (slot.slot.isAHand) shootFrom(whose, slot.slot)
                 return
             }
 

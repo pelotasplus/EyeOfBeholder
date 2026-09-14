@@ -206,6 +206,16 @@ data class ItemTypes(private val types: List<ItemType>) {
      */
     fun isSwungByHand(item: Item): Boolean = kindOf(item) == ItemKind.SWUNG_BY_HAND
 
+    /** What [launcher] shoots, or null for a thing that shoots nothing. */
+    fun ammunitionFor(launcher: Item): ItemTypeId? = AMMUNITION[launcher.type]
+
+    /** Arrows are the one ammunition kept in a quiver rather than anywhere. */
+    fun isKeptInAQuiver(ammunition: ItemTypeId): Boolean = ammunition == ARROWS
+
+    /** A bow twangs; anything else shot is heard as a thing thrown. */
+    fun heardShooting(launcher: Item): TrackIndex =
+        if (launcher.type == A_BOW) BOWSTRING else LOOSED
+
     /** Whether this is something a champion eats — rations, however fresh. */
     fun isEaten(item: Item): Boolean = item.type == RATIONS
 
@@ -259,10 +269,9 @@ data class ItemTypes(private val types: List<ItemType>) {
         }
 
         return when (kindOf(held)) {
-            ItemKind.SWUNG_BY_HAND,
-            ItemKind.A_LAUNCHER -> HandUse.Swing
-
+            ItemKind.SWUNG_BY_HAND -> HandUse.Swing
             ItemKind.THROWN -> HandUse.Throw
+            ItemKind.A_LAUNCHER -> HandUse.Shoot
 
             ItemKind.POTION -> HandUse.Drink
             ItemKind.FOOD -> HandUse.Eat
@@ -425,6 +434,19 @@ data class ItemTypes(private val types: List<ItemType>) {
 
         /** The one type a champion eats. Its value is the food it restores. */
         val RATIONS = ItemTypeId(31)
+
+        val ARROWS = ItemTypeId(16)
+        val A_BOW = ItemTypeId(7)
+
+        /**
+         * Which launcher shoots what. Data, not a rule: nothing in an item's
+         * entry says what it fires, and a pair changed here has nothing to
+         * catch it but a bow that will not shoot.
+         */
+        val AMMUNITION = mapOf(A_BOW to ARROWS, ItemTypeId(14) to ItemTypeId(18))
+
+        val BOWSTRING = TrackIndex(26)
+        val LOOSED = TrackIndex(11)
 
         /** The two kinds of wand a use comes off — see [whatCastingCosts]. */
         val WANDS_THAT_SPEND = setOf(ItemTypeId(48), ItemTypeId(62))

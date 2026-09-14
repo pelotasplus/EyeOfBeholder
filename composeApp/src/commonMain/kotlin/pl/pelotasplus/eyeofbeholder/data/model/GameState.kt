@@ -1822,11 +1822,72 @@ data class GameState(
                 .carrying(whose, belt, ItemIndex(ItemIndex.NOTHING), types)
         }
 
-        return after.copy(
-            recovering = after.recovering.filterNot { it.whose == whose && it.hand == hand } +
-                HandRecovering(whose, hand, HandRecovering.AFTER_A_SWING.value, came = null),
+        return after.handWaitsAfterLoosing(whose, hand)
+    }
+
+    /** What came of shooting: the world after, and what is heard if anything flew. */
+    data class Shooting(val world: GameState, val heard: TrackIndex?)
+
+    /**
+     * [whose] shooting with the launcher in [hand].
+     *
+     * An arrow already in either hand is shot before one comes off the quiver;
+     * a sling's stone is taken from wherever the champion carries one. With
+     * nothing to shoot the slot says so, and the hand waits only as long as a
+     * refusal costs.
+     */
+    fun shotFromHand(whose: PartySlot, hand: CarrySlot, types: ItemTypes): Shooting {
+        val champion = championIn(whose) ?: return Shooting(this, heard = null)
+        val launcher = item(champion.holding(hand)) ?: return Shooting(this, heard = null)
+        val ammunition = types.ammunitionFor(launcher) ?: return Shooting(this, heard = null)
+
+        val taken = takenToShoot(whose, champion, ammunition, types)
+            ?: return Shooting(handSwung(whose, hand, WhatTheBlowCameTo.NoAmmunition), heard = null)
+
+        val loosed = Projectile(
+            what = taken.second,
+            at = party.position,
+            place = whose.standsIn.onASquareFacing(party.facing),
+            going = party.facing,
+            thrownBy = Projectile.Thrower.AChampion(whose),
+        )
+
+        return Shooting(
+            world = taken.first.inTheAir(loosed).handWaitsAfterLoosing(whose, hand),
+            heard = types.heardShooting(launcher),
         )
     }
+
+    private fun takenToShoot(
+        whose: PartySlot,
+        champion: Champion,
+        ammunition: ItemTypeId,
+        types: ItemTypes,
+    ): Pair<GameState, ItemIndex>? {
+        val nothing = ItemIndex(ItemIndex.NOTHING)
+
+        if (!types.isKeptInAQuiver(ammunition)) {
+            val slot = (0 until CarrySlot.ALL_OF_THEM).map(::CarrySlot)
+                .firstOrNull { item(champion.holding(it))?.type == ammunition } ?: return null
+            return carrying(whose, slot, nothing, types) to champion.holding(slot)
+        }
+
+        (0 until Champion.HANDS).map(::CarrySlot)
+            .firstOrNull { item(champion.holding(it))?.type == ammunition }
+            ?.let { return carrying(whose, it, nothing, types) to champion.holding(it) }
+
+        val quiver = champion.holding(CarrySlot.QUIVER)
+        if (!quiver.isSomething) return null
+
+        val stacked = unstacking(quiver)
+        val kept = stacked.world.copy(inHand = inHand, heldFrom = heldFrom)
+        return kept.carrying(whose, CarrySlot.QUIVER, stacked.head, types) to quiver
+    }
+
+    private fun handWaitsAfterLoosing(whose: PartySlot, hand: CarrySlot) = copy(
+        recovering = recovering.filterNot { it.whose == whose && it.hand == hand } +
+            HandRecovering(whose, hand, HandRecovering.AFTER_A_SWING.value, came = null),
+    )
 
     /**
      * The world with what was read from worn down by the reading — see
