@@ -884,6 +884,36 @@ data class GameState(
     )
 
     /**
+     * The party put straight onto [level] off a list, rather than walking down
+     * to it — keeping everything they carry, and finding the floor as its file
+     * has it.
+     *
+     * The keeping is the point: jumping is for skipping the walk, and a party
+     * handed back at the door with nothing on them cannot walk the rest of it.
+     *
+     * The peopling is the part that differs from [arrivingAt], and it differs
+     * on purpose. What is remembered of a floor is what was standing on the
+     * sublevel somebody last left it by, and a jump arrives at whichever
+     * sublevel it is told to whatever happened before. Taking the memory can
+     * therefore land a floor's monsters where the view does not draw them —
+     * and nothing but the drawing asks which sublevel a monster is on, so they
+     * go on moving, reaching and biting out of an empty corridor.
+     */
+    fun jumpingTo(
+        level: Int,
+        places: List<MonsterInstance>,
+        maz: Maz? = null,
+        subLevel: Int = 0,
+        kinds: List<MonsterProperty> = emptyList(),
+        dice: Dice = Dice.random,
+    ) = copy(
+        monsters = places.map {
+            it.copy(subLevel = subLevel, level = level).rolledIfKnown(kinds, dice)
+        },
+        mazes = if (maz == null) mazes else mazes + (level to maz),
+    )
+
+    /**
      * What is remembered of [level], or null where the party should be met by
      * what its file lists instead.
      *

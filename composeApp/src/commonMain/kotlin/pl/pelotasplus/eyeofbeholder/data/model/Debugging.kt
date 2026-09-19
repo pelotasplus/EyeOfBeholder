@@ -110,6 +110,57 @@ class Debugging {
         _showingMap.value = show
     }
 
+    private val _pickingALevel = MutableStateFlow(false)
+
+    /**
+     * Whether the list of floors is up over the game.
+     *
+     * Over it rather than instead of it: the dungeon is a screen of its own,
+     * and taking it away to show a list takes the party with it — what holds
+     * them belongs to the screen, and putting a fresh one back hands over six
+     * strangers at the entrance. Laid on top, nothing is taken away.
+     */
+    val pickingALevel: StateFlow<Boolean> = _pickingALevel.asStateFlow()
+
+    fun pickALevel(picking: Boolean) {
+        _pickingALevel.value = picking
+    }
+
+    private val _jumpWanted = MutableStateFlow<Jump?>(null)
+
+    /**
+     * A floor picked off the Levels screen, waiting to be gone to.
+     *
+     * It is left here rather than carried in the address of a new screen,
+     * because a new screen is a new game: the thing holding the party is tied
+     * to the one being shown, so replacing it hands back six strangers with
+     * nothing in their pockets. Left here, the screen showing the party can
+     * read it and take them there itself.
+     */
+    val jumpWanted: StateFlow<Jump?> = _jumpWanted.asStateFlow()
+
+    fun jumpTo(level: String, entryPoint: LevelEntryPoint?) {
+        _jumpWanted.value = Jump(
+            level = level,
+            x = entryPoint?.location?.x,
+            y = entryPoint?.location?.y,
+            facing = entryPoint?.direction,
+        )
+    }
+
+    /** Taken, so that coming back to the screen does not take it again. */
+    fun jumpTaken() {
+        _jumpWanted.value = null
+    }
+
+    /** Where the Levels screen asked for the party to be put. */
+    data class Jump(
+        val level: String,
+        val x: Int?,
+        val y: Int?,
+        val facing: Direction?,
+    )
+
     companion object {
         /**
          * How big the little map is drawn, as a side in the 320×200 screen's

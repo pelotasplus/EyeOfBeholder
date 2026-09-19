@@ -9,9 +9,6 @@ sealed interface Route {
     @Serializable
     data object CpsDebug : Route
 
-    @Serializable
-    data object LevelsDebug : Route
-
     /**
      * The game view. [level] is the INF file to render; null means the
      * view model's own default level and start position. [startX], [startY]

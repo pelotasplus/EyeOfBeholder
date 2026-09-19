@@ -243,6 +243,9 @@ class ViewConeDebugViewModel(
      */
     private var scriptHasTheParty = false
 
+    /** Whether the game has been set going, so that asking twice does nothing. */
+    private var started = false
+
     /** Redrawing the view for a teleporter's flicker, while one is in sight. */
     private var flickering: Job? = null
 
@@ -421,6 +424,14 @@ class ViewConeDebugViewModel(
 
             is Event.DialogAnswered -> onDialogAnswered(event.answer)
             is Event.OnLevelSelected -> onVmpSelected(event.name)
+
+            is Event.JumpTo -> onVmpSelected(
+                name = event.level,
+                playerX = event.x ?: DEFAULT_PLAYER_X,
+                playerY = event.y ?: DEFAULT_PLAYER_Y,
+                direction = event.facing ?: DEFAULT_DIRECTION,
+                jumped = true,
+            )
             is Event.ClickedTheView -> onClickedTheView(event.x, event.y)
             is Event.UsedWhatIsAt -> onUsedWhatIsAt(event.x, event.y)
             Event.Camp -> onCamped()
@@ -448,6 +459,14 @@ class ViewConeDebugViewModel(
         startY: Int? = null,
         startDirection: Direction? = null,
     ) {
+        // Once only, however many times it is asked for. Leaving this screen
+        // and coming back takes it out of the composition and puts it back,
+        // which asks again — and starting again would hand back the party the
+        // game ships with, standing at the entrance, whatever had been played
+        // up to then.
+        if (started) return
+        started = true
+
         viewModelScope.launch {
             cpsRepository.loadCps(PLAY_FIELD_CPS)
                 .onSuccess { playFieldBackground = it }
@@ -568,6 +587,12 @@ class ViewConeDebugViewModel(
          * nobody arriving anywhere.
          */
         walkingIn: Boolean = false,
+        /**
+         * Whether the party were put here off the Levels screen rather than
+         * walking in — see [GameState.jumpingTo], which says why such a floor
+         * is peopled from its file rather than from what is remembered of it.
+         */
+        jumped: Boolean = false,
     ) {
         viewModelScope.launch {
             viewConeRepository
@@ -625,13 +650,25 @@ class ViewConeDebugViewModel(
                             inf = inf,
                             subLevel = showing,
                             game = (leftBehind ?: it.game)
-                                .arrivingAt(
-                                    level = arrivingAt,
-                                    places = inf.monsterInstances,
-                                    maz = inf.subLevels[showing].maz,
-                                    subLevel = showing,
-                                    kinds = inf.subLevels[showing].monsters,
-                                )
+                                .let { world ->
+                                    if (jumped) {
+                                        world.jumpingTo(
+                                            level = arrivingAt,
+                                            places = inf.monsterInstances,
+                                            maz = inf.subLevels[showing].maz,
+                                            subLevel = showing,
+                                            kinds = inf.subLevels[showing].monsters,
+                                        )
+                                    } else {
+                                        world.arrivingAt(
+                                            level = arrivingAt,
+                                            places = inf.monsterInstances,
+                                            maz = inf.subLevels[showing].maz,
+                                            subLevel = showing,
+                                            kinds = inf.subLevels[showing].monsters,
+                                        )
+                                    }
+                                }
                                 .copy(
                                     party = was.copy(
                                         position = Location(
@@ -4622,6 +4659,17 @@ class ViewConeDebugViewModel(
 
         data class DialogAnswered(val answer: DialogAnswer) : Event()
         data class OnLevelSelected(val name: String) : Event()
+
+        /**
+         * A floor picked off the Levels screen, with the party already here
+         * going to it as they are.
+         */
+        data class JumpTo(
+            val level: String,
+            val x: Int?,
+            val y: Int?,
+            val facing: Direction?,
+        ) : Event()
 
         /** A click in the view, in its own 176 by 120 coordinates. */
         data class ClickedTheView(val x: Int, val y: Int) : Event()

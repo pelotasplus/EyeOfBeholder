@@ -33,6 +33,7 @@ fun App() = CompositionLocalProvider(LocalPlayFieldFocus provides remember { Pla
         // decide whether to write where the party are standing over its corner.
         val debugging: Debugging = koinInject()
         val debugMenuExpanded by debugging.menuIsOpen.collectAsState()
+        val pickingALevel by debugging.pickingALevel.collectAsState()
         val playFieldFocus = LocalPlayFieldFocus.current
 
         // the menu's buttons take the focus and closing them does not give it
@@ -60,15 +61,6 @@ fun App() = CompositionLocalProvider(LocalPlayFieldFocus provides remember { Pla
                         startDirection = route.startFacing,
                     )
                 }
-                composable<Route.LevelsDebug> {
-                    LevelsDebugScreen(
-                        onLevelSelected = { level, entryPoint ->
-                            navController.navigate(Route.ViewConeDebug(level, entryPoint)) {
-                                popUpTo<Route.ViewConeDebug> { inclusive = true }
-                            }
-                        }
-                    )
-                }
                 composable<Route.CpsDebug> {
                     CpsDebugScreen()
                 }
@@ -91,8 +83,17 @@ fun App() = CompositionLocalProvider(LocalPlayFieldFocus provides remember { Pla
                         }
                     }
                 },
+                onPickALevel = { debugging.pickALevel(true) },
             )
 
+            if (pickingALevel) {
+                LevelsDebugScreen(
+                    onLevelSelected = { level, entryPoint ->
+                        debugging.pickALevel(false)
+                        debugging.jumpTo(level, entryPoint)
+                    },
+                )
+            }
         }
     }
 }

@@ -85,6 +85,17 @@ fun ViewConeDebugScreen(
         )
     }
 
+    // A floor picked off the Levels screen, taken by the party already here.
+    val jump by debugging.jumpWanted.collectAsState()
+    LaunchedEffect(jump) {
+        jump?.let {
+            debugging.jumpTaken()
+            viewModel.onEvent(
+                ViewConeDebugViewModel.Event.JumpTo(it.level, it.x, it.y, it.facing),
+            )
+        }
+    }
+
     ViewConeDebugContent(
         modifier = modifier,
         state = state,

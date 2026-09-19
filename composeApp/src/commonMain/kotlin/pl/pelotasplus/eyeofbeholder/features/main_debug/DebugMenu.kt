@@ -25,15 +25,25 @@ import pl.pelotasplus.eyeofbeholder.BuildInfo
 import pl.pelotasplus.eyeofbeholder.data.model.Debugging
 import pl.pelotasplus.eyeofbeholder.navigation.Route
 
-private data class DebugDestination(val label: String, val route: Route)
+private data class DebugDestination(val label: String, val choice: DebugChoice)
+
+/**
+ * What a line of the panel does. Two of them go to a screen of their own; the
+ * list of floors is laid over the game instead, so that the party it is going
+ * to move are still there when it does.
+ */
+private sealed interface DebugChoice {
+    data class GoTo(val route: Route) : DebugChoice
+    data object PickALevel : DebugChoice
+}
 
 private val debugDestinations = listOf(
     // The way back. This panel is the only navigation there is, so without a
-    // line for the dungeon the two screens below it are one-way doors — the
-    // game carries on underneath, audibly, with no way to return to it.
-    DebugDestination("Dungeon", Route.ViewConeDebug()),
-    DebugDestination("Levels", Route.LevelsDebug),
-    DebugDestination("CPS Debug", Route.CpsDebug),
+    // line for the dungeon the screen below it is a one-way door — the game
+    // carries on underneath, audibly, with no way to return to it.
+    DebugDestination("Dungeon", DebugChoice.GoTo(Route.ViewConeDebug())),
+    DebugDestination("Levels", DebugChoice.PickALevel),
+    DebugDestination("CPS Debug", DebugChoice.GoTo(Route.CpsDebug)),
 )
 
 /**
@@ -47,6 +57,7 @@ fun DebugMenu(
     expanded: Boolean,
     onExpandedChange: (Boolean) -> Unit,
     onDestinationClick: (Route) -> Unit,
+    onPickALevel: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Box(modifier = modifier.fillMaxSize()) {
@@ -62,6 +73,7 @@ fun DebugMenu(
         if (expanded) {
             DebugMenuPanel(
                 onDestinationClick = onDestinationClick,
+                onPickALevel = onPickALevel,
                 onDismiss = { onExpandedChange(false) },
                 modifier = Modifier.align(Alignment.TopEnd),
             )
@@ -72,6 +84,7 @@ fun DebugMenu(
 @Composable
 private fun DebugMenuPanel(
     onDestinationClick: (Route) -> Unit,
+    onPickALevel: () -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
     debugging: Debugging = koinInject(),
@@ -131,7 +144,10 @@ private fun DebugMenuPanel(
             Button(
                 onClick = {
                     onDismiss()
-                    onDestinationClick(destination.route)
+                    when (val choice = destination.choice) {
+                        is DebugChoice.GoTo -> onDestinationClick(choice.route)
+                        DebugChoice.PickALevel -> onPickALevel()
+                    }
                 },
                 modifier = Modifier.fillMaxWidth(),
             ) {
