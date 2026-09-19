@@ -48,7 +48,9 @@ import pl.pelotasplus.eyeofbeholder.data.model.Burst
 import pl.pelotasplus.eyeofbeholder.data.model.ConjuredBolt
 import pl.pelotasplus.eyeofbeholder.data.model.Dice
 import pl.pelotasplus.eyeofbeholder.data.model.Projectile
+import pl.pelotasplus.eyeofbeholder.data.model.Spell
 import pl.pelotasplus.eyeofbeholder.data.model.SquarePlace
+import pl.pelotasplus.eyeofbeholder.data.model.ThrownSpell
 import pl.pelotasplus.eyeofbeholder.data.model.THROWN_CPS
 import pl.pelotasplus.eyeofbeholder.data.model.WhatTheBlowCameTo
 import pl.pelotasplus.eyeofbeholder.data.RecordingStage
@@ -2104,6 +2106,35 @@ class ViewPortGoldenTest {
         checkGolden("bolt-three-squares-off", aBoltInFlight("LEVEL2.INF", 3, 11, Direction.NORTH, 3))
 
     /**
+     * A flame strike as a champion throws one, which is a fireball to look at
+     * and differs only in what it rolls where it lands.
+     *
+     * Worth a picture even so. It is the spell's own bolt being looked up
+     * rather than a bolt handed over, so this is what would catch a flame
+     * strike quietly becoming motes or lightning.
+     */
+    @Test
+    fun `a flame strike cast down the corridor`() {
+        (2 downTo 1).forEach { squaresOff ->
+            checkGolden(
+                "spell-flame-strike-$squaresOff",
+                aSpellInFlight(Spell.FLAME_STRIKE, squaresOff),
+            )
+        }
+    }
+
+    /** And an acid arrow, which is the one spell drawn as a thing rather than a light. */
+    @Test
+    fun `an acid arrow cast down the corridor`() {
+        (2 downTo 1).forEach { squaresOff ->
+            checkGolden(
+                "spell-acid-arrow-$squaresOff",
+                aSpellInFlight(Spell.MELFS_ACID_ARROW, squaresOff),
+            )
+        }
+    }
+
+    /**
      * An arrow going away down the corridor, which is what the party see of
      * one they have just loosed: the fletching, and nothing else.
      */
@@ -2839,6 +2870,48 @@ class ViewPortGoldenTest {
     /** Whichever of the dungeon's is the first of its kind; one is like another. */
     private fun theFirst(kind: ItemTypeId) =
         ItemIndex(dungeonItems.indexOfFirst { it.type == kind })
+
+    /**
+     * A spell in the air, built the way a champion casting one builds it.
+     *
+     * Every other bolt here is drawn from a [ConjuredBolt] handed straight to
+     * the renderer, which says what a picture looks like and nothing about
+     * which spell wears it. This goes the whole way round instead — the spell
+     * names what it throws, that names the bolt, and the bolt is looked up —
+     * so a spell pointed at the wrong picture is caught here and nowhere else.
+     */
+    private fun aSpellInFlight(spell: Spell, squaresOff: Int): ViewPort = runBlocking {
+        val thrown = spell.throws ?: error("${spell.name} throws nothing")
+        val repository = repository()
+        val inf = repository.loadLevel("LEVEL2.INF").getOrThrow()
+        val facing = Direction.NORTH
+        val standingOn = Location(3, 11)
+        val sublevel = inf.subLevels[inf.subLevelAt(0, standingOn.x, standingOn.y, facing)]
+
+        var at = standingOn
+        repeat(squaresOff) { at = facing.oneStepFrom(at) }
+
+        repository.renderPosition(
+            items = dungeonItems,
+            monsters = emptyList(),
+            sublevel = sublevel,
+            playerX = standingOn.x,
+            playerY = standingOn.y,
+            direction = facing,
+            inFlight = listOf(
+                Projectile(
+                    what = null,
+                    at = at,
+                    place = PartySlot(0).standsIn.onASquareFacing(facing),
+                    going = facing,
+                    squaresLeft = thrown.flies.reach,
+                    thrownBy = Projectile.Thrower.AChampion(PartySlot(0)),
+                    harm = thrown.dealtBy(ThrownSpell.AS_READ_FROM_A_SCROLL),
+                    spell = thrown.flies,
+                ),
+            ),
+        ).getOrThrow()
+    }
 
     /** What the party entering a sublevel does to the monsters the file lists. */
     private fun List<MonsterInstance>.arrivingIn(subLevel: Int) =

@@ -39,4 +39,12 @@ enum class ConjuredBolt(val x: Int, val y: Int, val width: Int, val height: Int)
      * floors of clerics and beholders are made of.
      */
     LIKE_MOTES(x = 38, y = 1, width = 21, height = 20),
+
+    /**
+     * An acid arrow, which is the odd one out: not a bolt of light but the
+     * arrow itself, off the same sheet and out of the same row a loosed arrow
+     * is cut from. It is cut whole rather than tight because the cell is what
+     * the drawing centres on.
+     */
+    LIKE_AN_ARROW(x = 0, y = 144, width = 32, height = 24),
 }

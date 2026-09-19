@@ -89,9 +89,12 @@ enum class MonsterSpell(
 
     MELFS_ACID_ARROW(
         1,
-        null,
+        ConjuredBolt.LIKE_AN_ARROW,
         UNTIL_IT_HITS,
         heardAs = TrackIndex(96),
+        // Down the side it was cast from rather than the middle, which is how
+        // a thrown thing goes and not how a bolt goes — of a piece with its
+        // being drawn as an arrow.
         downTheMiddle = false,
     ),
 

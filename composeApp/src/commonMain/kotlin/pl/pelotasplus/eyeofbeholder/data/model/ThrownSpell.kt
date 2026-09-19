@@ -138,7 +138,20 @@ enum class CountedBy {
     EVERY_LEVEL,
 
     /** One for every two levels past the first, which is the missiles. */
-    EVERY_SECOND_LEVEL;
+    EVERY_SECOND_LEVEL,
+
+    /** One for every three, which is the acid arrow. */
+    EVERY_THIRD_LEVEL,
+
+    /**
+     * Once, whatever the caster has learnt.
+     *
+     * Some spells are a fixed thing rather than a growing one, and saying so
+     * is what keeps a scroll from multiplying them: a scroll casts at ninth
+     * level whoever holds it — see [ThrownSpell.AS_READ_FROM_A_SCROLL] — so
+     * counting the reader in would make such a spell nine times itself.
+     */
+    ONCE_HOWEVER_PRACTISED;
 
     /**
      * Never fewer than one. A caster too new to have earned a second count
@@ -148,5 +161,7 @@ enum class CountedBy {
     fun forACasterOf(level: Int): Int = when (this) {
         EVERY_LEVEL -> level
         EVERY_SECOND_LEVEL -> (level - 1) / 2
+        EVERY_THIRD_LEVEL -> level / 3
+        ONCE_HOWEVER_PRACTISED -> 1
     }.coerceAtLeast(1)
 }

@@ -59,7 +59,20 @@ enum class Spell(
     DETECT_INVISIBILITY(8, "detect invisibility", TrackIndex(95), sparksOverTheParty = true),
     IMPROVED_IDENTIFY(9, "improved identify", TrackIndex(20)),
     INVISIBILITY(10, "invisibility", TrackIndex(94)),
-    MELFS_ACID_ARROW(11, "melf's acid arrow", TrackIndex(96)),
+    MELFS_ACID_ARROW(
+        11,
+        "melf's acid arrow",
+        TrackIndex(96),
+        throws = ThrownSpell(
+            flies = MonsterSpell.MELFS_ACID_ARROW,
+            dealing = DamageDice(times = 2, pips = 4, base = 0),
+            counted = CountedBy.EVERY_THIRD_LEVEL,
+            hurting = setOf(HarmKind.MAGIC, HarmKind.ACID),
+            // Nothing is thrown against it. Acid does not care how nimble the
+            // thing it lands on was.
+            thrownOff = null,
+        ),
+    ),
     DISPEL_MAGIC(12, "dispel magic", TrackIndex(97), throwsSparks = true),
     FIREBALL(
         13,
@@ -165,7 +178,19 @@ enum class Spell(
     ),
     CAUSE_CRITICAL_WOUNDS(52, "cause critical wounds", TrackIndex(109)),
     CURE_CRITICAL_WOUNDS(53, "cure critical wounds", TrackIndex(106)),
-    FLAME_STRIKE(54, "flame strike", TrackIndex(98)),
+    FLAME_STRIKE(
+        54,
+        "flame strike",
+        TrackIndex(98),
+        throws = ThrownSpell(
+            flies = MonsterSpell.FLAME_STRIKE,
+            dealing = DamageDice(times = 6, pips = 8, base = 0),
+            counted = CountedBy.ONCE_HOWEVER_PRACTISED,
+            hurting = setOf(HarmKind.MAGIC, HarmKind.FIRE),
+            takesTheWholeSquare = true,
+            thrownOff = SavingThrow.A_SPELL,
+        ),
+    ),
     RAISE_DEAD(55, "raise dead", TrackIndex(117)),
     SLAY_LIVING(56, "slay living", TrackIndex(72)),
     A_CLERICS_TRUE_SEEING(57, "true seeing", TrackIndex(73), sparksOverTheParty = true),
