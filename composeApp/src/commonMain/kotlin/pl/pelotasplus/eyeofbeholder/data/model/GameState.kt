@@ -1495,12 +1495,19 @@ data class GameState(
 
     /**
      * [whose] mended by [points], up to what they started the day able to take
-     * and no further. Nothing here raises the dead: somebody at nothing left
-     * is mended like anybody else, which is what a potion poured down them
-     * does, and being past raising is a separate question this does not ask.
+     * and no further.
+     *
+     * Being down is not being past mending: somebody at nothing left, or below
+     * it, is mended like anybody else and gets up, which is what a potion
+     * poured down them does and what a cure read over them does.
+     *
+     * Ten below is another matter. Nothing here raises the dead — a champion
+     * that far down is past what a mending reaches, and bringing them back is
+     * a spell of its own rather than a lucky roll on a cure.
      */
     fun championMended(whose: PartySlot, points: Int): GameState {
         val who = champions.getOrNull(whose.index) ?: return this
+        if (who.deadForGood) return this
         return copy(
             champions = champions.toMutableList().also {
                 it[whose.index] = who.copy(
