@@ -65,6 +65,18 @@ data class ChampionBox(val left: Int, val top: Int) {
         x in portraitLeft until portraitLeft + PORTRAIT_SIZE &&
             y in portraitTop until portraitTop + PORTRAIT_SIZE
 
+    /**
+     * Whether a click landed anywhere on the box at all — name, face, the two
+     * slots or the bar along the bottom.
+     *
+     * What a click on a box means is usually decided by which part of it was
+     * hit. This is for the times the whole box means one thing: a spell that
+     * has asked which champion it is for is pointed at the person, and
+     * pointing at the sword they happen to be holding is pointing at them.
+     */
+    fun covers(x: Int, y: Int): Boolean =
+        x in left until left + WIDTH && y in top until top + HEIGHT
+
     companion object {
         const val WIDTH = 64
         const val HEIGHT = 50

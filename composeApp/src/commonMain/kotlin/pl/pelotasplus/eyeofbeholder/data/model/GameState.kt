@@ -1754,7 +1754,9 @@ data class GameState(
     /** And a frame on, which is how they go out. */
     fun sparksStepped() = copy(sparkling = sparkling?.next())
 
-    fun sparksOverThePartyBegun() = copy(sparklingOverTheParty = SparksOverTheParty())
+    /** @param over whose box alone they light, or nobody named for all six. */
+    fun sparksOverThePartyBegun(over: PartySlot? = null) =
+        copy(sparklingOverTheParty = SparksOverTheParty(over = over))
 
     fun sparksOverThePartyStepped() =
         copy(sparklingOverTheParty = sparklingOverTheParty?.next())

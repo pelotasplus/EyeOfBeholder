@@ -7,11 +7,25 @@ package pl.pelotasplus.eyeofbeholder.data.model
  * three pictures a spark shows is two bits of one word per four frames, the
  * same packing [SparksInTheRoom] uses; the tables are the game's own.
  */
-data class SparksOverTheParty(val frame: Int = 0) {
+data class SparksOverTheParty(
+    val frame: Int = 0,
+
+    /**
+     * Whose box they are over, or nobody named for all six of them.
+     *
+     * The same thirty-two frames serve a spell laid on the whole party and one
+     * laid on a single champion — a mending is the party's spell shown over
+     * one portrait, not an animation of its own.
+     */
+    val over: PartySlot? = null,
+) {
+
+    /** Whether they are lighting the box of [slot] at all. */
+    fun lighting(slot: PartySlot) = over == null || over == slot
 
     /** The same again a frame later, or null once the last has gone out. */
     fun next(): SparksOverTheParty? =
-        (frame + 1).takeIf { it < FRAMES }?.let { SparksOverTheParty(it) }
+        (frame + 1).takeIf { it < FRAMES }?.let { copy(frame = it) }
 
     /** Which picture spark [which] of a box shows this frame, from one, or zero for none. */
     fun showing(which: Int): Int {
@@ -26,7 +40,11 @@ data class SparksOverTheParty(val frame: Int = 0) {
         /** Half a tick, as the sparks in the room are held. */
         const val A_FRAME = 27L
 
-        private const val FRAMES_A_WORD = 4
+        /**
+         * How many frames each word of [LIT] covers, and so how often the
+         * picture actually changes: thirty-two frames are eight pictures.
+         */
+        const val FRAMES_A_WORD = 4
 
         private val LIT = listOf(0x40, 0x90, 0xE4, 0xB9, 0x6E, 0x1B, 0x06, 0x01)
         private val MASKS = listOf(0xC0, 0x30, 0x0C, 0x03)

@@ -1936,6 +1936,31 @@ class ViewPortGoldenTest {
         )
 
     /**
+     * The same sparks held over one box — a mending laid on one champion —
+     * walked through the whole of their burning.
+     *
+     * Thirty-two frames, but only eight pictures: which of the four sparks is
+     * lit and how brightly is two bits of one word per four frames, so a frame
+     * out of each word is the whole animation and the ones between are the
+     * same picture again. Frozen at one a word, these are every state the
+     * sparks have, in order, with the five boxes beside them staying dark
+     * throughout.
+     */
+    @Test
+    fun `the sparks over one champion, at each of their phases`() {
+        (0 until SparksOverTheParty.FRAMES step SparksOverTheParty.FRAMES_A_WORD)
+            .forEach { frame ->
+                checkGolden(
+                    "party-panel-sparks-phase-$frame",
+                    partyOver(
+                        level = "LEVEL4.INF", x = 15, y = 11,
+                        sparks = SparksOverTheParty(frame = frame, over = PartySlot(3)),
+                    ),
+                )
+            }
+    }
+
+    /**
      * A fireball going off two squares up the corridor, frozen at three
      * moments of its burning.
      *

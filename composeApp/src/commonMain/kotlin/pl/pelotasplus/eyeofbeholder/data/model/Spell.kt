@@ -38,6 +38,18 @@ enum class Spell(
     val throwsSparks: Boolean = false,
     val throws: ThrownSpell? = null,
     val sparksOverTheParty: Boolean = false,
+
+    /**
+     * What it gives back to one of the party, for the ones cast on a person
+     * rather than down a corridor.
+     *
+     * Carrying one of these is what makes a spell ask which champion before it
+     * does anything. Nothing else asks yet — the spells that clear a poisoning
+     * or a paralysis are asked the same question by the game and have none of
+     * this written, so when they are written the asking will want lifting out
+     * of here and into a question of its own.
+     */
+    val mends: Mending? = null,
 ) {
     ARMOUR(1, "armor", TrackIndex(92)),
     BURNING_HANDS(2, "burning hands", TrackIndex(87)),
@@ -150,7 +162,12 @@ enum class Spell(
 
     BLESS(34, "bless", TrackIndex(91), sparksOverTheParty = true),
     CAUSE_LIGHT_WOUNDS(35, "cause light wounds", TrackIndex(107)),
-    CURE_LIGHT_WOUNDS(36, "cure light wounds", TrackIndex(104)),
+    CURE_LIGHT_WOUNDS(
+        36,
+        "cure light wounds",
+        TrackIndex(104),
+        mends = Mending.Rolled(DamageDice(times = 1, pips = 8, base = 0)),
+    ),
     A_CLERICS_DETECT_MAGIC(37, "detect magic", TrackIndex(95), sparksOverTheParty = true),
     PROTECTION_FROM_EVIL(38, "protection from evil", TrackIndex(110)),
     AID(39, "aid", TrackIndex(91)),
@@ -168,7 +185,12 @@ enum class Spell(
     PRAYER(46, "prayer", TrackIndex(91), sparksOverTheParty = true),
     REMOVE_PARALYSIS(47, "remove paralysis", TrackIndex(114), sparksOverTheParty = true),
     CAUSE_SERIOUS_WOUNDS(48, "cause serious wounds", TrackIndex(108)),
-    CURE_SERIOUS_WOUNDS(49, "cure serious wounds", TrackIndex(105)),
+    CURE_SERIOUS_WOUNDS(
+        49,
+        "cure serious wounds",
+        TrackIndex(105),
+        mends = Mending.Rolled(DamageDice(times = 2, pips = 8, base = 1)),
+    ),
     NEUTRALIZE_POISON(50, "neutralize poison", TrackIndex(115)),
     PROTECTION_FROM_EVIL_TEN_FEET(
         51,
@@ -177,7 +199,12 @@ enum class Spell(
         sparksOverTheParty = true,
     ),
     CAUSE_CRITICAL_WOUNDS(52, "cause critical wounds", TrackIndex(109)),
-    CURE_CRITICAL_WOUNDS(53, "cure critical wounds", TrackIndex(106)),
+    CURE_CRITICAL_WOUNDS(
+        53,
+        "cure critical wounds",
+        TrackIndex(106),
+        mends = Mending.Rolled(DamageDice(times = 3, pips = 8, base = 3)),
+    ),
     FLAME_STRIKE(
         54,
         "flame strike",
@@ -195,9 +222,14 @@ enum class Spell(
     SLAY_LIVING(56, "slay living", TrackIndex(72)),
     A_CLERICS_TRUE_SEEING(57, "true seeing", TrackIndex(73), sparksOverTheParty = true),
     HARM(58, "harm", TrackIndex(70)),
-    HEAL(59, "heal", TrackIndex(84)),
+    HEAL(59, "heal", TrackIndex(84), mends = Mending.ToTheBrim),
     RESURRECTION(60, "ressurection"),
-    LAY_ON_HANDS(61, "lay on hands", TrackIndex(91)),
+    LAY_ON_HANDS(
+        61,
+        "lay on hands",
+        TrackIndex(91),
+        mends = Mending.TwiceWhatTheCasterHasLearnt,
+    ),
     TURN_UNDEAD(62, "turn undead", TrackIndex(103), throwsSparks = true),
 
     // And the seven nobody learns. They have no names in the game because no

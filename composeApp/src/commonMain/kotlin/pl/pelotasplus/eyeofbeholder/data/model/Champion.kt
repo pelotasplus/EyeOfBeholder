@@ -89,6 +89,17 @@ data class Champion(
     val deadForGood: Boolean get() = hitPoints.current <= BEYOND_RAISING
 
     /**
+     * Whether there is nothing left to mend, which is what a mending is
+     * refused for.
+     *
+     * The refusal is ours. A cure rolls its dice at whoever it is pointed at
+     * and is spent whether they needed it or not, which costs a party their
+     * only scroll for a number thrown away — so one that would give nothing
+     * back is turned down before it is cast.
+     */
+    val isWhole: Boolean get() = hitPoints.current >= hitPoints.max
+
+    /**
      * Whether a blow aimed at them still has anywhere to land.
      *
      * Falling is not leaving the fight. A champion at nought or below lies

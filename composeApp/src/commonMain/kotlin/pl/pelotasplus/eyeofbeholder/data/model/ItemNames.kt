@@ -261,5 +261,21 @@ object SpellMessages {
 
     fun alreadyOnTheParty(spell: String) = "The party is already under the effect of a $spell spell."
 
+    /** Put up while a mending waits to be told which of the six it is for. */
+    fun castOnWhom(spell: String) = "Cast $spell on whom?"
+
+    fun mended(whose: String) = "$whose feels better."
+
+    /** Somebody who needed nothing, which turns the casting down rather than spending it. */
+    fun alreadyWhole(whose: String) = "$whose is already unhurt."
+
+    fun castOnNobody() = "Nobody is chosen, and the spell goes uncast."
+
+    /** The scroll put away while the question stood, which unasks it. */
+    fun nothingLeftToReadFrom() = "There is nothing left to read the spell from."
+
+    /** Too far gone for a mending; raising them is a spell of its own. */
+    fun beyondMending(whose: String) = "$whose is beyond the reach of this spell."
+
     fun expires(whose: String, spell: String) = "$whose's $spell spell expires."
 }

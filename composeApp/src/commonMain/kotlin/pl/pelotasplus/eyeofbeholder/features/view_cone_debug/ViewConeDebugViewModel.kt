@@ -399,6 +399,18 @@ class ViewConeDebugViewModel(
             keepTheFightGoing()
         }
 
+        // A mending waiting on an answer is answered by pointing at one of the
+        // six and by nothing else. A click is left alone because a click is
+        // how it is answered; anything else the party do instead — a step, a
+        // turn, the camp, a swing — is them thinking better of it, and the
+        // question goes rather than hanging over whatever they did next.
+        if (mendingWaitingOnAnAnswer != null &&
+            event !is Event.ClickedTheView &&
+            event !is Event.Initialize
+        ) {
+            letTheMendingGo()
+        }
+
         when (event) {
             is Event.Initialize -> onInitialize(
                 level = event.level,
@@ -1679,6 +1691,18 @@ class ViewConeDebugViewModel(
         val sheet = sheetOnShow
 
         if (sheet == null) {
+            // A mending has asked which champion, and until it is answered the
+            // six boxes mean one thing each and nothing else. The whole box
+            // counts — the face, the name, the bar and the two slots — because
+            // what is being pointed at is a person, and the sword they happen
+            // to be holding is them. Nothing can be picked up out from under
+            // the question, which is how the scroll used to be lost.
+            if (mendingWaitingOnAnAnswer != null) {
+                val box = championBoxes.indexOfFirst { it.covers(x, y) }
+                if (box >= 0) layTheMendingOn(PartySlot(box)) else letTheMendingGo()
+                return
+            }
+
             handAt(x, y)?.let { hand ->
                 swapHandWith(hand.champion, hand.holds)
                 return
@@ -1687,6 +1711,7 @@ class ViewConeDebugViewModel(
             val face = championBoxes.indexOfFirst { it.showsFaceAt(x, y) }
             if (face >= 0) {
                 val whose = PartySlot(face)
+
                 // A click on the face is the way onto the page, and only that,
                 // whatever is being carried at the time. The game asks nothing
                 // about the hand here — a face is not somewhere a thing is
@@ -2787,8 +2812,8 @@ class ViewConeDebugViewModel(
      * over them: one effect sounds at a time, so a square that answers with a
      * sound cuts the spell's own off in its first frame.
      */
-    private suspend fun showTheSparksOverTheParty() {
-        _state.update { it.copy(game = it.game.sparksOverThePartyBegun()) }
+    private suspend fun showTheSparksOverTheParty(over: PartySlot? = null) {
+        _state.update { it.copy(game = it.game.sparksOverThePartyBegun(over)) }
 
         while (_state.value.game.sparklingOverTheParty != null) {
             delay(SparksOverTheParty.A_FRAME)
@@ -3557,6 +3582,16 @@ class ViewConeDebugViewModel(
 
         Logger.d(TAG) { "Casts ${spell.name} at ${_state.value.game.party.position}" }
 
+        // A mending does nothing whatever until it is told who it is for — not
+        // the words, not the scroll, not the hand's rest. Asking first and
+        // casting afterwards is what keeps a question left unanswered from
+        // costing anything: a scroll spent before the answer would be a scroll
+        // spent on nobody every time the party thought better of it.
+        if (spell.mends != null) {
+            askWhoTheMendingIsFor(whose, hand, spell)
+            return
+        }
+
         _state.update { it.copy(game = it.game.handCast(whose, hand)) }
         keepHandsRecovering()
 
@@ -3582,6 +3617,127 @@ class ViewConeDebugViewModel(
                 cast = spell,
             )
         }
+
+    }
+
+    /**
+     * A mending waiting to be told which of the six it is for.
+     *
+     * Nothing of the casting has happened yet. The scroll is still in the
+     * hand, the hand is still rested, and nothing has been said — so a
+     * question that is never answered leaves the party exactly as they were.
+     *
+     * [reading] is the scroll itself and not the slot, because the slot can be
+     * emptied while the question stands: a scroll put away between the asking
+     * and the answering is a casting that never happened.
+     */
+    private var mendingWaitingOnAnAnswer: WaitingMending? = null
+
+    private data class WaitingMending(
+        val caster: PartySlot,
+        val hand: CarrySlot,
+        val reading: ItemIndex,
+        val spell: Spell,
+    )
+
+    private fun askWhoTheMendingIsFor(caster: PartySlot, hand: CarrySlot, spell: Spell) {
+        val reading = _state.value.game.championIn(caster)?.holding(hand) ?: return
+
+        // An open page takes the six boxes' side of the screen, so a scroll
+        // read off one leaves the question with nothing to point at. The page
+        // closes rather than the question going unanswerable.
+        showSheet(null)
+
+        mendingWaitingOnAnAnswer = WaitingMending(caster, hand, reading, spell)
+        say(SpellMessages.castOnWhom(spell.calledIt))
+        drawWords()
+    }
+
+    /**
+     * The whole casting, now that there is somebody to cast it on: the words,
+     * the scroll, the hand's rest, and what it gives back.
+     *
+     * Somebody already whole is told so and the casting is turned down rather
+     * than spent — the scroll stays in the hand, which is the answer to
+     * pointing at the wrong champion.
+     */
+    private fun layTheMendingOn(whom: PartySlot) {
+        val waiting = mendingWaitingOnAnAnswer ?: return
+        mendingWaitingOnAnAnswer = null
+
+        val world = _state.value.game
+        val caster = world.championIn(waiting.caster) ?: return
+        val mended = world.championIn(whom) ?: return
+        val mending = waiting.spell.mends ?: return
+
+        // The scroll can have been put away while the question stood, and the
+        // hand can have been filled with something else. Either way this is no
+        // longer the casting that was asked about.
+        if (caster.holding(waiting.hand) != waiting.reading) {
+            say(SpellMessages.nothingLeftToReadFrom())
+            drawWords()
+            return
+        }
+
+        // Somebody ten below is past what a mending reaches, and the scroll
+        // is worth more than the gesture: raising them is its own spell.
+        if (mended.deadForGood) {
+            say(SpellMessages.beyondMending(mended.name))
+            viewModelScope.launch { playTrack(WARNING) }
+            drawWords()
+            return
+        }
+
+        // Asked of the champion rather than of the roll. A cure rolls dice
+        // whoever it is pointed at, so a roll of sixteen on somebody with
+        // nothing to mend reads as a casting worth having and is not one.
+        if (mended.isWhole) {
+            say(SpellMessages.alreadyWhole(mended.name))
+            viewModelScope.launch { playTrack(WARNING) }
+            drawWords()
+            return
+        }
+
+        val points = mending.given(caster, mended, Dice.random)
+        if (points <= 0) return
+
+        sayOf(waiting.caster) { SpellMessages.casts(it, waiting.spell.calledIt) }
+
+        _state.update {
+            it.copy(
+                game = it.game
+                    .handCast(waiting.caster, waiting.hand)
+                    .championMended(whom, points),
+            )
+        }
+        keepHandsRecovering()
+
+        // Read last, because reading it is what may take it out of the hand.
+        itemTypes?.let { types ->
+            _state.update {
+                it.copy(game = it.game.castOutOf(waiting.caster, waiting.hand, types))
+            }
+        }
+
+        // Heard and seen together, both over the one they were meant for.
+        waiting.spell.heardAs?.let { heard -> viewModelScope.launch { playTrack(heard) } }
+        casting = viewModelScope.launch {
+            showTheSparksOverTheParty(over = whom)
+
+            runTriggersAt(
+                at = _state.value.game.party.position,
+                event = ScriptEvent.A_SPELL_WAS_CAST,
+                cast = waiting.spell,
+            )
+        }
+    }
+
+    /** A mending nobody was pointed at, which costs nothing and is not cast. */
+    private fun letTheMendingGo() {
+        if (mendingWaitingOnAnAnswer == null) return
+        mendingWaitingOnAnAnswer = null
+        say(SpellMessages.castOnNobody())
+        drawWords()
     }
 
     /**

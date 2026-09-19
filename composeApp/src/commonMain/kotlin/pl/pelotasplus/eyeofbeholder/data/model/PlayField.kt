@@ -444,7 +444,8 @@ class PlayField(
             )
 
             if (shielded) drawOutline(box, SHIELDED)
-            sparks?.let { drawSparks(it, PartySlot(slot)) }
+            sparks?.takeIf { it.lighting(PartySlot(slot)) }
+                ?.let { drawSparks(it, PartySlot(slot)) }
         }
     }
 
