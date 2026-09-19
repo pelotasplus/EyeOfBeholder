@@ -27,6 +27,23 @@ class PlayField(
 ) {
     private val pixels = MutableList(WIDTH * HEIGHT) { RGB(0, 0, 0, true) }
 
+    /** Set for the frame being drawn — see the parameter of the same name. */
+    private var magicShowing = false
+
+    /**
+     * A carried thing's icon, blue where a detect magic has found magic on
+     * it. An empty slot's icon is nobody's thing and is never tinted.
+     */
+    private fun carriedIcon(
+        icons: Cps,
+        colours: Palette,
+        item: Item?,
+        id: ItemIconId,
+    ): Cps.ItemIcon {
+        val icon = icons.itemIcon(id)
+        return if (magicShowing && item?.magical == true) icon.tintedAsMagical(colours) else icon
+    }
+
     fun render(
         viewPort: ViewPort,
         direction: Direction,
@@ -51,8 +68,11 @@ class PlayField(
         portal: ThePortal.Showing? = null,
         /** Whether a mystic defence is up, which frames every box in green. */
         shielded: Boolean = false,
+        /** Whether a detect magic is running, which draws what is magical blue. */
+        magicShowing: Boolean = false,
         sparksOverTheParty: SparksOverTheParty? = null,
     ): PlayField {
+        this.magicShowing = magicShowing
         // Something held up over the view is read off a champion's own page,
         // that being the one place a thing being carried can be clicked, so the
         // page is drawn last and stays in reach — a map's frame is eight pixels
@@ -289,9 +309,10 @@ class PlayField(
             val icons = itemIcons ?: return@forEach
             val item = carrying.getOrNull(slot.slot.index) ?: return@forEach
 
+            val colours = icons.palette ?: palette
             drawIcon(
-                icon = icons.itemIcon(item.icon),
-                colours = icons.palette ?: palette,
+                icon = carriedIcon(icons, colours, item, item.icon),
+                colours = colours,
                 left = slot.iconLeft,
                 top = slot.iconTop,
             )
@@ -573,9 +594,10 @@ class PlayField(
             }
 
             val held = champion.carrying.getOrNull(hand)?.let(carrying)
+            val colours = icons.palette ?: palette
             drawIcon(
-                icon = icons.itemIcon(held?.icon ?: emptyHandIcon(hand)),
-                colours = icons.palette ?: palette,
+                icon = carriedIcon(icons, colours, held, held?.icon ?: emptyHandIcon(hand)),
+                colours = colours,
                 left = box.handLeft,
                 top = box.handTop(hand),
             )

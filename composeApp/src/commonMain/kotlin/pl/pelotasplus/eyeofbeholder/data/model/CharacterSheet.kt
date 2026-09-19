@@ -401,5 +401,19 @@ fun Cps.itemIcon(id: ItemIconId): Cps.ItemIcon = cut(
     h = ICON_SIZE,
 )
 
+/**
+ * The same icon with every colour pulled toward blue, which is how a detect
+ * magic marks out what is worth identifying.
+ *
+ * Done to the icon rather than to the palette, because the tint is on some of
+ * what is drawn and not on the rest: two items side by side in the same pack
+ * are painted out of the same palette and only one of them is blue.
+ */
+fun Cps.ItemIcon.tintedAsMagical(palette: Palette): Cps.ItemIcon = copy(
+    pixels = pixels.map {
+        if (it.isTransparent) it else PaletteIndex(palette.magicalTintTable[it.value])
+    },
+)
+
 private const val ICONS_PER_ROW = 20
 private const val ICON_SIZE = 16

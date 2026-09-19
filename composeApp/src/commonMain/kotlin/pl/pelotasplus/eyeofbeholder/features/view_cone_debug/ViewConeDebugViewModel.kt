@@ -101,6 +101,8 @@ import pl.pelotasplus.eyeofbeholder.data.model.Debugging
 import pl.pelotasplus.eyeofbeholder.data.model.Preferences
 import pl.pelotasplus.eyeofbeholder.data.model.Rest
 import pl.pelotasplus.eyeofbeholder.data.model.Resting
+import pl.pelotasplus.eyeofbeholder.data.model.RunningSpell
+import pl.pelotasplus.eyeofbeholder.data.model.tintedAsMagical
 import pl.pelotasplus.eyeofbeholder.data.model.anybodyCanStillMend
 import pl.pelotasplus.eyeofbeholder.data.model.anybodyStillHurt
 import pl.pelotasplus.eyeofbeholder.data.model.anybodyStarving
@@ -2832,30 +2834,69 @@ class ViewConeDebugViewModel(
 
         _state.update { it.copy(game = shielded) }
         drawViewPort()
-        keepTheDefenceRunning(spell)
+        keepTheSpellsRunning()
     }
 
-    private fun keepTheDefenceRunning(spell: Spell) {
+    /**
+     * A spell that goes on running put over the party, or the caster told it
+     * is already in force.
+     *
+     * Refused rather than begun again, which is what keeps a scroll from
+     * being spent on something the party already have.
+     */
+    private suspend fun runOverTheParty(whose: PartySlot, spell: Spell) {
+        val begun = _state.value.game.spellBegunOverTheParty(
+            spell = spell,
+            by = whose,
+            casterLevel = ThrownSpell.AS_READ_FROM_A_SCROLL,
+        )
+
+        if (begun == null) {
+            say(SpellMessages.alreadyOnTheParty(spell.calledIt))
+            viewModelScope.launch { playTrack(WARNING) }
+            drawWords()
+            return
+        }
+
+        _state.update { it.copy(game = begun) }
+        drawViewPort()
+        keepTheSpellsRunning()
+    }
+
+    /**
+     * The one clock every running spell is counted down by.
+     *
+     * One loop rather than one per spell: they all tick at the same rate, and
+     * a loop apiece would redraw the view once for each of them on the step
+     * where two happen to end together.
+     */
+    private fun keepTheSpellsRunning() {
         if (defending?.isActive == true) return
 
         defending = viewModelScope.launch {
             while (true) {
-                val before = _state.value.game.mysticDefence ?: return@launch
+                if (_state.value.game.running.all.isEmpty()) return@launch
                 val wasShielded = _state.value.game.partyShielded
                 delay(GameState.CLOCK_STEP.inMilliseconds)
 
-                _state.update { it.copy(game = it.game.mysticDefenceRunDown(GameState.CLOCK_STEP)) }
-
-                if (_state.value.game.mysticDefence == null) {
-                    sayOf(before.castBy) { SpellMessages.expires(it, spell.calledIt) }
-                    playTrack(WARNING)
-                    drawViewPort()
-                    drawWords()
-                    return@launch
+                val ended = mutableListOf<RunningSpell>()
+                _state.update {
+                    val (world, justEnded) = it.game.spellsRunDown(GameState.CLOCK_STEP)
+                    ended += justEnded
+                    it.copy(game = world)
                 }
 
-                // Spent by the fire rather than run out, which takes the frame off.
-                if (wasShielded != _state.value.game.partyShielded) drawViewPort()
+                ended.forEach { over ->
+                    sayOf(over.castBy) { SpellMessages.expires(it, over.spell.calledIt) }
+                    playTrack(WARNING)
+                }
+
+                // Redrawn where what is on screen turned on it: the shield's
+                // frame, and the blue a detect magic puts on what is carried.
+                if (ended.isNotEmpty() || wasShielded != _state.value.game.partyShielded) {
+                    drawViewPort()
+                    drawWords()
+                }
             }
         }
     }
@@ -3588,6 +3629,17 @@ class ViewConeDebugViewModel(
             return
         }
 
+        // And a spell the party are already under costs nothing either. Asked
+        // here rather than where it is put on them, because by then the hand
+        // is resting and the scroll is gone: the refusal has to come before
+        // anything has been spent on it.
+        if (spell.lasts != null && _state.value.game.running.isRunning(spell)) {
+            say(SpellMessages.alreadyOnTheParty(spell.calledIt))
+            viewModelScope.launch { playTrack(WARNING) }
+            drawWords()
+            return
+        }
+
         _state.update { it.copy(game = it.game.handCast(whose, hand)) }
         keepHandsRecovering()
 
@@ -3605,7 +3657,10 @@ class ViewConeDebugViewModel(
         casting = viewModelScope.launch {
             if (spell.throwsSparks) showTheSparks()
             if (spell.sparksOverTheParty) showTheSparksOverTheParty()
+            // The shield is its own thing: it can be put up again while the
+            // spell that raised it still runs, which no other spell can do.
             if (spell == Spell.MYSTIC_DEFENCE) shieldTheParty(whose, spell)
+            else if (spell.lasts != null) runOverTheParty(whose, spell)
 
             runTriggersAt(
                 at = _state.value.game.party.position,
@@ -4578,6 +4633,7 @@ class ViewConeDebugViewModel(
                         ?.takeIf { !_state.value.swapShowing },
                     portal = portalShowing,
                     shielded = _state.value.game.partyShielded,
+                    magicShowing = _state.value.game.magicIsShowing,
                     sparksOverTheParty = _state.value.game.sparklingOverTheParty,
                 )
                 .toImageBitmap()
@@ -4597,7 +4653,14 @@ class ViewConeDebugViewModel(
         val icons = carriedItemIcons ?: return null
         val held = _state.value.game.held ?: return null
 
-        return icons.itemIcon(held.icon).toImageBitmap(icons.palette ?: palette)
+        val colours = icons.palette ?: palette
+        val icon = icons.itemIcon(held.icon)
+            .let {
+                if (_state.value.game.magicIsShowing && held.magical) it.tintedAsMagical(colours)
+                else it
+            }
+
+        return icon.toImageBitmap(colours)
     }
 
     private fun onStrafe(left: Boolean) {

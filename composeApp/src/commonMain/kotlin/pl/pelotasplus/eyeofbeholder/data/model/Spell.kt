@@ -48,10 +48,27 @@ enum class Spell(
      * does anything at all.
      */
     val laidOn: LaidOnAChampion? = null,
+
+    /**
+     * How long it goes on for after the words are said, for the spells that
+     * do — see [SpellLasts]. A spell without one is over the moment it is
+     * cast, however far what it threw still has to fly.
+     *
+     * Carrying one is what puts a spell on the party's list of running ones,
+     * which is also what makes casting it a second time a refusal rather than
+     * a fresh start.
+     */
+    val lasts: SpellLasts? = null,
 ) {
     ARMOUR(1, "armor", TrackIndex(92)),
     BURNING_HANDS(2, "burning hands", TrackIndex(87)),
-    DETECT_MAGIC(3, "detect magic", TrackIndex(95), sparksOverTheParty = true),
+    DETECT_MAGIC(
+        3,
+        "detect magic",
+        TrackIndex(95),
+        sparksOverTheParty = true,
+        lasts = SpellLasts(base = 0, perLevel = 2),
+    ),
     MAGIC_MISSILE(
         4,
         "magic missile",
@@ -171,7 +188,13 @@ enum class Spell(
         TrackIndex(104),
         laidOn = LaidOnAChampion.Mends(Mending.Rolled(DamageDice(times = 1, pips = 8, base = 0))),
     ),
-    A_CLERICS_DETECT_MAGIC(37, "detect magic", TrackIndex(95), sparksOverTheParty = true),
+    A_CLERICS_DETECT_MAGIC(
+        37,
+        "detect magic",
+        TrackIndex(95),
+        sparksOverTheParty = true,
+        lasts = SpellLasts(base = 0, perLevel = 2),
+    ),
     PROTECTION_FROM_EVIL(38, "protection from evil", TrackIndex(110)),
     AID(39, "aid", TrackIndex(91)),
     FLAME_BLADE(40, "flame blade", TrackIndex(99)),
@@ -243,7 +266,13 @@ enum class Spell(
     // And the seven nobody learns. They have no names in the game because no
     // player is ever shown one.
     A_MONSTERS_FIREBALL(63, "fireball", TrackIndex(98)),
-    MYSTIC_DEFENCE(64, "mystic defense", TrackIndex(91), sparksOverTheParty = true),
+    MYSTIC_DEFENCE(
+        64,
+        "mystic defense",
+        TrackIndex(91),
+        sparksOverTheParty = true,
+        lasts = SpellLasts(base = 1, perLevel = 0),
+    ),
     A_LESSER_FIREBALL(65, "fireball", TrackIndex(98)),
     A_DEATH_SPELL(66, "death spell", TrackIndex(101)),
     A_DISINTEGRATION(67, "disintegrate", TrackIndex(101)),

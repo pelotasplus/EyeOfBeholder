@@ -241,7 +241,7 @@ val AN_HOUR_OF_REST = Ticks(32760)
 
 /** The world as the spells on the party find it after [hours] of rest. */
 fun GameState.spellsRunThroughARest(hours: Int): GameState =
-    if (hours <= 0) this else mysticDefenceRunDown(Ticks(AN_HOUR_OF_REST.value * hours))
+    if (hours <= 0) this else spellsRunDown(Ticks(AN_HOUR_OF_REST.value * hours)).first
 
 /**
  * What a stretch of sleep mends.

@@ -9,7 +9,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.GameState
 import pl.pelotasplus.eyeofbeholder.data.model.HitPoints
 import pl.pelotasplus.eyeofbeholder.data.model.Location
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterSpell
-import pl.pelotasplus.eyeofbeholder.data.model.MysticDefence
+import pl.pelotasplus.eyeofbeholder.data.model.RunningSpell
 import pl.pelotasplus.eyeofbeholder.data.model.PartySlot
 import pl.pelotasplus.eyeofbeholder.data.model.PartyState
 import pl.pelotasplus.eyeofbeholder.data.model.SparksOverTheParty
@@ -70,7 +70,10 @@ class AMysticDefenceTest {
         val after = world().shielded()
 
         assertTrue(after.partyShielded)
-        assertEquals(MysticDefence(castBy = caster, ticksLeft = 546), after.mysticDefence)
+        assertEquals(
+            RunningSpell(Spell.MYSTIC_DEFENCE, castBy = caster, ticksLeft = 546),
+            after.mysticDefence,
+        )
     }
 
     @Test
@@ -81,20 +84,23 @@ class AMysticDefenceTest {
     @Test
     fun `once the shield is used it can be put up again, afresh`() {
         val spent = world().shielded()
-            .mysticDefenceRunDown(Ticks(100))
+            .spellsRunDown(Ticks(100)).first
             .mysticDefenceSpent()
 
         val again = assertNotNull(spent.mysticDefenceCast(PartySlot(0)))
 
-        assertEquals(MysticDefence(castBy = PartySlot(0), ticksLeft = 546), again.mysticDefence)
+        assertEquals(
+            RunningSpell(Spell.MYSTIC_DEFENCE, castBy = PartySlot(0), ticksLeft = 546),
+            again.mysticDefence,
+        )
     }
 
     @Test
     fun `it runs out after 546 ticks and not before`() {
         val shielded = world().shielded()
 
-        assertNotNull(shielded.mysticDefenceRunDown(Ticks(545)).mysticDefence)
-        assertNull(shielded.mysticDefenceRunDown(Ticks(546)).mysticDefence)
+        assertNotNull(shielded.spellsRunDown(Ticks(545)).first.mysticDefence)
+        assertNull(shielded.spellsRunDown(Ticks(546)).first.mysticDefence)
     }
 
     /** An hour of rest counts as 32,760 ticks, and the spell lasts 546. */

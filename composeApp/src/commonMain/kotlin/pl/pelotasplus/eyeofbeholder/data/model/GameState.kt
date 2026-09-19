@@ -68,8 +68,12 @@ data class GameState(
     /** The sparks over the portraits of a spell cast on the whole party. */
     val sparklingOverTheParty: SparksOverTheParty? = null,
 
-    /** Not saved, the way the spell timers of a game put down are not. */
-    val mysticDefence: MysticDefence? = null,
+    /**
+     * The spells still running over the party.
+     *
+     * Not saved, the way the spell timers of a game put down are not.
+     */
+    val running: SpellsRunning = SpellsRunning(),
 
     /** Whose slot the held thing came out of, while it is still that thing; never saved. */
     val heldFrom: TakenFrom? = null,
@@ -1821,23 +1825,52 @@ data class GameState(
     fun sparksOverThePartyStepped() =
         copy(sparklingOverTheParty = sparklingOverTheParty?.next())
 
-    val partyShielded: Boolean get() = mysticDefence?.shields == true
+    val mysticDefence: RunningSpell? get() = running[Spell.MYSTIC_DEFENCE]
+
+    /**
+     * Whether a detect magic is running, which draws what is magical in blue.
+     *
+     * Either of them: the mage's and the cleric's are the same spell written
+     * twice, and one running is no reason to refuse the other.
+     */
+    val magicIsShowing: Boolean
+        get() = running.isRunning(Spell.DETECT_MAGIC) ||
+            running.isRunning(Spell.A_CLERICS_DETECT_MAGIC)
+
+    val partyShielded: Boolean get() = mysticDefence?.spent == false
 
     /**
      * The party shielded by [by]'s casting, or null where a shield is already
      * up — which refuses the casting outright rather than lengthening it.
+     *
+     * A shield that has been spent is a different matter: the spell may still
+     * be running, and putting another up begins it afresh rather than
+     * handing back what is left of the old one.
      */
     fun mysticDefenceCast(by: PartySlot): GameState? =
-        if (partyShielded) null else copy(mysticDefence = MysticDefence(castBy = by))
+        if (partyShielded) null
+        else copy(
+            running = running.begunAgain(
+                Spell.MYSTIC_DEFENCE,
+                by,
+                ThrownSpell.AS_READ_FROM_A_SCROLL,
+            )
+        )
 
-    /** The spell [by] ticks nearer its end, and gone once it gets there. */
-    fun mysticDefenceRunDown(by: Ticks) = copy(
-        mysticDefence = mysticDefence
-            ?.copy(ticksLeft = mysticDefence.ticksLeft - by.value)
-            ?.takeIf { it.ticksLeft > 0 },
-    )
+    /** Every running spell ticks nearer its end, and what reached it. */
+    fun spellsRunDown(by: Ticks): Pair<GameState, List<RunningSpell>> {
+        val (left, ended) = running.runDown(by)
+        return copy(running = left) to ended
+    }
 
-    fun mysticDefenceSpent() = copy(mysticDefence = mysticDefence?.copy(spent = true))
+    fun mysticDefenceSpent() = copy(running = running.spent(Spell.MYSTIC_DEFENCE))
+
+    /**
+     * A spell put on the party, or null where it is already in force — which
+     * is refused and said so rather than begun again.
+     */
+    fun spellBegunOverTheParty(spell: Spell, by: PartySlot, casterLevel: Int): GameState? =
+        running.begun(spell, by, casterLevel)?.let { copy(running = it) }
 
     /** The world with that hand put out of use for as long as a swing costs. */
     fun handSwung(whose: PartySlot, hand: CarrySlot, came: WhatTheBlowCameTo) = copy(

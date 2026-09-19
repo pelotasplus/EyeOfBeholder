@@ -39,6 +39,29 @@ data class Palette(
      * stored as, recovered from the 8-bit ones kept here.
      */
     val distanceFadeTable: List<Int> by lazy {
+        fadeTableTowards(FADE_ROOT_COLOR, FADE_WEIGHT)
+    }
+
+    /**
+     * Palette-index remap that tints a colour blue, for the items a detect
+     * magic has picked out.
+     *
+     * The same shift-and-snap the distance fade is, toward a different colour
+     * and harder: about half the way rather than a third, so one application
+     * is enough to read as blue where the darkening wants several.
+     */
+    val magicalTintTable: List<Int> by lazy {
+        fadeTableTowards(BLUE_ROOT_COLOR, BLUE_WEIGHT)
+    }
+
+    /**
+     * Every colour shifted [weight] of the way toward palette entry [root]
+     * and snapped back to the nearest entry there is.
+     *
+     * Snapping never picks the colour it started from, which is what lets the
+     * table be applied more than once and keep moving.
+     */
+    private fun fadeTableTowards(root: Int, strength: Int): List<Int> {
         val r = IntArray(256)
         val g = IntArray(256)
         val b = IntArray(256)
@@ -48,16 +71,16 @@ data class Palette(
             b[i] = to6bit(colors[i].blue)
         }
 
-        val weight = FADE_WEIGHT shr 1
+        val weight = strength shr 1
         val table = IntArray(256)
         table[0] = 0
 
         for (i in 1 until 256) {
-            val tr = fadeChannel(r[i], r[FADE_ROOT_COLOR], weight)
-            val tg = fadeChannel(g[i], g[FADE_ROOT_COLOR], weight)
-            val tb = fadeChannel(b[i], b[FADE_ROOT_COLOR], weight)
+            val tr = fadeChannel(r[i], r[root], weight)
+            val tg = fadeChannel(g[i], g[root], weight)
+            val tb = fadeChannel(b[i], b[root], weight)
 
-            var best = FADE_ROOT_COLOR
+            var best = root
             var bestDistance = Int.MAX_VALUE
             for (candidate in 1 until 256) {
                 val dr = r[candidate] - tr
@@ -65,14 +88,14 @@ data class Palette(
                 val db = b[candidate] - tb
                 val distance = dr * dr + dg * dg + db * db
                 // <= keeps the later-index-wins tie-breaking
-                if (distance <= bestDistance && (candidate == FADE_ROOT_COLOR || candidate != i)) {
+                if (distance <= bestDistance && (candidate == root || candidate != i)) {
                     bestDistance = distance
                     best = candidate
                 }
             }
             table[i] = best
         }
-        table.toList()
+        return table.toList()
     }
 
     /** [index] remapped [steps] times through [distanceFadeTable]. */
@@ -122,5 +145,11 @@ data class Palette(
 
         /** Fade strength per application; halved before use. */
         private const val FADE_WEIGHT = 85
+
+        /** And the entry a magical item's colours are pulled toward: a light blue. */
+        private const val BLUE_ROOT_COLOR = 11
+
+        /** Half the way rather than a third, because this is applied once only. */
+        private const val BLUE_WEIGHT = 125
     }
 }

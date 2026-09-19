@@ -80,6 +80,7 @@ import java.awt.image.BufferedImage
 import java.io.File
 import javax.imageio.ImageIO
 import kotlin.test.Test
+import kotlin.test.assertTrue
 import kotlin.test.fail
 
 /**
@@ -1385,6 +1386,34 @@ class ViewPortGoldenTest {
         checkGolden("character-sheet", sheetOver("LEVEL4.INF", x = 15, y = 11, slot = 0))
 
     /**
+     * The same page with a detect magic running: the whole pack at once, and
+     * the one place a party can see what is worth carrying to somebody who
+     * can identify it.
+     *
+     * The page is where the spell earns its level — the two hand boxes show
+     * two things, and this shows twenty-seven slots.
+     */
+    @Test
+    fun `a champion's belongings under a detect magic`() =
+        checkGolden(
+            "character-sheet-detect-magic",
+            sheetOver("LEVEL4.INF", x = 15, y = 11, slot = 0, magicShowing = true),
+        )
+
+    /** And that the page's slots are tinted too, not only the hand boxes. */
+    @Test
+    fun `a detect magic changes what the open page looks like`() {
+        val plain = sheetOver("LEVEL4.INF", x = 15, y = 11, slot = 0)
+        val showing = sheetOver("LEVEL4.INF", x = 15, y = 11, slot = 0, magicShowing = true)
+
+        val moved = (0 until plain.height).sumOf { y ->
+            (0 until plain.width).count { x -> plain.getRGB(x, y) != showing.getRGB(x, y) }
+        }
+
+        assertTrue(moved > 0, "a detect magic changed nothing on the open page")
+    }
+
+    /**
      * The same page with bar graphs turned off. Only the hit points change:
      * how full a champion is has no numbers to be written as, so the food bar
      * stays a bar.
@@ -1552,6 +1581,8 @@ class ViewPortGoldenTest {
         /** Who is waiting to change places, on the half the word is showing. */
         swapping: Int? = null,
         shielded: Boolean = false,
+        /** Whether a detect magic is running, which draws what is magical blue. */
+        magicShowing: Boolean = false,
         sparks: SparksOverTheParty? = null,
     ): BufferedImage = runBlocking {
         val resources = ResourceRepositoryImpl()
@@ -1621,6 +1652,7 @@ class ViewPortGoldenTest {
             hurt = { whose -> splattered[whose.index] },
             swapping = swapping?.let(::PartySlot),
             shielded = shielded,
+            magicShowing = magicShowing,
             sparksOverTheParty = sparks,
         ).toImage()
     }
@@ -1756,6 +1788,8 @@ class ViewPortGoldenTest {
         preferences: Preferences = Preferences(),
         /** A parchment held up over the view, which is how one is read: off the open page. */
         reading: OnAParchment? = null,
+        /** Whether a detect magic is running, which draws what is magical blue. */
+        magicShowing: Boolean = false,
     ): BufferedImage = runBlocking {
         val resources = ResourceRepositoryImpl()
         val cps = CpsRepositoryImpl(resources)
@@ -1823,6 +1857,7 @@ class ViewPortGoldenTest {
                     ),
                 )
             },
+            magicShowing = magicShowing,
         ).toImage()
     }
 
@@ -1926,6 +1961,38 @@ class ViewPortGoldenTest {
             "party-panel-shielded",
             partyOver(level = "LEVEL4.INF", x = 15, y = 11, shielded = true),
         )
+
+    /**
+     * A detect magic running: the things with magic on them drawn blue.
+     *
+     * The party the game ships with are carrying enchanted gear in the hands
+     * the panel shows, so what the spell picks out is the difference between
+     * this and the ordinary panel — and the plain steel beside it, left as it
+     * was, is as much the point as the blue.
+     */
+    @Test
+    fun `party panel under a detect magic`() =
+        checkGolden(
+            "party-panel-detect-magic",
+            partyOver(level = "LEVEL4.INF", x = 15, y = 11, magicShowing = true),
+        )
+
+    /**
+     * And that it reaches the screen at all, which a golden on its own cannot
+     * say: a tint that never fired would freeze just as happily as one that
+     * did, and look exactly like the panel it was meant to differ from.
+     */
+    @Test
+    fun `a detect magic changes what the panel looks like`() {
+        val plain = partyOver(level = "LEVEL4.INF", x = 15, y = 11)
+        val showing = partyOver(level = "LEVEL4.INF", x = 15, y = 11, magicShowing = true)
+
+        val moved = (0 until plain.height).sumOf { y ->
+            (0 until plain.width).count { x -> plain.getRGB(x, y) != showing.getRGB(x, y) }
+        }
+
+        assertTrue(moved > 0, "a detect magic changed nothing on the panel")
+    }
 
     /** The sparks a spell on the whole party throws over the portraits, midway through. */
     @Test

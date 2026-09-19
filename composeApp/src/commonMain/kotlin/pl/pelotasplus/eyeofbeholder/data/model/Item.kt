@@ -74,6 +74,15 @@ data class Item(
     val identified: Boolean get() = flags and IDENTIFIED != 0
 
     /**
+     * Whether there is magic on it, known or not.
+     *
+     * Marked on the thing itself rather than worked out from what it does, so
+     * it is the one answer a detect magic can give: it says which things are
+     * worth identifying without saying what any of them is.
+     */
+    val magical: Boolean get() = flags and MAGICAL != 0
+
+    /**
      * How many uses are left in a wand, which shares the word its other marks
      * are written in. Meaningless on anything that is not one.
      *
@@ -114,6 +123,7 @@ data class Item(
 
         private const val STUCK = 0x20
         private const val IDENTIFIED = 0x40
+        private const val MAGICAL = 0x80
 
         /** The low six bits, which a wand keeps its remaining uses in. */
         private const val CHARGES = 0x3F
