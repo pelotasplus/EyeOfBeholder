@@ -5,6 +5,7 @@ import org.junit.experimental.categories.Category
 import pl.pelotasplus.eyeofbeholder.NeedsGameData
 import pl.pelotasplus.eyeofbeholder.data.model.Champion
 import pl.pelotasplus.eyeofbeholder.data.model.ChampionFlags
+import pl.pelotasplus.eyeofbeholder.data.model.Dice
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.Flight
 import pl.pelotasplus.eyeofbeholder.data.model.GameState
@@ -78,9 +79,12 @@ class AThingInFlightTest {
     }
 
     /** A whole square's worth of flight, so a step here is a square. */
-    private fun onward(world: GameState): Flight.Moved =
-        Flight(sublevel = level.subLevels[0], level = 2)
+    private fun onward(world: GameState, dice: Dice = Dice.random): Flight.Moved =
+        Flight(sublevel = level.subLevels[0], level = 2, dice = dice)
             .onward(world, ticks = Projectile.ACROSS_A_SQUARE)
+
+    /** Every die its best, so that what a fireball comes to is one number. */
+    private val alwaysTheHighest = Dice { times, pips, modifier -> times * pips + modifier }
 
     /** One turn of the world's clock, which is not a whole square. */
     private fun oneTick(world: GameState): Flight.Moved =
@@ -216,17 +220,28 @@ class AThingInFlightTest {
      * And it is a die of six for each level of whatever threw it, which for a
      * trap on this floor is five of them. One die would be the whole party
      * shrugging a fireball off.
+     *
+     * Every die is given its best rather than rolled, because a fireball is
+     * thrown against and halved on a made throw: the two overlap under random
+     * dice — five dice saved against comes to the same as three of them taken
+     * whole — and a bound loose enough for both cannot tell five from one.
+     * At its best it is thirty, the throw is made, and half of that is what a
+     * champion is left holding.
      */
     @Test
     fun `a trap's burst rolls a die of six per level of it`() {
         val party = standingAt(Location(3, 10)).copy(champions = aFullParty())
 
         var world = fire(party, lever, ScriptEvent.WALL_CLICKED)
-        repeat(3) { world = onward(world).world }
+        repeat(3) { world = onward(world, alwaysTheHighest).world }
 
         val taken = HEARTY - world.champions[0].hitPoints.current
 
-        assertTrue(taken in TRAP_LEVELS..(TRAP_LEVELS * 6), "a fireball took $taken, which is not 5d6")
+        assertEquals(
+            TRAP_LEVELS * 6 / 2,
+            taken,
+            "a fireball took $taken, which is not half of 5d6 at its best",
+        )
     }
 
     /**
