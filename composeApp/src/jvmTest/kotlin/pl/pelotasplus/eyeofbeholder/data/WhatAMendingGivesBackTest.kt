@@ -10,6 +10,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.Dice
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.GameState
 import pl.pelotasplus.eyeofbeholder.data.model.HitPoints
+import pl.pelotasplus.eyeofbeholder.data.model.LaidOnAChampion
 import pl.pelotasplus.eyeofbeholder.data.model.Location
 import pl.pelotasplus.eyeofbeholder.data.model.Mending
 import pl.pelotasplus.eyeofbeholder.data.model.PartySlot
@@ -20,6 +21,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.XpPoints
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -35,6 +37,10 @@ import kotlin.test.assertTrue
 class WhatAMendingGivesBackTest {
 
     private val alwaysTheHighest = Dice { times, pips, modifier -> times * pips + modifier }
+
+    /** How a spell that mends gives it, unwrapped from what it is laid on for. */
+    private val Spell.mends: Mending
+        get() = assertIs<LaidOnAChampion.Mends>(laidOn, "$name does not mend anybody").by
 
     @Test
     fun `the three cures are their own dice`() {
@@ -54,7 +60,7 @@ class WhatAMendingGivesBackTest {
 
     @Test
     fun `a cure gives what it rolls`() {
-        val given = assertNotNull(Spell.CURE_SERIOUS_WOUNDS.mends)
+        val given = Spell.CURE_SERIOUS_WOUNDS.mends
             .given(caster(level = 9), hurt(current = 1, max = 40), alwaysTheHighest)
 
         assertEquals(2 * 8 + 1, given)
@@ -62,7 +68,7 @@ class WhatAMendingGivesBackTest {
 
     @Test
     fun `a heal gives back however far short of whole they are`() {
-        val given = assertNotNull(Spell.HEAL.mends)
+        val given = Spell.HEAL.mends
             .given(caster(level = 9), hurt(current = 12, max = 40), alwaysTheHighest)
 
         assertEquals(28, given)
@@ -71,7 +77,7 @@ class WhatAMendingGivesBackTest {
     /** And nothing at all to somebody who needed nothing. */
     @Test
     fun `a heal on somebody already whole gives nothing`() {
-        val given = assertNotNull(Spell.HEAL.mends)
+        val given = Spell.HEAL.mends
             .given(caster(level = 9), hurt(current = 40, max = 40), alwaysTheHighest)
 
         assertEquals(0, given)
@@ -83,7 +89,7 @@ class WhatAMendingGivesBackTest {
      */
     @Test
     fun `laying on hands is twice the caster's own level`() {
-        val mending = assertNotNull(Spell.LAY_ON_HANDS.mends)
+        val mending = Spell.LAY_ON_HANDS.mends
 
         assertEquals(6, mending.given(caster(level = 3), hurt(1, 40), alwaysTheHighest))
         assertEquals(24, mending.given(caster(level = 12), hurt(1, 40), alwaysTheHighest))
@@ -100,7 +106,7 @@ class WhatAMendingGivesBackTest {
      */
     @Test
     fun `a cure rolls the same on somebody who needs nothing`() {
-        val given = assertNotNull(Spell.CURE_SERIOUS_WOUNDS.mends)
+        val given = Spell.CURE_SERIOUS_WOUNDS.mends
             .given(caster(level = 9), hurt(current = 40, max = 40), alwaysTheHighest)
 
         assertTrue(given > 0, "a cure that rolled nothing would hide the trap rather than show it")
@@ -127,7 +133,9 @@ class WhatAMendingGivesBackTest {
      */
     @Test
     fun `the mendings are the spells that ask which champion`() {
-        val asking = Spell.entries.filter { it.mends != null }.toSet()
+        val asking = Spell.entries
+            .filter { it.laidOn is LaidOnAChampion.Mends }
+            .toSet()
 
         assertEquals(
             setOf(
@@ -140,8 +148,8 @@ class WhatAMendingGivesBackTest {
             asking,
         )
 
-        assertNull(Spell.FIREBALL.mends, "a fireball is not laid on anybody")
-        assertNull(Spell.BLESS.mends, "a blessing asks nothing")
+        assertNull(Spell.FIREBALL.laidOn, "a fireball is not laid on anybody")
+        assertNull(Spell.BLESS.laidOn, "a blessing asks nothing")
     }
 
     /**

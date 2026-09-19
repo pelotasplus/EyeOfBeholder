@@ -277,5 +277,17 @@ object SpellMessages {
     /** Too far gone for a mending; raising them is a spell of its own. */
     fun beyondMending(whose: String) = "$whose is beyond the reach of this spell."
 
+    fun notPoisoned(whose: String) = "$whose has not been poisoned."
+
+    fun notStone(whose: String) = "$whose is not made of stone."
+
+    fun notDead(whose: String) = "$whose is not beyond raising."
+
+    fun noElfIsRaised(whose: String) = "$whose is an elf, and no elf is raised."
+
+    fun liftedFrom(whose: String, spell: String) = "The $spell lifts from $whose."
+
+    fun raised(whose: String) = "$whose is raised from the dead."
+
     fun expires(whose: String, spell: String) = "$whose's $spell spell expires."
 }

@@ -1754,6 +1754,36 @@ data class GameState(
     /** And a frame on, which is how they go out. */
     fun sparksStepped() = copy(sparkling = sparkling?.next())
 
+    /**
+     * The world with [laidOn] worked on [whom], whatever kind of spell it is.
+     *
+     * Each kind is somebody else's rule and is kept there: mending goes
+     * through [championMended] so that it still stops where mending stops, and
+     * the rest are the champion's own business.
+     */
+    fun withTheSpellLaidOn(
+        whom: PartySlot,
+        laidOn: LaidOnAChampion,
+        byWhom: Champion,
+    ): GameState = when (laidOn) {
+        is LaidOnAChampion.Mends -> {
+            val pointedAt = champions.getOrNull(whom.index)
+            if (pointedAt == null) this
+            else championMended(whom, laidOn.by.given(byWhom, pointedAt, Dice.random))
+        }
+
+        is LaidOnAChampion.Lifts -> withChampion(whom) { laidOn.what.liftedFrom(it) }
+
+        LaidOnAChampion.Raises -> withChampion(whom) { it.raised() }
+    }
+
+    private fun withChampion(whom: PartySlot, changed: (Champion) -> Champion): GameState {
+        val who = champions.getOrNull(whom.index) ?: return this
+        return copy(
+            champions = champions.toMutableList().also { it[whom.index] = changed(who) },
+        )
+    }
+
     /** @param over whose box alone they light, or nobody named for all six. */
     fun sparksOverThePartyBegun(over: PartySlot? = null) =
         copy(sparklingOverTheParty = SparksOverTheParty(over = over))

@@ -40,16 +40,14 @@ enum class Spell(
     val sparksOverTheParty: Boolean = false,
 
     /**
-     * What it gives back to one of the party, for the ones cast on a person
-     * rather than down a corridor.
+     * What it does to one of the party, for the ones cast on a person rather
+     * than down a corridor — mending them, lifting something off them, or
+     * bringing them back.
      *
      * Carrying one of these is what makes a spell ask which champion before it
-     * does anything. Nothing else asks yet — the spells that clear a poisoning
-     * or a paralysis are asked the same question by the game and have none of
-     * this written, so when they are written the asking will want lifting out
-     * of here and into a question of its own.
+     * does anything at all.
      */
-    val mends: Mending? = null,
+    val laidOn: LaidOnAChampion? = null,
 ) {
     ARMOUR(1, "armor", TrackIndex(92)),
     BURNING_HANDS(2, "burning hands", TrackIndex(87)),
@@ -151,7 +149,12 @@ enum class Spell(
     WALL_OF_FORCE(25, "wall of force", TrackIndex(74)),
     DISINTEGRATE(26, "disintegrate", TrackIndex(119), throwsSparks = true),
     FLESH_TO_STONE(27, "flesh to stone", TrackIndex(68)),
-    STONE_TO_FLESH(28, "stone to flesh", TrackIndex(69)),
+    STONE_TO_FLESH(
+        28,
+        "stone to flesh",
+        TrackIndex(69),
+        laidOn = LaidOnAChampion.Lifts(Ailment.BEING_STONE),
+    ),
     TRUE_SEEING(29, "true seeing", TrackIndex(73), sparksOverTheParty = true),
     FINGER_OF_DEATH(30, "finger of death"),
     POWER_WORD_STUN(31, "power word stun"),
@@ -166,7 +169,7 @@ enum class Spell(
         36,
         "cure light wounds",
         TrackIndex(104),
-        mends = Mending.Rolled(DamageDice(times = 1, pips = 8, base = 0)),
+        laidOn = LaidOnAChampion.Mends(Mending.Rolled(DamageDice(times = 1, pips = 8, base = 0))),
     ),
     A_CLERICS_DETECT_MAGIC(37, "detect magic", TrackIndex(95), sparksOverTheParty = true),
     PROTECTION_FROM_EVIL(38, "protection from evil", TrackIndex(110)),
@@ -189,9 +192,14 @@ enum class Spell(
         49,
         "cure serious wounds",
         TrackIndex(105),
-        mends = Mending.Rolled(DamageDice(times = 2, pips = 8, base = 1)),
+        laidOn = LaidOnAChampion.Mends(Mending.Rolled(DamageDice(times = 2, pips = 8, base = 1))),
     ),
-    NEUTRALIZE_POISON(50, "neutralize poison", TrackIndex(115)),
+    NEUTRALIZE_POISON(
+        50,
+        "neutralize poison",
+        TrackIndex(115),
+        laidOn = LaidOnAChampion.Lifts(Ailment.POISON),
+    ),
     PROTECTION_FROM_EVIL_TEN_FEET(
         51,
         "protection from evil 10' radius",
@@ -203,7 +211,7 @@ enum class Spell(
         53,
         "cure critical wounds",
         TrackIndex(106),
-        mends = Mending.Rolled(DamageDice(times = 3, pips = 8, base = 3)),
+        laidOn = LaidOnAChampion.Mends(Mending.Rolled(DamageDice(times = 3, pips = 8, base = 3))),
     ),
     FLAME_STRIKE(
         54,
@@ -218,17 +226,17 @@ enum class Spell(
             thrownOff = SavingThrow.A_SPELL,
         ),
     ),
-    RAISE_DEAD(55, "raise dead", TrackIndex(117)),
+    RAISE_DEAD(55, "raise dead", TrackIndex(117), laidOn = LaidOnAChampion.Raises),
     SLAY_LIVING(56, "slay living", TrackIndex(72)),
     A_CLERICS_TRUE_SEEING(57, "true seeing", TrackIndex(73), sparksOverTheParty = true),
     HARM(58, "harm", TrackIndex(70)),
-    HEAL(59, "heal", TrackIndex(84), mends = Mending.ToTheBrim),
+    HEAL(59, "heal", TrackIndex(84), laidOn = LaidOnAChampion.Mends(Mending.ToTheBrim)),
     RESURRECTION(60, "ressurection"),
     LAY_ON_HANDS(
         61,
         "lay on hands",
         TrackIndex(91),
-        mends = Mending.TwiceWhatTheCasterHasLearnt,
+        laidOn = LaidOnAChampion.Mends(Mending.TwiceWhatTheCasterHasLearnt),
     ),
     TURN_UNDEAD(62, "turn undead", TrackIndex(103), throwsSparks = true),
 

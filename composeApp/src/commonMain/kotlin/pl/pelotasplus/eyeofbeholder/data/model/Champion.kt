@@ -75,6 +75,14 @@ data class Champion(
     fun turnedToStone() = copy(flags = flags.turnedToStone())
 
     /**
+     * What being turned to stone took with it does not come back: a champion
+     * poisoned before they were stone is not poisoned after.
+     */
+    fun turnedBackToFlesh() = copy(flags = flags.turnedBackToFlesh())
+
+    fun raised() = copy(hitPoints = hitPoints.copy(current = RAISED_WITH))
+
+    /**
      * Which classes this champion counts as when an item asks who may hold
      * it — a fighter/thief counts as both, and may hold whatever either of
      * them may.
@@ -172,6 +180,12 @@ data class Champion(
         /** Hit points at which nothing short of a resurrection will do. */
         const val BEYOND_RAISING = -10
 
+        /**
+         * What somebody raised comes back with. Raising is being alive again
+         * and nothing more, so one raised in a corridor still wants mending.
+         */
+        const val RAISED_WITH = 1
+
         /** The slot nobody has been rolled up into yet. */
         val NOBODY = Champion(
             name = "",
@@ -222,6 +236,8 @@ value class ChampionFlags(val value: Int) {
      * poisoned by nothing and held by nothing.
      */
     fun turnedToStone() = ChampionFlags((value and IN_THE_PARTY) or PETRIFIED)
+
+    fun turnedBackToFlesh() = ChampionFlags(value and PETRIFIED.inv())
 
     /**
      * Poisoned, which takes a little off them again and again until it is

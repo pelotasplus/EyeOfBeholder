@@ -14,7 +14,10 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlin.random.Random
 import pl.pelotasplus.eyeofbeholder.data.model.CampMenu
+import pl.pelotasplus.eyeofbeholder.data.model.Ailment
 import pl.pelotasplus.eyeofbeholder.data.model.CarrySlot
+import pl.pelotasplus.eyeofbeholder.data.model.LaidOnAChampion
+import pl.pelotasplus.eyeofbeholder.data.model.Race
 import pl.pelotasplus.eyeofbeholder.data.model.Champion
 import pl.pelotasplus.eyeofbeholder.data.model.CutScene
 import pl.pelotasplus.eyeofbeholder.data.model.FlagBit
@@ -3587,7 +3590,7 @@ class ViewConeDebugViewModel(
         // casting afterwards is what keeps a question left unanswered from
         // costing anything: a scroll spent before the answer would be a scroll
         // spent on nobody every time the party thought better of it.
-        if (spell.mends != null) {
+        if (spell.laidOn != null) {
             askWhoTheMendingIsFor(whose, hand, spell)
             return
         }
@@ -3667,8 +3670,8 @@ class ViewConeDebugViewModel(
 
         val world = _state.value.game
         val caster = world.championIn(waiting.caster) ?: return
-        val mended = world.championIn(whom) ?: return
-        val mending = waiting.spell.mends ?: return
+        val pointedAt = world.championIn(whom) ?: return
+        val laidOn = waiting.spell.laidOn ?: return
 
         // The scroll can have been put away while the question stood, and the
         // hand can have been filled with something else. Either way this is no
@@ -3679,27 +3682,15 @@ class ViewConeDebugViewModel(
             return
         }
 
-        // Somebody ten below is past what a mending reaches, and the scroll
-        // is worth more than the gesture: raising them is its own spell.
-        if (mended.deadForGood) {
-            say(SpellMessages.beyondMending(mended.name))
+        // Asked of the champion and not of the roll. A cure rolls its dice at
+        // whoever it is pointed at, hurt or not, so there is nothing in the
+        // roll to say whether the casting was worth making.
+        if (!laidOn.wouldHelp(pointedAt)) {
+            say(noUseIn(laidOn, pointedAt))
             viewModelScope.launch { playTrack(WARNING) }
             drawWords()
             return
         }
-
-        // Asked of the champion rather than of the roll. A cure rolls dice
-        // whoever it is pointed at, so a roll of sixteen on somebody with
-        // nothing to mend reads as a casting worth having and is not one.
-        if (mended.isWhole) {
-            say(SpellMessages.alreadyWhole(mended.name))
-            viewModelScope.launch { playTrack(WARNING) }
-            drawWords()
-            return
-        }
-
-        val points = mending.given(caster, mended, Dice.random)
-        if (points <= 0) return
 
         sayOf(waiting.caster) { SpellMessages.casts(it, waiting.spell.calledIt) }
 
@@ -3707,10 +3698,11 @@ class ViewConeDebugViewModel(
             it.copy(
                 game = it.game
                     .handCast(waiting.caster, waiting.hand)
-                    .championMended(whom, points),
+                    .withTheSpellLaidOn(whom, laidOn, caster),
             )
         }
         keepHandsRecovering()
+        say(whatCameOfIt(laidOn, pointedAt, waiting.spell))
 
         // Read last, because reading it is what may take it out of the hand.
         itemTypes?.let { types ->
@@ -3730,6 +3722,38 @@ class ViewConeDebugViewModel(
                 cast = waiting.spell,
             )
         }
+    }
+
+    private fun whatCameOfIt(
+        laidOn: LaidOnAChampion,
+        whom: Champion,
+        spell: Spell,
+    ): String = when (laidOn) {
+        is LaidOnAChampion.Mends -> SpellMessages.mended(whom.name)
+        is LaidOnAChampion.Lifts -> SpellMessages.liftedFrom(whom.name, spell.calledIt)
+        LaidOnAChampion.Raises -> SpellMessages.raised(whom.name)
+    }
+
+    /**
+     * Why pointing this spell at that champion would do nothing for them.
+     *
+     * Each refusal names the thing they have not got rather than saying the
+     * spell failed: a party who read a cure for poison over somebody hale
+     * want to know it was the wrong champion, not that the scroll was bad.
+     */
+    private fun noUseIn(laidOn: LaidOnAChampion, whom: Champion): String = when (laidOn) {
+        is LaidOnAChampion.Mends ->
+            if (whom.deadForGood) SpellMessages.beyondMending(whom.name)
+            else SpellMessages.alreadyWhole(whom.name)
+
+        is LaidOnAChampion.Lifts -> when (laidOn.what) {
+            Ailment.POISON -> SpellMessages.notPoisoned(whom.name)
+            Ailment.BEING_STONE -> SpellMessages.notStone(whom.name)
+        }
+
+        LaidOnAChampion.Raises ->
+            if (whom.race == Race.ELF) SpellMessages.noElfIsRaised(whom.name)
+            else SpellMessages.notDead(whom.name)
     }
 
     /** A mending nobody was pointed at, which costs nothing and is not cast. */
