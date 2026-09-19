@@ -20,7 +20,7 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class SavedGame(
     val version: Int = VERSION,
-    /** What the player typed, or what the autosave called itself. */
+    /** What the player typed when they saved. */
     val description: String,
     /** Milliseconds since the epoch, for showing which save is the newest. */
     val savedAt: Long,

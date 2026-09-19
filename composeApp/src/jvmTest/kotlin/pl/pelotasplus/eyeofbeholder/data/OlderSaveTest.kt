@@ -84,9 +84,9 @@ class OlderSaveTest {
 
     @Test
     fun `a save written before the types existed still loads`() = runBlocking {
-        store.write(SaveSlot.AUTOSAVE, asItUsedToBeWritten)
+        store.write(SaveSlot.numbered.first(), asItUsedToBeWritten)
 
-        val loaded = repository.load(SaveSlot.AUTOSAVE).getOrThrow()
+        val loaded = repository.load(SaveSlot.numbered.first()).getOrThrow()
         val pericles = loaded.champions.single()
 
         assertEquals("PERICLES", pericles.name)
@@ -111,9 +111,9 @@ class OlderSaveTest {
      */
     @Test
     fun `what an older save never wrote comes back as nothing`() = runBlocking {
-        store.write(SaveSlot.AUTOSAVE, asItUsedToBeWritten)
+        store.write(SaveSlot.numbered.first(), asItUsedToBeWritten)
 
-        val pericles = repository.load(SaveSlot.AUTOSAVE).getOrThrow().champions.single()
+        val pericles = repository.load(SaveSlot.numbered.first()).getOrThrow().champions.single()
 
         assertEquals(null, pericles.race)
         assertEquals(null, pericles.sex)
@@ -126,9 +126,9 @@ class OlderSaveTest {
      */
     @Test
     fun `a place written as a number comes back as the place it names`() = runBlocking {
-        store.write(SaveSlot.AUTOSAVE, asItUsedToBeWritten)
+        store.write(SaveSlot.numbered.first(), asItUsedToBeWritten)
 
-        val world = repository.load(SaveSlot.AUTOSAVE).getOrThrow().world
+        val world = repository.load(SaveSlot.numbered.first()).getOrThrow().world
 
         assertEquals(SquarePlace.IN_A_NICHE, world.items.single().place)
         assertEquals(SquarePlace.MIDDLE, world.monsters.single().place)
@@ -141,8 +141,8 @@ class OlderSaveTest {
      */
     @Test
     fun `an older save rewritten today says the same`() = runBlocking {
-        store.write(SaveSlot.AUTOSAVE, asItUsedToBeWritten)
-        val older = repository.load(SaveSlot.AUTOSAVE).getOrThrow()
+        store.write(SaveSlot.numbered.first(), asItUsedToBeWritten)
+        val older = repository.load(SaveSlot.numbered.first()).getOrThrow()
 
         repository.save(
             slot = SaveSlot.numbered[1],

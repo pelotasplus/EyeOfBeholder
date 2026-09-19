@@ -131,7 +131,7 @@ class SavedGameRoundTripTest {
         )
 
         repository.save(
-            slot = SaveSlot.AUTOSAVE,
+            slot = SaveSlot.numbered.first(),
             description = "auto",
             savedAt = 0,
             level = 5,
@@ -140,7 +140,7 @@ class SavedGameRoundTripTest {
             messages = said,
         ).getOrThrow()
 
-        assertEquals(said, repository.load(SaveSlot.AUTOSAVE).getOrThrow().messages)
+        assertEquals(said, repository.load(SaveSlot.numbered.first()).getOrThrow().messages)
     }
 
     /** A save written before the bar was kept still opens, with an empty one. */
@@ -299,15 +299,19 @@ class SavedGameRoundTripTest {
         assertEquals(setOf(kept), repository.saved().keys - SaveSlot.numbered.first())
     }
 
+    /**
+     * Six slots and no seventh. Nothing is written that the player did not
+     * ask for, so every save there is is one of these.
+     */
     @Test
-    fun `the autosave is not one of the six`() {
+    fun `there are six slots and they are all there is`() {
         assertEquals(6, SaveSlot.numbered.size)
-        assertTrue(SaveSlot.AUTOSAVE !in SaveSlot.numbered)
+        assertEquals(SaveSlot.numbered, SaveSlot.all)
     }
 
     private suspend fun restore(): GameState {
         repository.save(
-            slot = SaveSlot.AUTOSAVE,
+            slot = SaveSlot.numbered.first(),
             description = "auto",
             savedAt = 0,
             level = 5,
@@ -315,7 +319,7 @@ class SavedGameRoundTripTest {
             world = world,
         ).getOrThrow()
 
-        val saved = repository.load(SaveSlot.AUTOSAVE).getOrThrow()
+        val saved = repository.load(SaveSlot.numbered.first()).getOrThrow()
         return GameState.restoredFrom(saved.world, on = saved.level)
     }
 

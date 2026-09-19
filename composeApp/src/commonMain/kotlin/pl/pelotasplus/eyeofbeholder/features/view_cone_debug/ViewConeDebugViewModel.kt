@@ -243,9 +243,6 @@ class ViewConeDebugViewModel(
      */
     private var scriptHasTheParty = false
 
-    /** Waiting for the party to stand still before writing where they are. */
-    private var autosaving: Job? = null
-
     /** Redrawing the view for a teleporter's flicker, while one is in sight. */
     private var flickering: Job? = null
 
@@ -489,26 +486,21 @@ class ViewConeDebugViewModel(
             itemsRepository.loadItems()
                 .onSuccess { itemNames = it.names }
                 .onFailure { Logger.e(it) { "Error while loading the item names" } }
-            // a level picked from the Levels screen is an instruction, so it
-            // wins over wherever the party were last left
-            val resumed = if (level != null || !AUTOSAVES) {
-                null
-            } else {
-                savedGames.load(SaveSlot.AUTOSAVE).getOrNull()
-            }
-            if (resumed == null) resumeNothing() else resume(resumed)
+            // Nothing is picked up by itself. A game comes back by being
+            // loaded from one of the six slots, so opening the app is always
+            // the party the game ships with, standing where it starts them.
+            resumeNothing()
 
             onVmpSelected(
-                name = resumed?.let { "LEVEL${it.level}.INF" } ?: level ?: DEFAULT_LEVEL,
-                subLevel = resumed?.subLevel ?: 0,
-                playerX = resumed?.world?.party?.position?.x ?: startX ?: DEFAULT_PLAYER_X,
-                playerY = resumed?.world?.party?.position?.y ?: startY ?: DEFAULT_PLAYER_Y,
-                direction = resumed?.world?.party?.facing ?: startDirection ?: DEFAULT_DIRECTION,
+                name = level ?: DEFAULT_LEVEL,
+                playerX = startX ?: DEFAULT_PLAYER_X,
+                playerY = startY ?: DEFAULT_PLAYER_Y,
+                direction = startDirection ?: DEFAULT_DIRECTION,
             )
         }
     }
 
-    /** Picks the game up where the autosave left it. */
+    /** Picks the game up where a save left it. */
     private suspend fun resume(saved: SavedGame) {
         Logger.i(TAG) { "Resuming ${saved.description} on level ${saved.level}" }
         // The level goes with the world. What is loaded already remembers
@@ -532,10 +524,11 @@ class ViewConeDebugViewModel(
     }
 
     /**
-     * No autosave to pick up, so the party are the ones the game ships with —
-     * and so are their belongings. The quick start party's own gear lives past
-     * the end of ITEM.DAT, in the save's table, which is why the items come
-     * from there too and not from the file.
+     * The party the game ships with, and their belongings with them.
+     *
+     * The quick start party's own gear lives past the end of ITEM.DAT, in the
+     * save's table, which is why the items come from there too and not from
+     * the file.
      */
     private suspend fun resumeNothing() {
         val save = quickStart() ?: return
@@ -555,41 +548,6 @@ class ViewConeDebugViewModel(
     private fun carry(save: OriginalSave) {
         _state.update {
             it.copy(game = it.game.copy(items = save.items, inHand = save.inHand))
-        }
-    }
-
-    /**
-     * Writes where the party have got to, so closing the tab and coming back
-     * finds them there.
-     *
-     * Held down, an arrow key is one move as far as this is concerned: each
-     * call cancels the last, so a run down a corridor writes once at the end
-     * rather than once a square. A heavily played world is eighty kilobytes of
-     * JSON, which is cheap once and not cheap thirty times a second.
-     */
-    private fun autosave() {
-        if (!AUTOSAVES) return
-        val inf = _state.value.inf ?: return
-
-        // A lost party are not somewhere to come back to. Written, the tab
-        // would reopen onto a dead game with nothing running to notice it and
-        // nothing the player could do about it.
-        if (_state.value.game.nobodyIsStanding) return
-
-        autosaving?.cancel()
-        autosaving = viewModelScope.launch {
-            delay(AUTOSAVE_SETTLES.inMilliseconds)
-            savedGames.save(
-                slot = SaveSlot.AUTOSAVE,
-                description = inf.name.removeSuffix(".INF"),
-                savedAt = rightNow(),
-                level = levelNumber(inf.name),
-                subLevel = _state.value.subLevel,
-                champions = roster,
-                world = _state.value.game,
-                messages = _state.value.messages,
-                preferences = _state.value.preferences,
-            ).onFailure { Logger.e(it) { "Could not autosave" } }
         }
     }
 
@@ -687,7 +645,6 @@ class ViewConeDebugViewModel(
                     }
                     monstersFoundStandingSomewhere(inf)
                     renderViewPort()
-                    autosave()
                     if (walkingIn) runTriggers()
                 }
                 .onFailure {
@@ -797,7 +754,6 @@ class ViewConeDebugViewModel(
 
         if (!toldArriving && !toldLeaving && !restocked) {
             renderViewPort()
-            autosave()
         }
     }
 
@@ -3909,7 +3865,6 @@ class ViewConeDebugViewModel(
             if (change == null) {
                 if (run.worthNoticing(before = stood, byItself = byItself, aBoxWasUp = wasSaying)) {
                     drawViewPort()
-                    autosave()
                 }
             } else {
                 Logger.i(TAG) {
@@ -4410,7 +4365,6 @@ class ViewConeDebugViewModel(
     private fun onDirectionChanged(direction: Direction) {
         _state.update { it.copy(game = it.game.partyTurnedTo(direction)) }
         renderViewPort()
-        autosave()
     }
 
     private fun renderViewPort() {
@@ -4916,19 +4870,6 @@ class ViewConeDebugViewModel(
 
         /** Carried items are drawn from a sheet of their own, not the floor's. */
         private const val CARRIED_ITEM_ICONS_CPS = "ITEMICN.CPS"
-
-        /**
-         * Whether the game writes where the party got to and picks it up again
-         * next time.
-         *
-         * Off while the renderer is being worked on: an autosave puts the party
-         * back where they were, and walking to a position someone has reported
-         * wants the opposite. The named slots are unaffected.
-         */
-        private const val AUTOSAVES = false
-
-        /** How long the party must stand still before where they are is written. */
-        private val AUTOSAVE_SETTLES = Ticks(9)
 
         /** Where a new party begin. */
         private const val DEFAULT_LEVEL = "LEVEL4.INF"

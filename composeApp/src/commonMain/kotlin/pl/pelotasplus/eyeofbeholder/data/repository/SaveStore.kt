@@ -24,11 +24,11 @@ interface SaveStore {
 }
 
 /**
- * One of the six a player is offered, or the autosave alongside them.
+ * One of the six a player is offered.
  *
- * The autosave is deliberately not a seventh numbered slot: the six are the
- * player's to name and overwrite, and the game writing over one of them
- * because it happened to be next would be the game losing their work.
+ * Nothing is written that the player did not ask for: a game comes back by
+ * being loaded, and closing the tab without saving loses it, the way it would
+ * have on a machine with the floppy out.
  */
 @JvmInline
 value class SaveSlot private constructor(val name: String) {
@@ -37,11 +37,9 @@ value class SaveSlot private constructor(val name: String) {
         /** As many as the Load Game list shows. */
         const val COUNT = 6
 
-        val AUTOSAVE = SaveSlot("autosave")
-
         /** The player's own slots, in the order the list shows them. */
         val numbered: List<SaveSlot> = (1..COUNT).map { SaveSlot("slot$it") }
 
-        val all: List<SaveSlot> = numbered + AUTOSAVE
+        val all: List<SaveSlot> = numbered
     }
 }
