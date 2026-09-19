@@ -1797,7 +1797,17 @@ class ViewConeDebugViewModel(
         _state.update { it.copy(game = shooting.world) }
         Logger.d(TAG) { "$whose shoots from $hand: ${shooting.heard?.let { "loosed" } ?: "nothing to shoot"}" }
 
-        shooting.heard?.let { heard -> viewModelScope.launch { playTrack(heard) } }
+        // A shot is sounded twice over, which is what gives a bowstring its
+        // body. The second goes alongside rather than taking the voice off
+        // the first: one effect holds the voice at a time, so a plain second
+        // call would stop the first and start it again — a restart, and no
+        // louder than one.
+        shooting.heard?.let { heard ->
+            viewModelScope.launch {
+                playTrack(heard)
+                playTrack(heard, alongside = true)
+            }
+        }
         viewModelScope.launch { renderViewPort() }
         keepHandsRecovering()
         keepTheFightGoing()
