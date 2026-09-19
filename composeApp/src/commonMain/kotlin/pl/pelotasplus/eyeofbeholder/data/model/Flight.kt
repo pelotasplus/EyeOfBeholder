@@ -663,11 +663,25 @@ private val atEachQuarter = listOf(
         }
 
         val what = flying.what?.let { world.item(it) }
-        val rolled = what?.let { itemTypes?.get(it.type)?.damageAgainst(kind, dice) }
+        val launcher = flying.shotFrom?.let { world.item(it) }
+
+        // A shot rolls the launcher's dice, not the ammunition's. An arrow
+        // carries a single pip and nothing else, so a bow asked to roll its
+        // arrow would do one point however good the arrow was; the bow is
+        // what the shot is worth and the arrow is what is added to it.
+        val rollsAs = launcher ?: what
+        val rolled = rollsAs?.let { itemTypes?.get(it.type)?.damageAgainst(kind, dice) }
             ?: dice.roll(1, 6, 0)
 
-        val dealt = Damage((rolled * flying.harm.times).coerceAtLeast(0))
+        // Both enchantments count, the bow's and the arrow's, the way a swung
+        // weapon's does.
+        val plus = (launcher?.value ?: 0) + (what?.value ?: 0)
+
+        val dealt = Damage(((rolled + plus) * flying.harm.times).coerceAtLeast(0))
         val edged = itemTypes?.isEdged(what) ?: false
+
+        // What a creature too good for plain steel measures is the thing that
+        // touches it, which is the arrow rather than the bow behind it.
         return kind?.immunities
             ?.softened(dealt, DealtBy.AWeapon(enchantment = what?.value ?: 0, edged = edged))
             ?: dealt

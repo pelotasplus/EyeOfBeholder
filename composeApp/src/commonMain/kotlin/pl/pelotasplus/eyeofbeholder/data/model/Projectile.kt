@@ -33,6 +33,16 @@ data class Projectile(
      */
     val what: ItemIndex? = null,
 
+    /**
+     * What loosed it, where a launcher did rather than a hand.
+     *
+     * A shot is rolled against the bow and not the arrow, so the bow has to
+     * travel with it: an arrow comes down on a floor long after the champion
+     * who shot it has turned away, and what it does on arriving is still the
+     * bow's business. A thrown dagger has none.
+     */
+    val shotFrom: ItemIndex? = null,
+
     /** The square it is over now. */
     val at: Location,
 

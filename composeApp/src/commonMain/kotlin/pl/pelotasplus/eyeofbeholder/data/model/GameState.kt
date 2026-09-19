@@ -1846,6 +1846,7 @@ data class GameState(
 
         val loosed = Projectile(
             what = taken.second,
+            shotFrom = champion.holding(hand),
             at = party.position,
             place = whose.standsIn.onASquareFacing(party.facing),
             going = party.facing,
