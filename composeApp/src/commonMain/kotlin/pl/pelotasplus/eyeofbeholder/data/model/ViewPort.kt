@@ -831,19 +831,22 @@ class ViewPort(
         blockIndex: Int,
         scaleSteps: ScaleSteps,
         over: ViewPlace = ViewPlace.MIDDLE,
+        mirrored: Boolean = false,
     ) {
-        Logger.d(TAG) { "drawInFlight ${icon.w}x${icon.h} block=$blockIndex over=$over scale=$scaleSteps" }
+        Logger.d(TAG) {
+            "drawInFlight ${icon.w}x${icon.h} block=$blockIndex over=$over " +
+                "scale=$scaleSteps mirrored=$mirrored"
+        }
 
-        var shape = icon
-        repeat(scaleSteps.value) { shape = scaleDown(shape) }
-
+        val shape = icon.shrunk(scaleSteps)
         val spot = blockSpot(blockIndex, over)
 
-        drawIcon(
+        blit(
             shape,
             ScreenX(spot.x + 88 - shape.w / 2),
             ScreenY(EYE_LEVEL - shape.h / 2),
-            fadeSteps = scaleSteps,
+            mirrored,
+            scaleSteps,
         )
     }
 

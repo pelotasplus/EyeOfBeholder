@@ -17,6 +17,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.GameState
 import pl.pelotasplus.eyeofbeholder.data.model.Inf
 import pl.pelotasplus.eyeofbeholder.data.model.Item
 import pl.pelotasplus.eyeofbeholder.data.model.ItemIndex
+import pl.pelotasplus.eyeofbeholder.data.model.ItemTypeId
 import pl.pelotasplus.eyeofbeholder.data.model.ItemKind
 import pl.pelotasplus.eyeofbeholder.data.repository.ItemTypesRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.model.Maz
@@ -2103,6 +2104,90 @@ class ViewPortGoldenTest {
         checkGolden("bolt-three-squares-off", aBoltInFlight("LEVEL2.INF", 3, 11, Direction.NORTH, 3))
 
     /**
+     * An arrow going away down the corridor, which is what the party see of
+     * one they have just loosed: the fletching, and nothing else.
+     */
+    @Test
+    fun `an arrow flying away`() =
+        checkGolden("arrow-flying-away", anArrowInFlight(going = Direction.NORTH))
+
+    /** And one coming back at them, which is the head rather than the feathers. */
+    @Test
+    fun `an arrow coming at the party`() =
+        checkGolden("arrow-coming-back", anArrowInFlight(going = Direction.SOUTH))
+
+    /**
+     * One crossing the view instead, which has no shape of its own: nobody
+     * drew an arrow side-on in the air, so the picture of it lying on a floor
+     * is what serves, and this is the scene that says so.
+     */
+    @Test
+    fun `an arrow crossing the view`() =
+        checkGolden("arrow-crossing", anArrowInFlight(going = Direction.EAST))
+
+    /**
+     * The champion on the left of the rank looses one, which is drawn down
+     * the left of the corridor and the way round the sheet has it.
+     */
+    @Test
+    fun `an arrow loosed from the left`() =
+        checkGolden(
+            "arrow-from-the-left",
+            anArrowInFlight(going = Direction.NORTH, from = SquarePlace.NORTH_WEST),
+        )
+
+    /**
+     * And the one on the right, whose arrow is the same picture turned over:
+     * there is one of each shape and it is drawn leaning the one way, so the
+     * side it is on is what decides which way it leans.
+     */
+    @Test
+    fun `an arrow loosed from the right`() =
+        checkGolden(
+            "arrow-from-the-right",
+            anArrowInFlight(going = Direction.NORTH, from = SquarePlace.NORTH_EAST),
+        )
+
+    /**
+     * One shot back at the party from a corner, which is what a monster with
+     * a bow does and the case the rule is easiest to get backwards on: the
+     * side that turns the picture over is the side of its own line of travel,
+     * so a thing coming at the party leans the opposite way to one leaving on
+     * the same side of the corridor.
+     */
+    @Test
+    fun `an arrow shot back at the party from a corner`() =
+        checkGolden(
+            "arrow-coming-back-from-a-corner",
+            anArrowInFlight(going = Direction.SOUTH, from = SquarePlace.NORTH_WEST),
+        )
+
+    /**
+     * A dart, which keeps its own pair of shapes rather than sharing the
+     * arrow's. Here is one going away, which is what a champion throwing it
+     * sees.
+     */
+    @Test
+    fun `a dart flying away`() =
+        checkGolden("dart-flying-away", aDartInFlight(going = Direction.NORTH))
+
+    /**
+     * And one coming the other way, which is what the party see of a dart
+     * thrown at them — the one of these two that a monster does.
+     */
+    @Test
+    fun `a dart thrown at the party`() =
+        checkGolden("dart-coming-back", aDartInFlight(going = Direction.SOUTH))
+
+    /** And one thrown from the right of the rank, turned over like the arrow. */
+    @Test
+    fun `a dart thrown from the right`() =
+        checkGolden(
+            "dart-from-the-right",
+            aDartInFlight(going = Direction.NORTH, from = SquarePlace.NORTH_EAST),
+        )
+
+    /**
      * A bolt and a monster on the same square, which is the only picture that
      * says which of them is in front.
      *
@@ -2708,6 +2793,53 @@ class ViewPortGoldenTest {
         ).getOrThrow()
     }
 
+    /**
+     * An arrow in the air one square up the corridor, travelling [going].
+     *
+     * The party look north down it, so the three ways an arrow can be going
+     * are away from them, at them, and across — which is the whole of what
+     * decides the picture it is drawn with.
+     */
+    private fun anArrowInFlight(going: Direction, from: SquarePlace = SquarePlace.MIDDLE) =
+        aThingInFlight(ARROWS, going, from)
+
+    private fun aDartInFlight(going: Direction, from: SquarePlace = SquarePlace.MIDDLE) =
+        aThingInFlight(DARTS, going, from)
+
+    private fun aThingInFlight(
+        kind: ItemTypeId,
+        going: Direction,
+        from: SquarePlace = SquarePlace.MIDDLE,
+    ): ViewPort = runBlocking {
+        val repository = repository()
+        val inf = repository.loadLevel("LEVEL2.INF").getOrThrow()
+        val facing = Direction.NORTH
+        val standingOn = Location(3, 11)
+        val sublevel = inf.subLevels[inf.subLevelAt(0, standingOn.x, standingOn.y, facing)]
+
+        repository.renderPosition(
+            items = dungeonItems,
+            monsters = emptyList(),
+            sublevel = sublevel,
+            playerX = standingOn.x,
+            playerY = standingOn.y,
+            direction = facing,
+            inFlight = listOf(
+                Projectile(
+                    what = theFirst(kind),
+                    at = facing.oneStepFrom(standingOn),
+                    place = from,
+                    going = going,
+                    thrownBy = Projectile.Thrower.AChampion(PartySlot(0)),
+                ),
+            ),
+        ).getOrThrow()
+    }
+
+    /** Whichever of the dungeon's is the first of its kind; one is like another. */
+    private fun theFirst(kind: ItemTypeId) =
+        ItemIndex(dungeonItems.indexOfFirst { it.type == kind })
+
     /** What the party entering a sublevel does to the monsters the file lists. */
     private fun List<MonsterInstance>.arrivingIn(subLevel: Int) =
         map { it.copy(subLevel = subLevel) }
@@ -2786,6 +2918,9 @@ class ViewPortGoldenTest {
     companion object {
         /** Render the last frame a script drew rather than its first. */
         private const val LAST_FRAME = -1
+
+        private val ARROWS = ItemTypeId(16)
+        private val DARTS = ItemTypeId(15)
 
         /**
          * How many steps a burst lasts before every spark of it is dark.

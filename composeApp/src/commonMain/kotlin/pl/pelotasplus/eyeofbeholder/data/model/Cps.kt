@@ -97,6 +97,15 @@ data class Cps(
      */
     fun locate(icon: ItemIconId): ShapeLocation = shapeOf(icon)
 
+    /**
+     * Where a shape sits on the sheet of thrown things.
+     *
+     * The grid is the small icons' — eight down a column, 32 across by 24
+     * down — and a cell is cut whole rather than tight, because the thing
+     * inside it is drawn centred on the cell's width.
+     */
+    data class ThrownShape(val x: Int, val y: Int, val w: Int, val h: Int)
+
     companion object {
         /** A speaker's portrait: four to a file, one per corner. */
         const val PORTRAIT_WIDTH = 160
@@ -139,8 +148,73 @@ data class Cps(
             }
         }
 
+        /**
+         * What a thing looks like in the air, where it looks like anything at
+         * all.
+         *
+         * Most things have none. An arrow, a dart and a dagger have one, and
+         * everything else in the game is drawn crossing a corridor exactly as
+         * it is drawn lying on the floor of one. A thing that has one has two,
+         * side by side: the shape named here is it going away, and the next
+         * along is it coming back.
+         *
+         * This answers for a thing flying straight down the view or straight
+         * up it. Nothing is drawn for one crossing from side to side — there
+         * is no shape for that — and the floor icon serves there.
+         */
+        fun inFlightShapeOf(icon: ItemIconId, comingBack: Boolean): ThrownShape? {
+            require(icon.value in shapeMap.indices) {
+                "icon ${icon.value} out of range (0..${shapeMap.size - 1})"
+            }
+
+            val goingAway = inFlightMap.getOrElse(shapeMap[icon.value]) { NOTHING_IN_THE_AIR }
+            if (goingAway == NOTHING_IN_THE_AIR) return null
+
+            val shape = goingAway + if (comingBack) 1 else 0
+            if (shape !in 0 until NUM_THROWN_SHAPES) return null
+
+            return ThrownShape(
+                x = (shape / DIV) * 32,
+                y = (shape % DIV) * MUL,
+                w = 32,
+                h = 24,
+            )
+        }
+
         private const val NUM_LARGE_ITEM_SHAPES = 11
         private const val FIRST_SMALL_ITEM_SHAPE = 15
+
+        /** How many shapes the sheet of thrown things holds. */
+        private const val NUM_THROWN_SHAPES = 9
+
+        private const val NOTHING_IN_THE_AIR = -1
+
+        /**
+         * Item shape to the first of its two shapes in the air, or -1 for the
+         * many that have none.
+         *
+         * Data, and unreachable by reasoning: nothing about a thing says
+         * whether somebody drew it flying, and a number nudged here shows up
+         * as the wrong object crossing a corridor rather than as anything that
+         * fails.
+         *
+         * Three kinds of thing reach an entry — darts, daggers and arrows.
+         * A rock, a skull and a spear are thrown too and have none, so they
+         * cross a corridor looking as they do on a floor.
+         *
+         * The spear is the odd one: the last four slots point at a pair drawn
+         * for it, and no icon reaches those slots, the icon table's values
+         * stopping one short of them. The picture is there and nothing can
+         * ask for it.
+         */
+        private val inFlightMap = intArrayOf(
+            -1, -1, -1, -1, -1, -1, -1, -1,
+            -1, -1, -1, -1, -1, -1, -1, 0x02,
+            -1, -1, 0x04, -1, 0x06, -1, -1, -1,
+            -1, -1, -1, -1, -1, -1, -1, -1,
+            -1, -1, -1, -1, -1, -1, -1, -1,
+            -1, 0x00, 0x00, 0x00, 0x00,
+        )
         private const val DIV = 8
         private const val MUL = 24
 

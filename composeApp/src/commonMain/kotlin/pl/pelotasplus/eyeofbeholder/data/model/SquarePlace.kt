@@ -84,6 +84,9 @@ enum class ViewPlace {
     NEAR_RIGHT,
     MIDDLE;
 
+    /** Which side of the view this is, the middle counting as neither. */
+    val isOnTheRight: Boolean get() = this == FAR_RIGHT || this == NEAR_RIGHT
+
     /** Which corner of the square this is when the party face [facing]. */
     fun onASquareFacing(facing: Direction): SquarePlace =
         if (this == MIDDLE) SquarePlace.MIDDLE

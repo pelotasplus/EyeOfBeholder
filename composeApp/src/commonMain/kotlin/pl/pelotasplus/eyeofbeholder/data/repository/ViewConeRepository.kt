@@ -223,6 +223,11 @@ class ViewConeRepositoryImpl(
                 getThrownShapes()
                     .cut(conjured.x, conjured.y, conjured.width, conjured.height)
             }
+        // The same sheet, on the same terms, for the things somebody threw:
+        // an arrow and a dart are drawn from it rather than from their floor
+        // icons when they are going away or coming back.
+        val thrownIcons = inFlight.firstOrNull { it.what != null }?.let { getThrownShapes() }
+
         val windows = viewWindows(sublevel, playerX, playerY, direction, wallAt)
 
         // Data-driven wall rendering using the viewSlots table
@@ -245,7 +250,7 @@ class ViewConeRepositoryImpl(
                     )
                     drawWallsOfForceAtRow(relY, viewPort, forceWalls, decorations, pulse, windows)
                     drawWhatIsFlyingAtRow(
-                        relY, viewPort, items, smallIcons, largeIcons, sublevel,
+                        relY, viewPort, items, smallIcons, largeIcons, thrownIcons, sublevel,
                         playerX, playerY, direction, windows, wallAt,
                         inFlight = inFlight, bolts = bolts, bursting = bursting,
                     )
@@ -386,7 +391,7 @@ class ViewConeRepositoryImpl(
         // so a throw was heard and then not seen until it had left the square
         // it was thrown from.
         drawWhatIsInTheAir(
-            viewPort, items, smallIcons, largeIcons, inFlight, direction,
+            viewPort, items, smallIcons, largeIcons, thrownIcons, inFlight, direction,
             at = Location(playerX, playerY),
             blockIndex = ViewPort.OWN_BLOCK_INDEX,
             dim = 3,
@@ -626,6 +631,7 @@ class ViewConeRepositoryImpl(
         items: List<Item>,
         smallIcons: Cps,
         largeIcons: Cps,
+        thrownIcons: Cps?,
         sublevel: SubLevel,
         playerX: Int,
         playerY: Int,
@@ -688,7 +694,7 @@ class ViewConeRepositoryImpl(
                 }
 
                 drawWhatIsInTheAir(
-                    viewPort, items, smallIcons, largeIcons, inFlight, direction,
+                    viewPort, items, smallIcons, largeIcons, thrownIcons, inFlight, direction,
                     at = Location(playerX + dx, playerY + dy),
                     blockIndex = block.blockIndex,
                     dim = dim,
@@ -767,6 +773,7 @@ class ViewConeRepositoryImpl(
         items: List<Item>,
         smallIcons: Cps,
         largeIcons: Cps,
+        thrownIcons: Cps?,
         inFlight: List<Projectile>,
         direction: Direction,
         at: Location,
@@ -778,17 +785,63 @@ class ViewConeRepositoryImpl(
             .forEach { flying ->
                 val what = items.getOrNull(flying.what?.value ?: return@forEach) ?: return@forEach
 
-                sheetFor(what.icon, smallIcons, largeIcons)
-                    ?.getItemIcon(what.icon)
-                    ?.let { shape ->
-                        viewPort.drawInFlight(
-                            shape,
-                            blockIndex,
-                            ScaleSteps(NEAREST_DIM - dim),
-                            over = flying.place.asSeenFacing(direction) ?: ViewPlace.MIDDLE,
-                        )
-                    }
+                inTheAir(flying, what, direction, thrownIcons, smallIcons, largeIcons)?.let {
+                    viewPort.drawInFlight(
+                        it.shape,
+                        blockIndex,
+                        ScaleSteps(NEAREST_DIM - dim),
+                        over = flying.place.asSeenFacing(direction) ?: ViewPlace.MIDDLE,
+                        mirrored = it.mirrored,
+                    )
+                }
             }
+    }
+
+    /** A thing in the air: the picture of it, and which way round it goes. */
+    private data class InTheAir(val shape: Cps.ItemIcon, val mirrored: Boolean)
+
+    /**
+     * What a thing in the air is drawn as.
+     *
+     * An arrow is a line seen from the side and little more than a dot seen
+     * end-on, so one coming down a corridor at the party cannot be drawn with
+     * the picture of it lying on a floor. Two shapes cover that, one from
+     * behind and one from in front, and which is wanted is all the party's own
+     * facing decides. Most things have neither and are drawn as they lie.
+     *
+     * Either way the picture is drawn one way round and has to be turned over
+     * for the other, which is two different questions. A thing with a shape of
+     * its own is coming or going, and what turns it over is being on the right
+     * of its own line of travel rather than the left. A thing drawn from its
+     * floor icon is seen side-on, and what turns it over is crossing the view
+     * rightwards rather than leftwards.
+     */
+    private fun inTheAir(
+        flying: Projectile,
+        what: Item,
+        facing: Direction,
+        thrown: Cps?,
+        small: Cps,
+        large: Cps,
+    ): InTheAir? {
+        val comingBack = when (flying.going) {
+            facing -> false
+            facing.turnedBy(HALF_TURN) -> true
+            else -> null
+        }
+
+        if (comingBack != null && thrown != null) {
+            Cps.inFlightShapeOf(what.icon, comingBack)?.let { where ->
+                return InTheAir(
+                    shape = thrown.cut(where.x, where.y, where.w, where.h),
+                    mirrored = flying.place.asSeenFacing(flying.going)?.isOnTheRight == true,
+                )
+            }
+        }
+
+        val shape = sheetFor(what.icon, small, large)?.getItemIcon(what.icon) ?: return null
+
+        return InTheAir(shape, mirrored = flying.going == facing.turnedBy(QUARTER_RIGHT))
     }
 
     private fun drawItemsAtBlock(
@@ -975,6 +1028,10 @@ class ViewConeRepositoryImpl(
 
         /** The dim of the row the party stand on, which everything shrinks from. */
         private const val NEAREST_DIM = 3
+
+        /** Quarter turns: about-face, and a turn to the right. */
+        private const val HALF_TURN = 2
+        private const val QUARTER_RIGHT = 1
 
         /** Where the three spark pictures begin on the sheet, and how big. */
         private const val FIRST_SPARK = 232
