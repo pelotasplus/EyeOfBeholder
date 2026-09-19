@@ -63,23 +63,93 @@ SILENCE = 8
 # milliseconds down to nothing. A clip that stops mid-waveform clicks.
 FADE_SECONDS = 0.005
 
+# How many times a program is re-run so the chip can finish ringing — see
+# [with_its_tail]. Eight takes the longest tail in the set down to silence,
+# and the silence is trimmed off again afterwards.
+PASSES_FOR_THE_TAIL = 8
+
+# How much of the end of the first pass is measured to say how loud the sound
+# still was when the writing stopped.
+AT_THE_CUT = 0.005
+
+# Only a short program is worth running again. Anything longer is a tune
+# rather than an effect: it ends because it is over, not because the writing
+# stopped, and looping one renders the whole thing twice.
+LONGEST_WORTH_LOOPING = 3.0
+
 
 def used_tracks(bank: Path) -> list[int]:
     table = bank.read_bytes()[:120]
     return [i for i, sound_id in enumerate(table) if sound_id != 0xFF]
 
 
-def render(bank: Path, track: int, dest: Path) -> bool:
+def render(bank: Path, track: int, dest: Path, passes: int = 1) -> bool:
     cmd = [
         "adplay", "-O", "disk", "-d", str(dest), "-s", str(track),
-        "-o", "-q", "-f", str(OPL_RATE), "--mono", "--16bit", str(bank),
+        "-q", "-f", str(OPL_RATE), "--mono", "--16bit",
     ]
+    cmd += ["-o"] if passes == 1 else ["-l", str(passes)]
+    cmd += [str(bank)]
     try:
         subprocess.run(cmd, timeout=25, stdout=subprocess.DEVNULL,
                        stderr=subprocess.DEVNULL, check=False)
     except subprocess.TimeoutExpired:
         pass
     return dest.exists() and dest.stat().st_size > 44
+
+
+def raw_samples(wav: Path) -> list[int]:
+    """Everything in the data chunk, untrimmed, at whatever rate it was made."""
+    raw = wav.read_bytes()
+    at = 12
+    while at + 8 <= len(raw):
+        chunk_id = raw[at:at + 4]
+        size = struct.unpack_from("<I", raw, at + 4)[0]
+        body = raw[at + 8:at + 8 + size]
+        if chunk_id == b"data":
+            return list(struct.unpack_from(f"<{len(body) // 2}h", body))
+        at += 8 + size + (size & 1)
+    return []
+
+
+def with_its_tail(bank: Path, track: int, once: Path, looped: Path) -> Path | None:
+    """The rendering that keeps the chip's ring-out, where keeping it is safe.
+
+    Writing stops at the end of a program, but the chip does not stop sounding
+    there: a note still releasing is simply cut where it stands, which for
+    anything short is most of the sound. It is why a bowstring arrives as a
+    chirp — it is cut at four fifths of its loudest — while a thrown dagger,
+    whose program outlasts its own notes, arrives whole.
+
+    Running the program again keeps the writing going, and for one whose notes
+    are already struck that adds nothing but the tail. Not for all of them:
+    some strike again on the second pass, which would double the sound. Those
+    give themselves away by getting louder after the first pass ended, and are
+    rendered once as before.
+    """
+    if not render(bank, track, once, passes=1):
+        return None
+
+    first = raw_samples(once)
+    if not first:
+        return once
+
+    # A tune runs to its own end and would simply be rendered again.
+    if len(first) > LONGEST_WORTH_LOOPING * OPL_RATE:
+        return once
+
+    if not render(bank, track, looped, passes=PASSES_FOR_THE_TAIL):
+        return once
+
+    whole = raw_samples(looped)
+    if len(whole) <= len(first):
+        return once
+
+    window = int(OPL_RATE * AT_THE_CUT)
+    at_the_cut = max((abs(v) for v in first[-window:]), default=0)
+    after = max((abs(v) for v in whole[len(first):]), default=0)
+
+    return once if after > at_the_cut else looped
 
 
 def to_shipping_rate(src: Path, dest: Path) -> bool:
@@ -161,6 +231,7 @@ def main() -> None:
     banks_in, out = Path(sys.argv[1]), Path(sys.argv[2])
     out.mkdir(parents=True, exist_ok=True)
     scratch = out / "_render.wav"
+    looped = out / "_looped.wav"
     downsampled = out / "_shipping.wav"
 
     clips: dict[str, bytes] = {}
@@ -174,10 +245,12 @@ def main() -> None:
 
         for track in tracks:
             scratch.unlink(missing_ok=True)
+            looped.unlink(missing_ok=True)
             downsampled.unlink(missing_ok=True)
-            if not render(bank, track, scratch):
+            rendered = with_its_tail(bank, track, scratch, looped)
+            if rendered is None:
                 continue
-            if not to_shipping_rate(scratch, downsampled):
+            if not to_shipping_rate(rendered, downsampled):
                 continue
 
             data = samples_of(downsampled)
@@ -193,6 +266,7 @@ def main() -> None:
             table[bank.name][str(track)] = f"snd_{digest}.wav"
 
     scratch.unlink(missing_ok=True)
+    looped.unlink(missing_ok=True)
     downsampled.unlink(missing_ok=True)
 
     # One gain for the whole dungeon rather than one per clip. What the bank
