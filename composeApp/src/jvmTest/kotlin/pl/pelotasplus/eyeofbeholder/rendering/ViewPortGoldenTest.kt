@@ -82,6 +82,7 @@ import java.io.File
 import javax.imageio.ImageIO
 import kotlin.random.Random
 import kotlin.test.Test
+import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 import kotlin.test.fail
 
@@ -1262,6 +1263,29 @@ class ViewPortGoldenTest {
         checkGolden(
             "level15-wall-of-force-traded",
             renderFrame("LEVEL15.INF", 26, 18, Direction.SOUTH, pulse = TeleporterPulse.TRADED),
+        )
+    }
+
+    /**
+     * One the party put there themselves, in an ordinary corridor rather than
+     * a doorway a level prepared for it.
+     *
+     * The curtain is the same curtain; what this says that the floor's own
+     * one cannot is that the spell writes the walls somewhere the renderer
+     * goes on to read. The four sides are set through the same call the
+     * casting makes, so a wall raised in a corner of the model that the view
+     * never looks at would show here as an empty corridor.
+     */
+    @Test
+    fun `a wall of force the party raised stands in a corridor`() {
+        val standing = GameState(party = PartyState(Location(3, 11), Direction.NORTH))
+            .wallOfForceRaised(level = 2, at = Location(3, 10), casterLevel = 9)
+
+        checkGolden(
+            "wall-of-force-cast-ahead",
+            renderFrame("LEVEL2.INF", 3, 11, Direction.NORTH) { at, side ->
+                assertNotNull(standing).wallByte(2, at, side).takeIf { it.value != 0 }
+            },
         )
     }
 

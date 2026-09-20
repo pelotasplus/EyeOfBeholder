@@ -44,6 +44,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.DamageShown
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.Blow
 import pl.pelotasplus.eyeofbeholder.data.model.AConeOfCold
+import pl.pelotasplus.eyeofbeholder.data.model.AWallOfForce
 import pl.pelotasplus.eyeofbeholder.data.model.AVortex
 import pl.pelotasplus.eyeofbeholder.data.model.Burst
 import pl.pelotasplus.eyeofbeholder.data.model.Fighting
@@ -252,6 +253,9 @@ class ViewConeDebugViewModel(
 
     /** Redrawing the view for a teleporter's flicker, while one is in sight. */
     private var flickering: Job? = null
+
+    /** Counting down whatever walls of force are standing, while any are. */
+    private var walling: Job? = null
 
     /** Moving whatever doors are on their way somewhere. */
     private var swingingDoors: Job? = null
@@ -2823,6 +2827,60 @@ class ViewConeDebugViewModel(
         }
     }
 
+    /** The square the party are looking at, which is the only one aimed at. */
+    private fun theSquareAhead(): Location =
+        _state.value.game.party.facing.oneStepFrom(_state.value.game.party.position)
+
+    private fun theSquareAheadCouldBeShutOff(): Boolean {
+        val inf = _state.value.inf ?: return false
+        return _state.value.game.couldHoldAWallOfForce(levelNumber(inf.name), theSquareAhead())
+    }
+
+    /**
+     * A wall of force raised on the square ahead, and kept running until it
+     * goes again.
+     *
+     * Whether it can stand there at all was asked before the scroll was
+     * spent, so by here it can — but it is asked again rather than assumed,
+     * because between the two a creature may have stepped onto the square.
+     */
+    private fun shutOffTheSquareAhead(casterLevel: Int) {
+        val inf = _state.value.inf ?: return
+        val raised = _state.value.game
+            .wallOfForceRaised(levelNumber(inf.name), theSquareAhead(), casterLevel)
+            ?: return
+
+        _state.update { it.copy(game = raised) }
+        renderViewPort()
+        keepTheWallsOfForceStanding()
+    }
+
+    /**
+     * The one clock every wall of force runs down by, which stops of its own
+     * accord once the last of them has gone.
+     */
+    private fun keepTheWallsOfForceStanding() {
+        if (walling?.isActive == true) return
+
+        walling = viewModelScope.launch {
+            while (_state.value.game.wallsOfForce.standing.isNotEmpty()) {
+                delay(GameState.CLOCK_STEP.inMilliseconds)
+
+                var gone = emptyList<AWallOfForce>()
+                _state.update {
+                    val (world, ended) = it.game.wallsOfForceRunDown(GameState.CLOCK_STEP)
+                    gone = ended
+                    it.copy(game = world)
+                }
+
+                // Only when one actually goes: the square it stood on opens
+                // again, and until that happens nothing about the view has
+                // changed for a wall quietly counting down.
+                if (gone.isNotEmpty()) renderViewPort()
+            }
+        }
+    }
+
     /**
      * A cone of cold: the swirl over the view, and then everything in the
      * seven squares in front of the party frozen at once.
@@ -3687,6 +3745,14 @@ class ViewConeDebugViewModel(
             return
         }
 
+        // Nor does one with nowhere to stand, for the same reason.
+        if (spell.shutsOffTheSquareAhead && !theSquareAheadCouldBeShutOff()) {
+            say(SpellMessages.theSpellFails())
+            viewModelScope.launch { playTrack(WARNING) }
+            drawWords()
+            return
+        }
+
         _state.update { it.copy(game = it.game.handCast(whose, hand)) }
         keepHandsRecovering()
 
@@ -3710,6 +3776,8 @@ class ViewConeDebugViewModel(
             else if (spell.lasts != null) runOverTheParty(whose, spell)
             else if (spell.spreadsAsACone) {
                 freezeWhatIsInFront(ThrownSpell.AS_READ_FROM_A_SCROLL)
+            } else if (spell.shutsOffTheSquareAhead) {
+                shutOffTheSquareAhead(ThrownSpell.AS_READ_FROM_A_SCROLL)
             }
 
             runTriggersAt(

@@ -290,4 +290,11 @@ object SpellMessages {
     fun raised(whose: String) = "$whose is raised from the dead."
 
     fun expires(whose: String, spell: String) = "$whose's $spell spell expires."
+
+    /**
+     * What is said when a casting cannot happen where it was aimed — a wall
+     * of force with nowhere to stand. The game's own line, and it is the
+     * blunter of the two it keeps: no exclamation mark on this one.
+     */
+    fun theSpellFails() = "The spell fails"
 }

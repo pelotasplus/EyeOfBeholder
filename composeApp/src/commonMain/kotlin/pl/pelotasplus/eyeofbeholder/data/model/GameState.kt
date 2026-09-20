@@ -71,6 +71,9 @@ data class GameState(
     /** The swirl of a cone of cold, while one is going off. Never saved. */
     val vortex: AVortex? = null,
 
+    /** The walls of force standing anywhere, and what is left of each. */
+    val wallsOfForce: WallsOfForce = WallsOfForce(),
+
     /**
      * The spells still running over the party.
      *
@@ -968,6 +971,56 @@ data class GameState(
     /** The same square with all four of its sides changed to [to]. */
     fun wallsChanged(level: Int, at: Location, to: WallByte) =
         copy(changedWalls = changedWalls + WallSide.entries.associate { WallAt(level, at, it) to to })
+
+    /**
+     * Whether a wall of force can be raised on [at], which wants an empty
+     * square: nothing standing on it, and no wall on any of its four sides.
+     *
+     * The second half is what stops one being put across a doorway, where it
+     * would be both invisible and impassable. Asking about all four sides
+     * rather than the one facing the party is deliberate — a square with a
+     * wall behind it is as unusable as one with a wall in front.
+     */
+    fun couldHoldAWallOfForce(level: Int, at: Location): Boolean {
+        if (monsters.any { it.level == level && it.x == at.x && it.y == at.y }) return false
+
+        return WallSide.entries.all { side ->
+            wallByte(level, at, side).value == 0
+        }
+    }
+
+    /**
+     * A wall of force raised on [at], turning out the shortest-lived of the
+     * five if there is no room, or null where the square will not hold one.
+     */
+    fun wallOfForceRaised(level: Int, at: Location, casterLevel: Int): GameState? {
+        if (!couldHoldAWallOfForce(level, at)) return null
+
+        val (room, turnedOut) = wallsOfForce.roomForAnother()
+        val cleared = turnedOut?.let { wallsChanged(it.level, it.at, WallByte(0)) } ?: this
+
+        return cleared
+            .wallsChanged(level, at, WALL_OF_FORCE_BYTE)
+            .copy(
+                wallsOfForce = room.raised(
+                    AWallOfForce(
+                        level = level,
+                        at = at,
+                        ticksLeft = WallsOfForce.lastsForACasterOf(casterLevel).value,
+                    )
+                ),
+            )
+    }
+
+    /** Every wall of force a step nearer going, and the squares that cleared. */
+    fun wallsOfForceRunDown(by: Ticks): Pair<GameState, List<AWallOfForce>> {
+        val (up, gone) = wallsOfForce.runDown(by)
+        val cleared = gone.fold(this) { world, wall ->
+            world.wallsChanged(wall.level, wall.at, WallByte(0))
+        }
+
+        return cleared.copy(wallsOfForce = up) to gone
+    }
 
     /**
      * The same world with the webs on a square cut down.

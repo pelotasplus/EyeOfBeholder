@@ -65,6 +65,12 @@ enum class Spell(
      * it is cast, rather than throwing anything — see [AConeOfCold].
      */
     val spreadsAsACone: Boolean = false,
+
+    /**
+     * Whether it shuts off the square ahead of the party for a while — see
+     * [WallsOfForce]. Refused where that square will not hold one.
+     */
+    val shutsOffTheSquareAhead: Boolean = false,
 ) {
     ARMOUR(1, "armor", TrackIndex(92)),
     BURNING_HANDS(2, "burning hands", TrackIndex(87)),
@@ -169,7 +175,7 @@ enum class Spell(
         TrackIndex(101),
         throws = ThrownSpell.thatHolds(MonsterSpell.HOLD_MONSTER, AHold.OF_A_MONSTER),
     ),
-    WALL_OF_FORCE(25, "wall of force", TrackIndex(74)),
+    WALL_OF_FORCE(25, "wall of force", TrackIndex(74), shutsOffTheSquareAhead = true),
     DISINTEGRATE(26, "disintegrate", TrackIndex(119), throwsSparks = true),
     FLESH_TO_STONE(27, "flesh to stone", TrackIndex(68)),
     STONE_TO_FLESH(

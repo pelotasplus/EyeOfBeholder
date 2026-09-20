@@ -21,7 +21,78 @@ package pl.pelotasplus.eyeofbeholder.data.model
  */
 val WallByte.isAWallOfForce: Boolean get() = value == WALL_OF_FORCE
 
+/**
+ * The byte a square's four sides are set to while a wall of force stands on
+ * it. Not a level's own wall: no file names it, and every floor means the
+ * same thing by it.
+ */
+val WALL_OF_FORCE_BYTE = WallByte(WALL_OF_FORCE)
+
 private const val WALL_OF_FORCE = 74
+
+/**
+ * One wall of force standing somewhere, and how long it has left.
+ *
+ * It is on a square rather than on a side: all four faces are raised at once,
+ * so it cannot be walked round or entered from behind.
+ */
+data class AWallOfForce(
+    val level: Int,
+    val at: Location,
+    val ticksLeft: Int,
+)
+
+/**
+ * The walls of force standing anywhere in the dungeon.
+ *
+ * There is room for five and no more. A sixth does not fail and does not
+ * queue: it takes the place of whichever of the five has least time left to
+ * run, which is the one whose loss costs the party least.
+ *
+ * They are kept here rather than on the squares because a square only knows
+ * the byte, and a byte cannot say when to stop being one.
+ */
+data class WallsOfForce(val standing: List<AWallOfForce> = emptyList()) {
+
+    /**
+     * Room made for another, and whichever was turned out to make it.
+     *
+     * Nothing is turned out while there is space, so the pair is a wall only
+     * once five are already up.
+     */
+    fun roomForAnother(): Pair<WallsOfForce, AWallOfForce?> {
+        if (standing.size < AT_ONCE) return this to null
+
+        val goes = standing.minBy { it.ticksLeft }
+        return WallsOfForce(standing - goes) to goes
+    }
+
+    fun raised(one: AWallOfForce) = WallsOfForce(standing + one)
+
+    /** What is left after [by], and which of them ran out in that step. */
+    fun runDown(by: Ticks): Pair<WallsOfForce, List<AWallOfForce>> {
+        val stepped = standing.map { it.copy(ticksLeft = it.ticksLeft - by.value) }
+        val (up, gone) = stepped.partition { it.ticksLeft > 0 }
+        return WallsOfForce(up) to gone
+    }
+
+    companion object {
+        /** How many may stand at once. */
+        const val AT_ONCE = 5
+
+        /**
+         * How long one lasts: half a minute, and another half-minute for
+         * every two levels the caster has. Read off a scroll, which is always
+         * ninth level, that is five and a half minutes.
+         *
+         * Half a minute per two levels rather than per level, which is why
+         * this is worked out here instead of with [SpellLasts] — that one
+         * counts whole levels and cannot say a half of one.
+         */
+        fun lastsForACasterOf(level: Int) =
+            Ticks(((level * SpellLasts.HALF_A_MINUTE) shr 1) + SpellLasts.HALF_A_MINUTE)
+    }
+}
 
 /** Where one of the two tiles a curtain is woven from sits in DECORATE.CPS. */
 data class ForceTile(val x: Int, val y: Int, val w: Int, val h: Int)
