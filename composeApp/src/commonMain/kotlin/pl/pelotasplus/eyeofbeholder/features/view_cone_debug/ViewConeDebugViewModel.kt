@@ -45,6 +45,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.Blow
 import pl.pelotasplus.eyeofbeholder.data.model.AConeOfCold
 import pl.pelotasplus.eyeofbeholder.data.model.AWallOfForce
+import pl.pelotasplus.eyeofbeholder.data.model.Disintegration
 import pl.pelotasplus.eyeofbeholder.data.model.AVortex
 import pl.pelotasplus.eyeofbeholder.data.model.Burst
 import pl.pelotasplus.eyeofbeholder.data.model.Fighting
@@ -2827,6 +2828,27 @@ class ViewConeDebugViewModel(
         }
     }
 
+    /** A disintegrate: the square ahead unmade — see [Disintegration]. */
+    private fun unmakeTheSquareAhead() {
+        val inf = _state.value.inf ?: return
+        val level = levelNumber(inf.name)
+        val sublevel = inf.subLevels.getOrNull(_state.value.subLevel) ?: return
+        val ahead = theSquareAhead()
+
+        // Reach is the party's own: what they could not walk onto, the spell
+        // cannot pick a creature off either.
+        val facingBack = _state.value.game.party.facing.wallSideFacingBack
+        val reachable = sublevel.canBeWalkedOnto(_state.value.game.wall(level, ahead, facingBack))
+
+        val unmade = Disintegration(
+            kinds = sublevel.monsters,
+            itemTypes = itemTypes,
+        ).castAheadOf(_state.value.game, level, reachable)
+
+        _state.update { it.copy(game = unmade.world) }
+        renderViewPort()
+    }
+
     /** The square the party are looking at, which is the only one aimed at. */
     private fun theSquareAhead(): Location =
         _state.value.game.party.facing.oneStepFrom(_state.value.game.party.position)
@@ -3778,6 +3800,8 @@ class ViewConeDebugViewModel(
                 freezeWhatIsInFront(ThrownSpell.AS_READ_FROM_A_SCROLL)
             } else if (spell.shutsOffTheSquareAhead) {
                 shutOffTheSquareAhead(ThrownSpell.AS_READ_FROM_A_SCROLL)
+            } else if (spell.unmakesTheSquareAhead) {
+                unmakeTheSquareAhead()
             }
 
             runTriggersAt(

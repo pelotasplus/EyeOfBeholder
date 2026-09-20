@@ -71,6 +71,12 @@ enum class Spell(
      * [WallsOfForce]. Refused where that square will not hold one.
      */
     val shutsOffTheSquareAhead: Boolean = false,
+
+    /**
+     * Whether it unmakes the square ahead — whatever stands on it, and its
+     * walls either way. See [Disintegration].
+     */
+    val unmakesTheSquareAhead: Boolean = false,
 ) {
     ARMOUR(1, "armor", TrackIndex(92)),
     BURNING_HANDS(2, "burning hands", TrackIndex(87)),
@@ -176,7 +182,13 @@ enum class Spell(
         throws = ThrownSpell.thatHolds(MonsterSpell.HOLD_MONSTER, AHold.OF_A_MONSTER),
     ),
     WALL_OF_FORCE(25, "wall of force", TrackIndex(74), shutsOffTheSquareAhead = true),
-    DISINTEGRATE(26, "disintegrate", TrackIndex(119), throwsSparks = true),
+    DISINTEGRATE(
+        26,
+        "disintegrate",
+        TrackIndex(119),
+        throwsSparks = true,
+        unmakesTheSquareAhead = true,
+    ),
     FLESH_TO_STONE(27, "flesh to stone", TrackIndex(68)),
     STONE_TO_FLESH(
         28,
