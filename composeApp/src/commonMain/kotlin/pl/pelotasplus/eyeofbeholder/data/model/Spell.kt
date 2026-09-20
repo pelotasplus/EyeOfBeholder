@@ -59,6 +59,12 @@ enum class Spell(
      * a fresh start.
      */
     val lasts: SpellLasts? = null,
+
+    /**
+     * Whether it spreads over the squares in front of the caster the moment
+     * it is cast, rather than throwing anything — see [AConeOfCold].
+     */
+    val spreadsAsACone: Boolean = false,
 ) {
     ARMOUR(1, "armor", TrackIndex(92)),
     BURNING_HANDS(2, "burning hands", TrackIndex(87)),
@@ -156,7 +162,7 @@ enum class Spell(
     ),
     IMPROVED_INVISIBILITY(21, "improved invisibility", TrackIndex(8)),
     REMOVE_CURSE(22, "remove curse", TrackIndex(83)),
-    CONE_OF_COLD(23, "cone of cold", TrackIndex(118)),
+    CONE_OF_COLD(23, "cone of cold", TrackIndex(118), spreadsAsACone = true),
     HOLD_MONSTER(
         24,
         "hold monster",

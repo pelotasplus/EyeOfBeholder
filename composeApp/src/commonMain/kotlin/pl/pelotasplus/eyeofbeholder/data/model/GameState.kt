@@ -68,6 +68,9 @@ data class GameState(
     /** The sparks over the portraits of a spell cast on the whole party. */
     val sparklingOverTheParty: SparksOverTheParty? = null,
 
+    /** The swirl of a cone of cold, while one is going off. Never saved. */
+    val vortex: AVortex? = null,
+
     /**
      * The spells still running over the party.
      *
@@ -1783,6 +1786,12 @@ data class GameState(
         recovering.any { it.whose == whose && it.hand == hand }
 
     /** The world with a casting's sparks begun, or begun again. */
+    fun vortexBegun(random: kotlin.random.Random = kotlin.random.Random) =
+        copy(vortex = AVortex.thrown(random))
+
+    /** The swirl a frame on, and gone once its last spark has gone out. */
+    fun vortexStepped() = copy(vortex = vortex?.stepped()?.takeIf { it.stillGoing })
+
     fun sparksBegun() = copy(sparkling = SparksInTheRoom())
 
     /** And a frame on, which is how they go out. */

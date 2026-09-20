@@ -1,6 +1,7 @@
 package pl.pelotasplus.eyeofbeholder.data.repository
 
 import co.touchlab.kermit.Logger
+import pl.pelotasplus.eyeofbeholder.data.model.AVortex
 import pl.pelotasplus.eyeofbeholder.data.model.Burst
 import pl.pelotasplus.eyeofbeholder.data.model.ConjuredBolt
 import pl.pelotasplus.eyeofbeholder.data.model.Cps
@@ -107,6 +108,8 @@ interface ViewConeRepository {
         /** And whatever is going off on one. */
         bursting: List<Burst> = emptyList(),
         sparkling: SparksInTheRoom? = null,
+        /** And the swirl of a cone of cold, while one is going off. */
+        vortex: AVortex? = null,
     ): Result<ViewPort>
 }
 
@@ -186,6 +189,7 @@ class ViewConeRepositoryImpl(
         inFlight: List<Projectile>,
         bursting: List<Burst>,
         sparkling: SparksInTheRoom?,
+        vortex: AVortex?,
     ): Result<ViewPort> {
         // The sublevel is on the line because which one is showing decides
         // what is drawn and what is not, and a trace without it cannot say why
@@ -426,6 +430,11 @@ class ViewConeRepositoryImpl(
         // the spell rather than to the room, so nothing in the corridor hides
         // them and no wall is nearer than they are.
         sparkling?.let { drawSparks(viewPort, it, getDecorations()) }
+
+        // The cold comes off the caster's own hands rather than standing
+        // anywhere in the room, so it goes over the whole view like the
+        // sparks do and nothing in the corridor is in front of it.
+        vortex?.let { viewPort.drawVortex(it) }
 
         return Result.success(viewPort)
     }

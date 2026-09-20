@@ -879,6 +879,25 @@ class ViewPort(
         }
     }
 
+    /**
+     * The swirl of a cone of cold, a lit pixel per spark.
+     *
+     * Drawn over everything rather than at a distance. The cold is not
+     * somewhere in the room — it is coming off the caster's own hands, in
+     * front of the whole view, so nothing in the room stands in front of it.
+     */
+    fun drawVortex(vortex: AVortex) {
+        vortex.sparks.forEach { spark ->
+            val colour = spark.showing ?: return@forEach
+            val x = ((spark.x shr AVortex.FRACTION) + AVortex.MIDDLE_X)
+                .coerceIn(0, COLS - 1)
+            val y = ((spark.y shr AVortex.FRACTION) + AVortex.MIDDLE_Y)
+                .coerceIn(0, ROWS - 1)
+
+            draw(ScreenX(x), ScreenY(y), palette.colorOrTransparent(colour))
+        }
+    }
+
     companion object {
         private const val TAG = "ViewPort"
 

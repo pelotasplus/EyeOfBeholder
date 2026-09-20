@@ -45,6 +45,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.PaletteIndex
 import pl.pelotasplus.eyeofbeholder.data.model.PartySlot
 import pl.pelotasplus.eyeofbeholder.data.model.PartyState
 import pl.pelotasplus.eyeofbeholder.data.model.Burst
+import pl.pelotasplus.eyeofbeholder.data.model.AVortex
 import pl.pelotasplus.eyeofbeholder.data.model.ConjuredBolt
 import pl.pelotasplus.eyeofbeholder.data.model.Dice
 import pl.pelotasplus.eyeofbeholder.data.model.Projectile
@@ -79,6 +80,7 @@ import pl.pelotasplus.eyeofbeholder.data.repository.VmpRepositoryImpl
 import java.awt.image.BufferedImage
 import java.io.File
 import javax.imageio.ImageIO
+import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertTrue
 import kotlin.test.fail
@@ -1994,6 +1996,30 @@ class ViewPortGoldenTest {
         assertTrue(moved > 0, "a detect magic changed nothing on the panel")
     }
 
+    /**
+     * A cone of cold going off, walked through its swirl.
+     *
+     * The sparks come in at the edges and are dragged towards the middle of
+     * the view, turning as they go and changing colour as they travel, until
+     * the last of them goes out — a little over two hundred steps. Four of
+     * them spread across that, rather than one, because a single frame says
+     * nothing about whether it moves the way it should: arriving, full,
+     * turning colour, and thinning out to the last few.
+     *
+     * The swirl is over the whole view and not somewhere in the room — the
+     * cold comes off the caster's own hands — so nothing in the corridor
+     * stands in front of it, which is the half of this worth a picture.
+     */
+    @Test
+    fun `a cone of cold swirling over the view`() {
+        listOf(10, 60, 120, 180).forEach { frame ->
+            checkGolden(
+                "cone-of-cold-$frame",
+                aVortexOver("LEVEL2.INF", 3, 11, Direction.NORTH, afterFrames = frame),
+            )
+        }
+    }
+
     /** The sparks a spell on the whole party throws over the portraits, midway through. */
     @Test
     fun `party panel sparkling from a spell on all of them`() =
@@ -2868,6 +2894,40 @@ class ViewPortGoldenTest {
      * A bolt in the air on the square [squaresOff] ahead of the party, which
      * is the only thing this draws that is not standing on a floor.
      */
+    /**
+     * The cone of cold's swirl over a corridor, stepped to an explicit frame.
+     *
+     * Thrown from a seeded draw rather than a random one, so the same hundred
+     * and fifty sparks land in the same places every run — a swirl made from
+     * chance cannot be frozen as a picture otherwise.
+     */
+    private fun aVortexOver(
+        level: String,
+        x: Int,
+        y: Int,
+        direction: Direction,
+        afterFrames: Int,
+    ): ViewPort = runBlocking {
+        val repository = repository()
+        val inf = repository.loadLevel(level).getOrThrow()
+        val sublevel = inf.subLevels[inf.subLevelAt(0, x, y, direction)]
+
+        val viewPort = repository.renderPosition(
+            items = dungeonItems,
+            monsters = inf.monsterInstances,
+            sublevel = sublevel,
+            playerX = x,
+            playerY = y,
+            direction = direction,
+        ).getOrThrow()
+
+        var vortex = AVortex.thrown(Random(A_KNOWN_THROW))
+        repeat(afterFrames) { vortex = vortex.stepped() }
+
+        viewPort.drawVortex(vortex)
+        viewPort
+    }
+
     private fun aBoltInFlight(
         level: String,
         x: Int,
@@ -3083,6 +3143,13 @@ class ViewPortGoldenTest {
     companion object {
         /** Render the last frame a script drew rather than its first. */
         private const val LAST_FRAME = -1
+
+        /**
+         * The draw the vortex goldens were frozen from. Any number would do;
+         * what matters is that it is the same one every run, because a swirl
+         * made from chance has no picture to be compared against.
+         */
+        private const val A_KNOWN_THROW = 20260919L
 
         private val ARROWS = ItemTypeId(16)
         private val DARTS = ItemTypeId(15)

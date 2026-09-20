@@ -43,6 +43,8 @@ import pl.pelotasplus.eyeofbeholder.data.model.DialogueText
 import pl.pelotasplus.eyeofbeholder.data.model.DamageShown
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.Blow
+import pl.pelotasplus.eyeofbeholder.data.model.AConeOfCold
+import pl.pelotasplus.eyeofbeholder.data.model.AVortex
 import pl.pelotasplus.eyeofbeholder.data.model.Burst
 import pl.pelotasplus.eyeofbeholder.data.model.Fighting
 import pl.pelotasplus.eyeofbeholder.data.model.THROWN_CPS
@@ -2821,6 +2823,51 @@ class ViewConeDebugViewModel(
         }
     }
 
+    /**
+     * A cone of cold: the swirl over the view, and then everything in the
+     * seven squares in front of the party frozen at once.
+     *
+     * Nothing is thrown and nothing travels. The swirl is played where it is
+     * rather than sent anywhere, and what it reaches is decided by where the
+     * party stand and which way they face — so there is no square to aim at,
+     * nothing to intercept it, and no time in which to get out of its way.
+     */
+    private suspend fun freezeWhatIsInFront(casterLevel: Int) {
+        val kinds = _state.value.inf
+            ?.subLevels?.getOrNull(_state.value.subLevel)?.monsters.orEmpty()
+
+        // The swirl plays over the room as it stands, and the cold is dealt
+        // once it clears. Dealing it first would take anything killed off the
+        // screen before the spell that killed it had finished being drawn.
+        _state.update { it.copy(game = it.game.vortexBegun()) }
+
+        while (_state.value.game.vortex != null) {
+            drawViewPort()
+            delay(AVortex.A_FRAME_MILLISECONDS)
+            _state.update {
+                var stepping = it.game
+                repeat(AVortex.STEPS_A_FRAME) { stepping = stepping.vortexStepped() }
+                it.copy(game = stepping)
+            }
+        }
+
+        val struck = AConeOfCold(kinds = kinds, itemTypes = itemTypes)
+            .castBy(_state.value.game, casterLevel)
+
+        // The swirl is gone from the world by here, so this is the frame that
+        // takes it off the screen and shows what the cold left. Without it the
+        // last sparks stay lit until something else happens to redraw — and
+        // with the monsters held still nothing else will.
+        _state.update { it.copy(game = struck.world) }
+        drawViewPort()
+
+        // Everything the cold caught is white for a moment, which is the only
+        // thing that says which of them it reached. It has to be taken off
+        // again from here: a silhouette is cleared by whatever set it, and
+        // nothing else in the game will come along and do it.
+        letTheFlashFade()
+    }
+
     /** A shield already up refuses the casting, and says so as a warning is said. */
     private suspend fun shieldTheParty(whose: PartySlot, spell: Spell) {
         val shielded = _state.value.game.mysticDefenceCast(whose)
@@ -3661,6 +3708,9 @@ class ViewConeDebugViewModel(
             // spell that raised it still runs, which no other spell can do.
             if (spell == Spell.MYSTIC_DEFENCE) shieldTheParty(whose, spell)
             else if (spell.lasts != null) runOverTheParty(whose, spell)
+            else if (spell.spreadsAsACone) {
+                freezeWhatIsInFront(ThrownSpell.AS_READ_FROM_A_SCROLL)
+            }
 
             runTriggersAt(
                 at = _state.value.game.party.position,
@@ -4497,6 +4547,7 @@ class ViewConeDebugViewModel(
             inFlight = _state.value.game.inFlight,
             bursting = _state.value.game.bursting,
             sparkling = _state.value.game.sparkling,
+            vortex = _state.value.game.vortex,
         ).onSuccess { viewPort ->
             drawn = viewPort
             paint(viewPort, sublevel.palette)
