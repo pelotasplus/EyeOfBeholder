@@ -436,10 +436,16 @@ class MonstersTurn(
         return reached.mapIndexedNotNull { nth, whom ->
             val champion = world.championIn(whom) ?: return@mapIndexedNotNull null
 
+            // Taken off the roll rather than added to the champion's armour,
+            // which is what leaves a natural twenty landing on a blurred
+            // champion the way it lands on anybody.
+            val harderToSee = world.running.hindranceStriking(whom)
+
             var damage = 0
             repeat(kind.attacksPerRound) { attack ->
-                val roll = dice.roll(1, 20, 0)
-                val lands = roll == NATURALLY_ALWAYS ||
+                val rolled = dice.roll(1, 20, 0)
+                val roll = if (rolled == NATURALLY_ALWAYS) rolled else rolled - harderToSee
+                val lands = rolled == NATURALLY_ALWAYS ||
                     roll >= kind.hitChance - champion.armorClass.value
 
                 if (lands) {

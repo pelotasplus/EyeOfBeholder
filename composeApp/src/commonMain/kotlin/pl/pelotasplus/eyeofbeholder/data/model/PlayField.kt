@@ -68,6 +68,8 @@ class PlayField(
         portal: ThePortal.Showing? = null,
         /** Whether a mystic defence is up, which frames every box in green. */
         shielded: Boolean = false,
+        /** Whether a spell on that champion alone frames their box. */
+        underASpell: (PartySlot) -> Boolean = { false },
         /** Whether a detect magic is running, which draws what is magical blue. */
         magicShowing: Boolean = false,
         sparksOverTheParty: SparksOverTheParty? = null,
@@ -87,7 +89,7 @@ class PlayField(
         if (sheet == null) {
             drawParty(
                 party, portraits, metPortraits, carrying, recovering, reporting, hurt, swapping,
-                shielded, sparksOverTheParty,
+                shielded, underASpell, sparksOverTheParty,
             )
         } else if (!underThePage) {
             drawSheet(sheet, portraits, metPortraits)
@@ -438,6 +440,7 @@ class PlayField(
         hurt: (PartySlot) -> Damage?,
         swapping: PartySlot?,
         shielded: Boolean,
+        underASpell: (PartySlot) -> Boolean,
         sparks: SparksOverTheParty?,
     ) {
         championBoxes.forEachIndexed { slot, box ->
@@ -464,7 +467,13 @@ class PlayField(
                 swapping = swapping?.index == slot,
             )
 
-            if (shielded) drawOutline(box, SHIELDED)
+            // A box is framed for a spell on that champion as well as for one
+            // over all of them, and the colour goes with the party rather
+            // than with the spell: green while a mystic defence is up, red
+            // otherwise, whichever of them put the frame there.
+            if (shielded || underASpell(PartySlot(slot))) {
+                drawOutline(box, if (shielded) SHIELDED else UNDER_A_SPELL)
+            }
             sparks?.takeIf { it.lighting(PartySlot(slot)) }
                 ?.let { drawSparks(it, PartySlot(slot)) }
         }
@@ -1067,6 +1076,9 @@ class PlayField(
 
         /** The light green a box is framed in while a mystic defence is up. */
         private val SHIELDED = PaletteIndex(4)
+
+        /** And the light red for a spell on that champion alone. */
+        private val UNDER_A_SPELL = PaletteIndex(6)
 
         /** The three spark pictures, side by side on the interface sheet. */
         private const val FIRST_SPARK = 232

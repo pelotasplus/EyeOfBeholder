@@ -1934,6 +1934,20 @@ data class GameState(
     fun spellBegunOverTheParty(spell: Spell, by: PartySlot, casterLevel: Int): GameState? =
         running.begun(spell, by, casterLevel)?.let { copy(running = it) }
 
+    /**
+     * The same, settled on whoever a spell settles on — which for some is the
+     * party and for others is one champion. Null where it is already in force
+     * wherever it was going.
+     */
+    fun spellBegunWhereItSettles(spell: Spell, by: PartySlot, casterLevel: Int): GameState? {
+        val on = when (spell.settlesOn) {
+            SettlesOn.THE_PARTY -> null
+            SettlesOn.WHOEVER_CAST_IT -> by
+        }
+
+        return running.begun(spell, by, casterLevel, on)?.let { copy(running = it) }
+    }
+
     /** The world with that hand put out of use for as long as a swing costs. */
     fun handSwung(whose: PartySlot, hand: CarrySlot, came: WhatTheBlowCameTo) = copy(
         recovering = recovering.filterNot { it.whose == whose && it.hand == hand } +

@@ -61,6 +61,23 @@ enum class Spell(
     val lasts: SpellLasts? = null,
 
     /**
+     * Whom a spell that [lasts] settles on. Meaningless without one.
+     *
+     * A spell is over the party or on one champion, and the two are not the
+     * same: a detect magic belongs to nobody and a blur moves nothing about
+     * the other five.
+     */
+    val settlesOn: SettlesOn = SettlesOn.THE_PARTY,
+
+    /**
+     * How much it takes off a monster's roll to hit whoever it is on.
+     *
+     * Off the roll and not onto their armour, which matters at the top of the
+     * die: a natural twenty lands on a blurred champion like anybody else.
+     */
+    val hindersStriking: Int = 0,
+
+    /**
      * Whether it spreads over the squares in front of the caster the moment
      * it is cast, rather than throwing anything — see [AConeOfCold].
      */
@@ -100,7 +117,14 @@ enum class Spell(
     ),
     SHIELD(5, "shield", TrackIndex(92)),
     SHOCKING_GRASP(6, "shocking grasp", TrackIndex(88)),
-    BLUR(7, "blur", TrackIndex(75)),
+    BLUR(
+        7,
+        "blur",
+        TrackIndex(75),
+        lasts = SpellLasts(base = 3, perLevel = 1),
+        settlesOn = SettlesOn.WHOEVER_CAST_IT,
+        hindersStriking = 2,
+    ),
     DETECT_INVISIBILITY(8, "detect invisibility", TrackIndex(95), sparksOverTheParty = true),
     IMPROVED_IDENTIFY(9, "improved identify", TrackIndex(20)),
     INVISIBILITY(10, "invisibility", TrackIndex(94)),

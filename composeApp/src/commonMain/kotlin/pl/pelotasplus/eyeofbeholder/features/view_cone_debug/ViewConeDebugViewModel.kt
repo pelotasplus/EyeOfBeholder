@@ -106,6 +106,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.Preferences
 import pl.pelotasplus.eyeofbeholder.data.model.Rest
 import pl.pelotasplus.eyeofbeholder.data.model.Resting
 import pl.pelotasplus.eyeofbeholder.data.model.RunningSpell
+import pl.pelotasplus.eyeofbeholder.data.model.SettlesOn
 import pl.pelotasplus.eyeofbeholder.data.model.tintedAsMagical
 import pl.pelotasplus.eyeofbeholder.data.model.anybodyCanStillMend
 import pl.pelotasplus.eyeofbeholder.data.model.anybodyStillHurt
@@ -2965,14 +2966,17 @@ class ViewConeDebugViewModel(
     }
 
     /**
-     * A spell that goes on running put over the party, or the caster told it
-     * is already in force.
+     * A spell that goes on running settled where it settles — over the party
+     * for some, on whoever read it for others — or the caster told it is
+     * already in force.
      *
      * Refused rather than begun again, which is what keeps a scroll from
-     * being spent on something the party already have.
+     * being spent on something already had. What is refused is asked of the
+     * place it would have gone: one champion's blur is no reason to refuse
+     * another champion theirs.
      */
     private suspend fun runOverTheParty(whose: PartySlot, spell: Spell) {
-        val begun = _state.value.game.spellBegunOverTheParty(
+        val begun = _state.value.game.spellBegunWhereItSettles(
             spell = spell,
             by = whose,
             casterLevel = ThrownSpell.AS_READ_FROM_A_SCROLL,
@@ -3760,7 +3764,15 @@ class ViewConeDebugViewModel(
         // here rather than where it is put on them, because by then the hand
         // is resting and the scroll is gone: the refusal has to come before
         // anything has been spent on it.
-        if (spell.lasts != null && _state.value.game.running.isRunning(spell)) {
+        val alreadyInForce = when {
+            spell.lasts == null -> false
+            spell.settlesOn == SettlesOn.WHOEVER_CAST_IT ->
+                _state.value.game.running.isOn(spell, whose)
+
+            else -> _state.value.game.running.isRunning(spell)
+        }
+
+        if (alreadyInForce) {
             say(SpellMessages.alreadyOnTheParty(spell.calledIt))
             viewModelScope.launch { playTrack(WARNING) }
             drawWords()
@@ -4776,6 +4788,7 @@ class ViewConeDebugViewModel(
                         ?.takeIf { !_state.value.swapShowing },
                     portal = portalShowing,
                     shielded = _state.value.game.partyShielded,
+                    underASpell = { whom -> _state.value.game.running.blurred(whom) },
                     magicShowing = _state.value.game.magicIsShowing,
                     sparksOverTheParty = _state.value.game.sparklingOverTheParty,
                 )

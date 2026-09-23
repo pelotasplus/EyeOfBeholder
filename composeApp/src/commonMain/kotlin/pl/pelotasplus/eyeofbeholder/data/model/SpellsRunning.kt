@@ -38,6 +38,18 @@ data class RunningSpell(
     val ticksLeft: Int,
 
     /**
+     * Whom it is on, or null for one that is on the party as a whole.
+     *
+     * The two are different things rather than one thing counted twice: a
+     * detect magic is over the party and belongs to nobody, while a blur is
+     * on one champion and moves nothing about the other five. A spell that
+     * reaches all six is six of these and not a party-wide one, because each
+     * of them can be dispelled, and because a champion who joins afterwards
+     * is not under it.
+     */
+    val on: PartySlot? = null,
+
+    /**
      * Whether the one thing it was holding back has been used.
      *
      * Only a mystic defence has anything to spend: its shield goes on the
@@ -48,27 +60,67 @@ data class RunningSpell(
     val spent: Boolean = false,
 )
 
+/**
+ * Whom a lasting spell settles on once it is cast.
+ *
+ * The game keeps this as bits on the spell: one for the caster, one for the
+ * party as a whole, one for every champion at once, and one that means ask
+ * first. They are named here rather than tested as bits, because which of
+ * them a spell carries is the whole of how it is cast.
+ */
+enum class SettlesOn {
+    /** Over all of them and belonging to none: a detect magic, a prayer. */
+    THE_PARTY,
+
+    /** On whoever read it, without asking: a blur, a shield. */
+    WHOEVER_CAST_IT,
+}
+
 /** Every spell still running over the party, and nothing that has ended. */
 data class SpellsRunning(val all: List<RunningSpell> = emptyList()) {
 
-    operator fun get(spell: Spell): RunningSpell? = all.firstOrNull { it.spell == spell }
+    /** The party-wide one, which is the only kind asked for without a slot. */
+    operator fun get(spell: Spell): RunningSpell? =
+        all.firstOrNull { it.spell == spell && it.on == null }
 
     fun isRunning(spell: Spell): Boolean = get(spell) != null
 
+    /** Whether [spell] is on [whom] in particular, party-wide ones aside. */
+    fun isOn(spell: Spell, whom: PartySlot): Boolean =
+        all.any { it.spell == spell && it.on == whom }
+
     /**
-     * The same spell cast again, or null where one is already running.
+     * Everything on [whom] — what was cast on them and what is over the party
+     * alike, because from a champion's own side the two are the same thing.
+     */
+    fun over(whom: PartySlot): List<RunningSpell> =
+        all.filter { it.on == null || it.on == whom }
+
+    /**
+     * The same spell cast again, or null where one is already running — on
+     * the same champion, or over the party where [on] is null.
      *
      * Refusing rather than restarting is what lets the caster be told, and
-     * keeps a scroll from being spent on something already in force.
+     * keeps a scroll from being spent on something already in force. Two
+     * champions may each carry their own, which is why the slot is part of
+     * the question and not only the spell.
      */
-    fun begun(spell: Spell, by: PartySlot, casterLevel: Int): SpellsRunning? {
-        if (isRunning(spell)) return null
+    fun begun(
+        spell: Spell,
+        by: PartySlot,
+        casterLevel: Int,
+        on: PartySlot? = null,
+    ): SpellsRunning? {
+        if (on == null && isRunning(spell)) return null
+        if (on != null && isOn(spell, on)) return null
+
         val lasts = spell.lasts ?: return null
         return SpellsRunning(
             all + RunningSpell(
                 spell = spell,
                 castBy = by,
                 ticksLeft = lasts.castBySomeoneOfLevel(casterLevel).value,
+                on = on,
             )
         )
     }
@@ -90,6 +142,19 @@ data class SpellsRunning(val all: List<RunningSpell> = emptyList()) {
         val (running, ended) = stepped.partition { it.ticksLeft > 0 }
         return SpellsRunning(running) to ended
     }
+
+    /**
+     * How much harder the spells on [whom] make them to hit, taken off a
+     * monster's roll rather than added to their armour.
+     *
+     * Two spells cannot each be worth their two: the game takes the
+     * hindrances one after another off the same roll, so they add.
+     */
+    fun hindranceStriking(whom: PartySlot): Int =
+        over(whom).sumOf { it.spell.hindersStriking }
+
+    /** Whether a blur is on [whom], which is drawn round their portrait. */
+    fun blurred(whom: PartySlot): Boolean = isOn(Spell.BLUR, whom)
 
     /** Every one of them ended at once, which is what a rest does. */
     fun allEnded(): SpellsRunning = SpellsRunning()

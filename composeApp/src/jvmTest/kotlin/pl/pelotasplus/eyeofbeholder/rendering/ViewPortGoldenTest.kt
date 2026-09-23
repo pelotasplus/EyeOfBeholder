@@ -1607,6 +1607,8 @@ class ViewPortGoldenTest {
         /** Who is waiting to change places, on the half the word is showing. */
         swapping: Int? = null,
         shielded: Boolean = false,
+        /** Which of them carry a blur, which frames their box on its own. */
+        blurred: List<Int> = emptyList(),
         /** Whether a detect magic is running, which draws what is magical blue. */
         magicShowing: Boolean = false,
         sparks: SparksOverTheParty? = null,
@@ -1678,6 +1680,7 @@ class ViewPortGoldenTest {
             hurt = { whose -> splattered[whose.index] },
             swapping = swapping?.let(::PartySlot),
             shielded = shielded,
+            underASpell = { whom -> whom.index in blurred },
             magicShowing = magicShowing,
             sparksOverTheParty = sparks,
         ).toImage()
@@ -2043,6 +2046,23 @@ class ViewPortGoldenTest {
             )
         }
     }
+
+    /**
+     * Two champions carrying a blur, framed in red while the other two are
+     * not — which is the whole of what a blur can be seen to do.
+     *
+     * Red rather than the mystic defence's green: the colour goes with the
+     * party rather than with the spell, and turns green for every frame on
+     * screen the moment a mystic defence is up. Two are framed and two are
+     * bare so the picture says which champions carry it, not merely that
+     * somebody does.
+     */
+    @Test
+    fun `party panel with two of them blurred`() =
+        checkGolden(
+            "party-panel-blurred",
+            partyOver(level = "LEVEL4.INF", x = 15, y = 11, blurred = listOf(0, 3)),
+        )
 
     /** The sparks a spell on the whole party throws over the portraits, midway through. */
     @Test
