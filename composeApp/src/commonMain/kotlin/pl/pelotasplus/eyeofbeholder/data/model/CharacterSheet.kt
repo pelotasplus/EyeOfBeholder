@@ -143,9 +143,9 @@ object StatsPage {
     const val CAREER_TOP = 145
     const val CAREER_LINE = 7
 
-    val HEADLINE_COLOUR = PaletteIndex(15)
-    val LABEL_COLOUR = PaletteIndex(12)
-    val VALUE_COLOUR = PaletteIndex(15)
+    val HEADLINE_COLOUR = GuiColour.WHITE.index
+    val LABEL_COLOUR = GuiColour.BLACK.index
+    val VALUE_COLOUR = GuiColour.WHITE.index
 
     /** The colour the blanked parts of the panel are filled with. */
     val BLANK_COLOUR = PaletteIndex(183)
