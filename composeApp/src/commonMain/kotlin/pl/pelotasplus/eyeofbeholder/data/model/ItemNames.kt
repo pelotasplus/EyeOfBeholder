@@ -297,4 +297,11 @@ object SpellMessages {
      * blunter of the two it keeps: no exclamation mark on this one.
      */
     fun theSpellFails() = "The spell fails"
+
+    /** Already carrying this one, so a second would be spent on nothing. */
+    fun alreadyUnder(whose: String, spell: String) =
+        "$whose is already under the effect of an $spell spell."
+
+    /** And nothing of them left for it to help. */
+    fun ofNoUseTo(whose: String) = "The spell has no effect on $whose."
 }

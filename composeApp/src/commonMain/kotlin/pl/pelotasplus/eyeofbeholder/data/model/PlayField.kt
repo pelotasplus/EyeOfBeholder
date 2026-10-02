@@ -70,8 +70,12 @@ class PlayField(
         shielded: Boolean = false,
         /** Whether a spell on that champion alone frames their box. */
         underASpell: (PartySlot) -> Boolean = { false },
-        /** Whether that champion is hastened, which frames their box yellow. */
-        hurrying: (PartySlot) -> Boolean = { false },
+        /**
+         * Whether a spell on that champion frames their box yellow — a haste
+         * or an aid. The other kind frames it red; a champion under both gets
+         * a border of the two.
+         */
+        framedYellow: (PartySlot) -> Boolean = { false },
         /** Whether a detect magic is running, which draws what is magical blue. */
         magicShowing: Boolean = false,
         sparksOverTheParty: SparksOverTheParty? = null,
@@ -91,7 +95,7 @@ class PlayField(
         if (sheet == null) {
             drawParty(
                 party, portraits, metPortraits, carrying, recovering, reporting, hurt, swapping,
-                shielded, underASpell, hurrying, sparksOverTheParty,
+                shielded, underASpell, framedYellow, sparksOverTheParty,
             )
         } else if (!underThePage) {
             drawSheet(sheet, portraits, metPortraits)
@@ -443,7 +447,7 @@ class PlayField(
         swapping: PartySlot?,
         shielded: Boolean,
         underASpell: (PartySlot) -> Boolean,
-        hurrying: (PartySlot) -> Boolean,
+        framedYellow: (PartySlot) -> Boolean,
         sparks: SparksOverTheParty?,
     ) {
         championBoxes.forEachIndexed { slot, box ->
@@ -476,13 +480,13 @@ class PlayField(
             // the party rather than with the spell, and the yellow one. Where
             // both are, neither wins — the border alternates between them.
             val warm = shielded || underASpell(PartySlot(slot))
-            val yellow = hurrying(PartySlot(slot))
+            val yellow = framedYellow(PartySlot(slot))
             val warmColour = if (shielded) SHIELDED else UNDER_A_SPELL
 
             when {
-                warm && yellow -> drawDashedOutline(box, warmColour, HURRYING)
+                warm && yellow -> drawDashedOutline(box, warmColour, FRAMED_YELLOW)
                 warm -> drawOutline(box, warmColour)
-                yellow -> drawOutline(box, HURRYING)
+                yellow -> drawOutline(box, FRAMED_YELLOW)
             }
             sparks?.takeIf { it.lighting(PartySlot(slot)) }
                 ?.let { drawSparks(it, PartySlot(slot)) }
@@ -1086,9 +1090,9 @@ class PlayField(
         private val FILL = PaletteIndex(183)
         private val EDGE_LIT = PaletteIndex(181)
         private val EDGE_SHADED = PaletteIndex(186)
-        private val TEXT_COLOUR = PaletteIndex(15)
-        private val BUTTON_LABEL_COLOUR = PaletteIndex(15)
-        private val BUTTON_LABEL_HIGHLIGHTED = PaletteIndex(9)
+        private val TEXT_COLOUR = GuiColour.WHITE.index
+        private val BUTTON_LABEL_COLOUR = GuiColour.WHITE.index
+        private val BUTTON_LABEL_HIGHLIGHTED = GuiColour.LIGHT_BLUE.index
         private const val BUTTON_LABEL_OFFSET_Y = 2
 
         /** The box the interface warns in, which is the dialogue box's colours reddened. */
@@ -1110,17 +1114,17 @@ class PlayField(
         private const val SPLAT_OVERHANG = 1
 
         /** Party panel colours. */
-        private val NAME_COLOUR = PaletteIndex(12)
-        private val NAME_IN_TROUBLE = PaletteIndex(8)
+        private val NAME_COLOUR = GuiColour.BLACK.index
+        private val NAME_IN_TROUBLE = GuiColour.DARK_RED.index
 
-        /** The light green a box is framed in while a mystic defence is up. */
-        private val SHIELDED = PaletteIndex(4)
+        /** A box framed while a mystic defence is up. */
+        private val SHIELDED = GuiColour.LIGHT_GREEN.index
 
-        /** And the light red for a spell on that champion alone. */
-        private val UNDER_A_SPELL = PaletteIndex(6)
+        /** And framed for a spell on that champion alone. */
+        private val UNDER_A_SPELL = GuiColour.LIGHT_RED.index
 
-        /** The yellow of a champion in a hurry. */
-        private val HURRYING = PaletteIndex(5)
+        /** A haste or an aid, which frame the box the other colour. */
+        private val FRAMED_YELLOW = GuiColour.YELLOW.index
 
         /** How long a run of one colour is where two share a border. */
         private const val DASH = 8
@@ -1132,20 +1136,20 @@ class PlayField(
 
         /** What a champion waiting to change places says, and in what colour. */
         private const val SWAPPING = "Swapping"
-        private val NAME_SWAPPING = PaletteIndex(8)
+        private val NAME_SWAPPING = GuiColour.DARK_RED.index
         private val BAR_EMPTY = PaletteIndex(184)
 
         /** Room for three figures either side of the word between them. */
         private const val HIT_POINT_FIGURES = 3
 
-        private val TALLY_BACKING = PaletteIndex(12)
-        private val TALLY_COLOUR = PaletteIndex(15)
+        private val TALLY_BACKING = GuiColour.BLACK.index
+        private val TALLY_COLOUR = GuiColour.WHITE.index
 
         /** Camp menu colours. */
-        private val MENU_TITLE = PaletteIndex(9)
-        private val MENU_LABEL = PaletteIndex(15)
-        private val BEING_TYPED = PaletteIndex(2)
-        private val CARET = PaletteIndex(8)
+        private val MENU_TITLE = GuiColour.LIGHT_BLUE.index
+        private val MENU_LABEL = GuiColour.WHITE.index
+        private val BEING_TYPED = GuiColour.BLUE.index
+        private val CARET = GuiColour.DARK_RED.index
 
         /**
          * The message line along the bottom, beside the camp button. The band

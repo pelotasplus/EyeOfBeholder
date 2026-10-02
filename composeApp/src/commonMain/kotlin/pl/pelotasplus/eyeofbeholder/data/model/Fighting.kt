@@ -132,7 +132,13 @@ class Fighting(
             return Blow.Missed(target.index)
         }
 
-        val bonus = champion.abilities.strengthToHitBonus + (weapon?.value ?: 0)
+        // What a spell on them is worth counts with strength and the weapon's
+        // own enchantment rather than against the die, so it helps a champion
+        // who needed a twenty as much as one who needed a two.
+        val bonus = champion.abilities.strengthToHitBonus +
+            (weapon?.value ?: 0) +
+            world.running.helpStriking(whose)
+
         val needed = champion.needsToHit(kind?.armorClass ?: 0) - bonus
 
         if (dice.roll(1, 20, 0).coerceIn(1, 20) < needed) return Blow.Missed(target.index)

@@ -50,6 +50,15 @@ data class RunningSpell(
     val on: PartySlot? = null,
 
     /**
+     * How many hit points it lent, for the one spell that lends any.
+     *
+     * Kept rather than rolled again at the end, because what it takes back
+     * must be what it gave: an aid that rolled three and took back eight
+     * would be a slow way of killing whoever was aided.
+     */
+    val lent: Int = 0,
+
+    /**
      * Whether the one thing it was holding back has been used.
      *
      * Only a mystic defence has anything to spend: its shield goes on the
@@ -83,6 +92,16 @@ enum class SettlesOn {
      * afterwards is not under it.
      */
     EVERY_CHAMPION,
+
+    /**
+     * On whichever champion is pointed at, the casting waiting until one is:
+     * an aid, a slow poison.
+     *
+     * The asking is the same asking a cure does, and is refused the same way
+     * — nothing is spent until somebody has been named, so a question thought
+     * better of costs neither the scroll nor the hand.
+     */
+    WHOEVER_IS_POINTED_AT,
 }
 
 /** Every spell still running over the party, and nothing that has ended. */
@@ -119,6 +138,7 @@ data class SpellsRunning(val all: List<RunningSpell> = emptyList()) {
         by: PartySlot,
         casterLevel: Int,
         on: PartySlot? = null,
+        lent: Int = 0,
     ): SpellsRunning? {
         if (on == null && isRunning(spell)) return null
         if (on != null && isOn(spell, on)) return null
@@ -130,6 +150,7 @@ data class SpellsRunning(val all: List<RunningSpell> = emptyList()) {
                 castBy = by,
                 ticksLeft = lasts.castBySomeoneOfLevel(casterLevel).value,
                 on = on,
+                lent = lent,
             )
         )
     }
@@ -167,6 +188,12 @@ data class SpellsRunning(val all: List<RunningSpell> = emptyList()) {
 
     /** Whether [whom] is hastened, which halves what a swing costs them. */
     fun hastened(whom: PartySlot): Boolean = over(whom).any { it.spell.hastens }
+
+    /** How much the spells on [whom] add to their own rolls to hit. */
+    fun helpStriking(whom: PartySlot): Int = over(whom).sumOf { it.spell.helpsStriking }
+
+    /** Whether [whom] is carrying lent hit points, which frames their box. */
+    fun aided(whom: PartySlot): Boolean = over(whom).any { it.lent > 0 }
 
     /** Every one of them ended at once, which is what a rest does. */
     fun allEnded(): SpellsRunning = SpellsRunning()

@@ -1919,11 +1919,54 @@ data class GameState(
             )
         )
 
-    /** Every running spell ticks nearer its end, and what reached it. */
+    /**
+     * Every running spell ticks nearer its end, and what reached it.
+     *
+     * What a spell lent comes off as it goes, and comes off whether or not
+     * the champion can afford it: hit points spent while standing above their
+     * own maximum were never theirs, and an aid running out on somebody who
+     * spent the loan puts them on the floor.
+     */
     fun spellsRunDown(by: Ticks): Pair<GameState, List<RunningSpell>> {
         val (left, ended) = running.runDown(by)
-        return copy(running = left) to ended
+
+        val repaid = ended.fold(copy(running = left)) { world, over ->
+            val whom = over.on
+            if (over.lent == 0 || whom == null) world else world.hitPointsTakenBack(whom, over.lent)
+        }
+
+        return repaid to ended
     }
+
+    /** [points] off what [whose] is standing on, without touching what they can hold. */
+    private fun hitPointsTakenBack(whose: PartySlot, points: Int): GameState = copy(
+        champions = champions.mapIndexed { slot, champion ->
+            if (slot != whose.index) champion
+            else champion.copy(
+                hitPoints = champion.hitPoints.copy(
+                    current = champion.hitPoints.current - points,
+                ),
+            )
+        },
+    )
+
+    /**
+     * A spell's loan put onto [whose], above their own maximum if need be.
+     *
+     * The maximum is not raised with it. That is what makes them lent rather
+     * than gained, and what makes a champion standing at nineteen of sixteen
+     * a sign that something is running rather than a bug.
+     */
+    private fun hitPointsLentTo(whose: PartySlot, points: Int): GameState = copy(
+        champions = champions.mapIndexed { slot, champion ->
+            if (slot != whose.index) champion
+            else champion.copy(
+                hitPoints = champion.hitPoints.copy(
+                    current = champion.hitPoints.current + points,
+                ),
+            )
+        },
+    )
 
     fun mysticDefenceSpent() = copy(running = running.spent(Spell.MYSTIC_DEFENCE))
 
@@ -1948,6 +1991,27 @@ data class GameState(
         }
 
         return running.begun(spell, by, casterLevel, on)?.let { copy(running = it) }
+    }
+
+    /**
+     * A lasting spell put on the champion who was pointed at, or null where
+     * it is already on them.
+     *
+     * Whatever it lends is rolled here and kept with the spell, so the end of
+     * it takes back exactly what the beginning gave.
+     */
+    fun spellBegunOn(
+        spell: Spell,
+        whom: PartySlot,
+        by: PartySlot,
+        casterLevel: Int,
+        dice: Dice = Dice.random,
+    ): GameState? {
+        val lent = spell.lends?.let { dice.roll(it.times, it.pips, it.base) } ?: 0
+        val begun = running.begun(spell, by, casterLevel, on = whom, lent = lent) ?: return null
+
+        return copy(running = begun)
+            .let { if (lent == 0) it else it.hitPointsLentTo(whom, lent) }
     }
 
     /**

@@ -1610,7 +1610,7 @@ class ViewPortGoldenTest {
         /** Which of them carry a blur, which frames their box on its own. */
         blurred: List<Int> = emptyList(),
         /** And which are hastened, which frames theirs yellow. */
-        hurrying: List<Int> = emptyList(),
+        framedYellow: List<Int> = emptyList(),
         /** Whether a detect magic is running, which draws what is magical blue. */
         magicShowing: Boolean = false,
         sparks: SparksOverTheParty? = null,
@@ -1683,7 +1683,7 @@ class ViewPortGoldenTest {
             swapping = swapping?.let(::PartySlot),
             shielded = shielded,
             underASpell = { whom -> whom.index in blurred },
-            hurrying = { whom -> whom.index in hurrying },
+            framedYellow = { whom -> whom.index in framedYellow },
             magicShowing = magicShowing,
             sparksOverTheParty = sparks,
         ).toImage()
@@ -2075,7 +2075,7 @@ class ViewPortGoldenTest {
     fun `party panel with all of them hastened`() =
         checkGolden(
             "party-panel-hastened",
-            partyOver(level = "LEVEL4.INF", x = 15, y = 11, hurrying = listOf(0, 1, 2, 3)),
+            partyOver(level = "LEVEL4.INF", x = 15, y = 11, framedYellow = listOf(0, 1, 2, 3)),
         )
 
     /**
@@ -2096,7 +2096,7 @@ class ViewPortGoldenTest {
                 x = 15,
                 y = 11,
                 blurred = listOf(0, 2),
-                hurrying = listOf(0, 1),
+                framedYellow = listOf(0, 1),
             ),
         )
 

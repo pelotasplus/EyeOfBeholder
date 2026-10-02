@@ -417,11 +417,11 @@ class ViewConeDebugViewModel(
         // how it is answered; anything else the party do instead — a step, a
         // turn, the camp, a swing — is them thinking better of it, and the
         // question goes rather than hanging over whatever they did next.
-        if (mendingWaitingOnAnAnswer != null &&
+        if (castingWaitingOnAnAnswer != null &&
             event !is Event.ClickedTheView &&
             event !is Event.Initialize
         ) {
-            letTheMendingGo()
+            letTheCastingGo()
         }
 
         when (event) {
@@ -1703,9 +1703,9 @@ class ViewConeDebugViewModel(
             // what is being pointed at is a person, and the sword they happen
             // to be holding is them. Nothing can be picked up out from under
             // the question, which is how the scroll used to be lost.
-            if (mendingWaitingOnAnAnswer != null) {
+            if (castingWaitingOnAnAnswer != null) {
                 val box = championBoxes.indexOfFirst { it.covers(x, y) }
-                if (box >= 0) layTheMendingOn(PartySlot(box)) else letTheMendingGo()
+                if (box >= 0) castItOn(PartySlot(box)) else letTheCastingGo()
                 return
             }
 
@@ -3755,8 +3755,8 @@ class ViewConeDebugViewModel(
         // casting afterwards is what keeps a question left unanswered from
         // costing anything: a scroll spent before the answer would be a scroll
         // spent on nobody every time the party thought better of it.
-        if (spell.laidOn != null) {
-            askWhoTheMendingIsFor(whose, hand, spell)
+        if (spell.laidOn != null || spell.settlesOn == SettlesOn.WHOEVER_IS_POINTED_AT) {
+            askWhoItIsFor(whose, hand, spell)
             return
         }
 
@@ -3846,16 +3846,16 @@ class ViewConeDebugViewModel(
      * emptied while the question stands: a scroll put away between the asking
      * and the answering is a casting that never happened.
      */
-    private var mendingWaitingOnAnAnswer: WaitingMending? = null
+    private var castingWaitingOnAnAnswer: WaitingCasting? = null
 
-    private data class WaitingMending(
+    private data class WaitingCasting(
         val caster: PartySlot,
         val hand: CarrySlot,
         val reading: ItemIndex,
         val spell: Spell,
     )
 
-    private fun askWhoTheMendingIsFor(caster: PartySlot, hand: CarrySlot, spell: Spell) {
+    private fun askWhoItIsFor(caster: PartySlot, hand: CarrySlot, spell: Spell) {
         val reading = _state.value.game.championIn(caster)?.holding(hand) ?: return
 
         // An open page takes the six boxes' side of the screen, so a scroll
@@ -3863,9 +3863,65 @@ class ViewConeDebugViewModel(
         // closes rather than the question going unanswerable.
         showSheet(null)
 
-        mendingWaitingOnAnAnswer = WaitingMending(caster, hand, reading, spell)
+        castingWaitingOnAnAnswer = WaitingCasting(caster, hand, reading, spell)
         say(SpellMessages.castOnWhom(spell.calledIt))
         drawWords()
+    }
+
+    /**
+     * A lasting spell settled on the champion who was pointed at.
+     *
+     * Refused where it is already on them, and where there is nothing of them
+     * left to help — somebody past raising or turned to stone takes nothing
+     * from an aid. Either way the scroll stays in the hand.
+     */
+    private fun settleItOn(waiting: WaitingCasting, whom: PartySlot, pointedAt: Champion) {
+        if (!pointedAt.canBeHurt) {
+            say(SpellMessages.ofNoUseTo(pointedAt.name))
+            viewModelScope.launch { playTrack(WARNING) }
+            drawWords()
+            return
+        }
+
+        val settled = _state.value.game.spellBegunOn(
+            spell = waiting.spell,
+            whom = whom,
+            by = waiting.caster,
+            casterLevel = ThrownSpell.AS_READ_FROM_A_SCROLL,
+        )
+
+        if (settled == null) {
+            say(SpellMessages.alreadyUnder(pointedAt.name, waiting.spell.calledIt))
+            viewModelScope.launch { playTrack(WARNING) }
+            drawWords()
+            return
+        }
+
+        sayOf(waiting.caster) { SpellMessages.casts(it, waiting.spell.calledIt) }
+
+        _state.update {
+            it.copy(game = settled.handCast(waiting.caster, waiting.hand))
+        }
+        keepHandsRecovering()
+        keepTheSpellsRunning()
+
+        // Read last, because reading it is what may take it out of the hand.
+        itemTypes?.let { types ->
+            _state.update {
+                it.copy(game = it.game.castOutOf(waiting.caster, waiting.hand, types))
+            }
+        }
+
+        waiting.spell.heardAs?.let { heard -> viewModelScope.launch { playTrack(heard) } }
+        casting = viewModelScope.launch {
+            showTheSparksOverTheParty(over = whom)
+
+            runTriggersAt(
+                at = _state.value.game.party.position,
+                event = ScriptEvent.A_SPELL_WAS_CAST,
+                cast = waiting.spell,
+            )
+        }
     }
 
     /**
@@ -3876,14 +3932,13 @@ class ViewConeDebugViewModel(
      * than spent — the scroll stays in the hand, which is the answer to
      * pointing at the wrong champion.
      */
-    private fun layTheMendingOn(whom: PartySlot) {
-        val waiting = mendingWaitingOnAnAnswer ?: return
-        mendingWaitingOnAnAnswer = null
+    private fun castItOn(whom: PartySlot) {
+        val waiting = castingWaitingOnAnAnswer ?: return
+        castingWaitingOnAnAnswer = null
 
         val world = _state.value.game
         val caster = world.championIn(waiting.caster) ?: return
         val pointedAt = world.championIn(whom) ?: return
-        val laidOn = waiting.spell.laidOn ?: return
 
         // The scroll can have been put away while the question stood, and the
         // hand can have been filled with something else. Either way this is no
@@ -3893,6 +3948,15 @@ class ViewConeDebugViewModel(
             drawWords()
             return
         }
+
+        // A spell that settles on whoever is pointed at goes down a path of
+        // its own: it starts running rather than doing something and ending.
+        if (waiting.spell.laidOn == null) {
+            settleItOn(waiting, whom, pointedAt)
+            return
+        }
+
+        val laidOn = waiting.spell.laidOn ?: return
 
         // Asked of the champion and not of the roll. A cure rolls its dice at
         // whoever it is pointed at, hurt or not, so there is nothing in the
@@ -3969,9 +4033,9 @@ class ViewConeDebugViewModel(
     }
 
     /** A mending nobody was pointed at, which costs nothing and is not cast. */
-    private fun letTheMendingGo() {
-        if (mendingWaitingOnAnAnswer == null) return
-        mendingWaitingOnAnAnswer = null
+    private fun letTheCastingGo() {
+        if (castingWaitingOnAnAnswer == null) return
+        castingWaitingOnAnAnswer = null
         say(SpellMessages.castOnNobody())
         drawWords()
     }
@@ -4799,7 +4863,9 @@ class ViewConeDebugViewModel(
                     portal = portalShowing,
                     shielded = _state.value.game.partyShielded,
                     underASpell = { whom -> _state.value.game.running.blurred(whom) },
-                    hurrying = { whom -> _state.value.game.running.hastened(whom) },
+                    framedYellow = { whom ->
+                        _state.value.game.running.let { it.hastened(whom) || it.aided(whom) }
+                    },
                     magicShowing = _state.value.game.magicIsShowing,
                     sparksOverTheParty = _state.value.game.sparklingOverTheParty,
                 )

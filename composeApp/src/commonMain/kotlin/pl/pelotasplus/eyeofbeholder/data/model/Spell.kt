@@ -84,6 +84,22 @@ enum class Spell(
     val hastens: Boolean = false,
 
     /**
+     * What it adds to the rolls of whoever it is on, as against what
+     * [hindersStriking] takes off the rolls of whoever strikes at them.
+     */
+    val helpsStriking: Int = 0,
+
+    /**
+     * Hit points it lends for as long as it runs, and takes back at the end.
+     *
+     * Lent rather than given: they go onto what the champion has without
+     * raising what they can hold, so an aided champion stands above their own
+     * maximum, and the same number comes off again when it ends — which can
+     * put them on the floor if they spent the loan.
+     */
+    val lends: DamageDice? = null,
+
+    /**
      * Whether it spreads over the squares in front of the caster the moment
      * it is cast, rather than throwing anything — see [AConeOfCold].
      */
@@ -258,7 +274,15 @@ enum class Spell(
         lasts = SpellLasts(base = 0, perLevel = 2),
     ),
     PROTECTION_FROM_EVIL(38, "protection from evil", TrackIndex(110)),
-    AID(39, "aid", TrackIndex(91)),
+    AID(
+        39,
+        "aid",
+        TrackIndex(91),
+        lasts = SpellLasts(base = 1, perLevel = 1),
+        settlesOn = SettlesOn.WHOEVER_IS_POINTED_AT,
+        helpsStriking = 1,
+        lends = DamageDice(times = 1, pips = 8, base = 0),
+    ),
     FLAME_BLADE(40, "flame blade", TrackIndex(99)),
     A_CLERICS_HOLD_PERSON(
         41,
