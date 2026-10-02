@@ -4033,6 +4033,17 @@ class ViewConeDebugViewModel(
     }
 
     /** A mending nobody was pointed at, which costs nothing and is not cast. */
+    /**
+     * The question dropped, costing nothing at all.
+     *
+     * Deliberate, and ours: thinking better of a casting is free. Neither the
+     * scroll nor the hand's rest is spent, so pointing at nobody leaves the
+     * party exactly as they were and the scroll can be read again at once.
+     *
+     * The alternative is to charge the hand for having been opened, which
+     * makes the question itself a cost and turns a misclick into a lost turn
+     * in a fight. If this is ever changed, that is what changes with it.
+     */
     private fun letTheCastingGo() {
         if (castingWaitingOnAnAnswer == null) return
         castingWaitingOnAnAnswer = null
