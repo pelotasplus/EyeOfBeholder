@@ -51,13 +51,6 @@ data class HandRecovering(
         /** And for a hastened one: twenty-seven against fifty-four, so twice the swings. */
         val AFTER_A_SWING_HASTENED = Ticks(REPORTING.value + AFTER_THE_REPORT_HASTENED.value)
 
-        /**
-         * And how long after reading something aloud out of it, which is the
-         * shorter of the two: long enough that a wand cannot be spent as fast
-         * as it can be clicked, and short enough not to feel like a swing.
-         */
-        val AFTER_CASTING = Ticks(18)
-
         /** How often the wait is counted down, which is what the clock does. */
         val STEP = Ticks(3)
     }

@@ -130,6 +130,37 @@ class WhatAHasteBuysTest {
         assertEquals(54, world().handLoosed(reader, CarrySlot(0)).recovering.single().ticksLeft)
     }
 
+    /**
+     * Reading a scroll or pointing a wand costs the hand as long as a swing,
+     * and is hurried by the same.
+     *
+     * The slot says nothing at the end of it — a blow has an outcome worth
+     * reading and words do not — but the hand is gone just as long. Nothing
+     * asserted this before, which is how it came to be a third of what it
+     * should have been.
+     */
+    @Test
+    fun `reading something aloud costs as long as a swing`() {
+        val hastened = assertNotNull(
+            world().spellBegunWhereItSettles(Spell.HASTE, reader, casterLevel = 9)
+        )
+
+        assertEquals(54, world().handCast(reader, CarrySlot(0)).recovering.single().ticksLeft)
+        assertEquals(27, hastened.handCast(reader, CarrySlot(0)).recovering.single().ticksLeft)
+    }
+
+    /** Whatever the hand did, it is charged the same — one wait, one rule. */
+    @Test
+    fun `a swing, a shot and a reading all cost the same`() {
+        val swung = world().handSwung(reader, CarrySlot(0), WhatTheBlowCameTo.Missed)
+        val loosed = world().handLoosed(reader, CarrySlot(0))
+        val read = world().handCast(reader, CarrySlot(0))
+
+        assertEquals(54, swung.recovering.single().ticksLeft)
+        assertEquals(54, loosed.recovering.single().ticksLeft)
+        assertEquals(54, read.recovering.single().ticksLeft)
+    }
+
     // ---- who it reaches --------------------------------------------------
 
     @Test

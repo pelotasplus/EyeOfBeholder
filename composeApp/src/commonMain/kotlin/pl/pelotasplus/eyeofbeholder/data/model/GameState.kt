@@ -1971,29 +1971,42 @@ data class GameState(
     }
 
     /** The world with that hand put out of use for as long as a swing costs. */
-    fun handSwung(whose: PartySlot, hand: CarrySlot, came: WhatTheBlowCameTo) = copy(
-        recovering = recovering.filterNot { it.whose == whose && it.hand == hand } +
-            HandRecovering(
-                whose = whose,
-                hand = hand,
-                ticksLeft = came.waitFor(hastened = running.hastened(whose)).value,
-                came = came,
-            ),
-    )
+    fun handSwung(whose: PartySlot, hand: CarrySlot, came: WhatTheBlowCameTo) =
+        handUsed(whose, hand, came)
 
     /**
-     * And with it put out of use for the shorter wait a wand or a scroll
-     * costs, which reports nothing.
+     * A hand put out of use for having been used, however it was used.
      *
-     * It is what stops a wand being spent as fast as the mouse can be clicked.
-     * Shorter than a swing, and nothing is said at the end of it: a blow has
-     * an outcome worth reading in the slot, where reading something aloud has
-     * only whatever the room makes of it.
+     * One wait and one place that decides it: a swing, a throw, a shot and
+     * words read off a scroll all cost the same, and a haste shortens all of
+     * them by the same. Only an arm that never went anywhere is charged less,
+     * and [came] is what says whether it did — so a casting, which reports
+     * nothing, still pays the full wait.
      */
-    fun handCast(whose: PartySlot, hand: CarrySlot) = copy(
-        recovering = recovering.filterNot { it.whose == whose && it.hand == hand } +
-            HandRecovering(whose, hand, HandRecovering.AFTER_CASTING.value, came = null),
-    )
+    private fun handUsed(
+        whose: PartySlot,
+        hand: CarrySlot,
+        came: WhatTheBlowCameTo?,
+    ): GameState {
+        val hastened = running.hastened(whose)
+        val wait = came?.waitFor(hastened)
+            ?: if (hastened) HandRecovering.AFTER_A_SWING_HASTENED else HandRecovering.AFTER_A_SWING
+
+        return copy(
+            recovering = recovering.filterNot { it.whose == whose && it.hand == hand } +
+                HandRecovering(whose, hand, wait.value, came),
+        )
+    }
+
+    /**
+     * And with it put out of use, which costs as long as a swing.
+     *
+     * Nothing is said in the slot at the end of it — a blow has an outcome
+     * worth reading, where reading something aloud has only whatever the
+     * room makes of it — but the hand is gone just as long. That is what
+     * stops a wand being spent as fast as the mouse can be clicked.
+     */
+    fun handCast(whose: PartySlot, hand: CarrySlot) = handUsed(whose, hand, came = null)
 
     /** One more thing crossing the room, whoever loosed it. */
     fun inTheAir(loosed: Projectile) = copy(inFlight = inFlight + loosed)
@@ -2090,24 +2103,8 @@ data class GameState(
         return kept.carrying(whose, CarrySlot.QUIVER, stacked.head, types) to quiver
     }
 
-    /**
-     * A hand that has thrown or fired waits exactly as long as one that
-     * swung, and a haste shortens it by exactly as much: the two are one
-     * action as far as the hand is concerned, and only differ in what left it.
-     */
-    fun handLoosed(whose: PartySlot, hand: CarrySlot) = copy(
-        recovering = recovering.filterNot { it.whose == whose && it.hand == hand } +
-            HandRecovering(
-                whose = whose,
-                hand = hand,
-                ticksLeft = if (running.hastened(whose)) {
-                    HandRecovering.AFTER_A_SWING_HASTENED.value
-                } else {
-                    HandRecovering.AFTER_A_SWING.value
-                },
-                came = null,
-            ),
-    )
+    /** And with it put out of use for as long as a swing costs. */
+    fun handLoosed(whose: PartySlot, hand: CarrySlot) = handUsed(whose, hand, came = null)
 
     /**
      * The world with what was read from worn down by the reading — see
