@@ -3824,6 +3824,9 @@ class ViewConeDebugViewModel(
                 shutOffTheSquareAhead(ThrownSpell.AS_READ_FROM_A_SCROLL)
             } else if (spell.unmakesTheSquareAhead) {
                 unmakeTheSquareAhead()
+            } else if (spell.feedsThemAll) {
+                _state.update { it.copy(game = it.game.partyFedToTheBrim()) }
+                drawViewPort()
             }
 
             runTriggersAt(

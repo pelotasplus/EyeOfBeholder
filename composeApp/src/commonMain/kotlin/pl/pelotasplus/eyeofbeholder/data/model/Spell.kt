@@ -99,6 +99,9 @@ enum class Spell(
      */
     val lends: DamageDice? = null,
 
+    /** Whether it fills every champion's stomach, which one spell does. */
+    val feedsThemAll: Boolean = false,
+
     /**
      * Whether it spreads over the squares in front of the caster the moment
      * it is cast, rather than throwing anything — see [AConeOfCold].
@@ -291,7 +294,13 @@ enum class Spell(
         throws = ThrownSpell.thatHolds(MonsterSpell.HOLD_PERSON, AHold.OF_A_PERSON),
     ),
     SLOW_POISON(42, "slow poison", TrackIndex(111)),
-    CREATE_FOOD(43, "create food", TrackIndex(112), sparksOverTheParty = true),
+    CREATE_FOOD(
+        43,
+        "create food",
+        TrackIndex(112),
+        sparksOverTheParty = true,
+        feedsThemAll = true,
+    ),
     A_CLERICS_DISPEL_MAGIC(44, "dispel magic", TrackIndex(97), throwsSparks = true),
     MAGICAL_VESTMENT(45, "magical vestment", TrackIndex(113)),
     PRAYER(46, "prayer", TrackIndex(91), sparksOverTheParty = true),

@@ -1574,6 +1574,20 @@ data class GameState(
     }
 
     /** [whose] the fuller for eating [by], up to a full stomach. */
+    /**
+     * Everybody fed to the brim at once, which is the whole of a create food.
+     *
+     * It conjures a meal rather than handing anybody rations, so nothing is
+     * spent out of a pack and how hungry each of them was does not matter —
+     * all six end full. It passes over whoever is past raising or turned to
+     * stone, there being nothing there to feed.
+     */
+    fun partyFedToTheBrim(): GameState = copy(
+        champions = champions.map { champion ->
+            if (!champion.canBeHurt) champion else champion.copy(food = Food(FULL_STOMACH))
+        },
+    )
+
     fun championFed(whose: PartySlot, by: Int): GameState {
         val who = champions.getOrNull(whose.index) ?: return this
         return copy(
