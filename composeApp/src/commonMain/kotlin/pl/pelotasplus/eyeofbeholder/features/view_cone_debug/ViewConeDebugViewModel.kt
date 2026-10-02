@@ -10,6 +10,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlin.random.Random
@@ -107,6 +108,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.Rest
 import pl.pelotasplus.eyeofbeholder.data.model.Resting
 import pl.pelotasplus.eyeofbeholder.data.model.RunningSpell
 import pl.pelotasplus.eyeofbeholder.data.model.SettlesOn
+import pl.pelotasplus.eyeofbeholder.data.model.TheGameIsWatched
 import pl.pelotasplus.eyeofbeholder.data.model.tintedAsMagical
 import pl.pelotasplus.eyeofbeholder.data.model.anybodyCanStillMend
 import pl.pelotasplus.eyeofbeholder.data.model.anybodyStillHurt
@@ -188,7 +190,34 @@ class ViewConeDebugViewModel(
     private val soundRepository: SoundRepository,
     private val audioSink: AudioSink,
     private val debugging: Debugging,
+    private val watched: TheGameIsWatched,
 ) : ViewModel() {
+
+    /**
+     * One beat of a clock: the wait, and then however long nobody was looking.
+     *
+     * Every clock in here goes through this rather than waiting directly, so
+     * that a game nobody is watching stops happening — see [TheGameIsWatched].
+     * A hidden tab costs at most the one beat already in flight; after that
+     * each clock stands still exactly where it was and carries on from there.
+     *
+     * The waiting comes after the delay rather than before it so that a clock
+     * started while hidden does not fire its first beat immediately on being
+     * looked at again.
+     */
+    private suspend fun tick(wait: Long) {
+        delay(wait)
+        if (watched.watched.value) return
+
+        // One line per clock, so eight of them on a tab being hidden. Kept at
+        // debug for that reason: the transition itself is said once, over in
+        // TheGameIsWatched, and that is the line worth reading.
+        Logger.d(TAG) { "A clock stops: nobody is looking" }
+        watched.watched.first { it }
+        Logger.d(TAG) { "A clock carries on" }
+    }
+
+    private suspend fun tick(wait: Ticks) = tick(wait.inMilliseconds)
 
     private var playFieldBackground: Cps? = null
     private var decorations: Cps? = null
@@ -926,13 +955,13 @@ class ViewConeDebugViewModel(
                         spoken = beat.spoken,
                     ),
                 )
-                delay(beat.holdsFor.inMilliseconds)
+                tick(beat.holdsFor)
                 return@forEachIndexed
             }
 
             // Held for its own count first even where it is read off, so the
             // last picture has settled before the words that go with it.
-            if (beat.holdsFor.value > 0) delay(beat.holdsFor.inMilliseconds)
+            if (beat.holdsFor.value > 0) tick(beat.holdsFor)
 
             awaiting.ask {
                 showDialog(
@@ -1010,7 +1039,7 @@ class ViewConeDebugViewModel(
                         FinaleFrames.MOVES[beat.list].forEach { move ->
                             if (move.what == SequenceCommand.Sounds) heard(move.obj, alongside = true)
                             screen.perform(move) { paint() }
-                            delay(Ticks(move.delay).inMilliseconds)
+                            tick(Ticks(move.delay))
                         }
 
                     is TheFinaleScript.Beat.Says -> {
@@ -1028,7 +1057,7 @@ class ViewConeDebugViewModel(
                         paint()
                     }
 
-                    is TheFinaleScript.Beat.Waits -> delay(Ticks(beat.ticks).inMilliseconds)
+                    is TheFinaleScript.Beat.Waits -> tick(Ticks(beat.ticks))
 
                     // The tune runs under the whole thing rather than being one
                     // of its noises, so it is not the single voice the effects
@@ -1177,11 +1206,11 @@ class ViewConeDebugViewModel(
 
             paint()
             down.indices.forEach { down[it] -= TheCredits.A_PIXEL }
-            delay(Ticks(TheCredits.FRAME_TICKS).inMilliseconds)
+            tick(Ticks(TheCredits.FRAME_TICKS))
         }
 
         // The mark that closes it is left standing rather than scrolled away.
-        delay(Ticks(TheCredits.HELD_AT_THE_END).inMilliseconds)
+        tick(Ticks(TheCredits.HELD_AT_THE_END))
     }
 
     /** The smaller of the two fonts, which some lines of the roll ask for. */
@@ -1388,7 +1417,7 @@ class ViewConeDebugViewModel(
                 // nobody is going hungry for it either.
                 if (!world.anybodyCanStillMend && !world.anybodyStarving) break
 
-                delay(AN_HOUR_OF_SLEEP.inMilliseconds)
+                tick(AN_HOUR_OF_SLEEP)
 
                 // The floor does not hold still while the party sleep: the
                 // monsters take their turns between the hours, and one that
@@ -1916,7 +1945,7 @@ class ViewConeDebugViewModel(
         } else {
             viewModelScope.launch {
                 while (_state.value.swapping != null) {
-                    delay(SWAP_FLICKER.inMilliseconds)
+                    tick(SWAP_FLICKER)
                     _state.update { it.copy(swapShowing = !it.swapShowing) }
                     drawWords()
                 }
@@ -2233,7 +2262,7 @@ class ViewConeDebugViewModel(
 
             while (stillFighting()) {
                 anybodyFought = anybodyFought || _state.value.game.monsters.any { it.provoked }
-                delay(GameState.CLOCK_STEP.inMilliseconds)
+                tick(GameState.CLOCK_STEP)
 
                 tickNow += GameState.CLOCK_STEP.value
                 untilTheNextFrame -= GameState.CLOCK_STEP.value
@@ -2802,7 +2831,7 @@ class ViewConeDebugViewModel(
 
         fading?.cancel()
         fading = viewModelScope.launch {
-            delay(FLASH.inMilliseconds)
+            tick(FLASH)
             _state.update { it.copy(game = it.game.flashesFaded()) }
             renderViewPort()
         }
@@ -2822,7 +2851,7 @@ class ViewConeDebugViewModel(
         _state.update { it.copy(game = it.game.sparksOverThePartyBegun(over)) }
 
         while (_state.value.game.sparklingOverTheParty != null) {
-            delay(SparksOverTheParty.A_FRAME)
+            tick(SparksOverTheParty.A_FRAME)
 
             _state.update { it.copy(game = it.game.sparksOverThePartyStepped()) }
             drawViewPort()
@@ -2887,7 +2916,7 @@ class ViewConeDebugViewModel(
 
         walling = viewModelScope.launch {
             while (_state.value.game.wallsOfForce.standing.isNotEmpty()) {
-                delay(GameState.CLOCK_STEP.inMilliseconds)
+                tick(GameState.CLOCK_STEP)
 
                 var gone = emptyList<AWallOfForce>()
                 _state.update {
@@ -2924,7 +2953,7 @@ class ViewConeDebugViewModel(
 
         while (_state.value.game.vortex != null) {
             drawViewPort()
-            delay(AVortex.A_FRAME_MILLISECONDS)
+            tick(AVortex.A_FRAME_MILLISECONDS)
             _state.update {
                 var stepping = it.game
                 repeat(AVortex.STEPS_A_FRAME) { stepping = stepping.vortexStepped() }
@@ -3008,7 +3037,7 @@ class ViewConeDebugViewModel(
             while (true) {
                 if (_state.value.game.running.all.isEmpty()) return@launch
                 val wasShielded = _state.value.game.partyShielded
-                delay(GameState.CLOCK_STEP.inMilliseconds)
+                tick(GameState.CLOCK_STEP)
 
                 val ended = mutableListOf<RunningSpell>()
                 _state.update {
@@ -3036,7 +3065,7 @@ class ViewConeDebugViewModel(
         _state.update { it.copy(game = it.game.sparksBegun()) }
 
         while (_state.value.game.sparkling != null) {
-            delay(SparksInTheRoom.A_FRAME)
+            tick(SparksInTheRoom.A_FRAME)
 
             _state.update { it.copy(game = it.game.sparksStepped()) }
             drawViewPort()
@@ -3058,7 +3087,7 @@ class ViewConeDebugViewModel(
             viewModelScope.launch { playTrack(BURSTING) }
 
             while (_state.value.game.bursting.isNotEmpty()) {
-                delay(Burst.A_FRAME)
+                tick(Burst.A_FRAME)
 
                 _state.update { state ->
                     state.copy(
@@ -3111,7 +3140,7 @@ class ViewConeDebugViewModel(
 
         fadingDamage = viewModelScope.launch {
             while (_state.value.game.showingDamage.isNotEmpty()) {
-                delay(DamageShown.STEP.inMilliseconds)
+                tick(DamageShown.STEP)
 
                 val before = _state.value.game.showingDamage
                 _state.update { it.copy(game = it.game.damageFaded()) }
@@ -3132,7 +3161,7 @@ class ViewConeDebugViewModel(
 
         recoveringHands = viewModelScope.launch {
             while (_state.value.game.recovering.isNotEmpty()) {
-                delay(HandRecovering.STEP.inMilliseconds)
+                tick(HandRecovering.STEP)
 
                 // Two things a step can change on screen: a hand coming back
                 // to use, and one of them giving up saying what it came to.
@@ -3635,7 +3664,7 @@ class ViewConeDebugViewModel(
                 // A door half shut stays half shut while the camp menu is up:
                 // it is as much the floor moving as a monster is.
                 while (_state.value.game.swinging.isNotEmpty() && _state.value.menu == null) {
-                    delay(DOOR_STEP.inMilliseconds)
+                    tick(DOOR_STEP)
 
                     Logger.d(TAG) { "Door step, going ${_state.value.game.swinging}" }
                     val stepped = _state.value.game.doorsStepped()
@@ -4421,7 +4450,7 @@ class ViewConeDebugViewModel(
         // the level, the square and the whole instruction, which is what
         // anybody going to write it needs anyway.
 
-        override suspend fun hold(ticks: Ticks) = delay(ticks.inMilliseconds)
+        override suspend fun hold(ticks: Ticks) = tick(ticks)
 
         /**
          * The archway, put up whole and then opened a step at a time.
@@ -4799,7 +4828,7 @@ class ViewConeDebugViewModel(
         } else {
             viewModelScope.launch {
                 while (true) {
-                    delay(TELEPORTER_PULSE.inMilliseconds)
+                    tick(TELEPORTER_PULSE)
                     // a script owns the screen while it runs, and draws the
                     // frames it wants seen itself
                     if (playing.running) continue

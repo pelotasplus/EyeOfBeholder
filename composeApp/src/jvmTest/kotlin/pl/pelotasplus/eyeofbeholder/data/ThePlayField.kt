@@ -4,6 +4,7 @@ import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withTimeout
 import pl.pelotasplus.eyeofbeholder.data.model.Debugging
+import pl.pelotasplus.eyeofbeholder.data.model.TheGameIsWatched
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.Location
 import pl.pelotasplus.eyeofbeholder.data.model.PcmClip
@@ -93,6 +94,8 @@ class ThePlayField {
         soundRepository = SoundRepositoryImpl(resources),
         audioSink = NothingHeard(),
         debugging = Debugging(),
+        // Nothing on a bench is ever hidden, so the clocks run throughout.
+        watched = TheGameIsWatched(),
     )
 
     /** Opens a floor with the party standing on [at], and waits for it. */

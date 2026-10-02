@@ -19,6 +19,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import org.koin.compose.koinInject
 import pl.pelotasplus.eyeofbeholder.data.model.Debugging
+import pl.pelotasplus.eyeofbeholder.data.model.WatchWhetherAnybodyIsLooking
 import pl.pelotasplus.eyeofbeholder.features.cps_debug.CpsDebugScreen
 import pl.pelotasplus.eyeofbeholder.features.levels_debug.LevelsDebugScreen
 import pl.pelotasplus.eyeofbeholder.features.main_debug.DebugMenu
@@ -41,6 +42,11 @@ fun App() = CompositionLocalProvider(LocalPlayFieldFocus provides remember { Pla
         LaunchedEffect(debugMenuExpanded) {
             if (!debugMenuExpanded) playFieldFocus.takeBack()
         }
+
+        // Whether anybody is looking, told to the one place the clocks can
+        // read it — see TheGameIsWatched. Each platform answers it its own
+        // way, so the asking is theirs.
+        WatchWhetherAnybodyIsLooking(koinInject())
 
         Box(
             modifier = Modifier
