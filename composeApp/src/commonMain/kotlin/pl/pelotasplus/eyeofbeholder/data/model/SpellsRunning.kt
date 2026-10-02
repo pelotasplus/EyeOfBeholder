@@ -74,6 +74,15 @@ enum class SettlesOn {
 
     /** On whoever read it, without asking: a blur, a shield. */
     WHOEVER_CAST_IT,
+
+    /**
+     * On each of them separately: a haste.
+     *
+     * Six spells and not one over the party, which is the game's own choice
+     * and shows: each can be dispelled on its own, and somebody who joins
+     * afterwards is not under it.
+     */
+    EVERY_CHAMPION,
 }
 
 /** Every spell still running over the party, and nothing that has ended. */
@@ -155,6 +164,9 @@ data class SpellsRunning(val all: List<RunningSpell> = emptyList()) {
 
     /** Whether a blur is on [whom], which is drawn round their portrait. */
     fun blurred(whom: PartySlot): Boolean = isOn(Spell.BLUR, whom)
+
+    /** Whether [whom] is hastened, which halves what a swing costs them. */
+    fun hastened(whom: PartySlot): Boolean = over(whom).any { it.spell.hastens }
 
     /** Every one of them ended at once, which is what a rest does. */
     fun allEnded(): SpellsRunning = SpellsRunning()

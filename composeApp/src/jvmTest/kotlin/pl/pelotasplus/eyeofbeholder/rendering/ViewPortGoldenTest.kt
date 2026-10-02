@@ -1609,6 +1609,8 @@ class ViewPortGoldenTest {
         shielded: Boolean = false,
         /** Which of them carry a blur, which frames their box on its own. */
         blurred: List<Int> = emptyList(),
+        /** And which are hastened, which frames theirs yellow. */
+        hurrying: List<Int> = emptyList(),
         /** Whether a detect magic is running, which draws what is magical blue. */
         magicShowing: Boolean = false,
         sparks: SparksOverTheParty? = null,
@@ -1681,6 +1683,7 @@ class ViewPortGoldenTest {
             swapping = swapping?.let(::PartySlot),
             shielded = shielded,
             underASpell = { whom -> whom.index in blurred },
+            hurrying = { whom -> whom.index in hurrying },
             magicShowing = magicShowing,
             sparksOverTheParty = sparks,
         ).toImage()
@@ -2062,6 +2065,39 @@ class ViewPortGoldenTest {
         checkGolden(
             "party-panel-blurred",
             partyOver(level = "LEVEL4.INF", x = 15, y = 11, blurred = listOf(0, 3)),
+        )
+
+    /**
+     * A hastened party, every box framed yellow — haste reaches all six, so
+     * unlike a blur there is nobody left bare to compare against.
+     */
+    @Test
+    fun `party panel with all of them hastened`() =
+        checkGolden(
+            "party-panel-hastened",
+            partyOver(level = "LEVEL4.INF", x = 15, y = 11, hurrying = listOf(0, 1, 2, 3)),
+        )
+
+    /**
+     * And a champion under both at once, whose border alternates between the
+     * two rather than one winning.
+     *
+     * The first is blurred and hastened, the second only hastened, the third
+     * only blurred — so the picture says what each of the three looks like
+     * side by side, which is the only way to tell that the dashed one is a
+     * third thing and not a bad draw of one of the others.
+     */
+    @Test
+    fun `party panel with one of them under two spells`() =
+        checkGolden(
+            "party-panel-two-spells",
+            partyOver(
+                level = "LEVEL4.INF",
+                x = 15,
+                y = 11,
+                blurred = listOf(0, 2),
+                hurrying = listOf(0, 1),
+            ),
         )
 
     /** The sparks a spell on the whole party throws over the portraits, midway through. */

@@ -26,9 +26,22 @@ sealed class WhatTheBlowCameTo(val lines: List<String>, val theArmDidSomething: 
     val onABloodySplash: Boolean get() = theArmDidSomething
 
     /** How long the hand is out of use for having come to this. */
-    val wait: Ticks
-        get() = if (theArmDidSomething) HandRecovering.AFTER_A_SWING
-        else HandRecovering.REPORTING
+    val wait: Ticks get() = waitFor(hastened = false)
+
+    /**
+     * The same, for a champion who may be hastened.
+     *
+     * Haste shortens only the second part of the wait — the part after the
+     * slot has stopped saying what the blow came to. The saying itself is as
+     * long as ever, because it is there to be read and a hastened champion
+     * reads no faster. So a swing costs twenty-seven ticks rather than
+     * fifty-four: twice the swings, not four times.
+     */
+    fun waitFor(hastened: Boolean): Ticks = when {
+        !theArmDidSomething -> HandRecovering.REPORTING
+        hastened -> HandRecovering.AFTER_A_SWING_HASTENED
+        else -> HandRecovering.AFTER_A_SWING
+    }
 
     /** How much was taken off, which is the only outcome that is not a word. */
     class TookOff(amount: Damage) :

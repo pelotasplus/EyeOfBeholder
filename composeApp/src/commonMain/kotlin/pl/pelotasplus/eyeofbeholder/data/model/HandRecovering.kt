@@ -38,8 +38,18 @@ data class HandRecovering(
         /** And how long it is refused after it has stopped saying. */
         val AFTER_THE_REPORT = Ticks(36)
 
+        /**
+         * The same for a hastened champion, which is the only part of the
+         * wait haste touches — the saying is as long as ever, being there to
+         * be read.
+         */
+        val AFTER_THE_REPORT_HASTENED = Ticks(9)
+
         /** How long a hand is out of use altogether. */
         val AFTER_A_SWING = Ticks(REPORTING.value + AFTER_THE_REPORT.value)
+
+        /** And for a hastened one: twenty-seven against fifty-four, so twice the swings. */
+        val AFTER_A_SWING_HASTENED = Ticks(REPORTING.value + AFTER_THE_REPORT_HASTENED.value)
 
         /**
          * And how long after reading something aloud out of it, which is the

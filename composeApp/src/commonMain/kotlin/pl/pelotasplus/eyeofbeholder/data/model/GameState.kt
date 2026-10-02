@@ -1940,18 +1940,45 @@ data class GameState(
      * wherever it was going.
      */
     fun spellBegunWhereItSettles(spell: Spell, by: PartySlot, casterLevel: Int): GameState? {
+        if (spell.settlesOn == SettlesOn.EVERY_CHAMPION) return spellBegunOnEachOfThem(spell, by, casterLevel)
+
         val on = when (spell.settlesOn) {
             SettlesOn.THE_PARTY -> null
-            SettlesOn.WHOEVER_CAST_IT -> by
+            else -> by
         }
 
         return running.begun(spell, by, casterLevel, on)?.let { copy(running = it) }
     }
 
+    /**
+     * One spell for each champion it reaches, or null where it reached none.
+     *
+     * It passes over whoever is past raising or turned to stone — there is
+     * nothing there to hurry — and over anyone already carrying it, so
+     * casting it again brings in whoever has joined since without giving the
+     * rest a second.
+     */
+    private fun spellBegunOnEachOfThem(spell: Spell, by: PartySlot, casterLevel: Int): GameState? {
+        val reached = champions.indices
+            .map(::PartySlot)
+            .filter { championIn(it)?.canBeHurt == true }
+
+        val after = reached.fold(running) { running, whom ->
+            running.begun(spell, by, casterLevel, whom) ?: running
+        }
+
+        return if (after == running) null else copy(running = after)
+    }
+
     /** The world with that hand put out of use for as long as a swing costs. */
     fun handSwung(whose: PartySlot, hand: CarrySlot, came: WhatTheBlowCameTo) = copy(
         recovering = recovering.filterNot { it.whose == whose && it.hand == hand } +
-            HandRecovering(whose, hand, came.wait.value, came),
+            HandRecovering(
+                whose = whose,
+                hand = hand,
+                ticksLeft = came.waitFor(hastened = running.hastened(whose)).value,
+                came = came,
+            ),
     )
 
     /**

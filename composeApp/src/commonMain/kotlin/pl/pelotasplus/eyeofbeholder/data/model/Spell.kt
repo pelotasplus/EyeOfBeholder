@@ -78,6 +78,12 @@ enum class Spell(
     val hindersStriking: Int = 0,
 
     /**
+     * Whether it shortens the wait after a swing — see
+     * [HandRecovering.AFTER_THE_REPORT_HASTENED].
+     */
+    val hastens: Boolean = false,
+
+    /**
      * Whether it spreads over the squares in front of the caster the moment
      * it is cast, rather than throwing anything — see [AConeOfCold].
      */
@@ -157,7 +163,15 @@ enum class Spell(
             thrownOff = SavingThrow.A_SPELL,
         ),
     ),
-    HASTE(14, "haste", TrackIndex(100), sparksOverTheParty = true),
+    HASTE(
+        14,
+        "haste",
+        TrackIndex(100),
+        sparksOverTheParty = true,
+        lasts = SpellLasts(base = 3, perLevel = 1),
+        settlesOn = SettlesOn.EVERY_CHAMPION,
+        hastens = true,
+    ),
     HOLD_PERSON(
         15,
         "Hold Person",

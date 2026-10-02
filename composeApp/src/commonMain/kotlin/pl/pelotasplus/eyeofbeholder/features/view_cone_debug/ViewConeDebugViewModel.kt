@@ -3769,6 +3769,16 @@ class ViewConeDebugViewModel(
             spell.settlesOn == SettlesOn.WHOEVER_CAST_IT ->
                 _state.value.game.running.isOn(spell, whose)
 
+            // One that reaches all of them is refused only where it would
+            // reach nobody new, so it can still be cast to cover somebody
+            // who has joined since.
+            spell.settlesOn == SettlesOn.EVERY_CHAMPION ->
+                _state.value.game.spellBegunWhereItSettles(
+                    spell,
+                    whose,
+                    ThrownSpell.AS_READ_FROM_A_SCROLL,
+                ) == null
+
             else -> _state.value.game.running.isRunning(spell)
         }
 
@@ -4789,6 +4799,7 @@ class ViewConeDebugViewModel(
                     portal = portalShowing,
                     shielded = _state.value.game.partyShielded,
                     underASpell = { whom -> _state.value.game.running.blurred(whom) },
+                    hurrying = { whom -> _state.value.game.running.hastened(whom) },
                     magicShowing = _state.value.game.magicIsShowing,
                     sparksOverTheParty = _state.value.game.sparklingOverTheParty,
                 )

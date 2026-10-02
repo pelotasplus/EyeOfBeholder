@@ -70,6 +70,8 @@ class PlayField(
         shielded: Boolean = false,
         /** Whether a spell on that champion alone frames their box. */
         underASpell: (PartySlot) -> Boolean = { false },
+        /** Whether that champion is hastened, which frames their box yellow. */
+        hurrying: (PartySlot) -> Boolean = { false },
         /** Whether a detect magic is running, which draws what is magical blue. */
         magicShowing: Boolean = false,
         sparksOverTheParty: SparksOverTheParty? = null,
@@ -89,7 +91,7 @@ class PlayField(
         if (sheet == null) {
             drawParty(
                 party, portraits, metPortraits, carrying, recovering, reporting, hurt, swapping,
-                shielded, underASpell, sparksOverTheParty,
+                shielded, underASpell, hurrying, sparksOverTheParty,
             )
         } else if (!underThePage) {
             drawSheet(sheet, portraits, metPortraits)
@@ -441,6 +443,7 @@ class PlayField(
         swapping: PartySlot?,
         shielded: Boolean,
         underASpell: (PartySlot) -> Boolean,
+        hurrying: (PartySlot) -> Boolean,
         sparks: SparksOverTheParty?,
     ) {
         championBoxes.forEachIndexed { slot, box ->
@@ -468,11 +471,18 @@ class PlayField(
             )
 
             // A box is framed for a spell on that champion as well as for one
-            // over all of them, and the colour goes with the party rather
-            // than with the spell: green while a mystic defence is up, red
-            // otherwise, whichever of them put the frame there.
-            if (shielded || underASpell(PartySlot(slot))) {
-                drawOutline(box, if (shielded) SHIELDED else UNDER_A_SPELL)
+            // over all of them. There are two frames and they can both be
+            // wanted at once: the red-or-green one, whose colour goes with
+            // the party rather than with the spell, and the yellow one. Where
+            // both are, neither wins — the border alternates between them.
+            val warm = shielded || underASpell(PartySlot(slot))
+            val yellow = hurrying(PartySlot(slot))
+            val warmColour = if (shielded) SHIELDED else UNDER_A_SPELL
+
+            when {
+                warm && yellow -> drawDashedOutline(box, warmColour, HURRYING)
+                warm -> drawOutline(box, warmColour)
+                yellow -> drawOutline(box, HURRYING)
             }
             sparks?.takeIf { it.lighting(PartySlot(slot)) }
                 ?.let { drawSparks(it, PartySlot(slot)) }
@@ -492,6 +502,35 @@ class PlayField(
         for (y in box.top..bottom) {
             draw(box.left, y, rgb)
             draw(right, y, rgb)
+        }
+    }
+
+    /**
+     * The same border in two colours at once, for a champion under both kinds
+     * of spell.
+     *
+     * Dashed rather than one colour over the other, and the dashes are
+     * staggered: along the top the first runs [first] and the next [second],
+     * while the bottom of the same stretch has them the other way round. The
+     * sides alternate too, on a shorter run. It is busy on purpose — a
+     * champion under two spells should not look like one under either.
+     */
+    private fun drawDashedOutline(box: ChampionBox, first: PaletteIndex, second: PaletteIndex) {
+        val right = box.left + ChampionBox.WIDTH - 1
+        val bottom = box.top + ChampionBox.HEIGHT - 1
+        val a = palette.colors[first.value]
+        val b = palette.colors[second.value]
+
+        for (x in box.left..right) {
+            val alternating = ((x - box.left) / DASH) % 2 == 0
+            draw(x, box.top, if (alternating) a else b)
+            draw(x, bottom, if (alternating) b else a)
+        }
+
+        for (y in box.top..bottom) {
+            val alternating = ((y - box.top) / SHORT_DASH) % 2 == 0
+            draw(box.left, y, if (alternating) b else a)
+            draw(right, y, if (alternating) a else b)
         }
     }
 
@@ -1079,6 +1118,13 @@ class PlayField(
 
         /** And the light red for a spell on that champion alone. */
         private val UNDER_A_SPELL = PaletteIndex(6)
+
+        /** The yellow of a champion in a hurry. */
+        private val HURRYING = PaletteIndex(5)
+
+        /** How long a run of one colour is where two share a border. */
+        private const val DASH = 8
+        private const val SHORT_DASH = 6
 
         /** The three spark pictures, side by side on the interface sheet. */
         private const val FIRST_SPARK = 232
