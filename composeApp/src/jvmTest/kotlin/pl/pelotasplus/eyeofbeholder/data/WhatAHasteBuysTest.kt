@@ -114,6 +114,22 @@ class WhatAHasteBuysTest {
         assertEquals(54, bare.recovering.single().ticksLeft)
     }
 
+    /**
+     * A hand that threw or fired is hurried by exactly as much as one that
+     * swung. They are one action as far as the hand is concerned — the game
+     * runs both down the same path and only differs in what left the hand —
+     * so a hasted archer looses twice as fast as well.
+     */
+    @Test
+    fun `throwing and firing are hurried too`() {
+        val hastened = assertNotNull(
+            world().spellBegunWhereItSettles(Spell.HASTE, reader, casterLevel = 9)
+        )
+
+        assertEquals(27, hastened.handLoosed(reader, CarrySlot(0)).recovering.single().ticksLeft)
+        assertEquals(54, world().handLoosed(reader, CarrySlot(0)).recovering.single().ticksLeft)
+    }
+
     // ---- who it reaches --------------------------------------------------
 
     @Test

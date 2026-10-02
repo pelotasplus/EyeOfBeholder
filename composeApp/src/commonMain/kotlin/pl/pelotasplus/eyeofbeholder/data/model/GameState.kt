@@ -2027,7 +2027,7 @@ data class GameState(
                 .carrying(whose, belt, ItemIndex(ItemIndex.NOTHING), types)
         }
 
-        return after.handWaitsAfterLoosing(whose, hand)
+        return after.handLoosed(whose, hand)
     }
 
     /** What came of shooting: the world after, and what is heard if anything flew. */
@@ -2059,7 +2059,7 @@ data class GameState(
         )
 
         return Shooting(
-            world = taken.first.inTheAir(loosed).handWaitsAfterLoosing(whose, hand),
+            world = taken.first.inTheAir(loosed).handLoosed(whose, hand),
             heard = types.heardShooting(launcher),
         )
     }
@@ -2090,9 +2090,23 @@ data class GameState(
         return kept.carrying(whose, CarrySlot.QUIVER, stacked.head, types) to quiver
     }
 
-    private fun handWaitsAfterLoosing(whose: PartySlot, hand: CarrySlot) = copy(
+    /**
+     * A hand that has thrown or fired waits exactly as long as one that
+     * swung, and a haste shortens it by exactly as much: the two are one
+     * action as far as the hand is concerned, and only differ in what left it.
+     */
+    fun handLoosed(whose: PartySlot, hand: CarrySlot) = copy(
         recovering = recovering.filterNot { it.whose == whose && it.hand == hand } +
-            HandRecovering(whose, hand, HandRecovering.AFTER_A_SWING.value, came = null),
+            HandRecovering(
+                whose = whose,
+                hand = hand,
+                ticksLeft = if (running.hastened(whose)) {
+                    HandRecovering.AFTER_A_SWING_HASTENED.value
+                } else {
+                    HandRecovering.AFTER_A_SWING.value
+                },
+                came = null,
+            ),
     )
 
     /**
