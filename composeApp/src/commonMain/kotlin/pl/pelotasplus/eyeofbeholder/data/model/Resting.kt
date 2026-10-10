@@ -29,6 +29,7 @@ sealed interface Rest {
 class Resting(
     private val kinds: List<MonsterProperty>,
     private val stepping: MonsterStepping? = null,
+    private val types: ItemTypes? = null,
 ) {
 
     /**
@@ -48,7 +49,7 @@ class Resting(
 
         var sleeping = begun.world
         while (sleeping.champions.any { it.wouldMendBySleeping }) {
-            sleeping = sleeping.sleptAnHour(HOURS_A_MENDED_POINT)
+            sleeping = sleeping.sleptAnHour(HOURS_A_MENDED_POINT, types)
         }
         return Rest.Slept(sleeping)
     }
@@ -124,9 +125,13 @@ fun GameState.isBesideTheParty(monster: MonsterInstance): Boolean {
  * Nothing happens by the hour — mending and hunger both come round every
  * [HOURS_A_MENDED_POINT] hours — so this is called with that many at a time.
  */
-fun GameState.sleptAnHour(hours: Int = 1): GameState {
+fun GameState.sleptAnHour(hours: Int = 1, types: ItemTypes? = null): GameState {
     if (hours < HOURS_A_MENDED_POINT) return this
-    return copy(champions = champions.map { it.sleptAStep() })
+    return copy(
+        champions = champions.mapIndexed { slot, who ->
+            who.sleptAStep(eats = !fedByARing(PartySlot(slot), types))
+        },
+    )
         .gripsStepped(Ticks(hours * TICKS_AN_HOUR)).first
         .venomWorkedFor(hours)
 }
@@ -213,14 +218,21 @@ private val Champion.stillHurt: Boolean
 val Champion.wouldMendBySleeping: Boolean
     get() = stillHurt && food.value > 0
 
-/** A champion one stretch of sleep on: hurt mended if there is any, and food eaten. */
-private fun Champion.sleptAStep(): Champion {
+/**
+ * A champion one stretch of sleep on: hurt mended if there is any, and food
+ * eaten unless a ring is feeding them.
+ *
+ * Mending still wants a full stomach even from somebody a ring feeds: nothing
+ * mends on nothing, ring or no ring. What the ring means is that the stomach
+ * never empties, so whoever wears it can lie there as long as the rest needs.
+ */
+private fun Champion.sleptAStep(eats: Boolean): Champion {
     if (!inTheParty || deadForGood || food.value <= 0) return this
     return copy(
         hitPoints = hitPoints.copy(
             current = (hitPoints.current + POINTS_MENDED_A_STRETCH).coerceAtMost(hitPoints.max),
         ),
-        food = Food((food.value - FOOD_A_STEP).coerceAtLeast(0)),
+        food = if (eats) Food((food.value - FOOD_A_STEP).coerceAtLeast(0)) else food,
     )
 }
 

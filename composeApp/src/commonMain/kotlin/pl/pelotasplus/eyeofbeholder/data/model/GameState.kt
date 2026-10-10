@@ -1381,11 +1381,14 @@ data class GameState(
      * Time is what makes a party hungry rather than walking — see
      * [A_MOUTHFUL_LASTS]. An empty stomach only costs anything once they lie
      * down to sleep on it.
+     *
+     * Anybody a ring is feeding skips their mouthful.
      */
-    fun hungrier(): GameState = copy(
-        champions = champions.map {
-            if (!it.inTheParty || it.deadForGood || it.food.value <= 0) it
-            else it.copy(food = Food(it.food.value - 1))
+    fun hungrier(types: ItemTypes? = null): GameState = copy(
+        champions = champions.mapIndexed { slot, who ->
+            if (!who.inTheParty || who.deadForGood || who.food.value <= 0) who
+            else if (fedByARing(PartySlot(slot), types)) who
+            else who.copy(food = Food(who.food.value - 1))
         },
     )
 
@@ -1639,6 +1642,17 @@ data class GameState(
             types?.ring(worn) == ring
         }
     }
+
+    /**
+     * Whether that champion eats nothing at all.
+     *
+     * A ring of sustenance feeds whoever wears it, as the clock turns and
+     * through a night's sleep alike. It does not mend anybody who has run out
+     * already — an empty stomach stays empty — so a ring found late is worth
+     * no more than the food still in hand.
+     */
+    fun fedByARing(whose: PartySlot, types: ItemTypes?): Boolean =
+        isWearing(whose, Ring.SUSTENANCE, types)
 
     /**
      * Whether the party are lost: not one of them still on their feet.

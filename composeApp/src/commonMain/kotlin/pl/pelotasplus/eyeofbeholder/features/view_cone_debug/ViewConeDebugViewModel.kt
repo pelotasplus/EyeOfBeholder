@@ -1370,7 +1370,7 @@ class ViewConeDebugViewModel(
     private suspend fun onRest() {
         val inf = _state.value.inf
         val kinds = inf?.subLevels?.getOrNull(_state.value.subLevel)?.monsters.orEmpty()
-        val resting = Resting(kinds = kinds, stepping = stepping())
+        val resting = Resting(kinds = kinds, stepping = stepping(), types = itemTypes)
 
         when (val begun = resting.begin(_state.value.game, walking())) {
             Rest.NotHere -> {
@@ -1439,7 +1439,7 @@ class ViewConeDebugViewModel(
                 hoursSlept += HOURS_A_MENDED_POINT
 
                 val before = _state.value.game
-                var slept = before.sleptAnHour(HOURS_A_MENDED_POINT)
+                var slept = before.sleptAnHour(HOURS_A_MENDED_POINT, itemTypes)
 
                 // A day on an empty stomach costs a hit point, and a day is
                 // three of these stretches rather than one.
@@ -1481,7 +1481,7 @@ class ViewConeDebugViewModel(
                 tick(GameState.A_MOUTHFUL_LASTS)
 
                 val before = _state.value.game
-                _state.update { it.copy(game = it.game.hungrier()) }
+                _state.update { it.copy(game = it.game.hungrier(itemTypes)) }
 
                 // Only when it shows. The bar is drawn in hundredths and a
                 // mouthful moves it by one, so this is a redraw a minute and
