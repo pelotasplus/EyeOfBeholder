@@ -55,6 +55,19 @@ data class Palette(
     }
 
     /**
+     * Palette-index remap that darkens a colour nearly to black, for the
+     * portrait of a champion who cannot be seen.
+     *
+     * The same root the distance fade uses and far harder — most of the way
+     * rather than a third — because this is not depth but absence: one
+     * application has to read as a face that is barely there, where the
+     * darkening wants several to read as merely far off.
+     */
+    val unseenFadeTable: List<Int> by lazy {
+        fadeTableTowards(FADE_ROOT_COLOR, UNSEEN_WEIGHT)
+    }
+
+    /**
      * Every colour shifted [weight] of the way toward palette entry [root]
      * and snapped back to the nearest entry there is.
      *
@@ -151,5 +164,8 @@ data class Palette(
 
         /** Half the way rather than a third, because this is applied once only. */
         private const val BLUE_WEIGHT = 125
+
+        /** Most of the way to the same dark entry, for a face that is not there. */
+        private const val UNSEEN_WEIGHT = 200
     }
 }

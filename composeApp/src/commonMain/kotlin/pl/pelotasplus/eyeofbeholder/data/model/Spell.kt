@@ -51,14 +51,14 @@ enum class Spell(
 
     /**
      * How long it goes on for after the words are said, for the spells that
-     * do — see [SpellLasts]. A spell without one is over the moment it is
-     * cast, however far what it threw still has to fly.
+     * do — see [HowLongASpellRuns]. A spell without one is over the moment it
+     * is cast, however far what it threw still has to fly.
      *
      * Carrying one is what puts a spell on the party's list of running ones,
      * which is also what makes casting it a second time a refusal rather than
      * a fresh start.
      */
-    val lasts: SpellLasts? = null,
+    val lasts: HowLongASpellRuns? = null,
 
     /**
      * Whom a spell that [lasts] settles on. Meaningless without one.
@@ -119,6 +119,25 @@ enum class Spell(
      * walls either way. See [Disintegration].
      */
     val unmakesTheSquareAhead: Boolean = false,
+
+    /**
+     * Whether it puts whoever is under it out of sight, so that a monster
+     * choosing whom to hit mostly passes over them.
+     *
+     * Mostly and not always — see [GameState.whoAMonsterCanSee]. It is not
+     * armour: nothing about a blow that does land is softened by it.
+     */
+    val hidesThem: Boolean = false,
+
+    /**
+     * Whether that hiding is lost the moment its champion does anything.
+     *
+     * The difference between the two kinds. A plain invisibility has no clock
+     * and is spent on the first swing, throw, shot or aimed spell; an improved
+     * one is given a clock instead and survives all of it. So the plain one is
+     * a way of crossing a room and the improved one is a way of fighting in it.
+     */
+    val hidingBreaksOnActing: Boolean = false,
 ) {
     ARMOUR(1, "armor", TrackIndex(92)),
     BURNING_HANDS(2, "burning hands", TrackIndex(87)),
@@ -152,7 +171,15 @@ enum class Spell(
     ),
     DETECT_INVISIBILITY(8, "detect invisibility", TrackIndex(95), sparksOverTheParty = true),
     IMPROVED_IDENTIFY(9, "improved identify", TrackIndex(20)),
-    INVISIBILITY(10, "invisibility", TrackIndex(94)),
+    INVISIBILITY(
+        10,
+        "invisibility",
+        TrackIndex(94),
+        lasts = HowLongASpellRuns.UntilSomethingBreaksIt,
+        settlesOn = SettlesOn.WHOEVER_IS_POINTED_AT,
+        hidesThem = true,
+        hidingBreaksOnActing = true,
+    ),
     MELFS_ACID_ARROW(
         11,
         "melf's acid arrow",
@@ -197,7 +224,16 @@ enum class Spell(
         TrackIndex(101),
         throws = ThrownSpell.thatHolds(MonsterSpell.HOLD_PERSON, AHold.OF_A_PERSON),
     ),
-    INVISIBILITY_TEN_FEET(16, "invisibility 10' radius", TrackIndex(94), sparksOverTheParty = true),
+    INVISIBILITY_TEN_FEET(
+        16,
+        "invisibility 10' radius",
+        TrackIndex(94),
+        sparksOverTheParty = true,
+        lasts = HowLongASpellRuns.UntilSomethingBreaksIt,
+        settlesOn = SettlesOn.EVERY_CHAMPION,
+        hidesThem = true,
+        hidingBreaksOnActing = true,
+    ),
     LIGHTNING_BOLT(
         17,
         "lightning bolt",
@@ -374,9 +410,50 @@ enum class Spell(
     WOUNDS_CAUSED_AT_A_DISTANCE(68, "cause critical wounds", TrackIndex(101)),
     STONE_AT_A_DISTANCE(69, "flesh to stone", TrackIndex(101));
 
+    /**
+     * Whether casting this is enough to give away somebody hiding.
+     *
+     * Roughly the aimed ones, and only roughly, which is why it is a list and
+     * not a rule: a shocking grasp or a vampiric touch is left out because
+     * what it does is charge a hand, and the blow that hand then strikes
+     * gives the caster away by itself.
+     */
+    val givesTheCasterAway: Boolean get() = this in GIVE_THE_CASTER_AWAY
+
     companion object {
         /** Which spell that number is, or none for a number nothing uses. */
         fun of(asWritten: Int): Spell? = entries.firstOrNull { it.asWritten == asWritten }
+
+        /**
+         * The spells whose casting costs the caster their hiding.
+         *
+         * A list in the game's data rather than anything about what the
+         * spells do, so reasoning will not check it and a name dropped by
+         * eye has nothing to catch it: a missing one would only show as a
+         * champion who stayed hidden through a fireball, which looks like
+         * the spell working. A test naming them is what notices.
+         */
+        private val GIVE_THE_CASTER_AWAY = setOf(
+            BURNING_HANDS,
+            MAGIC_MISSILE,
+            MELFS_ACID_ARROW,
+            FIREBALL,
+            HOLD_PERSON,
+            LIGHTNING_BOLT,
+            FEAR,
+            ICE_STORM,
+            CONE_OF_COLD,
+            HOLD_MONSTER,
+            DISINTEGRATE,
+            FLESH_TO_STONE,
+            CAUSE_LIGHT_WOUNDS,
+            A_CLERICS_HOLD_PERSON,
+            CAUSE_SERIOUS_WOUNDS,
+            CAUSE_CRITICAL_WOUNDS,
+            FLAME_STRIKE,
+            SLAY_LIVING,
+            HARM,
+        )
     }
 }
 

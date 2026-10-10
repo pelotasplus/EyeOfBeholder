@@ -28,6 +28,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.XpPoints
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -145,8 +146,14 @@ class WhatAHasteBuysTest {
             world().spellBegunWhereItSettles(Spell.HASTE, reader, casterLevel = 9)
         )
 
-        assertEquals(54, world().handCast(reader, CarrySlot(0)).recovering.single().ticksLeft)
-        assertEquals(27, hastened.handCast(reader, CarrySlot(0)).recovering.single().ticksLeft)
+        assertEquals(
+            54,
+            world().handCast(reader, CarrySlot(0), Spell.HASTE).recovering.single().ticksLeft,
+        )
+        assertEquals(
+            27,
+            hastened.handCast(reader, CarrySlot(0), Spell.HASTE).recovering.single().ticksLeft,
+        )
     }
 
     /** Whatever the hand did, it is charged the same — one wait, one rule. */
@@ -154,7 +161,7 @@ class WhatAHasteBuysTest {
     fun `a swing, a shot and a reading all cost the same`() {
         val swung = world().handSwung(reader, CarrySlot(0), WhatTheBlowCameTo.Missed)
         val loosed = world().handLoosed(reader, CarrySlot(0))
-        val read = world().handCast(reader, CarrySlot(0))
+        val read = world().handCast(reader, CarrySlot(0), Spell.HASTE)
 
         assertEquals(54, swung.recovering.single().ticksLeft)
         assertEquals(54, loosed.recovering.single().ticksLeft)
@@ -166,7 +173,7 @@ class WhatAHasteBuysTest {
     @Test
     fun `it lasts three half-minutes and one more per level`() {
         assertEquals(SpellLasts(base = 3, perLevel = 1), Spell.HASTE.lasts)
-        assertEquals(Ticks(6552), assertNotNull(Spell.HASTE.lasts).castBySomeoneOfLevel(9))
+        assertEquals(Ticks(6552), assertIs<SpellLasts>(Spell.HASTE.lasts).castBySomeoneOfLevel(9))
     }
 
     /** All six of them, not the reader and not the party as one thing. */

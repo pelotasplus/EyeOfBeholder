@@ -76,6 +76,8 @@ class PlayField(
          * a border of the two.
          */
         framedYellow: (PartySlot) -> Boolean = { false },
+        /** Whether that champion cannot be seen, which darkens their face. */
+        unseen: (PartySlot) -> Boolean = { false },
         /** Whether a detect magic is running, which draws what is magical blue. */
         magicShowing: Boolean = false,
         sparksOverTheParty: SparksOverTheParty? = null,
@@ -95,7 +97,7 @@ class PlayField(
         if (sheet == null) {
             drawParty(
                 party, portraits, metPortraits, carrying, recovering, reporting, hurt, swapping,
-                shielded, underASpell, framedYellow, sparksOverTheParty,
+                shielded, underASpell, framedYellow, unseen, sparksOverTheParty,
             )
         } else if (!underThePage) {
             drawSheet(sheet, portraits, metPortraits)
@@ -448,6 +450,7 @@ class PlayField(
         shielded: Boolean,
         underASpell: (PartySlot) -> Boolean,
         framedYellow: (PartySlot) -> Boolean,
+        unseen: (PartySlot) -> Boolean,
         sparks: SparksOverTheParty?,
     ) {
         championBoxes.forEachIndexed { slot, box ->
@@ -472,6 +475,7 @@ class PlayField(
                 reporting = { hand -> reporting(PartySlot(slot), CarrySlot(hand)) },
                 hurt = hurt(PartySlot(slot)),
                 swapping = swapping?.index == slot,
+                unseen = unseen(PartySlot(slot)),
             )
 
             // A box is framed for a spell on that champion as well as for one
@@ -558,6 +562,7 @@ class PlayField(
         reporting: (Int) -> WhatTheBlowCameTo?,
         hurt: Damage?,
         swapping: Boolean = false,
+        unseen: Boolean = false,
     ) {
         // Past raising, the face goes and the rest of the box stays.
         if (champion.deadForGood) {
@@ -567,13 +572,21 @@ class PlayField(
                 val face = faceOf(champion.portrait, sheet, metPortraits) ?: return@let
                 val colours = (if (champion.portrait.value < 0) metPortraits else sheet)
                     ?.palette ?: palette
+
+                // A champion nobody can see is shown as a face nobody can
+                // quite see: every colour of it dragged most of the way to
+                // black, which leaves the features there to be made out
+                // rather than replacing the portrait with a hole.
+                val faded = if (unseen) colours.unseenFadeTable else null
+
                 for (y in 0 until face.h) {
                     for (x in 0 until face.w) {
                         val index = face.pixels[y * face.w + x]
+                        val shown = faded?.get(index.value) ?: index.value
                         draw(
                             box.portraitLeft + x,
                             box.portraitTop + y,
-                            colours.colors[index.value],
+                            colours.colors[shown],
                         )
                     }
                 }

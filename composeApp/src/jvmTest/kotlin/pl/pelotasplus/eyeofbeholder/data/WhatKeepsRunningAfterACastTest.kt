@@ -8,6 +8,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.Ticks
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertIs
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -58,9 +59,9 @@ class WhatKeepsRunningAfterACastTest {
      */
     @Test
     fun `mystic defence lasts half a minute whoever casts it`() {
-        val lasts = Spell.MYSTIC_DEFENCE.lasts
+        val lasts = assertIs<SpellLasts>(Spell.MYSTIC_DEFENCE.lasts)
         assertEquals(SpellLasts(base = 1, perLevel = 0), lasts)
-        assertEquals(Ticks(546), lasts?.castBySomeoneOfLevel(9))
+        assertEquals(Ticks(546), lasts.castBySomeoneOfLevel(9))
     }
 
     /**
@@ -70,10 +71,10 @@ class WhatKeepsRunningAfterACastTest {
      */
     @Test
     fun `detect magic lasts a minute for every level of its caster`() {
-        val lasts = Spell.DETECT_MAGIC.lasts
+        val lasts = assertIs<SpellLasts>(Spell.DETECT_MAGIC.lasts)
         assertEquals(SpellLasts(base = 0, perLevel = 2), lasts)
-        assertEquals(Ticks(1092), lasts?.castBySomeoneOfLevel(1))
-        assertEquals(Ticks(9828), lasts?.castBySomeoneOfLevel(9))
+        assertEquals(Ticks(1092), lasts.castBySomeoneOfLevel(1))
+        assertEquals(Ticks(9828), lasts.castBySomeoneOfLevel(9))
     }
 
     /** The cleric's detect magic is the mage's, and lasts exactly as long. */

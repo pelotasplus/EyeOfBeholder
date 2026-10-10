@@ -473,11 +473,18 @@ class MonstersTurn(
      * Not the ones still standing — see [Champion.canStillBeStruck]. One who
      * has already gone down is beaten on where they lie, and is passed over
      * only once there is nothing left to raise.
+     *
+     * Somebody hidden is mostly passed over too, and the blow goes on to
+     * whoever stands behind them — so hiding the front rank moves the
+     * beating rather than stopping it. Rolled once for each champion the
+     * monster considers, which is why it happens here and not at the blow:
+     * a monster that gets as far as swinging has already decided whom at.
      */
     private fun whoItReaches(world: GameState, monster: MonsterInstance): List<PartySlot> =
         WhoTheMonsterReaches
             .inOrder(world.party.facing, monster.direction, monster.place, dice)
             .filter { world.championIn(it)?.canStillBeStruck == true }
+            .filter { world.whoAMonsterCanSee(it, dice) }
 
     private companion object {
         /** A twenty lands on anything, however well armoured. */

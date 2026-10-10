@@ -13,6 +13,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.Ticks
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -41,7 +42,7 @@ class WhatABlurIsWorthTest {
      */
     @Test
     fun `it lasts three half-minutes and one more per level`() {
-        val lasts = assertNotNull(Spell.BLUR.lasts)
+        val lasts = assertIs<SpellLasts>(Spell.BLUR.lasts)
 
         assertEquals(SpellLasts(base = 3, perLevel = 1), lasts)
         assertEquals(Ticks(2184), lasts.castBySomeoneOfLevel(1))

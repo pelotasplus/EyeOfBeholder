@@ -27,6 +27,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.spellsRunThroughARest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -79,7 +80,7 @@ class WhatAnAidLendsTest {
     @Test
     fun `it lasts a half-minute and one more per level`() {
         assertEquals(SpellLasts(base = 1, perLevel = 1), Spell.AID.lasts)
-        assertEquals(Ticks(5460), assertNotNull(Spell.AID.lasts).castBySomeoneOfLevel(9))
+        assertEquals(Ticks(5460), assertIs<SpellLasts>(Spell.AID.lasts).castBySomeoneOfLevel(9))
     }
 
     @Test

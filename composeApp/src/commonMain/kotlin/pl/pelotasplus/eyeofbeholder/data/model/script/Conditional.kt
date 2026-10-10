@@ -342,7 +342,20 @@ sealed interface Conditional {
         }
     }
 
-    data object IsPartyVisible : Conditional {                  // 0xDA
+    /**
+     * Whether every one of the party is hidden — not whether they are in
+     * sight, which is what the name used to say and the opposite of what the
+     * opcode pushes.
+     *
+     * Plain invisibility only. A party under improved invisibility do not
+     * satisfy it, the two being different conditions that happen to have the
+     * same consequence everywhere else.
+     *
+     * Left out of [conditions] because nothing asks: no script on any of the
+     * sixteen floors carries this opcode, which is why reading one has never
+     * failed on it.
+     */
+    data object IsWholePartyHidden : Conditional {              // 0xDA
         override fun read(reader: ByteReader) = this
     }
 
@@ -439,7 +452,7 @@ sealed interface Conditional {
             0xDD to HasRace.Companion,
             0xDC to HasClass.Companion,
             0xDB to RollDice,
-//            0xDA to IsPartyVisible,
+//            0xDA to IsWholePartyHidden,
             0xD7 to OnBash.Companion,
             0xD2 to ImmediateShort.Companion,
 //            0xCE to HasAlignment,

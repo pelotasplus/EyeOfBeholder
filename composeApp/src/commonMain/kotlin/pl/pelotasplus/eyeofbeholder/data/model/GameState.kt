@@ -2062,9 +2062,16 @@ data class GameState(
         return if (after == running) null else copy(running = after)
     }
 
-    /** The world with that hand put out of use for as long as a swing costs. */
+    /**
+     * The world with that hand put out of use for as long as a swing costs,
+     * and whoever swung no longer hidden.
+     *
+     * The hiding goes whether or not the swing found anything — an empty bow
+     * raised at nothing is enough. What gives a champion away is doing
+     * something, not doing something that worked.
+     */
     fun handSwung(whose: PartySlot, hand: CarrySlot, came: WhatTheBlowCameTo) =
-        handUsed(whose, hand, came)
+        handUsed(whose, hand, came).seenAgain(whose)
 
     /**
      * A hand put out of use for having been used, however it was used.
@@ -2097,8 +2104,50 @@ data class GameState(
      * worth reading, where reading something aloud has only whatever the
      * room makes of it — but the hand is gone just as long. That is what
      * stops a wand being spent as fast as the mouse can be clicked.
+     *
+     * [casting] is asked for because only some spells give away somebody
+     * hiding — see [Spell.givesTheCasterAway]. A hand is a hand either way,
+     * so the wait is the same; what differs is whether the words carried.
      */
-    fun handCast(whose: PartySlot, hand: CarrySlot) = handUsed(whose, hand, came = null)
+    fun handCast(whose: PartySlot, hand: CarrySlot, casting: Spell): GameState {
+        val used = handUsed(whose, hand, came = null)
+        return if (casting.givesTheCasterAway) used.seenAgain(whose) else used
+    }
+
+    /**
+     * [whose] no longer hidden, with whatever was hiding them ended.
+     *
+     * Nothing happens to a champion who was not hiding, and nothing happens
+     * to the hiding that is built to survive being acted under, so this can
+     * be called wherever a champion acts without asking first.
+     */
+    fun seenAgain(whose: PartySlot): GameState {
+        val (left, broken) = running.givenAwayBy(whose)
+        return if (broken.isEmpty()) this else copy(running = left)
+    }
+
+    /**
+     * The hidings that were running in the world [before] this one and have
+     * gone since, so the loss can be told as well as taken.
+     *
+     * Asked of the two worlds rather than reported out of the step that did
+     * it, because what gives a champion away is a swing, a throw, a shot or
+     * a spell, and threading a message back out of all four would put the
+     * same four lines in four places.
+     */
+    fun hidingsGoneSince(before: GameState): List<RunningSpell> =
+        before.running.all.filter { it.spell.hidesThem && it !in running.all }
+
+    /**
+     * Whether a monster looking for somebody to hit can see [whom].
+     *
+     * A hidden champion is passed over on all but the lowest few of a d20,
+     * and the monster tries the next one it reaches instead. So hiding does
+     * not turn a blow aside — it sends the blow to somebody else, which is
+     * worth most to a party whose front rank is the one hiding.
+     */
+    fun whoAMonsterCanSee(whom: PartySlot, dice: Dice): Boolean =
+        !running.unseen(whom) || dice.roll(1, 20, 0) < SEEN_ANYWAY
 
     /** One more thing crossing the room, whoever loosed it. */
     fun inTheAir(loosed: Projectile) = copy(inFlight = inFlight + loosed)
@@ -2195,8 +2244,15 @@ data class GameState(
         return kept.carrying(whose, CarrySlot.QUIVER, stacked.head, types) to quiver
     }
 
-    /** And with it put out of use for as long as a swing costs. */
-    fun handLoosed(whose: PartySlot, hand: CarrySlot) = handUsed(whose, hand, came = null)
+    /**
+     * And with it put out of use for as long as a swing costs, and whoever
+     * loosed it no longer hidden.
+     *
+     * A thing thrown or shot gives its thrower away as surely as a swing
+     * does: what leaves the hand came from somewhere.
+     */
+    fun handLoosed(whose: PartySlot, hand: CarrySlot) =
+        handUsed(whose, hand, came = null).seenAgain(whose)
 
     /**
      * The world with what was read from worn down by the reading — see
@@ -2354,6 +2410,13 @@ data class GameState(
          * clock.
          */
         val A_MOUTHFUL_LASTS = Ticks(1080)
+
+        /**
+         * A monster finds a hidden champion on a d20 under this, so four
+         * rolls in twenty. Transcribed, and the one number that says what
+         * hiding is worth.
+         */
+        const val SEEN_ANYWAY = 5
 
         /**
          * The world a save describes. The mazes arrive afterwards, with

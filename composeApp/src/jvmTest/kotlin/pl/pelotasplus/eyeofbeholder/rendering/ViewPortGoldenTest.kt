@@ -1611,6 +1611,8 @@ class ViewPortGoldenTest {
         blurred: List<Int> = emptyList(),
         /** And which are hastened, which frames theirs yellow. */
         framedYellow: List<Int> = emptyList(),
+        /** And which cannot be seen, which darkens their face nearly away. */
+        unseen: List<Int> = emptyList(),
         /** Whether a detect magic is running, which draws what is magical blue. */
         magicShowing: Boolean = false,
         sparks: SparksOverTheParty? = null,
@@ -1684,6 +1686,7 @@ class ViewPortGoldenTest {
             shielded = shielded,
             underASpell = { whom -> whom.index in blurred },
             framedYellow = { whom -> whom.index in framedYellow },
+            unseen = { whom -> whom.index in unseen },
             magicShowing = magicShowing,
             sparksOverTheParty = sparks,
         ).toImage()
@@ -2097,6 +2100,39 @@ class ViewPortGoldenTest {
                 y = 11,
                 blurred = listOf(0, 2),
                 framedYellow = listOf(0, 1),
+            ),
+        )
+
+    /**
+     * A party with two of their number hidden, which darkens the face rather
+     * than framing the box: the only one of the spells on a champion that is
+     * shown inside their portrait instead of around it.
+     *
+     * Two hidden and two bare, side by side, because a face dragged most of
+     * the way to black is the sort of change that looks like a bad palette
+     * until there is an untouched face next to it.
+     */
+    @Test
+    fun `party panel with two of them hidden`() =
+        checkGolden(
+            "party-panel-hidden",
+            partyOver(level = "LEVEL4.INF", x = 15, y = 11, unseen = listOf(0, 2)),
+        )
+
+    /**
+     * And a hidden champion who is also blurred, to show the two do not get
+     * in each other's way: the box is framed and the face inside it is gone.
+     */
+    @Test
+    fun `party panel with a hidden champion under another spell`() =
+        checkGolden(
+            "party-panel-hidden-and-blurred",
+            partyOver(
+                level = "LEVEL4.INF",
+                x = 15,
+                y = 11,
+                unseen = listOf(0, 1),
+                blurred = listOf(1),
             ),
         )
 

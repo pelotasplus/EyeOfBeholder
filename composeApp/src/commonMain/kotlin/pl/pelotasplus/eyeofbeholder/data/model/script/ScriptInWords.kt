@@ -94,7 +94,7 @@ fun Conditional.inWords(): String = when (this) {
     Conditional.GetPartyDirection -> "the way the party face"
     Conditional.DialogResult -> "the answer given"
     Conditional.GetTriggerFlag -> "what set this off"
-    Conditional.IsPartyVisible -> "the party are in sight"
+    Conditional.IsWholePartyHidden -> "every one of the party is hidden"
     Conditional.OnSpell -> "the spell cast"
     Conditional.HasAlignment -> "alignment"
     Conditional.TestCharacters -> "how many are standing"

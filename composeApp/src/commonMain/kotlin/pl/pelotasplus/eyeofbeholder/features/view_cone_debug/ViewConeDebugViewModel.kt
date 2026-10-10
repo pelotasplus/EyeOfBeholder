@@ -1851,8 +1851,10 @@ class ViewConeDebugViewModel(
         if (_state.value.game.isRecovering(whose, hand)) return
         if (_state.value.game.championIn(whose)?.canAct != true) return
 
+        val before = _state.value.game
         _state.update { it.copy(game = it.game.thrownFromHand(whose, hand, itemTypes)) }
         Logger.d(TAG) { "$whose throws from $hand ${_state.value.game.party.facing}" }
+        sayWhatGaveThemAway(before)
 
         viewModelScope.launch { playTrack(LOOSED) }
         viewModelScope.launch { renderViewPort() }
@@ -1865,9 +1867,11 @@ class ViewConeDebugViewModel(
         if (_state.value.game.isRecovering(whose, hand)) return
         if (_state.value.game.championIn(whose)?.canAct != true) return
 
-        val shooting = _state.value.game.shotFromHand(whose, hand, types)
+        val before = _state.value.game
+        val shooting = before.shotFromHand(whose, hand, types)
         _state.update { it.copy(game = shooting.world) }
         Logger.d(TAG) { "$whose shoots from $hand: ${shooting.heard?.let { "loosed" } ?: "nothing to shoot"}" }
+        sayWhatGaveThemAway(before)
 
         // A shot is sounded twice over, which is what gives a bowstring its
         // body. The second goes alongside rather than taking the voice off
@@ -2187,9 +2191,11 @@ class ViewConeDebugViewModel(
             return false
         }
 
-        val before = _state.value.game.champions
+        val wasBefore = _state.value.game
+        val before = wasBefore.champions
         _state.update { it.copy(game = struck.world) }
         announceAnyLevelGained(before, struck.world.champions)
+        sayWhatGaveThemAway(wasBefore)
         Logger.d(TAG) { "Roused: ${struck.world.monsters.filter { m -> m.provoked }.map { m -> m.index }}" }
 
         // The blow is heard whether or not it lands. What a landed one looks
@@ -3047,7 +3053,11 @@ class ViewConeDebugViewModel(
 
         defending = viewModelScope.launch {
             while (true) {
-                if (_state.value.game.running.all.isEmpty()) return@launch
+                // Stops on there being no clock left to turn, which is not
+                // the same as nothing running: a hiding has no clock, and a
+                // party who carry one across half the floor should not be
+                // carrying a clock that will never finish anything with it.
+                if (!_state.value.game.running.anyOnAClock) return@launch
                 val wasShielded = _state.value.game.partyShielded
                 tick(GameState.CLOCK_STEP)
 
@@ -3168,6 +3178,20 @@ class ViewConeDebugViewModel(
      * The same shape as the door clock, and for the same reason: the party are
      * free while it runs.
      */
+    /**
+     * Says so where acting has cost somebody their hiding.
+     *
+     * Named for whoever lost it rather than whoever cast it: a champion hidden
+     * by somebody else's scroll is the one who just stepped out of cover. The
+     * wording is the wording a spell running out gets, because from the
+     * party's side it has ended either way.
+     */
+    private fun sayWhatGaveThemAway(before: GameState) {
+        _state.value.game.hidingsGoneSince(before).forEach { over ->
+            sayOf(over.on ?: over.castBy) { SpellMessages.expires(it, over.spell.calledIt) }
+        }
+    }
+
     private fun keepHandsRecovering() {
         if (recoveringHands?.isActive == true) return
 
@@ -3838,7 +3862,9 @@ class ViewConeDebugViewModel(
             return
         }
 
-        _state.update { it.copy(game = it.game.handCast(whose, hand)) }
+        val beforeTheWords = _state.value.game
+        _state.update { it.copy(game = it.game.handCast(whose, hand, spell)) }
+        sayWhatGaveThemAway(beforeTheWords)
         keepHandsRecovering()
 
         spell.throws?.let { thrown -> loose(whose, thrown) }
@@ -3944,7 +3970,7 @@ class ViewConeDebugViewModel(
         sayOf(waiting.caster) { SpellMessages.casts(it, waiting.spell.calledIt) }
 
         _state.update {
-            it.copy(game = settled.handCast(waiting.caster, waiting.hand))
+            it.copy(game = settled.handCast(waiting.caster, waiting.hand, waiting.spell))
         }
         keepHandsRecovering()
         keepTheSpellsRunning()
@@ -4017,7 +4043,7 @@ class ViewConeDebugViewModel(
         _state.update {
             it.copy(
                 game = it.game
-                    .handCast(waiting.caster, waiting.hand)
+                    .handCast(waiting.caster, waiting.hand, waiting.spell)
                     .withTheSpellLaidOn(whom, laidOn, caster),
             )
         }
@@ -4915,6 +4941,7 @@ class ViewConeDebugViewModel(
                     framedYellow = { whom ->
                         _state.value.game.running.let { it.hastened(whom) || it.aided(whom) }
                     },
+                    unseen = { whom -> _state.value.game.running.unseen(whom) },
                     magicShowing = _state.value.game.magicIsShowing,
                     sparksOverTheParty = _state.value.game.sparklingOverTheParty,
                 )
