@@ -345,11 +345,8 @@ class ViewConeDebugViewModel(
     /** The starving question, while one is waiting to be answered. */
     private var sleepingOnHungry: CompletableDeferred<Boolean>? = null
 
-    /** Where the party were standing when the view was last drawn. */
-    private var wasStandingOn: Location? = null
-
-    /** Squares covered since the party last ate into their stores. */
-    private var stepsSinceAMeal = 0
+    /** Emptying the party's stomachs, which runs for as long as the game does. */
+    private var hungering: Job? = null
 
     /** Whatever is being heard, so that the next thing can take its place. */
     private var sounding: PlayingSound? = null
@@ -555,6 +552,10 @@ class ViewConeDebugViewModel(
                 playerY = startY ?: DEFAULT_PLAYER_Y,
                 direction = startDirection ?: DEFAULT_DIRECTION,
             )
+
+            // Started once and never stopped. A party are hungry from here on
+            // whatever else is or is not happening to them.
+            keepThemGettingHungry()
         }
     }
 
@@ -1464,20 +1465,31 @@ class ViewConeDebugViewModel(
     }
 
     /**
-     * The party growing hungry as they go.
+     * The party growing hungry, a mouthful at a time, for as long as the game
+     * is being played.
      *
-     * Hunger is counted in squares walked rather than in time passing, and
-     * that is deliberate. A clock would empty a stomach in a tab left open
-     * overnight, starving a party who are stood still in an empty corridor
-     * with nobody even looking at them. Walking is what costs, so a party who
-     * go nowhere keep what they have.
+     * The one clock with nothing to stop it: a fight ends, a spell runs out,
+     * a door finishes opening, but a party are hungry from the moment they
+     * arrive until the moment the floor is left behind. What stops it is
+     * nobody looking, which every clock here answers to.
      */
-    private fun theyWalkedASquare() {
-        stepsSinceAMeal++
-        if (stepsSinceAMeal < STEPS_TO_A_MEAL) return
+    private fun keepThemGettingHungry() {
+        if (hungering?.isActive == true) return
 
-        stepsSinceAMeal = 0
-        _state.update { it.copy(game = it.game.hungrier()) }
+        hungering = viewModelScope.launch {
+            while (true) {
+                tick(GameState.A_MOUTHFUL_LASTS)
+
+                val before = _state.value.game
+                _state.update { it.copy(game = it.game.hungrier()) }
+
+                // Only when it shows. The bar is drawn in hundredths and a
+                // mouthful moves it by one, so this is a redraw a minute and
+                // not one that can be skipped — somebody watching their last
+                // few should see them go.
+                if (_state.value.game !== before) drawViewPort()
+            }
+        }
     }
 
     /** Puts a question to a sleeping party and waits for its answer. */
@@ -4748,12 +4760,6 @@ class ViewConeDebugViewModel(
             it.copy(game = mapped, visited = mapped.visited(level))
         }
 
-        // Every square they cover is a square nearer their next meal. Turning
-        // on the spot is not covering one, and neither is standing still.
-        val standing = Location(party.position.x, party.position.y)
-        if (wasStandingOn != null && wasStandingOn != standing) theyWalkedASquare()
-        wasStandingOn = standing
-
         viewConeRepository.renderPosition(
             items = _state.value.game.items,
             monsters = _state.value.game.monsters,
@@ -5143,18 +5149,6 @@ class ViewConeDebugViewModel(
 
         /** How long an hour of sleep takes to watch. */
         private val AN_HOUR_OF_SLEEP = Ticks(3)
-
-        /**
-         * How far the party walk on one mouthful.
-         *
-         * Chosen so that a full stomach lasts about as long as it takes to
-         * work through a floor: a hundred squares is a minute or so of
-         * walking, and a champion holds ninety-odd mouthfuls. It is the one
-         * number here that is a judgement rather than a rule — hunger is
-         * counted in steps instead of in time, so there is nothing to copy it
-         * from, and it is set by how often a party ought to reach for food.
-         */
-        private const val STEPS_TO_A_MEAL = 100
 
         private const val CANNOT_REST_HERE = "You do not feel it is safe to rest here."
         private const val MONSTERS_ARE_NEAR = "You can't rest here, monsters are near."

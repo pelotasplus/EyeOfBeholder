@@ -9,6 +9,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.Food
 import pl.pelotasplus.eyeofbeholder.data.model.GameState
 import pl.pelotasplus.eyeofbeholder.data.model.HitPoints
+import pl.pelotasplus.eyeofbeholder.data.model.Ticks
 import pl.pelotasplus.eyeofbeholder.data.model.Holding
 import pl.pelotasplus.eyeofbeholder.data.model.WhatABlowLeaves
 import pl.pelotasplus.eyeofbeholder.data.model.Inf
@@ -465,17 +466,34 @@ class RestingTest {
     // --- growing hungry as they go ------------------------------------------
 
     /**
-     * Walking empties a stomach, and it costs nothing on its own — an empty
-     * one is only paid for by sleeping on it.
+     * Time empties a stomach, and it costs nothing on its own — an empty one
+     * is only paid for by sleeping on it.
      */
     @Test
-    fun `covering ground makes the party hungrier`() {
+    fun `time makes the party hungrier`() {
         val fed = world(champion(100, HitPoints(20, 20)))
 
         val later = fed.hungrier()
 
         assertEquals(99, later.champions.first().food.value)
         assertEquals(20, later.champions.first().hitPoints.current, "growing hungry hurt them")
+    }
+
+    /**
+     * A mouthful a minute, so a full stomach is an hour and three quarters.
+     *
+     * The number is the game's own. It is only usable because the clocks stop
+     * when nobody is looking — on a clock that ran regardless, an afternoon's
+     * work in another tab emptied a party's stores, which is why this was
+     * once counted in squares walked instead.
+     */
+    @Test
+    fun `a mouthful lasts about a minute`() {
+        assertEquals(Ticks(1080), GameState.A_MOUTHFUL_LASTS)
+        assertEquals(59_400, GameState.A_MOUTHFUL_LASTS.inMilliseconds)
+
+        val wholeStomach = GameState.A_MOUTHFUL_LASTS.inMilliseconds * 100
+        assertEquals(99, wholeStomach / 60_000, "a full stomach is about a hundred minutes")
     }
 
     /** An empty stomach cannot be emptied further. */

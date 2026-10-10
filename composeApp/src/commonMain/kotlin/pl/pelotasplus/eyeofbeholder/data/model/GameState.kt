@@ -1378,9 +1378,9 @@ data class GameState(
      * The world a little further from its last meal: everyone still standing
      * is one emptier.
      *
-     * Walking is what makes a party hungry: standing still costs them nothing,
-     * and an empty stomach only costs anything once they lie down to sleep on
-     * it.
+     * Time is what makes a party hungry rather than walking — see
+     * [A_MOUTHFUL_LASTS]. An empty stomach only costs anything once they lie
+     * down to sleep on it.
      */
     fun hungrier(): GameState = copy(
         champions = champions.map {
@@ -2328,6 +2328,18 @@ data class GameState(
 
         /** And how often that clock, and the monsters', are wound on. */
         val CLOCK_STEP = Ticks(2)
+
+        /**
+         * How long one mouthful lasts a champion: a minute of play, so a full
+         * stomach of a hundred is an hour and three quarters.
+         *
+         * Time rather than ground covered, and it only runs while somebody is
+         * looking — a party left in a hidden tab are not getting hungry. That
+         * is what makes a clock usable here at all; counting squares instead
+         * was how this was kept honest before there was anything to stop the
+         * clock.
+         */
+        val A_MOUTHFUL_LASTS = Ticks(1080)
 
         /**
          * The world a save describes. The mazes arrive afterwards, with
