@@ -27,6 +27,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.PartyState
 import pl.pelotasplus.eyeofbeholder.data.model.PortraitId
 import pl.pelotasplus.eyeofbeholder.data.model.SettlesOn
 import pl.pelotasplus.eyeofbeholder.data.model.Spell
+import pl.pelotasplus.eyeofbeholder.data.model.SpellLasts
 import pl.pelotasplus.eyeofbeholder.data.model.Ticks
 import pl.pelotasplus.eyeofbeholder.data.model.WhatTheBlowCameTo
 import pl.pelotasplus.eyeofbeholder.data.model.XpPoints
@@ -42,6 +43,7 @@ import pl.pelotasplus.eyeofbeholder.data.repository.VmpRepositoryImpl
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -401,6 +403,201 @@ class WhatHidingIsWorthTest {
         assertEquals(listOf(Spell.INVISIBILITY), gone.map { it.spell })
         assertEquals(listOf(PartySlot(0)), gone.map { it.on }, "it should name who lost it")
         assertEquals(emptyList(), hidden.hidingsGoneSince(hidden), "nothing was lost")
+    }
+
+    // --- the improved one ----------------------------------------------------
+
+    /**
+     * The one spell of the three that is given a clock, and the numbers are
+     * data: five half-minutes flat and another for every level of its caster,
+     * so three minutes at first level and seven and a half off a scroll.
+     */
+    @Test
+    fun `the improved one is given a clock where the other two are not`() {
+        val lasts = assertIs<SpellLasts>(Spell.IMPROVED_INVISIBILITY.lasts)
+
+        assertEquals(SpellLasts(base = 5, perLevel = 1), lasts)
+        assertEquals(Ticks(3276), lasts.castBySomeoneOfLevel(1))
+        assertEquals(Ticks(7644), lasts.castBySomeoneOfLevel(OFF_A_SCROLL))
+    }
+
+    /**
+     * And the trade that pays for the clock: it is not spent by acting. A
+     * champion swings out of one and is still hidden for the next round,
+     * which is the whole reason to prefer it to the plain one.
+     */
+    @Test
+    fun `swinging does not spend an improved invisibility`() {
+        val hidden = assertNotNull(
+            world().spellBegunOn(
+                Spell.IMPROVED_INVISIBILITY, PartySlot(0), CASTER, OFF_A_SCROLL,
+            )
+        )
+
+        val swung = hidden.handSwung(PartySlot(0), CarrySlot(0), WhatTheBlowCameTo.Missed)
+
+        assertTrue(swung.running.unseen(PartySlot(0)), "a swing spent the improved one")
+        assertEquals(emptyList(), swung.hidingsGoneSince(hidden), "it reported a loss")
+    }
+
+    /** Nor does an aimed spell, which spends the plain one. */
+    @Test
+    fun `casting something aimed does not spend it either`() {
+        val hidden = assertNotNull(
+            world().spellBegunOn(
+                Spell.IMPROVED_INVISIBILITY, PartySlot(0), CASTER, OFF_A_SCROLL,
+            )
+        )
+
+        val cast = hidden.handCast(PartySlot(0), CarrySlot(0), Spell.CONE_OF_COLD)
+
+        assertTrue(cast.running.unseen(PartySlot(0)))
+    }
+
+    /** What does end it is its clock, which the plain one has nothing of. */
+    @Test
+    fun `its clock is what ends it`() {
+        val hidden = assertNotNull(
+            world().spellBegunOn(
+                Spell.IMPROVED_INVISIBILITY, PartySlot(0), CASTER, OFF_A_SCROLL,
+            )
+        )
+
+        val (left, ended) = hidden.spellsRunDown(Ticks(7644))
+
+        assertEquals(listOf(Spell.IMPROVED_INVISIBILITY), ended.map { it.spell })
+        assertFalse(left.running.unseen(PartySlot(0)))
+    }
+
+    /**
+     * A monster cannot tell the two apart. Both are read off the same pair of
+     * bits wherever being hidden is worth anything, so the improved one buys
+     * exactly the same chance of being passed over — it buys it for longer,
+     * not harder.
+     */
+    @Test
+    fun `it hides exactly as well as the plain one and no better`() {
+        val improved = assertNotNull(
+            world().spellBegunOn(
+                Spell.IMPROVED_INVISIBILITY, PartySlot(0), CASTER, OFF_A_SCROLL,
+            )
+        )
+
+        assertTrue(improved.whoAMonsterCanSee(PartySlot(0), rolling(4)))
+        assertFalse(improved.whoAMonsterCanSee(PartySlot(0), rolling(5)))
+        assertEquals(0, improved.running.hindranceStriking(PartySlot(0)))
+    }
+
+    /**
+     * The two stack, being different conditions rather than two strengths of
+     * one. The game refuses a spell already in force by comparing the bit it
+     * sets against the ones the champion carries, and these two set different
+     * bits — so a champion may hold both, and holding one is no reason to
+     * refuse the other.
+     */
+    @Test
+    fun `the plain one and the improved one sit on the same champion at once`() {
+        val both = assertNotNull(
+            world().hiding(PartySlot(0)).spellBegunOn(
+                Spell.IMPROVED_INVISIBILITY, PartySlot(0), CASTER, OFF_A_SCROLL,
+            ),
+            "the improved one was refused to somebody already hidden",
+        )
+
+        assertEquals(2, both.running.over(PartySlot(0)).size)
+
+        // And a swing spends the plain one and leaves the improved one, so
+        // the champion is still hidden afterwards by the half that survives.
+        val swung = both.handSwung(PartySlot(0), CarrySlot(0), WhatTheBlowCameTo.Missed)
+
+        assertEquals(listOf(Spell.INVISIBILITY), swung.hidingsGoneSince(both).map { it.spell })
+        assertTrue(swung.running.unseen(PartySlot(0)), "the improved one should have held")
+    }
+
+    /** But the same one twice over is refused, which is what keeps a scroll. */
+    @Test
+    fun `a second improved invisibility on the same champion is refused`() {
+        val once = assertNotNull(
+            world().spellBegunOn(
+                Spell.IMPROVED_INVISIBILITY, PartySlot(0), CASTER, OFF_A_SCROLL,
+            )
+        )
+
+        assertNull(
+            once.spellBegunOn(Spell.IMPROVED_INVISIBILITY, PartySlot(0), CASTER, OFF_A_SCROLL),
+        )
+    }
+
+    // --- is the whole party hidden -------------------------------------------
+
+    /** All of them or none: one champion who can be seen is the party seen. */
+    @Test
+    fun `the party count as hidden only once every one of them is`() {
+        assertFalse(world().wholePartyIsHidden, "a bare party counted as hidden")
+
+        val allButOne = (0 until 5).fold(world()) { party, slot ->
+            party.hiding(PartySlot(slot))
+        }
+        assertFalse(allButOne.wholePartyIsHidden, "five of six counted as the party")
+
+        assertTrue(allButOne.hiding(PartySlot(5)).wholePartyIsHidden)
+    }
+
+    /** And the 10' one answers it in a single casting, which is its point. */
+    @Test
+    fun `the ten foot one hides the whole party at once`() {
+        assertTrue(world().allHiding().wholePartyIsHidden)
+    }
+
+    /**
+     * The departure, and the reason for it: a party under the better of the
+     * two spells are hidden, and a question about whether the party are
+     * hidden should say so.
+     *
+     * The game's own test reads the plain spell's bit alone and would answer
+     * no here, which is taken as an oversight — everywhere else that asks
+     * whether a champion can be seen counts both. Pinned so that nobody
+     * quietly restores it.
+     */
+    @Test
+    fun `a party hidden by the improved one count just the same`() {
+        val improved = (0 until 6).fold(world()) { party, slot ->
+            assertNotNull(
+                party.spellBegunOn(
+                    Spell.IMPROVED_INVISIBILITY, PartySlot(slot), CASTER, OFF_A_SCROLL,
+                )
+            )
+        }
+
+        assertTrue(
+            improved.wholePartyIsHidden,
+            "the better of the two hidings failed a question about being hidden",
+        )
+    }
+
+    /** A mixture of the two counts as well, there being nobody left in sight. */
+    @Test
+    fun `one of each hides the party between them`() {
+        val mixed = (0 until 6).fold(world()) { party, slot ->
+            if (slot % 2 == 0) party.hiding(PartySlot(slot))
+            else assertNotNull(
+                party.spellBegunOn(
+                    Spell.IMPROVED_INVISIBILITY, PartySlot(slot), CASTER, OFF_A_SCROLL,
+                )
+            )
+        }
+
+        assertTrue(mixed.wholePartyIsHidden)
+    }
+
+    /** And one of them swinging puts the party back in sight. */
+    @Test
+    fun `one champion acting ends it for the question`() {
+        val all = world().allHiding()
+
+        val swung = all.handSwung(PartySlot(3), CarrySlot(0), WhatTheBlowCameTo.Missed)
+
+        assertFalse(swung.wholePartyIsHidden, "one champion gave the whole party away")
     }
 
     // --- which spells carry the caster's voice -------------------------------

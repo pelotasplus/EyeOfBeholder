@@ -1459,6 +1459,8 @@ class LevelScriptRunner(
                 is Conditional.HasRace ->
                     push(token.race?.let(state::anybodyOfRace) == true)
 
+                is Conditional.IsWholePartyHidden -> push(state.wholePartyIsHidden)
+
                 is Conditional.GetPointerItem.ItemType ->
                     push(ConditionValue.of(state.heldAsAScriptReadsIt?.type?.value ?: 0))
 

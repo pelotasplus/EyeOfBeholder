@@ -351,6 +351,29 @@ data class GameState(
     fun anybodyOfRace(race: Race): Boolean =
         champions.any { it.inTheParty && it.race == race }
 
+    /**
+     * Whether every one of the party is hidden, which a square may ask before
+     * it reacts to them.
+     *
+     * All of them or none: one champion who can be seen is the party seen,
+     * which is what makes it a question about the party rather than six
+     * questions. Somebody in the party but past raising counts like anybody
+     * else, and nothing hides a corpse, so a party carrying one cannot answer
+     * this yes.
+     *
+     * **Either hiding counts.** The game's own test looks at the plain spell
+     * alone and would have a party under the better of the two fail a
+     * question about whether they are hidden — everywhere else the two count
+     * alike, so that is taken as an oversight and not a rule. Our answer is
+     * the one the question is asking.
+     */
+    val wholePartyIsHidden: Boolean
+        get() = champions.withIndex()
+            .filter { (_, who) -> who.inTheParty }
+            .let { them ->
+                them.isNotEmpty() && them.all { (slot, _) -> running.unseen(PartySlot(slot)) }
+            }
+
     /** The same world with [slot] in the hand instead of whatever was. */
     fun holding(slot: ItemIndex) = copy(inHand = slot)
 

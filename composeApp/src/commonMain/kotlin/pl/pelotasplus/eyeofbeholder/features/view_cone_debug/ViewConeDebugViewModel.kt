@@ -3068,8 +3068,13 @@ class ViewConeDebugViewModel(
                     it.copy(game = world)
                 }
 
+                // Named for whoever was carrying it rather than whoever cast
+                // it: a champion under somebody else's scroll is the one it
+                // has just left. The two are the same for a spell over the
+                // party, which is why this went unnoticed until a spell could
+                // sit on one champion and run out on a clock.
                 ended.forEach { over ->
-                    sayOf(over.castBy) { SpellMessages.expires(it, over.spell.calledIt) }
+                    sayOf(over.on ?: over.castBy) { SpellMessages.expires(it, over.spell.calledIt) }
                     playTrack(WARNING)
                 }
 

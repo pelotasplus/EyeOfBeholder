@@ -347,13 +347,17 @@ sealed interface Conditional {
      * sight, which is what the name used to say and the opposite of what the
      * opcode pushes.
      *
-     * Plain invisibility only. A party under improved invisibility do not
-     * satisfy it, the two being different conditions that happen to have the
-     * same consequence everywhere else.
+     * All of them or none — one champion who can be seen is the party seen.
      *
-     * Left out of [conditions] because nothing asks: no script on any of the
-     * sixteen floors carries this opcode, which is why reading one has never
-     * failed on it.
+     * **Either hiding counts here**, which is a deliberate departure: the
+     * game's own test reads the plain spell's bit alone, so a party hidden by
+     * the better of the two would fail a question about whether they are
+     * hidden. Everywhere else the two count alike, so that is taken as an
+     * oversight rather than a rule. See [GameState.wholePartyIsHidden].
+     *
+     * No script on any of the sixteen floors carries this opcode, so nothing
+     * turns on either reading today. It is answered rather than left to throw
+     * because there is now something to answer it with.
      */
     data object IsWholePartyHidden : Conditional {              // 0xDA
         override fun read(reader: ByteReader) = this
@@ -452,7 +456,7 @@ sealed interface Conditional {
             0xDD to HasRace.Companion,
             0xDC to HasClass.Companion,
             0xDB to RollDice,
-//            0xDA to IsWholePartyHidden,
+            0xDA to IsWholePartyHidden,
             0xD7 to OnBash.Companion,
             0xD2 to ImmediateShort.Companion,
 //            0xCE to HasAlignment,

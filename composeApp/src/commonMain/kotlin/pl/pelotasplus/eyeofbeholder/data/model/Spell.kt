@@ -265,7 +265,14 @@ enum class Spell(
             thrownOff = SavingThrow.A_SPELL,
         ),
     ),
-    IMPROVED_INVISIBILITY(21, "improved invisibility", TrackIndex(8)),
+    IMPROVED_INVISIBILITY(
+        21,
+        "improved invisibility",
+        TrackIndex(8),
+        lasts = SpellLasts(base = 5, perLevel = 1),
+        settlesOn = SettlesOn.WHOEVER_IS_POINTED_AT,
+        hidesThem = true,
+    ),
     REMOVE_CURSE(22, "remove curse", TrackIndex(83)),
     CONE_OF_COLD(23, "cone of cold", TrackIndex(118), spreadsAsACone = true),
     HOLD_MONSTER(
