@@ -148,6 +148,20 @@ enum class Spell(
      * see their own.
      */
     val seesTheHidden: Boolean = false,
+
+    /**
+     * Whether it sparks over the box of whoever cast it, as against
+     * [sparksOverTheParty]'s six. A spell laid on somebody else sparks over
+     * their box instead, which is decided where it is laid.
+     */
+    val sparksOverTheCaster: Boolean = false,
+
+    /**
+     * Whether it tells the caster what they are holding — both hands, and
+     * nothing in the pack. Read off a scroll, one hand is the scroll, so what
+     * it names is whatever is held in the other.
+     */
+    val namesWhatIsHeld: Boolean = false,
 ) {
     ARMOUR(1, "armor", TrackIndex(92)),
     BURNING_HANDS(2, "burning hands", TrackIndex(87)),
@@ -175,6 +189,7 @@ enum class Spell(
         7,
         "blur",
         TrackIndex(75),
+        sparksOverTheCaster = true,
         lasts = SpellLasts(base = 3, perLevel = 1),
         settlesOn = SettlesOn.WHOEVER_CAST_IT,
         hindersStriking = 2,
@@ -187,7 +202,13 @@ enum class Spell(
         lasts = SpellLasts(base = 0, perLevel = 5),
         seesTheHidden = true,
     ),
-    IMPROVED_IDENTIFY(9, "improved identify", TrackIndex(20)),
+    IMPROVED_IDENTIFY(
+        9,
+        "improved identify",
+        TrackIndex(20),
+        sparksOverTheCaster = true,
+        namesWhatIsHeld = true,
+    ),
     INVISIBILITY(
         10,
         "invisibility",

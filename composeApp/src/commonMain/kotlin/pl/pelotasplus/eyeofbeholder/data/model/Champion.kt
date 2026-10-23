@@ -446,6 +446,8 @@ value class CarrySlot(val index: Int) {
     companion object {
         const val HANDS = 2
 
+        val BOTH_HANDS = List(HANDS) { CarrySlot(it) }
+
         /** How many a champion has, filled or not. */
         const val ALL_OF_THEM = 27
 

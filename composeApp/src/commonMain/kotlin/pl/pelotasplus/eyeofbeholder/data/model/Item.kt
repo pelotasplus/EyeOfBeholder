@@ -101,6 +101,9 @@ data class Item(
      */
     fun uncursed() = copy(flags = (flags and STUCK.inv()) or IDENTIFIED)
 
+    /** The same thing, known for what it is. A curse on it stays on it. */
+    fun named() = copy(flags = flags or IDENTIFIED)
+
     companion object {
         /**
          * The square an item that is on none lies on: the packed word 0xFFFF,

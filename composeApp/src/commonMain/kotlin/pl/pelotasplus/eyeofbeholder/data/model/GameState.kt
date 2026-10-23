@@ -1946,6 +1946,24 @@ data class GameState(
         return copy(items = items.mapIndexed { at, it -> if (at in freed) it.uncursed() else it })
     }
 
+    /**
+     * Whatever [whose] holds in either hand known for what it is.
+     *
+     * The hands only: the pack is not touched, so a party wanting a thing
+     * named takes it out and holds it first.
+     */
+    fun heldThingsNamed(whose: PartySlot): GameState {
+        val who = championIn(whose) ?: return this
+        val held = CarrySlot.BOTH_HANDS
+            .map { who.holding(it) }
+            .filter { it.isSomething }
+            .map { it.value }
+            .toSet()
+
+        if (held.isEmpty()) return this
+        return copy(items = items.mapIndexed { at, it -> if (at in held) it.named() else it })
+    }
+
     /** Whether [whom] carries anything a lifting of curses would free. */
     fun somethingCursedOn(whom: Champion): Boolean =
         whom.carrying.any { item(it)?.stuckToItsSlot == true }

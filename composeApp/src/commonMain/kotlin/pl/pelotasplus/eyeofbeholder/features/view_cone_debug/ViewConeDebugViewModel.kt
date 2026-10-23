@@ -3887,6 +3887,7 @@ class ViewConeDebugViewModel(
         casting = viewModelScope.launch {
             if (spell.throwsSparks) showTheSparks()
             if (spell.sparksOverTheParty) showTheSparksOverTheParty()
+            if (spell.sparksOverTheCaster) showTheSparksOverTheParty(over = whose)
             // The shield is its own thing: it can be put up again while the
             // spell that raised it still runs, which no other spell can do.
             if (spell == Spell.MYSTIC_DEFENCE) shieldTheParty(whose, spell)
@@ -3899,6 +3900,9 @@ class ViewConeDebugViewModel(
                 unmakeTheSquareAhead()
             } else if (spell.feedsThemAll) {
                 _state.update { it.copy(game = it.game.partyFedToTheBrim()) }
+                drawViewPort()
+            } else if (spell.namesWhatIsHeld) {
+                _state.update { it.copy(game = it.game.heldThingsNamed(whose)) }
                 drawViewPort()
             }
 
