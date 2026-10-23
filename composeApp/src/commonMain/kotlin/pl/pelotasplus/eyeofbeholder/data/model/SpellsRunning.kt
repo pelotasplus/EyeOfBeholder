@@ -106,8 +106,12 @@ data class RunningSpell(
  * The hand itself stays empty: the charge is the spell's and not a thing
  * carried, so nothing can be put into that hand, nothing taken out, and the
  * charge is gone with the spell. A blow with it is a blow like any other,
- * rolled for and landing or not, and the charge is not spent by landing — it
- * strikes as often as the hand can swing until the spell runs out.
+ * rolled for, and the charge goes into the first one that does any harm. A
+ * miss keeps it, and so does a blow the creature is quick enough to take
+ * nothing from.
+ *
+ * Spending it leaves the spell running to its own end, charge and all gone:
+ * its running out is still told when the time comes.
  *
  * [strikesFor] has the caster's level already counted into its base.
  */
@@ -212,6 +216,11 @@ data class SpellsRunning(val all: List<RunningSpell> = emptyList()) {
 
     /** Whether either of [whose]'s hands is charged. */
     fun hasAChargedHand(whose: PartySlot): Boolean = all.any { it.on == whose && it.charged != null }
+
+    /** [whose]'s [hand] with its charge spent, the spell that charged it still running. */
+    fun chargeSpent(whose: PartySlot, hand: CarrySlot) = SpellsRunning(
+        all.map { if (it.on == whose && it.charged?.hand == hand) it.copy(charged = null) else it }
+    )
 
     /**
      * The same again, whatever was there before, and running its whole

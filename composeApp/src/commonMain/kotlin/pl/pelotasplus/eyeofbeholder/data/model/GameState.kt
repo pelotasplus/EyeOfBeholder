@@ -1994,13 +1994,19 @@ data class GameState(
 
     /**
      * [whose]'s [hand] charged by [spell], running its whole duration from
-     * now, or null where it is already running on them.
+     * now, or null where a charge of theirs is still unspent.
+     *
+     * One whose charge has gone into a blow is still running to its end, and
+     * casting again replaces it: there is nothing left of it to refuse for.
      */
     fun handCharged(whose: PartySlot, hand: CarrySlot, spell: Spell, casterLevel: Int): GameState? {
         val dice = spell.chargesAHand ?: return null
         val charge = ChargedHand(hand, dice.copy(base = dice.base + casterLevel))
 
-        return running.begun(spell, whose, casterLevel, on = whose, charged = charge)
+        val spentOnes = SpellsRunning(
+            running.all.filterNot { it.spell == spell && it.on == whose && it.charged == null }
+        )
+        return spentOnes.begun(spell, whose, casterLevel, on = whose, charged = charge)
             ?.let { copy(running = it) }
     }
 

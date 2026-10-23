@@ -55,6 +55,11 @@ class Fighting(
                 after = after.rousedBy(blow.monster)
                     .monsterHurt(blow.monster, blow.damage, kinds, itemTypes, dice)
 
+                // A charge goes into the first blow that does harm.
+                if (world.running.chargeOn(whose, hand) != null) {
+                    after = after.copy(running = after.running.chargeSpent(whose, hand))
+                }
+
                 // Gone from the list, or still standing there as something
                 // else. The one creature that comes back from a killing blow
                 // is paid for and searched all the same: what fell is the form
@@ -149,9 +154,15 @@ class Fighting(
 
         if (dice.roll(1, 20, 0).coerceIn(1, 20) < needed) return Blow.Missed(target.index)
 
-        val charge = world.running.chargeOn(whose, hand)
-        val damage = if (charge != null) damageOf(charge, champion, kind) else damageOf(weapon, champion, kind)
-        return Blow.Hit(target.index, damage)
+        val charge = world.running.chargeOn(whose, hand) ?: return Blow.Hit(
+            target.index,
+            damageOf(weapon, champion, kind),
+        )
+
+        // A charged blow that does nothing is reported as the miss it comes to,
+        // and keeps the charge for the next one.
+        val charged = damageOf(charge, champion, kind)
+        return if (charged.points > 0) Blow.Hit(target.index, charged) else Blow.Missed(target.index)
     }
 
     /**

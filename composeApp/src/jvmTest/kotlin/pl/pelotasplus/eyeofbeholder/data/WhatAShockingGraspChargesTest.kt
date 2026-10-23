@@ -53,8 +53,9 @@ import kotlin.test.assertTrue
  * Shocking grasp, struck at level 5's clerics on 13x8 from 13x9.
  *
  * The spell charges the hand it was not read from: that hand stays empty, and
- * strikes for a d8 and the caster's level until the spell runs out, however
- * often it lands.
+ * its next blow that does harm strikes for a d8 and the caster's level and
+ * spends the charge. A miss, or a creature quick enough to take nothing,
+ * leaves it charged for another try until the spell runs out.
  */
 @Category(NeedsGameData::class)
 class WhatAShockingGraspChargesTest {
@@ -184,20 +185,41 @@ class WhatAShockingGraspChargesTest {
         assertEquals(Damage(2), hit.damage)
     }
 
-    /** Landing does not spend it. The hand is charged after the blow as before. */
+    /**
+     * A single touch: the blow that does harm takes the charge with it, and
+     * the hand is an empty hand again — a fist next time.
+     */
     @Test
-    fun `landing a blow does not spend the charge`() {
+    fun `the first blow that does harm spends the charge`() {
         val struck = swung(world().grasping())
 
+        assertIs<Blow.Hit>(struck.blow)
+        assertNull(struck.world.running.chargeOn(caster, charged), "the charge survived a hit")
+        assertTrue(struck.world.handIsFree(caster, charged))
+
+        // the hand's rest after the first blow, waited out
+        val again = assertIs<Blow.Hit>(swung(struck.world.copy(recovering = emptyList())).blow)
+        assertEquals(Damage(2), again.damage, "the next blow should be a fist's")
+    }
+
+    /** A miss keeps it, for another try. */
+    @Test
+    fun `a miss keeps the charge`() {
+        val alwaysOne = Dice { times, _, modifier -> times + modifier }
+
+        val struck = Fighting(itemTypes, kinds, alwaysOne).strike(world().grasping(), caster, charged)
+
+        assertIs<Blow.Missed>(struck.blow)
         assertNotNull(struck.world.running.chargeOn(caster, charged))
     }
 
     /**
      * A creature quick enough is out of the way of the charge itself: the blow
-     * finds it and takes nothing off it.
+     * finds it, takes nothing off it, and is reported as the miss it comes to —
+     * so the charge is still there for the next one.
      */
     @Test
-    fun `a quick enough creature takes nothing from it`() {
+    fun `a quick enough creature takes nothing, and the charge is kept`() {
         val quick = kinds.map { it.copy(dmgModifierEvade = A_WISPS_EVADE) }
         val dodging = Dice { times, pips, modifier ->
             if (pips == 100) 1 else times * pips + modifier
@@ -205,7 +227,25 @@ class WhatAShockingGraspChargesTest {
 
         val struck = Fighting(itemTypes, quick, dodging).strike(world().grasping(), caster, charged)
 
-        assertEquals(Damage(0), assertIs<Blow.Hit>(struck.blow).damage)
+        assertIs<Blow.Missed>(struck.blow)
+        assertNotNull(struck.world.running.chargeOn(caster, charged))
+    }
+
+    /**
+     * Spent, the spell still runs to its own end — that end is still told —
+     * and casting it again starts a fresh charge rather than being refused.
+     */
+    @Test
+    fun `a spent charge runs on to its end, and may be cast again`() {
+        val spent = swung(world().grasping()).world
+
+        assertTrue(spent.running.all.any { it.spell == Spell.SHOCKING_GRASP }, "the spell stopped running")
+        assertFalse(spent.running.hasAChargedHand(caster))
+
+        assertNotNull(
+            spent.handCharged(caster, charged, Spell.SHOCKING_GRASP, OFF_A_SCROLL),
+            "a fresh grasp was refused over a spent one",
+        )
     }
 
     /** And it goes with the spell's clock, leaving the hand empty and free. */
