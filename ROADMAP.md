@@ -19,7 +19,7 @@ the history instead.
   - [ ] 1c. Monsters casting spells — **L**
   - [ ] 1d. The `SetFlag.MonsterFlag` bits nobody has found a meaning for — **XS** each
 - [ ] **2. A monster's blow does not stop the world** — the original freezes every other clock for the length of one — **S**, but blocked: the pause list names one monster clock twice and another not at all, and which of those is the bug decides whether this is worth writing
-- [ ] **3. The last two things a monster mode can do** — fear, and giving up on a destination. Both have a branch waiting and nothing to trigger them — **S**
+- [ ] **3. The last thing a monster mode can do** — giving up on a destination. It has a branch waiting and nothing to trigger it — **S**
 - [ ] **4. What a script can ask about a thing by name** — needs ITEM.DAT names threaded through — **M**
 - [ ] **5. The words on the buttons are English constants** — they live in `START.EXE` — **L**
 - [ ] **6. A script reads the party where it left them** — and stops writing the whole world back — **M**
@@ -28,6 +28,8 @@ the history instead.
 - [ ] **9. The rest of the audio** — mostly waiting on the features that would make the noise
   - [ ] 9a. The music, which is screen work before it is sound work — **M**
 - [ ] **10. Somebody met when the party are already six** — who has to leave to let them in — **S**
+- [ ] **11. The nightmare on the third floor** — a rest there is a scene and no rest — **S**
+- [ ] **12. Insal leaving in the night** — after a long rest, with some of the party's things — **S**
 
 ## In full
 
@@ -107,16 +109,15 @@ the history instead.
   Written faithfully it pauses 0, 1 and 2 only, which is right for most
   monsters on most floors and does nothing whatever for the temple.
 
-- **The last two things a monster mode can do.** The modes are written and sit
+- **The last thing a monster mode can do.** The modes are written and sit
   behind "Monsters: hunt" in the Debug menu: hunting, wall-following either
   way, pacing, straying either way, and sleeping until the party come near.
+  Being frightened is written too, by the fear spell.
 
-  Two of the same shape are not, and each has its branch waiting where the
-  original has one. A **frightened** monster refuses any step that takes it
-  nearer the party, and nothing frightens anything yet. And a monster **giving
-  up** on a destination it cannot reach drops into straying, one side or the
-  other at random — which cannot happen while the only destination anything is
-  ever given is the party's own square.
+  One of the same shape is not, and it has its branch waiting where the
+  original has one. A monster **giving up** on a destination it cannot reach
+  drops into straying, one side or the other at random — which cannot happen
+  while the only destination anything is ever given is the party's own square.
 
   Three of the ten mode numbers are still one case between them, the one that
   does nothing. One of them counts down a spell; nothing tells them apart.
@@ -231,6 +232,20 @@ the history instead.
   deleted: they keep their slot's items and the party's own table has to let go
   of them without the item table losing what they carried, which is the only
   part of this worth being careful about.
+
+- **The nightmare on the third floor.** Asking to rest anywhere on the third
+  floor plays a scene instead, and the rest does not happen at all — it is
+  asked before anything else about resting, monsters near or not. Nothing
+  answers it here, so a party sleeps there like anywhere else. The scene is
+  the work; the rule is one line in front of the rest.
+
+- **Insal leaving in the night.** A rest of more than four hours, with Insal
+  in a party of five or more, ends with him gone: taken out of the party, the
+  slots closed up behind him, some of what the party carry gone with him and
+  a note left on the floor in his place, and two lines said about it. He can
+  be met and taken along now; nothing takes him away again, so the one
+  companion the game means to lose is a companion for good. Wants the
+  stripping table read rather than guessed, and the note's text.
 
 - **Which of the eighteen the renderer is drawing into is a bare Int.** A
   square in the maze is a `Location` and an absolute thing; where that square
