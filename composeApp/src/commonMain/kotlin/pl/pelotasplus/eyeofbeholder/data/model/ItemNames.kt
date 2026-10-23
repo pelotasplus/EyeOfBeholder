@@ -248,6 +248,10 @@ object ChampionMessages {
 object SpellMessages {
     fun disintegrated(whose: String) = "$whose has been disintegrated!"
 
+    const val FREE_HAND_WANTED = "You must have a free hand for this spell."
+
+    const val ONE_CHARGE_AT_A_TIME = "You can't have two of this spell type active."
+
     /** A spell for one creature cast at a square with nobody on it. */
     const val NO_MONSTER_WITHIN_REACH = "No monster within reach!"
 

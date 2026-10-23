@@ -132,6 +132,9 @@ fun emptyHandIcon(hand: Int) = ItemIconId(FIRST_EMPTY_HAND + hand)
 
 private const val FIRST_EMPTY_HAND = 85
 
+/** The hand a spell has charged, glowing, in place of an empty one. */
+val CHARGED_HAND = ItemIconId(82)
+
 /**
  * The grid laid over a hand its champion cannot strike with, cut from the same
  * sheet as the compass.

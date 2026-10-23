@@ -1992,6 +1992,27 @@ data class GameState(
         return copy(items = items.mapIndexed { at, it -> if (at in held) it.named() else it })
     }
 
+    /**
+     * [whose]'s [hand] charged by [spell], running its whole duration from
+     * now, or null where it is already running on them.
+     */
+    fun handCharged(whose: PartySlot, hand: CarrySlot, spell: Spell, casterLevel: Int): GameState? {
+        val dice = spell.chargesAHand ?: return null
+        val charge = ChargedHand(hand, dice.copy(base = dice.base + casterLevel))
+
+        return running.begun(spell, whose, casterLevel, on = whose, charged = charge)
+            ?.let { copy(running = it) }
+    }
+
+    /**
+     * Whether [whose]'s [hand] has nothing in it — no thing, and no charge.
+     * A charged hand is full, though nothing is in it.
+     */
+    fun handIsFree(whose: PartySlot, hand: CarrySlot): Boolean {
+        val who = championIn(whose) ?: return false
+        return !who.holding(hand).isSomething && running.chargeOn(whose, hand) == null
+    }
+
     /** Whether [whom] carries anything a lifting of curses would free. */
     fun somethingCursedOn(whom: Champion): Boolean =
         whom.carrying.any { item(it)?.stuckToItsSlot == true }

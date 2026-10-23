@@ -95,7 +95,23 @@ data class RunningSpell(
      * one flag cannot say both.
      */
     val spent: Boolean = false,
+
+    /** The hand it has charged, for a spell that charges one — see [ChargedHand]. */
+    val charged: ChargedHand? = null,
 )
+
+/**
+ * A hand a spell has charged, and what a blow with it does.
+ *
+ * The hand itself stays empty: the charge is the spell's and not a thing
+ * carried, so nothing can be put into that hand, nothing taken out, and the
+ * charge is gone with the spell. A blow with it is a blow like any other,
+ * rolled for and landing or not, and the charge is not spent by landing — it
+ * strikes as often as the hand can swing until the spell runs out.
+ *
+ * [strikesFor] has the caster's level already counted into its base.
+ */
+data class ChargedHand(val hand: CarrySlot, val strikesFor: DamageDice)
 
 /**
  * Whom a lasting spell settles on once it is cast.
@@ -167,6 +183,7 @@ data class SpellsRunning(val all: List<RunningSpell> = emptyList()) {
         casterLevel: Int,
         on: PartySlot? = null,
         lent: Int = 0,
+        charged: ChargedHand? = null,
     ): SpellsRunning? {
         if (on == null && isRunning(spell)) return null
         if (on != null && isOn(spell, on)) return null
@@ -184,9 +201,17 @@ data class SpellsRunning(val all: List<RunningSpell> = emptyList()) {
                 ticksLeft = ticks,
                 on = on,
                 lent = lent,
+                charged = charged,
             )
         )
     }
+
+    /** The charge on [whose]'s [hand], if a spell has charged it. */
+    fun chargeOn(whose: PartySlot, hand: CarrySlot): ChargedHand? =
+        all.firstNotNullOfOrNull { spell -> spell.charged?.takeIf { spell.on == whose && it.hand == hand } }
+
+    /** Whether either of [whose]'s hands is charged. */
+    fun hasAChargedHand(whose: PartySlot): Boolean = all.any { it.on == whose && it.charged != null }
 
     /**
      * The same again, whatever was there before, and running its whole

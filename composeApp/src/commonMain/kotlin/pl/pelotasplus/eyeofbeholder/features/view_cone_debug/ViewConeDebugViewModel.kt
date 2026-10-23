@@ -2926,6 +2926,20 @@ class ViewConeDebugViewModel(
     }
 
     /**
+     * The hand the spell was not read from, charged. It was found free before
+     * anything was spent, so this only fails for a charge already running.
+     */
+    private suspend fun chargeTheOtherHand(whose: PartySlot, readFrom: CarrySlot, spell: Spell) {
+        val other = CarrySlot.BOTH_HANDS.first { it != readFrom }
+        val charged = _state.value.game.handCharged(whose, other, spell, ThrownSpell.AS_READ_FROM_A_SCROLL)
+            ?: return
+
+        _state.update { it.copy(game = charged) }
+        drawViewPort()
+        keepTheSpellsRunning()
+    }
+
+    /**
      * Everything on the square ahead frightened off. What is frightened is
      * roused by it, so the fight is kept going for it to run away in.
      */
@@ -3335,7 +3349,11 @@ class ViewConeDebugViewModel(
             return
         }
 
-        val refused = itemTypes?.willSwap(
+        // A charged hand takes nothing and gives nothing up, the way a hand a
+        // curse holds does: the charge is in it, though nothing is.
+        val charged = world.running.chargeOn(champion, slot.slot) != null
+
+        val refused = charged || itemTypes?.willSwap(
             champion = who,
             slot = slot,
             held = world.held,
@@ -3604,6 +3622,7 @@ class ViewConeDebugViewModel(
             champion = champion,
             carrying = champion.carrying.map { world.item(it) },
             arrows = world.stackedIn(champion.holding(CarrySlot.QUIVER)),
+            charged = CarrySlot.BOTH_HANDS.filter { world.running.chargeOn(sheet.slot, it) != null }.toSet(),
         )
     }
 
@@ -3870,6 +3889,25 @@ class ViewConeDebugViewModel(
             return
         }
 
+        // A spell that charges a hand wants the other one free, and a hand
+        // already charged is not free though nothing is in it. Asked in that
+        // order, which is why reading a second one off a scroll is answered
+        // with the free hand and not with the second charge.
+        if (spell.chargesAHand != null) {
+            val other = CarrySlot.BOTH_HANDS.first { it != hand }
+            val refusal = when {
+                !_state.value.game.handIsFree(whose, other) -> SpellMessages.FREE_HAND_WANTED
+                _state.value.game.running.hasAChargedHand(whose) -> SpellMessages.ONE_CHARGE_AT_A_TIME
+                else -> null
+            }
+            if (refusal != null) {
+                say(refusal)
+                viewModelScope.launch { playTrack(WARNING) }
+                drawWords()
+                return
+            }
+        }
+
         // And a spell the party are already under costs nothing either. Asked
         // here rather than where it is put on them, because by then the hand
         // is resting and the scroll is gone: the refusal has to come before
@@ -3930,6 +3968,7 @@ class ViewConeDebugViewModel(
             // The shield is its own thing: it can be put up again while the
             // spell that raised it still runs, which no other spell can do.
             if (spell == Spell.MYSTIC_DEFENCE) shieldTheParty(whose, spell)
+            else if (spell.chargesAHand != null) chargeTheOtherHand(whose, hand, spell)
             else if (spell.lasts != null) runOverTheParty(whose, spell)
             else if (spell.spreadsAsACone) {
                 freezeWhatIsInFront(ThrownSpell.AS_READ_FROM_A_SCROLL)
@@ -4993,6 +5032,7 @@ class ViewConeDebugViewModel(
                     sheet = openSheet(),
                     carrying = { _state.value.game.item(it) },
                     recovering = { whose, hand -> _state.value.game.isRecovering(whose, hand) },
+                    charged = { whose, hand -> _state.value.game.running.chargeOn(whose, hand) != null },
                     reporting = { whose, hand -> _state.value.game.reportIn(whose, hand) },
                     hurt = { whose -> _state.value.game.damageShownOn(whose) },
                     swapping = _state.value.swapping

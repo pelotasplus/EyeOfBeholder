@@ -58,6 +58,8 @@ class PlayField(
         carrying: (ItemIndex) -> Item? = { null },
         /** Whether that hand has yet to come back to rest from a swing. */
         recovering: (PartySlot, CarrySlot) -> Boolean = { _, _ -> false },
+        /** Whether a spell has charged that hand, which shows it glowing. */
+        charged: (PartySlot, CarrySlot) -> Boolean = { _, _ -> false },
         /** What that hand's last swing came to, while the slot is still saying. */
         reporting: (PartySlot, CarrySlot) -> WhatTheBlowCameTo? = { _, _ -> null },
         /** What that champion has just been hit for, while it is still showing. */
@@ -96,7 +98,7 @@ class PlayField(
         // a champion's own page takes the six boxes' side of the screen
         if (sheet == null) {
             drawParty(
-                party, portraits, metPortraits, carrying, recovering, reporting, hurt, swapping,
+                party, portraits, metPortraits, carrying, recovering, charged, reporting, hurt, swapping,
                 shielded, underASpell, framedYellow, unseen, sparksOverTheParty,
             )
         } else if (!underThePage) {
@@ -163,7 +165,7 @@ class PlayField(
         drawSheetBars(sheet.champion)
 
         when (sheet.page) {
-            CharacterSheet.Page.BELONGINGS -> drawCarried(sheet.carrying, sheet.arrows)
+            CharacterSheet.Page.BELONGINGS -> drawCarried(sheet.carrying, sheet.arrows, sheet.charged)
             CharacterSheet.Page.STATS -> drawStats(sheet.champion)
         }
     }
@@ -309,7 +311,7 @@ class PlayField(
         }
     }
 
-    private fun drawCarried(carrying: List<Item?>, arrows: Int) {
+    private fun drawCarried(carrying: List<Item?>, arrows: Int, charged: Set<CarrySlot>) {
         inventorySlotPositions.forEach { slot ->
             if (slot.isQuiver) {
                 drawTally(slot, arrows)
@@ -317,11 +319,12 @@ class PlayField(
             }
 
             val icons = itemIcons ?: return@forEach
-            val item = carrying.getOrNull(slot.slot.index) ?: return@forEach
+            val item = carrying.getOrNull(slot.slot.index)
+            val shown = item?.icon ?: CHARGED_HAND.takeIf { slot.slot in charged } ?: return@forEach
 
             val colours = icons.palette ?: palette
             drawIcon(
-                icon = carriedIcon(icons, colours, item, item.icon),
+                icon = carriedIcon(icons, colours, item, shown),
                 colours = colours,
                 left = slot.iconLeft,
                 top = slot.iconTop,
@@ -444,6 +447,7 @@ class PlayField(
         metPortraits: Cps?,
         carrying: (ItemIndex) -> Item?,
         recovering: (PartySlot, CarrySlot) -> Boolean,
+        charged: (PartySlot, CarrySlot) -> Boolean,
         reporting: (PartySlot, CarrySlot) -> WhatTheBlowCameTo?,
         hurt: (PartySlot) -> Damage?,
         swapping: PartySlot?,
@@ -472,6 +476,7 @@ class PlayField(
                 portraits = portraits,
                 carrying = carrying,
                 recovering = { hand -> recovering(PartySlot(slot), CarrySlot(hand)) },
+                charged = { hand -> charged(PartySlot(slot), CarrySlot(hand)) },
                 reporting = { hand -> reporting(PartySlot(slot), CarrySlot(hand)) },
                 hurt = hurt(PartySlot(slot)),
                 swapping = swapping?.index == slot,
@@ -563,6 +568,7 @@ class PlayField(
         hurt: Damage?,
         swapping: Boolean = false,
         unseen: Boolean = false,
+        charged: (Int) -> Boolean = { false },
     ) {
         // Past raising, the face goes and the rest of the box stays.
         if (champion.deadForGood) {
@@ -612,7 +618,7 @@ class PlayField(
         // Down but not past raising: the face stays, under a grid.
         if (champion.dead && !champion.deadForGood) drawOverTheFace(FaceStandIn.BEATEN, box)
 
-        drawHands(champion, box, carrying, recovering, reporting)
+        drawHands(champion, box, carrying, recovering, reporting, charged)
         drawHitPointBar(champion, box)
 
         // Last of all, over the face and the bars alike: it is meant to be the
@@ -647,6 +653,7 @@ class PlayField(
         carrying: (ItemIndex) -> Item?,
         recovering: (Int) -> Boolean,
         reporting: (Int) -> WhatTheBlowCameTo?,
+        charged: (Int) -> Boolean,
     ) {
         val icons = itemIcons ?: return
 
@@ -660,8 +667,13 @@ class PlayField(
 
             val held = champion.carrying.getOrNull(hand)?.let(carrying)
             val colours = icons.palette ?: palette
+            val shown = when {
+                held != null -> held.icon
+                charged(hand) -> CHARGED_HAND
+                else -> emptyHandIcon(hand)
+            }
             drawIcon(
-                icon = carriedIcon(icons, colours, held, held?.icon ?: emptyHandIcon(hand)),
+                icon = carriedIcon(icons, colours, held, shown),
                 colours = colours,
                 left = box.handLeft,
                 top = box.handTop(hand),

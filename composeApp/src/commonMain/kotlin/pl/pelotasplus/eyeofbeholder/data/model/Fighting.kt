@@ -149,7 +149,26 @@ class Fighting(
 
         if (dice.roll(1, 20, 0).coerceIn(1, 20) < needed) return Blow.Missed(target.index)
 
-        return Blow.Hit(target.index, damageOf(weapon, champion, kind))
+        val charge = world.running.chargeOn(whose, hand)
+        val damage = if (charge != null) damageOf(charge, champion, kind) else damageOf(weapon, champion, kind)
+        return Blow.Hit(target.index, damage)
+    }
+
+    /**
+     * A charged hand strikes for its charge, strength counted as for any blow
+     * and softened as a plain weapon is. Landing is not the end of it: a
+     * creature quick enough is out of the way of the charge itself, and takes
+     * none of it though the blow found it.
+     */
+    private fun damageOf(charge: ChargedHand, champion: Champion, kind: MonsterProperty?): Damage {
+        val rolled = charge.strikesFor.let { dice.roll(it.times, it.pips, it.base) }
+        val dealt = Damage((rolled + champion.abilities.strengthDamageBonus).coerceAtLeast(0))
+        val softened = kind?.immunities
+            ?.softened(dealt, DealtBy.AWeapon(enchantment = 0, edged = false))
+            ?: dealt
+
+        if (kind != null && dice.roll(1, 100, 0) < kind.dmgModifierEvade) return Damage(0)
+        return softened
     }
 
     /**

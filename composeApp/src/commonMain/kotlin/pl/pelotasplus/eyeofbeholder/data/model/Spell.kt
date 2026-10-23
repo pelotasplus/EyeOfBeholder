@@ -171,6 +171,13 @@ enum class Spell(
 
     /** Whether it frightens off everything on the square ahead — see [Frightening]. */
     val frightensWhatIsAhead: Boolean = false,
+
+    /**
+     * What a hand it charges strikes for, before its caster's level is added
+     * — see [ChargedHand]. Casting it wants the caster's other hand empty,
+     * and only one hand of theirs charged at a time.
+     */
+    val chargesAHand: DamageDice? = null,
 ) {
     ARMOUR(1, "armor", TrackIndex(92)),
     BURNING_HANDS(2, "burning hands", TrackIndex(87)),
@@ -193,7 +200,15 @@ enum class Spell(
         ),
     ),
     SHIELD(5, "shield", TrackIndex(92)),
-    SHOCKING_GRASP(6, "shocking grasp", TrackIndex(88)),
+    SHOCKING_GRASP(
+        6,
+        "shocking grasp",
+        TrackIndex(88),
+        sparksOverTheCaster = true,
+        lasts = SpellLasts(base = 0, perLevel = 1),
+        settlesOn = SettlesOn.WHOEVER_CAST_IT,
+        chargesAHand = DamageDice(times = 1, pips = 8, base = 0),
+    ),
     BLUR(
         7,
         "blur",

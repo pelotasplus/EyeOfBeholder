@@ -1741,6 +1741,8 @@ class ViewPortGoldenTest {
         framedYellow: List<Int> = emptyList(),
         /** And which cannot be seen, which darkens their face nearly away. */
         unseen: List<Int> = emptyList(),
+        /** Which hands a spell has charged, by champion and hand. */
+        charged: Set<Pair<Int, Int>> = emptySet(),
         /** Whether a detect magic is running, which draws what is magical blue. */
         magicShowing: Boolean = false,
         sparks: SparksOverTheParty? = null,
@@ -1808,6 +1810,7 @@ class ViewPortGoldenTest {
             metPortraits = cps.loadCps(NpcMeeting.FACES).getOrThrow(),
             carrying = { slot -> world.item(slot) },
             recovering = { whose, hand -> (whose.index to hand.index) in swung },
+            charged = { whose, hand -> (whose.index to hand.index) in charged },
             reporting = { whose, hand -> reported[whose.index to hand.index] },
             hurt = { whose -> splattered[whose.index] },
             swapping = swapping?.let(::PartySlot),
@@ -2228,6 +2231,24 @@ class ViewPortGoldenTest {
                 y = 11,
                 blurred = listOf(0, 2),
                 framedYellow = listOf(0, 1),
+            ),
+        )
+
+    /**
+     * The first champion's second hand charged by a shocking grasp: the hand
+     * is empty, as a charged hand always is, and shows the charge glowing
+     * where the empty hand would be.
+     */
+    @Test
+    fun `party panel with a hand charged`() =
+        checkGolden(
+            "party-panel-charged-hand",
+            partyOver(
+                level = "LEVEL4.INF",
+                x = 15,
+                y = 11,
+                lendingTo = 0 to ItemIndex(ItemIndex.NOTHING),
+                charged = setOf(0 to 1),
             ),
         )
 

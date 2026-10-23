@@ -242,6 +242,8 @@ data class OpenSheet(
      * as empty rather than as a box nothing has been drawn in.
      */
     val arrows: Int = 0,
+    /** The hands a spell has charged, shown glowing though nothing is in them. */
+    val charged: Set<CarrySlot> = emptySet(),
 )
 
 /** What a click on an open [CharacterSheet] asks for. */
