@@ -51,6 +51,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.AVortex
 import pl.pelotasplus.eyeofbeholder.data.model.Burst
 import pl.pelotasplus.eyeofbeholder.data.model.Fighting
 import pl.pelotasplus.eyeofbeholder.data.model.FleshToStone
+import pl.pelotasplus.eyeofbeholder.data.model.Frightening
 import pl.pelotasplus.eyeofbeholder.data.model.THROWN_CPS
 import pl.pelotasplus.eyeofbeholder.data.model.HandRecovering
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterInstance
@@ -2924,6 +2925,18 @@ class ViewConeDebugViewModel(
         renderViewPort()
     }
 
+    /**
+     * Everything on the square ahead frightened off. What is frightened is
+     * roused by it, so the fight is kept going for it to run away in.
+     */
+    private fun frightenWhatIsAhead() {
+        val sublevel = _state.value.inf?.subLevels?.getOrNull(_state.value.subLevel) ?: return
+
+        _state.update { it.copy(game = Frightening(kinds = sublevel.monsters).castAt(it.game)) }
+        renderViewPort()
+        keepTheFightGoing()
+    }
+
     /** The square the party are looking at, which is the only one aimed at. */
     private fun theSquareAhead(): Location =
         _state.value.game.party.facing.oneStepFrom(_state.value.game.party.position)
@@ -3932,6 +3945,8 @@ class ViewConeDebugViewModel(
                 drawViewPort()
             } else if (spell.turnsTheNearestAheadToStone) {
                 turnTheNearestAheadToStone(whose)
+            } else if (spell.frightensWhatIsAhead) {
+                frightenWhatIsAhead()
             }
 
             runTriggersAt(

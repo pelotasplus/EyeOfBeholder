@@ -90,6 +90,15 @@ data class MonsterInstance(
      */
     val stone: Boolean = false,
     /**
+     * How many more of its own walks it spends getting away from the party —
+     * see [scaredOff]. None for one that is not afraid.
+     *
+     * Counted in walks rather than in time, and only a walk counts: a turn
+     * spent swinging or shooting does not run it down, and a monster with
+     * nowhere to go still spends one standing where it is.
+     */
+    val afraidFor: Int = 0,
+    /**
      * Whether it has been roused. The pair on level 5 stand talking until
      * somebody hits one of them; a monster nobody has provoked is scenery.
      */
@@ -225,11 +234,38 @@ data class MonsterInstance(
      * The same monster [by] hit points worse off, showing it, and no longer
      * willing to be talked to.
      */
+    /**
+     * The same creature having been hurt. A blow also ends being afraid: one
+     * chased down and struck from behind turns and fights.
+     */
     fun hurt(by: Damage) = copy(
         hitPoints = hitPoints.copy(current = hitPoints.current - by.points),
         struck = true,
         provoked = true,
+        afraidFor = 0,
     )
+
+    val afraid: Boolean get() = afraidFor > 0
+
+    /**
+     * The same creature frightened off by [party]: it turns its back on them
+     * where it stands, and spends its next [WALKS_AFRAID] walks getting away.
+     *
+     * Turning is all that happens now. Its back to the party is what stops it
+     * swinging, since a monster only ever swings at the square it faces — and
+     * it is roused by being scared, so even one that was standing about takes
+     * its turns from here on.
+     */
+    fun scaredOff(party: Location): MonsterInstance {
+        val away = Bearing.from(location, party)?.turned(HALF_A_TURN)
+            ?.let { Direction.entries[it.eighths / 2] }
+            ?: direction
+
+        return copy(afraidFor = WALKS_AFRAID, provoked = true, direction = away)
+    }
+
+    /** The same creature a walk closer to not being afraid. */
+    fun aWalkLessAfraid() = copy(afraidFor = (afraidFor - 1).coerceAtLeast(0))
 
     /**
      * The same creature come back as the next kind on its floor's list, drawn
@@ -337,6 +373,15 @@ data class MonsterInstance(
     companion object {
         /** The mode a level gives something that talks before it fights. */
         const val WAITING_TO_SEE = 8
+
+        /**
+         * How many walks a fright lasts: the last of them is the one it turns
+         * back on, so it spends one fewer getting away. Transcribed.
+         */
+        const val WALKS_AFRAID = 20
+
+        /** Four eighths of a turn: facing the other way. */
+        private const val HALF_A_TURN = 4
 
         /** Past this many squares nothing notices the party at all. */
         private const val OUT_OF_SIGHT = 4

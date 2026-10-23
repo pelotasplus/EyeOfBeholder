@@ -23,7 +23,7 @@ package pl.pelotasplus.eyeofbeholder.data.model
  * @property calledIt what a player sees it called, capitals and all
  * @property heardAs what is heard when it is cast, or nothing for the silent
  * @property throwsSparks whether casting it scatters [SparksInTheRoom] across
- *   the view. Five of the seventy do, and the rest are either shown on the
+ *   the view. Six of the seventy do, and the rest are either shown on the
  *   portrait of whoever cast them or not shown at all.
  * @property sparksOverTheParty whether casting it throws [SparksOverTheParty]
  *   over every portrait, which is what the spells laid on the whole party do.
@@ -168,6 +168,9 @@ enum class Spell(
      * stone, for good — see [FleshToStone].
      */
     val turnsTheNearestAheadToStone: Boolean = false,
+
+    /** Whether it frightens off everything on the square ahead — see [Frightening]. */
+    val frightensWhatIsAhead: Boolean = false,
 ) {
     ARMOUR(1, "armor", TrackIndex(92)),
     BURNING_HANDS(2, "burning hands", TrackIndex(87)),
@@ -293,7 +296,7 @@ enum class Spell(
         ),
     ),
     VAMPIRIC_TOUCH(18, "vampiric touch", TrackIndex(102)),
-    FEAR(19, "fear", TrackIndex(103)),
+    FEAR(19, "fear", TrackIndex(103), throwsSparks = true, frightensWhatIsAhead = true),
     ICE_STORM(
         20,
         "ice storm",

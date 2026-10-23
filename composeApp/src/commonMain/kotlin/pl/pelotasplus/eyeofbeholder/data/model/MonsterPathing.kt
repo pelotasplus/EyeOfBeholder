@@ -84,6 +84,28 @@ class MonsterPathing(
     }
 
     /**
+     * One step of [monster]'s away from [party], for one that is afraid.
+     *
+     * The same search a walk towards them makes, with the heading turned the
+     * other way and one more refusal: no step that ends nearer the party than
+     * it started, by the game's own measure. A step that keeps the same
+     * distance is allowed, so a frightened thing edges sideways along a wall.
+     * One with nowhere it may go stays where it is, its back still turned.
+     */
+    fun awayFrom(
+        world: GameState,
+        monster: MonsterInstance,
+        party: Location,
+        wayRound: WayRound,
+    ): MonsterStepping.Stepped {
+        val from = Location(monster.x, monster.y)
+        val bearing = Bearing.from(from, party)?.turned(HALF_A_TURN)
+            ?: return MonsterStepping.Stepped.Refused
+
+        return fanningOut(world, monster, from, bearing, wayRound, keepingAwayFrom = party)
+    }
+
+    /**
      * The destination is the very next square, so the walk is over.
      *
      * A monster that has arrived turns to face the square and stops short of
@@ -131,6 +153,7 @@ class MonsterPathing(
         from: Location,
         bearing: Bearing,
         wayRound: WayRound,
+        keepingAwayFrom: Location? = null,
     ): MonsterStepping.Stepped {
         var heading = Bearing.of(monster.direction)
         val off = heading.clockwiseTo(bearing)
@@ -140,9 +163,14 @@ class MonsterPathing(
             heading = heading.turned(if (off >= 5) -by else by)
         }
 
+        val notNearer = keepingAwayFrom?.blocksFrom(from)
+
         wayRound.fan.forEach { round ->
             val way = heading.turned(round).asDirection ?: return@forEach
-            val stepped = stepping.step(world, monster, way.oneStepFrom(from), way)
+            val onto = way.oneStepFrom(from)
+            if (notNearer != null && keepingAwayFrom.blocksFrom(onto) < notNearer) return@forEach
+
+            val stepped = stepping.step(world, monster, onto, way)
             if (stepped !is MonsterStepping.Stepped.Refused) return stepped
         }
 
@@ -153,6 +181,9 @@ class MonsterPathing(
         kinds.firstOrNull { it.id == monster.type.value }
 
     private companion object {
+        /** Four eighths of a turn: the other way. */
+        const val HALF_A_TURN = 4
+
         /**
          * Which way to come at a square that lies diagonally, by the diagonal
          * and by the way the monster faces. Transcribed; a monster

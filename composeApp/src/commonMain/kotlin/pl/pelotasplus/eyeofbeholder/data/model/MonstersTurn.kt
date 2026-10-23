@@ -197,26 +197,37 @@ class MonstersTurn(
 
         swungBy(now, hunting, walking)?.let { return it }
 
+        // A fright runs down a walk at a time, and only here: a turn that ended
+        // in a swing or a shot never got this far. The last walk of it is the
+        // one the monster turns back on.
+        val walker = if (hunting.afraid) hunting.aWalkLessAfraid() else hunting
+        val ready = if (walker === hunting) now else now.holding(walker)
+
+        if (walker.afraid) {
+            if (walking == null) return ready
+            return walking.awayFrom(ready, walker, ready.party.position, wayRound).worldOr(ready)
+        }
+
         if (walking == null) {
             // Rooted, all a monster out of reach can do is turn towards the
             // party. It reaches only the square it faces, so without this it
             // is dangerous from one side and harmless from the other three.
-            return hunting.facingThe(now.party)
-                ?.let { now.monsterTurned(hunting.index, it) }
-                ?: now
+            return walker.facingThe(ready.party)
+                ?.let { ready.monsterTurned(walker.index, it) }
+                ?: ready
         }
 
         val after = when (
-            val went = walking.towards(now, hunting, now.party.position, wayRound)
+            val went = walking.towards(ready, walker, ready.party.position, wayRound)
         ) {
             is MonsterStepping.Stepped.Moved -> went.world
             is MonsterStepping.Stepped.Turned -> went.world
-            MonsterStepping.Stepped.Refused -> now
+            MonsterStepping.Stepped.Refused -> ready
         }
 
-        if (kinds.firstOrNull { it.id == hunting.type.value }?.hitsAsItMoves != true) return after
+        if (kinds.firstOrNull { it.id == walker.type.value }?.hitsAsItMoves != true) return after
 
-        val moved = after.monsters.firstOrNull { it.index == hunting.index } ?: return after
+        val moved = after.monsters.firstOrNull { it.index == walker.index } ?: return after
         return swungBy(after, moved, walking) ?: after
     }
 

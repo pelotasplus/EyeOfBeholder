@@ -57,6 +57,9 @@ value class MonsterImmunities(private val written: Int) {
      */
     val untouchedByThisMagic: Boolean get() = written and NOTHING_OF_THE_SORT != 0
 
+    /** Whether it cannot be frightened off, whatever the throw. */
+    val neverAfraid: Boolean get() = written and NEVER_AFRAID != 0
+
     /**
      * What a blow of [damage] comes to once this has turned some of it aside.
      *
@@ -98,6 +101,7 @@ value class MonsterImmunities(private val written: Int) {
         const val NOTHING_UNDER_PLUS_TWO = 0x1000
 
         const val NEVER_HELD = 0x2
+        const val NEVER_AFRAID = 0x4
         const val NOTHING_OF_THE_SORT = 0x10
 
         const val BLADES_HALVED = 0x100
