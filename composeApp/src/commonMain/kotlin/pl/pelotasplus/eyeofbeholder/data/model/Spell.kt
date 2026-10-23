@@ -23,7 +23,7 @@ package pl.pelotasplus.eyeofbeholder.data.model
  * @property calledIt what a player sees it called, capitals and all
  * @property heardAs what is heard when it is cast, or nothing for the silent
  * @property throwsSparks whether casting it scatters [SparksInTheRoom] across
- *   the view. Four of the seventy do, and the rest are either shown on the
+ *   the view. Five of the seventy do, and the rest are either shown on the
  *   portrait of whoever cast them or not shown at all.
  * @property sparksOverTheParty whether casting it throws [SparksOverTheParty]
  *   over every portrait, which is what the spells laid on the whole party do.
@@ -162,6 +162,12 @@ enum class Spell(
      * it names is whatever is held in the other.
      */
     val namesWhatIsHeld: Boolean = false,
+
+    /**
+     * Whether it turns the creature on the square ahead nearest its caster to
+     * stone, for good — see [FleshToStone].
+     */
+    val turnsTheNearestAheadToStone: Boolean = false,
 ) {
     ARMOUR(1, "armor", TrackIndex(92)),
     BURNING_HANDS(2, "burning hands", TrackIndex(87)),
@@ -327,7 +333,13 @@ enum class Spell(
         throwsSparks = true,
         unmakesTheSquareAhead = true,
     ),
-    FLESH_TO_STONE(27, "flesh to stone", TrackIndex(68)),
+    FLESH_TO_STONE(
+        27,
+        "flesh to stone",
+        TrackIndex(68),
+        throwsSparks = true,
+        turnsTheNearestAheadToStone = true,
+    ),
     STONE_TO_FLESH(
         28,
         "stone to flesh",

@@ -39,6 +39,13 @@ sealed interface Blow {
 
     data class Missed(val monster: MonsterSlot) : Blow
 
+    /**
+     * A monster turned to stone, broken apart by a blow struck by hand. No
+     * roll and no damage: whatever lands on stone breaks it, and it is gone
+     * as surely as if it had been killed, with what that is worth.
+     */
+    data class Shattered(val monster: MonsterSlot) : Blow
+
     data class Hit(val monster: MonsterSlot, val damage: Damage) : Blow
 
     /**

@@ -2,6 +2,7 @@ package pl.pelotasplus.eyeofbeholder.data.model
 
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.toImmutableList
+import kotlin.math.abs
 
 /**
  * A 256-color VGA palette parsed from a .PAL file.
@@ -66,6 +67,33 @@ data class Palette(
     val unseenFadeTable: List<Int> by lazy {
         fadeTableTowards(FADE_ROOT_COLOR, UNSEEN_WEIGHT)
     }
+
+    /**
+     * Palette-index remap that turns a colour to stone: each colour to the
+     * grey of this palette nearest its own brightness, so a monster turned to
+     * stone keeps its face and its folds and loses only its colour.
+     *
+     * Ours, not the game's. The game draws stone as one flat colour over the
+     * whole shape, the same way it draws a blow's flash, and that reads as a
+     * hole in the view rather than as a statue.
+     *
+     * Grey is whatever the palette has with its three channels close
+     * together; a palette with none falls back to the nearest brightness of
+     * any colour, which is never worse than the flat shape.
+     */
+    val stoneTable: List<Int> by lazy {
+        val greys = (1 until 256).filter { colors[it].spread <= GREY_SPREAD }
+            .ifEmpty { (1 until 256).toList() }
+
+        List(256) { index ->
+            if (index == 0) 0
+            else greys.minBy { abs(colors[it].brightness - colors[index].brightness) }
+        }
+    }
+
+    private val RGB.brightness: Int get() = (red * 299 + green * 587 + blue * 114) / 1000
+
+    private val RGB.spread: Int get() = maxOf(red, green, blue) - minOf(red, green, blue)
 
     /**
      * Every colour shifted [weight] of the way toward palette entry [root]
@@ -167,5 +195,11 @@ data class Palette(
 
         /** Most of the way to the same dark entry, for a face that is not there. */
         private const val UNSEEN_WEIGHT = 200
+
+        /**
+         * How far apart a colour's channels may be, on the 8-bit scale, and it
+         * still be counted a grey a statue can be cut from.
+         */
+        private const val GREY_SPREAD = 16
     }
 }

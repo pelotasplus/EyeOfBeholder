@@ -1006,7 +1006,7 @@ class ViewConeRepositoryImpl(
                         place = seenAt,
                         mirrored = facing.mirrored && monster.striking == null,
                         scaleSteps = block.scaleSteps,
-                        struck = monster.struck,
+                        look = monster.look,
                         named = monster.named(sublevel),
                     )
                 }

@@ -248,6 +248,12 @@ object ChampionMessages {
 object SpellMessages {
     fun disintegrated(whose: String) = "$whose has been disintegrated!"
 
+    /** A spell for one creature cast at a square with nobody on it. */
+    const val NO_MONSTER_WITHIN_REACH = "No monster within reach!"
+
+    /** What is left of a monster turned to stone and struck by hand. */
+    const val CRUMBLES_TO_DUST = "The monster crumbles to dust!"
+
     /** Said whenever anybody casts anything, before whatever comes of it. */
     fun casts(whose: String, spell: String) = "$whose casts $spell."
 

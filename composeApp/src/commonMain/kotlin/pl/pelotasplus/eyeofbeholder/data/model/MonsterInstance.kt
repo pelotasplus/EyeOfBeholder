@@ -81,6 +81,15 @@ data class MonsterInstance(
     /** Hit this instant, and so drawn as a silhouette until the moment passes. */
     val struck: Boolean = false,
     /**
+     * Turned to stone, for good: nothing turns a monster back.
+     *
+     * It stands where it stood and does nothing at all. Anything thrown or
+     * swung at it finds it, and a blow struck by hand breaks it apart — see
+     * [Blow.Shattered]. It still fills its square, so it still stands in the
+     * way, and it still keeps a party beside it from sleeping.
+     */
+    val stone: Boolean = false,
+    /**
      * Whether it has been roused. The pair on level 5 stand talking until
      * somebody hits one of them; a monster nobody has provoked is scenery.
      */
@@ -179,6 +188,20 @@ data class MonsterInstance(
      * blow because its hit points happen to read as none.
      */
     val couldBeHurt: Boolean get() = hitPoints != UNROLLED
+
+    /**
+     * How it is drawn other than in its own colours, if it is. A blow's flash
+     * shows over stone, so a statue struck lights up like anything else.
+     */
+    val look: MonsterLook?
+        get() = when {
+            struck -> MonsterLook.STRUCK
+            stone -> MonsterLook.STONE
+            else -> null
+        }
+
+    /** The same monster turned to stone. */
+    fun turnedToStone() = copy(stone = true)
 
     /**
      * The same monster with what it can take rolled from its kind's dice.

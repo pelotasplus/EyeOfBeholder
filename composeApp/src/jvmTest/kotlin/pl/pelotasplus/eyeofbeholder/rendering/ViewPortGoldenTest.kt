@@ -182,6 +182,68 @@ class ViewPortGoldenTest {
         )
 
     /**
+     * The nearer cleric turned to stone: every shade of it kept, in grey,
+     * beside the other in its own colours.
+     */
+    @Test
+    fun `level5 a monster turned to stone`() =
+        checkGolden(
+            "level5-monster-stone",
+            renderFrame("LEVEL5.INF", x = 13, y = 9, direction = Direction.NORTH) { monsters ->
+                monsters.map { if (it.place == SquarePlace.SOUTH_WEST) it.turnedToStone() else it }
+            },
+        )
+
+    /**
+     * Statues across the dungeon, chosen for range: kinds that were grey to
+     * begin with, bright ones, and dark-robed ones, which stay dark because
+     * stone keeps a colour's brightness.
+     */
+    @Test
+    fun `stone - guards that were grey to begin with`() =
+        checkGolden("stone-level1-guards", withKindStoned("LEVEL1.INF", 5, 7, Direction.WEST, kind = 0))
+
+    @Test
+    fun `stone - grey hoods beside a green one`() =
+        checkGolden("stone-level6-hoods", withKindStoned("LEVEL6.INF", 2, 22, Direction.EAST, kind = 2))
+
+    @Test
+    fun `stone - a shelled beast`() =
+        checkGolden("stone-level11-shelled", withKindStoned("LEVEL11.INF", 13, 23, Direction.NORTH, kind = 0))
+
+    @Test
+    fun `stone - a furred beast`() =
+        checkGolden("stone-level12-furred", withKindStoned("LEVEL12.INF", 2, 30, Direction.NORTH, kind = 0))
+
+    @Test
+    fun `stone - a medusa`() =
+        checkGolden("stone-level13-medusa", withKindStoned("LEVEL13.INF", 21, 9, Direction.SOUTH, kind = 0))
+
+    @Test
+    fun `stone - a dark robe`() =
+        checkGolden("stone-level15-dark-robe", withKindStoned("LEVEL15.INF", 0, 12, Direction.NORTH, kind = 2))
+
+    @Test
+    fun `stone - a beholder`() =
+        checkGolden("stone-level9-beholder", withKindStoned("LEVEL9.INF", 24, 1, Direction.NORTH, kind = 2))
+
+    /**
+     * And struck, the flash shows over the stone: a statue hit lights up the
+     * way anything does. Checked against the frame that already exists for a
+     * living cleric struck — identical to the byte is the claim.
+     */
+    @Test
+    fun `level5 a statue struck flashes as anything does`() =
+        checkGolden(
+            "level5-monster-struck",
+            renderFrame("LEVEL5.INF", x = 13, y = 9, direction = Direction.NORTH) { monsters ->
+                monsters.map {
+                    if (it.place == SquarePlace.SOUTH_WEST) it.turnedToStone().copy(struck = true) else it
+                }
+            },
+        )
+
+    /**
      * The same two clerics as a kind nobody can see, with nothing running to
      * see them by — so the corridor is drawn empty.
      *
@@ -946,6 +1008,12 @@ class ViewPortGoldenTest {
 
     private fun checkGolden(name: String, viewPort: ViewPort) =
         checkGolden(name, viewPort.toImage())
+
+    /** The view from there with every monster of [kind] turned to stone. */
+    private fun withKindStoned(level: String, x: Int, y: Int, direction: Direction, kind: Int) =
+        renderFrame(level, x, y, direction) { monsters ->
+            monsters.map { if (it.type.value == kind) it.turnedToStone() else it }
+        }
 
     private fun checkGolden(name: String, actual: BufferedImage) = Goldens.check(name, actual)
 

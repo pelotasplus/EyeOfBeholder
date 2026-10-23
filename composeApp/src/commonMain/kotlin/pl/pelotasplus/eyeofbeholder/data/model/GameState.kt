@@ -1347,6 +1347,34 @@ data class GameState(
         )
     }
 
+    /**
+     * The world without a monster that was stone and has been broken apart.
+     *
+     * Not hurt to death: nothing about a monster's own way of dying comes into
+     * it, so a thing that would have burst or come back in another form is
+     * simply gone.
+     */
+    fun monsterShattered(slot: MonsterSlot): GameState =
+        copy(monsters = monsters.filterNot { it.index == slot })
+
+    /**
+     * The monster on the square ahead nearest [whose]: whatever stands in the
+     * middle of it, else the first corner of it that side of the party
+     * reaches. A blow struck by hand lands on this one, and so does a spell
+     * that takes one creature on that square.
+     */
+    fun theMonsterNearestAhead(whose: PartySlot): MonsterInstance? {
+        val ahead = party.facing.oneStepFrom(party.position)
+
+        val there = monsters.filter { it.x == ahead.x && it.y == ahead.y }
+        if (there.isEmpty()) return null
+
+        there.firstOrNull { it.place == SquarePlace.MIDDLE }?.let { return it }
+
+        val order = WhoIsInReach.cornersFor(party.facing, whose)
+        return order.firstNotNullOfOrNull { corner -> there.firstOrNull { it.place == corner } }
+    }
+
     /** Whichever monster is owed the scene that shows it changing, if any. */
     val anythingChanging: MonsterInstance? get() = monsters.firstOrNull { it.changing }
 

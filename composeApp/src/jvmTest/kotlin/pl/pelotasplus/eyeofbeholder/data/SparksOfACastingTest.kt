@@ -12,20 +12,22 @@ import kotlin.test.assertTrue
  * what is alight on a given frame.
  *
  * The rows below are the game's own, worked out from the packed words rather
- * than read off what we draw. So is the list of four spells: seventy spells
- * carry a flag saying what a casting looks like, and only those four ask for
- * this.
+ * than read off what we draw. So is the list of five spells: seventy spells
+ * carry a flag saying what a casting looks like, and four ask for this by it.
+ * The fifth, flesh to stone, carries no such flag and throws them anyway, as
+ * the first thing its casting does.
  */
 class SparksOfACastingTest {
 
     private fun SparksInTheRoom.row() = List(SparksInTheRoom.HOW_MANY) { showing(it) }
 
     @Test
-    fun `only four spells throw sparks across the view`() {
+    fun `only five spells throw sparks across the view`() {
         assertEquals(
             setOf(
                 Spell.DISPEL_MAGIC,
                 Spell.DISINTEGRATE,
+                Spell.FLESH_TO_STONE,
                 Spell.A_CLERICS_DISPEL_MAGIC,
                 Spell.TURN_UNDEAD,
             ),

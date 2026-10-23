@@ -703,7 +703,7 @@ class ViewPort(
         place: ViewPlace,
         mirrored: Boolean,
         scaleSteps: ScaleSteps,
-        struck: Boolean = false,
+        look: MonsterLook? = null,
         named: String = "",
     ) {
         Logger.d(TAG) { "drawMonster $named, $place, mirrored=$mirrored, scale=$scaleSteps" }
@@ -714,7 +714,7 @@ class ViewPort(
         val startX = ScreenX(spot.x + 88 - icon.w / 2)
         val startY = ScreenY(spot.y + 127 - icon.h)
 
-        blit(icon, startX, startY, mirrored, scaleSteps, struck)
+        blit(icon, startX, startY, mirrored, scaleSteps, look)
 
         for (decoration in decorations) {
             val overlay = decoration.frame.shrunk(scaleSteps)
@@ -722,7 +722,7 @@ class ViewPort(
             val offsetY = decoration.offsetY.shrunk(scaleSteps)
             // the offset is measured from whichever edge the sprite starts at
             val left = if (mirrored) icon.w - offsetX - overlay.w else offsetX
-            blit(overlay, startX + left, startY + offsetY, mirrored, scaleSteps, struck)
+            blit(overlay, startX + left, startY + offsetY, mirrored, scaleSteps, look)
         }
     }
 
@@ -732,20 +732,25 @@ class ViewPort(
         startY: ScreenY,
         mirrored: Boolean,
         scaleSteps: ScaleSteps,
-        struck: Boolean = false,
+        look: MonsterLook? = null,
     ) {
         for (y in 0 until icon.h) {
             for (x in 0 until icon.w) {
                 val srcX = if (mirrored) icon.w - 1 - x else x
                 val was = icon.pixels[y * icon.w + srcX]
 
-                // A struck monster is drawn as its own silhouette: every colour
-                // of it becomes one, and only the colour that is no colour at
-                // all is left alone, so the shape is still its own shape. It
-                // does not fade with distance either, being no longer painted
-                // in the colours that fade.
-                val pixel = if (struck && !was.isTransparent) STRUCK
-                else palette.fadedIndex(was, scaleSteps)
+                // Struck, a monster is its own shape in one colour, and only
+                // the colour that is no colour at all is left alone; it does
+                // not fade with distance, being no longer painted in the
+                // colours that fade. Stone keeps every shade, in grey, and
+                // fades as anything painted does.
+                val pixel = when {
+                    was.isTransparent -> was
+                    look == MonsterLook.STRUCK -> STRUCK
+                    look == MonsterLook.STONE ->
+                        palette.fadedIndex(PaletteIndex(palette.stoneTable[was.value]), scaleSteps)
+                    else -> palette.fadedIndex(was, scaleSteps)
+                }
 
                 draw(startX + x, startY + y, palette.colorOrTransparent(pixel))
             }
@@ -919,10 +924,10 @@ class ViewPort(
          */
         private const val SHOW_UNDRAWABLE_WALLS = true
 
+        private val UNDRAWABLE = RGB(255, 0, 0, false)
+
         /** The one colour a monster is drawn in for the moment after it is hit. */
         private val STRUCK = PaletteIndex(15)
-
-        private val UNDRAWABLE = RGB(255, 0, 0, false)
 
         const val ROWS = 120
         const val COLS = 176
@@ -933,4 +938,13 @@ class ViewPort(
         /** Visible-block index of the party's own square in [blockScreenCoords]. */
         const val OWN_BLOCK_INDEX = 16
     }
+}
+
+/** A monster drawn other than in its own colours. */
+enum class MonsterLook {
+    /** The flash of a blow, for the instant it lands: one flat colour. */
+    STRUCK,
+
+    /** Stone, for good: every shade kept, in grey — see [Palette.stoneTable]. */
+    STONE,
 }

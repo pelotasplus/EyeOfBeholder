@@ -158,6 +158,20 @@ data class MonsterProperty(
     val unseen: Boolean get() = capsFlags and UNSEEN != 0
 
     /**
+     * Whether a spell aimed at one creature of this kind fails to take it —
+     * the unmaking and the turning to stone both ask this.
+     *
+     * Three questions, in an order that matters because it decides how many
+     * dice are thrown and so what everything after it rolls: quick enough to
+     * be out of the way, then beyond this magic's reach at all, and only then
+     * its throw against it.
+     */
+    fun escapesASpellAimedAtIt(dice: Dice): Boolean =
+        dice.roll(1, 100, 0) < dmgModifierEvade ||
+            immunities.untouchedByThisMagic ||
+            saves(SavingThrow.A_SPELL, dice)
+
+    /**
      * What a blow of its leaves on the champion besides the wound — see
      * [WhatABlowLeaves]. Nothing has more than one of them, but the marks are
      * separate bits and nothing says one is exclusive of another.

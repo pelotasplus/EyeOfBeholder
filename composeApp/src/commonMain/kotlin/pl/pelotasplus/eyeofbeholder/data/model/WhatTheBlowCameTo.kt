@@ -70,6 +70,10 @@ sealed class WhatTheBlowCameTo(val lines: List<String>, val theArmDidSomething: 
             is Blow.Hit -> TookOff(blow.damage)
             is Blow.Missed -> Missed
 
+            // There is no number for stone breaking: the slot says the blow
+            // went home the way a blade going through a web does.
+            is Blow.Shattered -> Hacked
+
             // Swinging at an empty square is a miss like any other: the
             // two are told apart only where the square holds a wall that can
             // be worked, which is what Hacked and Bashed are for.

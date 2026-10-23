@@ -61,11 +61,13 @@ class Fighting(
                 // it was, whatever took its place.
                 val left = after.monsters.firstOrNull { it.index == blow.monster }
                 val killed = struck != null && (left == null || left.type != struck.type)
-                if (killed) {
-                    val worth = kinds.firstOrNull { it.id == struck.type.value }?.experience ?: 0
-                    after = after.partyEarns(XpPoints(worth.toLong()), dice)
-                    after = after.whatAMonsterDrops(struck, level, dice)
-                }
+                if (killed) after = after.paidForAndSearched(struck)
+            }
+
+            is Blow.Shattered -> {
+                val broken = world.monsters.firstOrNull { it.index == blow.monster }
+                after = after.monsterShattered(blow.monster)
+                if (broken != null) after = after.paidForAndSearched(broken)
             }
 
             is Blow.Missed -> after = after.rousedBy(blow.monster)
@@ -111,12 +113,16 @@ class Fighting(
 
         // A web is swung at only when nothing is standing in front of it. The
         // blow takes it down without a roll — it is cut, not fought.
-        val target = inReach(world, whose)
+        val target = world.theMonsterNearestAhead(whose)
             ?: return if (facingAWallThatGivesWay(world)) {
                 Blow.CutDown(edged = itemTypes.isEdged(inHand))
             } else {
                 Blow.Nothing
             }
+
+        // Stone is not fought. Whatever lands on it breaks it, so there is
+        // nothing to roll for and no weapon it is too good for.
+        if (target.stone) return Blow.Shattered(target.index)
 
         val kind = kinds.firstOrNull { it.id == target.type.value }
 
@@ -174,19 +180,9 @@ class Fighting(
         return world.wallByte(level, aheadOf(world), facingUs) in wallsThatGiveWay
     }
 
-    /**
-     * Which monster on the square ahead the blow lands on: whatever fills the
-     * square, else the first corner this champion reaches.
-     */
-    private fun inReach(world: GameState, whose: PartySlot): MonsterInstance? {
-        val ahead = aheadOf(world)
-
-        val there = world.monsters.filter { it.x == ahead.x && it.y == ahead.y }
-        if (there.isEmpty()) return null
-
-        there.firstOrNull { it.place == SquarePlace.MIDDLE }?.let { return it }
-
-        val order = WhoIsInReach.cornersFor(world.party.facing, whose)
-        return order.firstNotNullOfOrNull { corner -> there.firstOrNull { it.place == corner } }
+    /** What a monster killed outright is worth, and what it leaves behind. */
+    private fun GameState.paidForAndSearched(killed: MonsterInstance): GameState {
+        val worth = kinds.firstOrNull { it.id == killed.type.value }?.experience ?: 0
+        return partyEarns(XpPoints(worth.toLong()), dice).whatAMonsterDrops(killed, level, dice)
     }
 }

@@ -109,7 +109,7 @@ class MonstersTurn(
         // the whole of level 5's encounter.
         val noticing = if (walking == null) world else world.copy(
             monsters = world.monsters.map {
-                if (it.whatItDoes.noticesTheParty && !it.provoked && it.notices(world.party)) {
+                if (!it.stone && it.whatItDoes.noticesTheParty && !it.provoked && it.notices(world.party)) {
                     it.takingUpTheHunt()
                 } else {
                     it
@@ -119,6 +119,9 @@ class MonstersTurn(
 
         val taking = noticing.monsters
             .filter {
+                // Stone takes no turn of any kind — not a step, not a swing,
+                // not a hold running down.
+                if (it.stone) return@filter false
                 if (it.striking != null) return@filter false
                 if (group != null && it.turnGroup != group) return@filter false
 

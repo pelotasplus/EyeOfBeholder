@@ -46,24 +46,14 @@ class Disintegration(
         return Unmade(after, gone)
     }
 
-    /**
-     * Whichever creature on [ahead] the spell takes, or none.
-     *
-     * The three questions are asked in the game's own order, which decides
-     * how many dice are thrown and so what everything after it rolls: quick
-     * enough to be out of the way, then beyond this magic's reach at all,
-     * and only then its throw against it.
-     */
+    /** Whichever creature on [ahead] the spell takes, or none. */
     private fun whatItUnmakes(world: GameState, level: Int, ahead: Location): MonsterSlot? {
         val standing = world.monsters.firstOrNull {
             it.level == level && it.x == ahead.x && it.y == ahead.y
         } ?: return null
 
         val kind = kinds.firstOrNull { it.id == standing.type.value } ?: return null
-
-        if (dice.roll(1, 100, 0) < kind.dmgModifierEvade) return null
-        if (kind.immunities.untouchedByThisMagic) return null
-        if (kind.saves(SavingThrow.A_SPELL, dice)) return null
+        if (kind.escapesASpellAimedAtIt(dice)) return null
 
         return standing.index
     }

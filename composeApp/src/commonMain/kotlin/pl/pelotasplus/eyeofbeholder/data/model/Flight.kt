@@ -425,7 +425,7 @@ private val atEachQuarter = listOf(
 
             return struck.mapNotNull {
                 val kind = kinds.getOrNull(it.type.value)
-                if (!lands(world, flying, kind)) null
+                if (!it.stone && !lands(world, flying, kind)) null
                 else Hurt.AMonster(
                     it.index,
                     thrownAgainst(damageOf(world, flying, kind), flying) { off ->
@@ -624,6 +624,10 @@ private val atEachQuarter = listOf(
      * A miss is not the end of it. The thing is still in the air and still
      * going, so it carries on over the monster it missed to whatever is behind
      * them, which is the whole reason a miss is worth telling from a hit.
+     *
+     * Stone is never asked about here, the caller having settled it: whatever
+     * reaches a statue lands, with no roll and nothing it is too good for.
+     * Unlike a blow by hand it is only hurt, not broken.
      */
     private fun lands(world: GameState, flying: Projectile, kind: MonsterProperty?): Boolean {
         // A conjured thing is not aimed. It goes where it was sent and takes

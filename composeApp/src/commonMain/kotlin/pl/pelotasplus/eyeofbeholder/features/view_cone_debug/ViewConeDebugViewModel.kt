@@ -50,6 +50,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.Disintegration
 import pl.pelotasplus.eyeofbeholder.data.model.AVortex
 import pl.pelotasplus.eyeofbeholder.data.model.Burst
 import pl.pelotasplus.eyeofbeholder.data.model.Fighting
+import pl.pelotasplus.eyeofbeholder.data.model.FleshToStone
 import pl.pelotasplus.eyeofbeholder.data.model.THROWN_CPS
 import pl.pelotasplus.eyeofbeholder.data.model.HandRecovering
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterInstance
@@ -2195,6 +2196,7 @@ class ViewConeDebugViewModel(
         val wasBefore = _state.value.game
         val before = wasBefore.champions
         _state.update { it.copy(game = struck.world) }
+        if (struck.blow is Blow.Shattered) say(SpellMessages.CRUMBLES_TO_DUST)
         announceAnyLevelGained(before, struck.world.champions)
         sayWhatGaveThemAway(wasBefore)
         Logger.d(TAG) { "Roused: ${struck.world.monsters.filter { m -> m.provoked }.map { m -> m.index }}" }
@@ -2741,9 +2743,12 @@ class ViewConeDebugViewModel(
         if (_state.value.game.inFlight.isNotEmpty()) return true
         if (_state.value.game.bursting.isNotEmpty()) return true
 
-        if (monsters.any { it.provoked } || stepStillRunning > 0) return true
+        // Stone is out of it, roused or not: a monster turned mid-fight would
+        // otherwise keep the clock turning for something that will never act.
+        val active = monsters.filterNot { it.stone }
+        if (active.any { it.provoked } || stepStillRunning > 0) return true
 
-        return debugging.monstersMayWalk.value && monsters.any { !it.standingBy }
+        return debugging.monstersMayWalk.value && active.any { !it.standingBy }
     }
 
     /**
@@ -2895,6 +2900,27 @@ class ViewConeDebugViewModel(
         ).castAheadOf(_state.value.game, level, reachable)
 
         _state.update { it.copy(game = unmade.world) }
+        renderViewPort()
+    }
+
+    /**
+     * The creature on the square ahead nearest [whose] turned to stone, or
+     * the caster told there is none. One that escapes says nothing: the
+     * party see a monster still moving, which is the answer.
+     */
+    private fun turnTheNearestAheadToStone(whose: PartySlot) {
+        val sublevel = _state.value.inf?.subLevels?.getOrNull(_state.value.subLevel) ?: return
+
+        val cast = FleshToStone(kinds = sublevel.monsters).castBy(_state.value.game, whose)
+
+        if (cast.came == FleshToStone.CameTo.NOTHING_IN_REACH) {
+            say(SpellMessages.NO_MONSTER_WITHIN_REACH)
+            viewModelScope.launch { playTrack(WARNING) }
+            drawWords()
+            return
+        }
+
+        _state.update { it.copy(game = cast.world) }
         renderViewPort()
     }
 
@@ -3904,6 +3930,8 @@ class ViewConeDebugViewModel(
             } else if (spell.namesWhatIsHeld) {
                 _state.update { it.copy(game = it.game.heldThingsNamed(whose)) }
                 drawViewPort()
+            } else if (spell.turnsTheNearestAheadToStone) {
+                turnTheNearestAheadToStone(whose)
             }
 
             runTriggersAt(
