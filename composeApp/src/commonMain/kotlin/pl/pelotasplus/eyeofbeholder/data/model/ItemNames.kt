@@ -281,6 +281,8 @@ object SpellMessages {
 
     fun notStone(whose: String) = "$whose is not made of stone."
 
+    fun nothingCursed(whose: String) = "$whose carries nothing cursed."
+
     fun notDead(whose: String) = "$whose is not beyond raising."
 
     fun noElfIsRaised(whose: String) = "$whose is an elf, and no elf is raised."

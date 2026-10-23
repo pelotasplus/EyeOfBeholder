@@ -156,6 +156,9 @@ class WhatASpellLiftsOffAChampionTest {
         champions = listOf(who),
     )
 
+    /** Asked in a world of that champion alone, which is all these three read. */
+    private fun LaidOnAChampion.wouldHelp(whom: Champion) = wouldHelp(whom, worldWith(whom))
+
     private companion object {
         const val IN_THE_PARTY = 0x01
     }

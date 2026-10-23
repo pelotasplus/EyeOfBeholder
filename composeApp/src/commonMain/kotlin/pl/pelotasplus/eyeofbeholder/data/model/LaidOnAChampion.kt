@@ -12,19 +12,38 @@ package pl.pelotasplus.eyeofbeholder.data.model
  */
 sealed interface LaidOnAChampion {
 
-    /** Whether it would do anything for [whom]. One that would not is refused. */
-    fun wouldHelp(whom: Champion): Boolean
+    /**
+     * Whether it would do anything for [whom], in [world]. One that would not
+     * is refused.
+     *
+     * The world is asked for because not everything a spell answers is
+     * written on the champion: a curse is marked on the thing they carry.
+     */
+    fun wouldHelp(whom: Champion, world: GameState): Boolean
 
     /**
      * Hit points given back. Nothing reaches somebody ten below: that far down
      * is [Raises]'s business rather than mending's.
      */
     data class Mends(val by: Mending) : LaidOnAChampion {
-        override fun wouldHelp(whom: Champion) = !whom.isWhole && !whom.deadForGood
+        override fun wouldHelp(whom: Champion, world: GameState) =
+            !whom.isWhole && !whom.deadForGood
     }
 
     data class Lifts(val what: Ailment) : LaidOnAChampion {
-        override fun wouldHelp(whom: Champion) = what.troubles(whom)
+        override fun wouldHelp(whom: Champion, world: GameState) = what.troubles(whom)
+    }
+
+    /**
+     * The curse taken off everything [whom] carries — see
+     * [GameState.cursesLiftedFrom].
+     *
+     * It frees, and it tells, but it does not mend: a cursed sword is let go
+     * of and its true name known, and it is the same poor sword it was.
+     */
+    data object Uncurses : LaidOnAChampion {
+        override fun wouldHelp(whom: Champion, world: GameState) =
+            world.somethingCursedOn(whom)
     }
 
     /**
@@ -36,7 +55,8 @@ sealed interface LaidOnAChampion {
      * their dead.
      */
     data object Raises : LaidOnAChampion {
-        override fun wouldHelp(whom: Champion) = whom.deadForGood && whom.race != Race.ELF
+        override fun wouldHelp(whom: Champion, world: GameState) =
+            whom.deadForGood && whom.race != Race.ELF
     }
 }
 

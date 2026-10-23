@@ -1922,7 +1922,33 @@ data class GameState(
         is LaidOnAChampion.Lifts -> withChampion(whom) { laidOn.what.liftedFrom(it) }
 
         LaidOnAChampion.Raises -> withChampion(whom) { it.raised() }
+
+        LaidOnAChampion.Uncurses -> cursesLiftedFrom(whom)
     }
+
+    /**
+     * The curse lifted from everything [whom] carries: every slot, pack and
+     * worn alike, not only the hands it holds a thing in. A cursed thing in
+     * the pack sticks again the moment it is put in a hand, so a spell that
+     * freed only the hands would leave the trap set.
+     *
+     * Each thing freed is also known for what it is afterwards, which is how
+     * a party learns the sword they could not put down was a poor one.
+     */
+    fun cursesLiftedFrom(whom: PartySlot): GameState {
+        val who = championIn(whom) ?: return this
+        val freed = who.carrying
+            .filter { item(it)?.stuckToItsSlot == true }
+            .map { it.value }
+            .toSet()
+
+        if (freed.isEmpty()) return this
+        return copy(items = items.mapIndexed { at, it -> if (at in freed) it.uncursed() else it })
+    }
+
+    /** Whether [whom] carries anything a lifting of curses would free. */
+    fun somethingCursedOn(whom: Champion): Boolean =
+        whom.carrying.any { item(it)?.stuckToItsSlot == true }
 
     private fun withChampion(whom: PartySlot, changed: (Champion) -> Champion): GameState {
         val who = champions.getOrNull(whom.index) ?: return this

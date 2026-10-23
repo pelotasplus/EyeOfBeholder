@@ -290,7 +290,7 @@ enum class Spell(
         settlesOn = SettlesOn.WHOEVER_IS_POINTED_AT,
         hidesThem = true,
     ),
-    REMOVE_CURSE(22, "remove curse", TrackIndex(83)),
+    REMOVE_CURSE(22, "remove curse", TrackIndex(83), laidOn = LaidOnAChampion.Uncurses),
     CONE_OF_COLD(23, "cone of cold", TrackIndex(118), spreadsAsACone = true),
     HOLD_MONSTER(
         24,

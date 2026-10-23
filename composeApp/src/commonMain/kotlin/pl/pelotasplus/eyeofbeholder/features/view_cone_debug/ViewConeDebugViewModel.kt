@@ -4037,7 +4037,7 @@ class ViewConeDebugViewModel(
         // Asked of the champion and not of the roll. A cure rolls its dice at
         // whoever it is pointed at, hurt or not, so there is nothing in the
         // roll to say whether the casting was worth making.
-        if (!laidOn.wouldHelp(pointedAt)) {
+        if (!laidOn.wouldHelp(pointedAt, _state.value.game)) {
             say(noUseIn(laidOn, pointedAt))
             viewModelScope.launch { playTrack(WARNING) }
             drawWords()
@@ -4054,7 +4054,7 @@ class ViewConeDebugViewModel(
             )
         }
         keepHandsRecovering()
-        say(whatCameOfIt(laidOn, pointedAt, waiting.spell))
+        whatCameOfIt(laidOn, pointedAt, waiting.spell)?.let(::say)
 
         // Read last, because reading it is what may take it out of the hand.
         itemTypes?.let { types ->
@@ -4076,14 +4076,20 @@ class ViewConeDebugViewModel(
         }
     }
 
+    /**
+     * What is said once the spell has worked, or nothing. A lifted curse says
+     * nothing: what shows it is the sword coming out of the hand, and its true
+     * name on it afterwards.
+     */
     private fun whatCameOfIt(
         laidOn: LaidOnAChampion,
         whom: Champion,
         spell: Spell,
-    ): String = when (laidOn) {
+    ): String? = when (laidOn) {
         is LaidOnAChampion.Mends -> SpellMessages.mended(whom.name)
         is LaidOnAChampion.Lifts -> SpellMessages.liftedFrom(whom.name, spell.calledIt)
         LaidOnAChampion.Raises -> SpellMessages.raised(whom.name)
+        LaidOnAChampion.Uncurses -> null
     }
 
     /**
@@ -4106,6 +4112,8 @@ class ViewConeDebugViewModel(
         LaidOnAChampion.Raises ->
             if (whom.race == Race.ELF) SpellMessages.noElfIsRaised(whom.name)
             else SpellMessages.notDead(whom.name)
+
+        LaidOnAChampion.Uncurses -> SpellMessages.nothingCursed(whom.name)
     }
 
     /** A mending nobody was pointed at, which costs nothing and is not cast. */

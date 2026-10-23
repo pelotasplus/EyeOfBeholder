@@ -94,6 +94,13 @@ data class Item(
     /** The same wand a use worse off. */
     fun oneChargeSpent() = copy(flags = flags - 1)
 
+    /**
+     * The same thing with its curse lifted: free to leave its slot, and known
+     * for what it is. Only the sticking goes — whatever was wrong with it
+     * besides is still wrong with it.
+     */
+    fun uncursed() = copy(flags = (flags and STUCK.inv()) or IDENTIFIED)
+
     companion object {
         /**
          * The square an item that is on none lies on: the packed word 0xFFFF,
