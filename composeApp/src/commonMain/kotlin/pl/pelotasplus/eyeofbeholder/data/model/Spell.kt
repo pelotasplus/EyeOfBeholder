@@ -138,6 +138,16 @@ enum class Spell(
      * a way of crossing a room and the improved one is a way of fighting in it.
      */
     val hidingBreaksOnActing: Boolean = false,
+
+    /**
+     * Whether, while it runs, the party can see monsters of a kind nobody
+     * otherwise can — see [MonsterProperty.unseen].
+     *
+     * Monsters only. A champion hidden by one of the party's own spells is
+     * hidden from what attacks them, and the party never needed a spell to
+     * see their own.
+     */
+    val seesTheHidden: Boolean = false,
 ) {
     ARMOUR(1, "armor", TrackIndex(92)),
     BURNING_HANDS(2, "burning hands", TrackIndex(87)),
@@ -169,7 +179,14 @@ enum class Spell(
         settlesOn = SettlesOn.WHOEVER_CAST_IT,
         hindersStriking = 2,
     ),
-    DETECT_INVISIBILITY(8, "detect invisibility", TrackIndex(95), sparksOverTheParty = true),
+    DETECT_INVISIBILITY(
+        8,
+        "detect invisibility",
+        TrackIndex(95),
+        sparksOverTheParty = true,
+        lasts = SpellLasts(base = 0, perLevel = 5),
+        seesTheHidden = true,
+    ),
     IMPROVED_IDENTIFY(9, "improved identify", TrackIndex(20)),
     INVISIBILITY(
         10,
@@ -296,7 +313,14 @@ enum class Spell(
         TrackIndex(69),
         laidOn = LaidOnAChampion.Lifts(Ailment.BEING_STONE),
     ),
-    TRUE_SEEING(29, "true seeing", TrackIndex(73), sparksOverTheParty = true),
+    TRUE_SEEING(
+        29,
+        "true seeing",
+        TrackIndex(73),
+        sparksOverTheParty = true,
+        lasts = SpellLasts(base = 0, perLevel = 1),
+        seesTheHidden = true,
+    ),
     FINGER_OF_DEATH(30, "finger of death"),
     POWER_WORD_STUN(31, "power word stun"),
     BIGBYS_CLENCHED_FIST(32, "bigby's clenched fist"),
@@ -389,7 +413,14 @@ enum class Spell(
     ),
     RAISE_DEAD(55, "raise dead", TrackIndex(117), laidOn = LaidOnAChampion.Raises),
     SLAY_LIVING(56, "slay living", TrackIndex(72)),
-    A_CLERICS_TRUE_SEEING(57, "true seeing", TrackIndex(73), sparksOverTheParty = true),
+    A_CLERICS_TRUE_SEEING(
+        57,
+        "true seeing",
+        TrackIndex(73),
+        sparksOverTheParty = true,
+        lasts = SpellLasts(base = 0, perLevel = 1),
+        seesTheHidden = true,
+    ),
     HARM(58, "harm", TrackIndex(70)),
     HEAL(59, "heal", TrackIndex(84), laidOn = LaidOnAChampion.Mends(Mending.ToTheBrim)),
     RESURRECTION(60, "ressurection"),

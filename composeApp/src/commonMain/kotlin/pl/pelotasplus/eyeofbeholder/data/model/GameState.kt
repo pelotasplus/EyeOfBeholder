@@ -1950,6 +1950,13 @@ data class GameState(
         get() = running.isRunning(Spell.DETECT_MAGIC) ||
             running.isRunning(Spell.A_CLERICS_DETECT_MAGIC)
 
+    /**
+     * Whether a spell is running that lets the party see what is hidden — a
+     * detect invisibility or either true seeing. Any one is as good as another
+     * for this: they differ in how long they last, not in what they show.
+     */
+    val seesTheHidden: Boolean get() = running.all.any { it.spell.seesTheHidden }
+
     val partyShielded: Boolean get() = mysticDefence?.spent == false
 
     /**

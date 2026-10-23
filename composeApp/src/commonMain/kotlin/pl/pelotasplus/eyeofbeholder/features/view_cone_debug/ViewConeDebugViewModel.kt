@@ -117,6 +117,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.starvedADay
 import pl.pelotasplus.eyeofbeholder.data.model.somebodyRanOutOfFood
 import pl.pelotasplus.eyeofbeholder.data.model.HOURS_A_STARVED_POINT
 import pl.pelotasplus.eyeofbeholder.data.model.HOURS_A_MENDED_POINT
+import pl.pelotasplus.eyeofbeholder.data.model.inSight
 import pl.pelotasplus.eyeofbeholder.data.model.sleptAnHour
 import pl.pelotasplus.eyeofbeholder.data.model.SoundBank
 import pl.pelotasplus.eyeofbeholder.data.model.TrackIndex
@@ -4793,7 +4794,8 @@ class ViewConeDebugViewModel(
 
         viewConeRepository.renderPosition(
             items = _state.value.game.items,
-            monsters = _state.value.game.monsters,
+            monsters = _state.value.game.monsters
+                .inSight(sublevel.monsters, _state.value.game.seesTheHidden),
             sublevel = sublevel,
             playerX = party.position.x,
             playerY = party.position.y,

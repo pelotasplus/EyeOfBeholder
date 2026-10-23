@@ -23,6 +23,8 @@ import pl.pelotasplus.eyeofbeholder.data.repository.ItemTypesRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.model.Maz
 import pl.pelotasplus.eyeofbeholder.data.model.asByte
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterInstance
+import pl.pelotasplus.eyeofbeholder.data.model.MonsterProperty
+import pl.pelotasplus.eyeofbeholder.data.model.inSight
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterSlot
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterSpell
 import pl.pelotasplus.eyeofbeholder.data.model.SparksInTheRoom
@@ -178,6 +180,64 @@ class ViewPortGoldenTest {
                 monsters.map { it.copy(struck = it.place == SquarePlace.SOUTH_WEST) }
             },
         )
+
+    /**
+     * The same two clerics as a kind nobody can see, with nothing running to
+     * see them by — so the corridor is drawn empty.
+     *
+     * No kind on the sixteen floors is hidden, so the mark is put on these
+     * by hand: what is under test is the drawing, not the data.
+     */
+    @Test
+    fun `level5 monsters of a hidden kind are not drawn`() =
+        checkGolden(
+            "level5-hidden-monsters",
+            renderFrame("LEVEL5.INF", x = 13, y = 9, direction = Direction.NORTH) { monsters ->
+                monsters.inSight(level5KindsAllHidden(), partySeesTheHidden = false)
+            },
+        )
+
+    /**
+     * And the one moment such a thing shows without a spell: struck, it lights
+     * up for as long as the flash lasts, while the one beside it stays unseen.
+     */
+    @Test
+    fun `level5 a hidden monster shows the moment it is struck`() =
+        checkGolden(
+            "level5-hidden-monster-struck",
+            renderFrame("LEVEL5.INF", x = 13, y = 9, direction = Direction.NORTH) { monsters ->
+                monsters
+                    .map { it.copy(struck = it.place == SquarePlace.SOUTH_WEST) }
+                    .inSight(level5KindsAllHidden(), partySeesTheHidden = false)
+            },
+        )
+
+    /**
+     * With a seeing spell running a hidden kind is drawn exactly as any other.
+     * Checked against the frame that already exists for the same moment,
+     * rather than frozen as a new one: identical to the byte is the claim.
+     */
+    @Test
+    fun `level5 a seeing spell draws hidden monsters as if they were not`() =
+        checkGolden(
+            "level5-monster-struck",
+            renderFrame("LEVEL5.INF", x = 13, y = 9, direction = Direction.NORTH) { monsters ->
+                monsters
+                    .map { it.copy(struck = it.place == SquarePlace.SOUTH_WEST) }
+                    .inSight(level5KindsAllHidden(), partySeesTheHidden = true)
+            },
+        )
+
+    /**
+     * The fifth floor's kinds, every one marked as a kind nobody can see. The
+     * bit is the game's number for it, written out here rather than borrowed
+     * so that the test does not agree with the code by construction.
+     */
+    private fun level5KindsAllHidden(): List<MonsterProperty> = runBlocking {
+        repository().loadLevel("LEVEL5.INF").getOrThrow().subLevels
+            .flatMap { it.monsters }
+            .map { it.copy(capsFlags = it.capsFlags or A_HIDDEN_KIND) }
+    }
 
     /**
      * The nearer cleric swinging at the party: the arm going back, and then
@@ -3259,6 +3319,9 @@ class ViewPortGoldenTest {
     companion object {
         /** Render the last frame a script drew rather than its first. */
         private const val LAST_FRAME = -1
+
+        /** The capability bit that marks a kind as one nobody can see. */
+        private const val A_HIDDEN_KIND = 0x100
 
         /**
          * The draw the vortex goldens were frozen from. Any number would do;

@@ -147,6 +147,17 @@ data class MonsterProperty(
     val burstsWhenHurt: Boolean get() = capsFlags and BURSTS_WHEN_HURT != 0
 
     /**
+     * Whether it cannot be seen without a spell to see it by — see
+     * [inSight].
+     *
+     * Only the seeing changes. It walks, blocks and strikes as anything else
+     * does, and a party swinging at a square that looks empty hits it all the
+     * same. No kind on any of the sixteen floors carries the mark; it is kept
+     * for data that does.
+     */
+    val unseen: Boolean get() = capsFlags and UNSEEN != 0
+
+    /**
      * What a blow of its leaves on the champion besides the wound — see
      * [WhatABlowLeaves]. Nothing has more than one of them, but the marks are
      * separate bits and nothing says one is exclusive of another.
@@ -164,11 +175,35 @@ data class MonsterProperty(
         const val POISONS = 0x10
         const val HITS_AS_IT_MOVES = 0x08
         const val RUINS_WHAT_IT_HITS = 0x80
+        const val UNSEEN = 0x100
         const val COMES_IN_SIDEWAYS = 0x200
         const val OPENS_DOORS = 0x1000
         const val PARALYSES = 0x20
         const val BURSTS_WHEN_HURT = 0x2000
         const val STRIKES_THEM_ALL = 0x4000
         const val PETRIFIES = 0x8000
+    }
+}
+
+/**
+ * The monsters as the party can see them: everything, less whatever is of an
+ * [unseen][MonsterProperty.unseen] kind — unless [partySeesTheHidden], or it
+ * is showing a blow this instant.
+ *
+ * The blow is the one moment such a thing shows without a spell: a hit lights
+ * up its outline for as long as the flash lasts, so a party swinging into an
+ * empty-looking square learns something was there by watching it go white.
+ *
+ * Drawing is all this decides. What is filtered out here is still standing on
+ * its square for everything else.
+ */
+fun List<MonsterInstance>.inSight(
+    kinds: List<MonsterProperty>,
+    partySeesTheHidden: Boolean,
+): List<MonsterInstance> {
+    if (partySeesTheHidden) return this
+
+    return filter { monster ->
+        monster.struck || kinds.firstOrNull { it.id == monster.type.value }?.unseen != true
     }
 }
