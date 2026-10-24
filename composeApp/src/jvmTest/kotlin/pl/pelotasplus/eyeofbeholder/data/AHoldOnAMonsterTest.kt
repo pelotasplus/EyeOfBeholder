@@ -79,6 +79,25 @@ class AHoldOnAMonsterTest {
         assertFalse(after.isHeld, "hold person took hold of something that is not a person")
     }
 
+    /** Though not by: the bolt is spent on it all the same, and goes no further. */
+    @Test
+    fun `a hold stops at a creature it does not take`() {
+        val after = castAt(Spell.HOLD_PERSON, aCreatureMarked = A_MONSTER, throwing = FAILS)
+
+        assertTrue(after.inFlight.isEmpty(), "the hold flew on past something it did not take")
+    }
+
+    /**
+     * Laid over the whole square, not on the corner the bolt crosses: a
+     * person across the square from the side it was cast down is held.
+     */
+    @Test
+    fun `a hold reaches across the square`() {
+        val after = held(Spell.HOLD_PERSON, aCreatureMarked = A_PERSON, throwing = FAILS, standingIn = SquarePlace.NORTH_EAST)
+
+        assertTrue(after.isHeld, "a person across the square was missed")
+    }
+
     @Test
     fun `hold monster takes what it asks for`() {
         val after = held(Spell.HOLD_MONSTER, aCreatureMarked = A_MONSTER, throwing = FAILS)
@@ -233,9 +252,20 @@ class AHoldOnAMonsterTest {
         throwing: Int,
         immunities: MonsterImmunities = MonsterImmunities(0),
         dodgingOneTimeIn: Int = NEVER_DODGES,
-    ): MonsterInstance {
+        standingIn: SquarePlace = SquarePlace.MIDDLE,
+    ): MonsterInstance = castAt(spell, aCreatureMarked, throwing, immunities, dodgingOneTimeIn, standingIn).only
+
+    /** The world once the spell has had the steps it needs to arrive. */
+    private fun castAt(
+        spell: Spell,
+        aCreatureMarked: Int,
+        throwing: Int,
+        immunities: MonsterImmunities = MonsterImmunities(0),
+        dodgingOneTimeIn: Int = NEVER_DODGES,
+        standingIn: SquarePlace = SquarePlace.MIDDLE,
+    ): GameState {
         val thrown = requireNotNull(spell.throws) { "${spell.calledIt} throws nothing" }
-        var world = worldWith(aCreature(marked = aCreatureMarked)).copy(
+        var world = worldWith(aCreature(marked = aCreatureMarked).copy(place = standingIn)).copy(
             inFlight = listOf(
                 Projectile(
                     what = null,
@@ -259,7 +289,7 @@ class AHoldOnAMonsterTest {
 
         repeat(UNTIL_IT_ARRIVES) { world = flying.onward(world).world }
 
-        return world.only
+        return world
     }
 
     private val GameState.only: MonsterInstance get() = monsters.single()
