@@ -24,6 +24,8 @@ import pl.pelotasplus.eyeofbeholder.data.model.TeleporterPulse
 import pl.pelotasplus.eyeofbeholder.data.model.ViewBlock
 import pl.pelotasplus.eyeofbeholder.data.model.ViewPlace
 import pl.pelotasplus.eyeofbeholder.data.model.InFlightSight
+import pl.pelotasplus.eyeofbeholder.data.model.MonsterPose
+import pl.pelotasplus.eyeofbeholder.data.model.MonsterSize
 import pl.pelotasplus.eyeofbeholder.data.model.ViewPort
 import pl.pelotasplus.eyeofbeholder.data.model.ViewWindow
 import pl.pelotasplus.eyeofbeholder.data.model.WallSet
@@ -1001,10 +1003,8 @@ class ViewConeRepositoryImpl(
                 val frame = sheet.pose(pose, monster.colors) ?: continue
 
                 // the overlays go with the species, not with the instance
-                val decorations = sublevel.monsters
-                    .firstOrNull { it.id == monster.type.value }
-                    ?.decorations.orEmpty()
-                    .mapNotNull { sheet.decoration(it, pose) }
+                val kind = sublevel.monsters.firstOrNull { it.id == monster.type.value }
+                val decorations = kind?.decorations.orEmpty().mapNotNull { sheet.decoration(it, pose) }
 
                 viewPort.at(
                     DistanceFromParty.standingOnSquare(block.relativeX, block.relativeY),
@@ -1020,6 +1020,8 @@ class ViewConeRepositoryImpl(
                         scaleSteps = block.scaleSteps,
                         look = monster.look,
                         named = monster.named(sublevel),
+                        halfASquare = kind?.size == MonsterSize.TWO_TO_A_SQUARE,
+                        faceOn = pose != MonsterPose.SIDE_A && pose != MonsterPose.SIDE_B,
                     )
                 }
             }

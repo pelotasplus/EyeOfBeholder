@@ -705,12 +705,16 @@ class ViewPort(
         scaleSteps: ScaleSteps,
         look: MonsterLook? = null,
         named: String = "",
+        /** Whether it is one of the kind that stand two to a square — see [pairedSpot]. */
+        halfASquare: Boolean = false,
+        /** And whether it is seen from in front or behind rather than side-on. */
+        faceOn: Boolean = true,
     ) {
         Logger.d(TAG) { "drawMonster $named, $place, mirrored=$mirrored, scale=$scaleSteps" }
 
         val icon = frame.shrunk(scaleSteps)
 
-        val spot = blockSpot(blockIndex, place)
+        val spot = if (halfASquare) pairedSpot(blockIndex, place, scaleSteps, faceOn) else blockSpot(blockIndex, place)
         val startX = ScreenX(spot.x + 88 - icon.w / 2)
         val startY = ScreenY(spot.y + 127 - icon.h)
 
@@ -723,6 +727,26 @@ class ViewPort(
             // the offset is measured from whichever edge the sprite starts at
             val left = if (mirrored) icon.w - offsetX - overlay.w else offsetX
             blit(overlay, startX + left, startY + offsetY, mirrored, scaleSteps, look)
+        }
+    }
+
+    /**
+     * Where one of a kind that stand two to a square is drawn.
+     *
+     * A pair keep two corners across the square from each other, which seen
+     * as they are would put one ahead of the other whichever way the party
+     * look. They are drawn by how they are turned instead: seen from in front
+     * or behind, each keeps its own side but both stand level, a little
+     * behind the near edge; seen side-on, they are lined up down the middle,
+     * each at its own depth. One alone at a corner is drawn the same way.
+     */
+    private fun pairedSpot(blockIndex: Int, place: ViewPlace, scaleSteps: ScaleSteps, faceOn: Boolean): BlockSpot {
+        val own = blockSpot(blockIndex, place)
+        if (place == ViewPlace.MIDDLE) return own
+        return if (faceOn) {
+            BlockSpot(own.x, blockSpot(blockIndex, ViewPlace.FAR_LEFT).y + PAIR_STANDS_BACK.getOrElse(scaleSteps.value) { 0 })
+        } else {
+            BlockSpot(blockSpot(blockIndex, ViewPlace.MIDDLE).x, own.y)
         }
     }
 
@@ -905,6 +929,9 @@ class ViewPort(
 
     companion object {
         private const val TAG = "ViewPort"
+
+        /** How far behind the far corners a pair seen face-on stand, by how shrunk they are. Transcribed. */
+        private val PAIR_STANDS_BACK = listOf(4, 2, 0)
 
         /**
          * How high up the view a thing in flight is drawn, which is the same

@@ -436,20 +436,27 @@ class ViewPortGoldenTest {
     /**
      * The same wolf with another of its kind sharing the square, which is as
      * many as that size goes: the two stand on opposite corners and the pack
-     * arrives in pairs.
+     * arrives in pairs. Seen side-on they are lined up down the middle, one
+     * behind the other.
      */
     @Test
     fun `level4 two wolves on one square`() =
-        checkGolden(
-            "level4-wolves-bunched",
-            renderFrame("LEVEL4.INF", x = 18, y = 14, direction = Direction.SOUTH) { monsters ->
-                val joined = monsters.first { it.x == 18 && it.y == 15 }
+        checkGolden("level4-wolves-bunched", twoWolvesOnOneSquare())
 
-                monsters.map {
-                    if (it.index == joined.index) it.copy(place = SquarePlace.NORTH_WEST) else it
-                } + joined.copy(index = MonsterSlot(29), place = SquarePlace.SOUTH_EAST)
-            },
-        )
+    /** And turned to face the party, when the same two stand side by side. */
+    @Test
+    fun `level4 two wolves on one square, facing the party`() =
+        checkGolden("level4-wolves-facing", twoWolvesOnOneSquare(facing = Direction.NORTH))
+
+    private fun twoWolvesOnOneSquare(facing: Direction? = null) =
+        renderFrame("LEVEL4.INF", x = 18, y = 14, direction = Direction.SOUTH) { monsters ->
+            val joined = monsters.first { it.x == 18 && it.y == 15 }
+            val turned = facing?.let { joined.copy(direction = it) } ?: joined
+
+            monsters.map {
+                if (it.index == joined.index) turned.copy(place = SquarePlace.NORTH_WEST) else it
+            } + turned.copy(index = MonsterSlot(29), place = SquarePlace.SOUTH_EAST)
+        }
 
     /** And two squares back, where the same cut was made a size smaller. */
     @Test
