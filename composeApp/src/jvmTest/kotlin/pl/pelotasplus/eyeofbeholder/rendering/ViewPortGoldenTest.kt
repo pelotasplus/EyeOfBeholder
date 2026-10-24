@@ -22,7 +22,13 @@ import pl.pelotasplus.eyeofbeholder.data.model.ItemKind
 import pl.pelotasplus.eyeofbeholder.data.repository.ItemTypesRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.model.Maz
 import pl.pelotasplus.eyeofbeholder.data.model.asByte
+import pl.pelotasplus.eyeofbeholder.data.model.CampSpellMessages
+import pl.pelotasplus.eyeofbeholder.data.model.CampSpellWork
+import pl.pelotasplus.eyeofbeholder.data.model.Discipline
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterInstance
+import pl.pelotasplus.eyeofbeholder.data.model.SpellChoosing
+import pl.pelotasplus.eyeofbeholder.data.model.WhoDoesIt
+import pl.pelotasplus.eyeofbeholder.data.model.WhoDoesTheWork
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterProperty
 import pl.pelotasplus.eyeofbeholder.data.model.inSight
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterSlot
@@ -1679,9 +1685,11 @@ class ViewPortGoldenTest {
             ),
         )
 
-    private fun menuOver(menu: CampMenu): BufferedImage = screenOver(menu).toImage()
+    private fun menuOver(menu: CampMenu, withTheParty: Boolean = false): BufferedImage =
+        screenOver(menu, withTheParty).toImage()
 
-    private fun screenOver(menu: CampMenu?): PlayField = runBlocking {
+    /** @param withTheParty the quick start party down the right, as a menu asking about them needs. */
+    private fun screenOver(menu: CampMenu?, withTheParty: Boolean = false): PlayField = runBlocking {
         val resources = ResourceRepositoryImpl()
         val cps = CpsRepositoryImpl(resources)
         val repository = repository()
@@ -1697,18 +1705,101 @@ class ViewPortGoldenTest {
             direction = Direction.NORTH,
         ).getOrThrow()
 
+        val saved = if (!withTheParty) null else OriginalSaveRepositoryImpl(resources)
+            .loadOriginalSave(OriginalSaveRepositoryImpl.QUICK_START)
+            .getOrThrow()
+        val world = saved?.let { GameState(party = it.standing, items = it.items) }
+
         PlayField(
             background = cps.loadCps("PLAYFLD.CPS").getOrThrow(),
             decorations = cps.loadCps("DECORATE.CPS").getOrThrow(),
             palette = sublevel.palette,
             font = FontRepositoryImpl(resources).loadFont("FONT6.FNT").getOrThrow(),
             menuFont = FontRepositoryImpl(resources).loadFont("FONT8.FNT").getOrThrow(),
+            itemIcons = if (withTheParty) cps.loadCps("ITEMICN.CPS").getOrThrow() else null,
+            itemTypes = if (withTheParty) ItemTypesRepositoryImpl(resources).loadItemTypes().getOrThrow() else null,
         ).render(
             viewPort = viewPort,
             direction = Direction.NORTH,
             menu = menu,
+            party = saved?.party.orEmpty(),
+            portraits = if (withTheParty) cps.loadCps("CHARGENA.CPS").getOrThrow() else null,
+            metPortraits = if (withTheParty) cps.loadCps(NpcMeeting.FACES).getOrThrow() else null,
+            carrying = { slot -> world?.item(slot) },
         )
     }
+
+    /** The quick start party, for the menus that open on one of them. */
+    private val quickStart by lazy {
+        runBlocking {
+            OriginalSaveRepositoryImpl(ResourceRepositoryImpl())
+                .loadOriginalSave(OriginalSaveRepositoryImpl.QUICK_START)
+                .getOrThrow()
+                .party
+        }
+    }
+
+    /**
+     * Laurann's Memorize Spells as it opens, with two magic missiles and a
+     * shield chosen and the magic missile line picked: four places a page of
+     * her seventh level, three of them taken.
+     */
+    @Test
+    fun `camp - memorizing`() = checkGolden(
+        "camp-memorizing",
+        menuOver(
+            CampMenu.choosingSpells(
+                SpellChoosing.opening(quickStart[3], PartySlot(3), Discipline.MAGE)
+                    .onLine(3).added()
+                    .onLine(2).added().added(),
+                greyed = WhoDoesTheWork.greyed(CampSpellWork.MEMORIZE, quickStart),
+            ),
+            withTheParty = true,
+        ),
+    )
+
+    /** And on her second page, two spells, nothing chosen. */
+    @Test
+    fun `camp - memorizing the second level`() = checkGolden(
+        "camp-memorizing-second-level",
+        menuOver(CampMenu.choosingSpells(SpellChoosing.opening(quickStart[3], PartySlot(3), Discipline.MAGE).onPage(1))),
+    )
+
+    /** Wolfspirit's Pray for Spells: five places on her first page, turn undead never offered. */
+    @Test
+    fun `camp - praying`() = checkGolden(
+        "camp-praying",
+        menuOver(CampMenu.choosingSpells(SpellChoosing.opening(quickStart[2], PartySlot(2), Discipline.CLERIC))),
+    )
+
+    /**
+     * Who is to pray: the cleric and the paladin may be clicked, the fighter
+     * and the mage are checkered over.
+     */
+    @Test
+    fun `camp - who prays`() = checkGolden(
+        "camp-who-prays",
+        menuOver(
+            CampMenu.whoDoesIt(
+                WhoDoesTheWork.asked(CampSpellWork.PRAY, quickStart) as WhoDoesIt.Ask,
+                greyed = WhoDoesTheWork.greyed(CampSpellWork.PRAY, quickStart),
+            ),
+            withTheParty = true,
+        ),
+    )
+
+    @Test
+    fun `camp - scribing`() = checkGolden(
+        "camp-scribing",
+        menuOver(CampMenu.scribing(names = listOf("Armor", "Blur", "Imp Identify"), picked = 0)),
+    )
+
+    /** A message box over the camp, as a party with no mage are told. */
+    @Test
+    fun `camp - no mage`() = checkGolden(
+        "camp-no-mage",
+        menuOver(CampMenu.message(CampSpellMessages.NO_MAGE, over = CampMenu.camp())),
+    )
 
     /**
      * @param hurtTo current hit points per champion, or empty to leave them well

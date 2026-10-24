@@ -49,7 +49,16 @@ import pl.pelotasplus.eyeofbeholder.data.model.AWallOfForce
 import pl.pelotasplus.eyeofbeholder.data.model.Disintegration
 import pl.pelotasplus.eyeofbeholder.data.model.AVortex
 import pl.pelotasplus.eyeofbeholder.data.model.Burst
+import pl.pelotasplus.eyeofbeholder.data.model.AScroll
+import pl.pelotasplus.eyeofbeholder.data.model.CampSpellMessages
+import pl.pelotasplus.eyeofbeholder.data.model.CampSpellWork
+import pl.pelotasplus.eyeofbeholder.data.model.Discipline
 import pl.pelotasplus.eyeofbeholder.data.model.Fighting
+import pl.pelotasplus.eyeofbeholder.data.model.Ring
+import pl.pelotasplus.eyeofbeholder.data.model.Scribing
+import pl.pelotasplus.eyeofbeholder.data.model.SpellChoosing
+import pl.pelotasplus.eyeofbeholder.data.model.WhoDoesIt
+import pl.pelotasplus.eyeofbeholder.data.model.WhoDoesTheWork
 import pl.pelotasplus.eyeofbeholder.data.model.FleshToStone
 import pl.pelotasplus.eyeofbeholder.data.model.Frightening
 import pl.pelotasplus.eyeofbeholder.data.model.THROWN_CPS
@@ -347,6 +356,29 @@ class ViewConeDebugViewModel(
 
     /** The starving question, while one is waiting to be answered. */
     private var sleepingOnHungry: CompletableDeferred<Boolean>? = null
+
+    /** What the camp is asking who is to do, while the portraits wait to be clicked. */
+    private var spellWorkAsked: CampSpellWork? = null
+
+    /** Who stays checkered over from the question until the camp is back. */
+    private var spellWorkGreyed: Set<PartySlot> = emptySet()
+
+    /** The spells a champion is choosing, while Memorize or Pray is open. */
+    private var choosingSpells: SpellChoosing? = null
+
+    /** The mage scribing, and the scrolls they are offered. */
+    private var scribingMage: PartySlot? = null
+    private var scrollsOffered: List<AScroll> = emptyList()
+
+    /**
+     * Whether spells were chosen this time in camp and not yet rested for,
+     * which leaving the camp says something about. Each camp starts without.
+     */
+    private var spellsWantARest = false
+
+    /** What a message box gives way to when it is read, and the clock that reads it unasked. */
+    private var afterTheMessage: CampMenu? = null
+    private var messageTimeout: Job? = null
 
     /** Emptying the party's stomachs, which runs for as long as the game does. */
     private var hungering: Job? = null
@@ -1257,6 +1289,7 @@ class ViewConeDebugViewModel(
         viewModelScope.launch {
             // camping puts a champion's page down and the party back up
             _state.update { it.copy(sheet = null) }
+            if (opening) spellsWantARest = false
             showMenu(if (opening) CampMenu.camp() else null)
         }
     }
@@ -1535,7 +1568,24 @@ class ViewConeDebugViewModel(
 
     private suspend fun onMenuChoice(choice: MenuChoice) {
         when (choice) {
-            MenuChoice.Close -> showMenu(null)
+            // Leaving a camp in which spells were chosen and not rested for is
+            // told why the book is still empty.
+            MenuChoice.Close ->
+                if (spellsWantARest) showMessage(CampSpellMessages.NEEDS_A_REST, then = null)
+                else showMenu(null)
+
+            is MenuChoice.DoSpellWork -> startSpellWork(choice.work)
+            is MenuChoice.ThisOneDoesIt -> spellWorkAsked?.let { work -> clickedForSpellWork(work, choice.whose) }
+            is MenuChoice.SpellPage -> showChoosing { it.onPage(choice.page) }
+            is MenuChoice.SpellLine -> showChoosing { it.onLine(choice.line).added() }
+            MenuChoice.ClearSpellPage -> showChoosing { it.cleared() }
+            MenuChoice.LeaveSpells -> leaveChoosing()
+            is MenuChoice.ScribeLine -> scribe(choice.line)
+            MenuChoice.Dismiss -> {
+                messageTimeout?.cancel()
+                showMenu(afterTheMessage)
+            }
+
             MenuChoice.OpenCamp -> showMenu(CampMenu.camp())
             // Leaving the load screen is ordinarily going back to the menu it
             // was reached from. Over a lost party there is no menu behind it
@@ -1587,6 +1637,157 @@ class ViewConeDebugViewModel(
                 // picture is drawn again.
                 drawWords()
             }
+        }
+    }
+
+    /**
+     * Memorize Spells, Pray for Spells or Scribe Scrolls chosen from the camp:
+     * who is to do it, asked or answered without asking.
+     *
+     * Scribing first looks for anything to scribe at all — a party with no
+     * scrolls are told so before anybody is asked who.
+     */
+    private fun startSpellWork(work: CampSpellWork) {
+        val world = _state.value.game
+
+        if (work == CampSpellWork.SCRIBE) {
+            val types = itemTypes ?: return
+            if (Scribing.scrollsIn(world, types).isEmpty()) {
+                showMessage(CampSpellMessages.NO_SCROLLS, then = CampMenu.camp())
+                return
+            }
+        }
+
+        spellWorkGreyed = WhoDoesTheWork.greyed(work, world.champions)
+        when (val who = WhoDoesTheWork.asked(work, world.champions)) {
+            is WhoDoesIt.Refused -> {
+                // a lone paladin too young to pray is refused with the others greyed behind
+                if (spellWorkGreyed.isNotEmpty()) showMenu(CampMenu.camp().copy(greyed = spellWorkGreyed))
+                showMessage(who.says, then = CampMenu.camp())
+            }
+            is WhoDoesIt.Only -> beginSpellWork(work, who.whose)
+            is WhoDoesIt.Ask -> {
+                spellWorkAsked = work
+                showMenu(CampMenu.whoDoesIt(who, spellWorkGreyed))
+            }
+        }
+    }
+
+    /** A portrait clicked as the one to do it, which may still be turned down. */
+    private fun clickedForSpellWork(work: CampSpellWork, whose: PartySlot) {
+        val world = _state.value.game
+        val champion = world.championIn(whose) ?: return
+        val types = itemTypes
+
+        val carriesABook = types != null && champion.carrying.any { slot ->
+            world.item(slot)?.let { types.kindOf(it) == ItemKind.SPELLBOOK } == true
+        }
+
+        spellWorkAsked = null
+        val refused = WhoDoesTheWork.refusalOnceClicked(work, champion, carriesABook)
+        if (refused != null) showMessage(refused, then = CampMenu.camp())
+        else beginSpellWork(work, whose)
+    }
+
+    private fun beginSpellWork(work: CampSpellWork, whose: PartySlot) {
+        val world = _state.value.game
+        val champion = world.championIn(whose) ?: return
+
+        when (work) {
+            CampSpellWork.MEMORIZE, CampSpellWork.PRAY -> {
+                val choosing = SpellChoosing.opening(
+                    champion = champion,
+                    whose = whose,
+                    discipline = work.discipline,
+                    wearingWizardry = world.isWearing(whose, Ring.WIZARDRY, itemTypes),
+                )
+                choosingSpells = choosing
+                showMenu(CampMenu.choosingSpells(choosing, spellWorkGreyed))
+            }
+
+            CampSpellWork.SCRIBE -> {
+                val types = itemTypes ?: return
+                scribingMage = whose
+                scrollsOffered = Scribing.offeredTo(champion, Scribing.scrollsIn(world, types))
+                if (scrollsOffered.isEmpty()) showMessage(CampSpellMessages.NO_SCROLLS_THIS_MAGE_NEEDS, then = CampMenu.camp())
+                else showScribing()
+            }
+        }
+    }
+
+    private fun showChoosing(change: (SpellChoosing) -> SpellChoosing) {
+        val choosing = choosingSpells?.let(change) ?: return
+        choosingSpells = choosing
+        showMenu(CampMenu.choosingSpells(choosing, spellWorkGreyed))
+    }
+
+    /** Exit: what is chosen written into the champion's pages, and back to the camp. */
+    private fun leaveChoosing() {
+        val choosing = choosingSpells ?: return
+        val pages = choosing.chosenPages()
+
+        _state.update {
+            it.copy(
+                game = it.game.withChampion(choosing.whose) { champion ->
+                    when (choosing.discipline) {
+                        Discipline.MAGE -> champion.copy(mageSpells = pages)
+                        Discipline.CLERIC -> champion.copy(clericSpells = pages)
+                    }
+                },
+            )
+        }
+        if (choosing.needsARest) spellsWantARest = true
+        choosingSpells = null
+        showMenu(CampMenu.camp())
+    }
+
+    private fun showScribing() {
+        showMenu(
+            CampMenu.scribing(
+                names = scrollsOffered.map { CampSpellMessages.menuNameOf(it.spell, Discipline.MAGE) },
+                picked = 0,
+                greyed = spellWorkGreyed,
+            ),
+        )
+    }
+
+    /**
+     * A scroll copied into the mage's book and used up. The list is asked for
+     * again, since the scroll is gone and another of the same may now be
+     * offered from elsewhere; when nothing is left, it closes.
+     */
+    private fun scribe(line: Int) {
+        val mage = scribingMage ?: return
+        val scroll = scrollsOffered.getOrNull(line) ?: return
+        val types = itemTypes ?: return
+
+        _state.update { it.copy(game = Scribing.copied(it.game, mage, scroll, types)) }
+
+        val world = _state.value.game
+        val champion = world.championIn(mage) ?: return
+        scrollsOffered = Scribing.offeredTo(champion, Scribing.scrollsIn(world, types))
+        if (scrollsOffered.isEmpty()) {
+            scribingMage = null
+            showMenu(CampMenu.camp())
+        } else {
+            showScribing()
+        }
+    }
+
+    /**
+     * A message box over whatever is showing, read by a click or taken down by
+     * itself a moment later, giving way to [then] — or to nothing, closing the
+     * camp, where that is what was asked for.
+     */
+    private fun showMessage(says: List<String>, then: CampMenu?) {
+        val under = _state.value.menu ?: CampMenu.camp()
+        afterTheMessage = then
+        showMenu(CampMenu.message(says, over = under))
+
+        messageTimeout?.cancel()
+        messageTimeout = viewModelScope.launch {
+            delay(CampMenu.MESSAGE_LASTS_MILLIS)
+            if (_state.value.menu?.entries?.singleOrNull()?.choice == MenuChoice.Dismiss) showMenu(then)
         }
     }
 

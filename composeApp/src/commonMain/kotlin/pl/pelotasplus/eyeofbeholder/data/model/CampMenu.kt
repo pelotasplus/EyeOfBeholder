@@ -36,6 +36,7 @@ data class CampMenu(
     val says: List<String> = emptyList(),
     val saysLeft: Int = 0,
     val saysTop: Int = 0,
+    val saysColour: GuiColour = GuiColour.WHITE,
 
     /**
      * What this one is drawn on top of, if anything.
@@ -45,6 +46,15 @@ data class CampMenu(
      * and answering rubs the question out and leaves them there.
      */
     val over: CampMenu? = null,
+
+    /** Words written where a menu puts them rather than as its lines — see [MenuNote]. */
+    val notes: List<MenuNote> = emptyList(),
+
+    /**
+     * Champions whose names are checkered over, being no answer to what the
+     * menu asks.
+     */
+    val greyed: Set<PartySlot> = emptySet(),
 ) {
     /**
      * While a name is being typed the slots are deaf — clicking another row
@@ -72,14 +82,184 @@ data class CampMenu(
             titleLeft = MENU_TITLE_LEFT,
             entries = menuLines(
                 MenuChoice.RestParty,
-                MenuChoice.NotYet("Memorize Spells"),
-                MenuChoice.NotYet("Pray for Spells"),
-                MenuChoice.NotYet("Scribe Scrolls"),
+                MenuChoice.DoSpellWork(CampSpellWork.MEMORIZE),
+                MenuChoice.DoSpellWork(CampSpellWork.PRAY),
+                MenuChoice.DoSpellWork(CampSpellWork.SCRIBE),
                 MenuChoice.OpenPreferences,
                 MenuChoice.OpenGameOptions,
                 leaving = MenuChoice.Close,
             ),
         )
+
+        /**
+         * Who is to do it: the question written down the panel in white, a
+         * portrait of each champion who could to click, the others' names
+         * checkered over, and a way out.
+         */
+        fun whoDoesIt(asked: WhoDoesIt.Ask, greyed: Set<PartySlot>) = CampMenu(
+            title = "",
+            titleLeft = 0,
+            says = asked.says,
+            saysLeft = PROMPT_LEFT,
+            saysTop = TITLE_TOP,
+            greyed = greyed,
+            entries = asked.able.sortedBy { it.index }.map { whose ->
+                MenuEntry(
+                    label = "",
+                    left = PORTRAIT_BUTTON_LEFTS[whose.index % 2],
+                    top = PORTRAIT_BUTTON_TOPS[whose.index / 2],
+                    width = PORTRAIT_BUTTON_WIDTH,
+                    height = PORTRAIT_BUTTON_HEIGHT,
+                    choice = MenuChoice.ThisOneDoesIt(whose),
+                    framed = false,
+                )
+            } + MenuEntry(
+                label = MenuChoice.OpenCamp.label,
+                left = LEAVE_X,
+                top = LEAVE_TOP,
+                width = LEAVE_WIDTH,
+                height = LINE_HEIGHT,
+                choice = MenuChoice.OpenCamp,
+                centred = true,
+            ),
+        )
+
+        /**
+         * Memorize Spells or Pray for Spells: a tab a level along the top, how
+         * many places are left on it, its spells a line each with how many are
+         * chosen, and Clear and Exit along the bottom.
+         */
+        fun choosingSpells(menu: SpellChoosing, greyed: Set<PartySlot> = emptySet()) = CampMenu(
+            title = CampSpellMessages.SPELLS_AVAILABLE,
+            titleLeft = PROMPT_LEFT,
+            greyed = greyed,
+            entries = List(SpellChoosing.PAGES_SHOWN) { page ->
+                MenuEntry(
+                    label = "${page + 1}",
+                    left = FIRST_TAB_LEFT + page * TAB_STEP,
+                    top = TAB_TOP,
+                    width = TAB_WIDTH,
+                    height = TAB_HEIGHT,
+                    choice = MenuChoice.SpellPage(page),
+                    centred = true,
+                    highlighted = page == menu.page,
+                )
+            } + listLines(menu.onThisPage.size) { MenuChoice.SpellLine(it) } + listOf(
+                MenuEntry(
+                    label = CampSpellMessages.CLEAR,
+                    left = CLEAR_X,
+                    top = LIST_BUTTONS_TOP,
+                    width = CLEAR_WIDTH,
+                    height = LINE_HEIGHT,
+                    choice = MenuChoice.ClearSpellPage,
+                    centred = true,
+                ),
+                MenuEntry(
+                    label = MenuChoice.LeaveSpells.label,
+                    left = LEAVE_X,
+                    top = LIST_BUTTONS_TOP,
+                    width = LEAVE_WIDTH,
+                    height = LINE_HEIGHT,
+                    choice = MenuChoice.LeaveSpells,
+                    centred = true,
+                ),
+            ),
+            notes = listOf(
+                MenuNote(
+                    text = CampSpellMessages.remaining(menu.remaining(), menu.places[menu.page]),
+                    left = LIST_X,
+                    top = REMAINING_TOP,
+                    colour = GuiColour.LIGHT_BLUE,
+                ),
+            ) + menu.onThisPage.take(LIST_LINES).mapIndexed { line, spell ->
+                MenuNote(
+                    text = CampSpellMessages.line(
+                        CampSpellMessages.menuNameOf(spell, menu.discipline),
+                        menu.countOf(spell),
+                    ),
+                    left = LIST_X,
+                    top = LIST_TOP + line * LIST_STEP,
+                    colour = if (line == menu.line) GuiColour.LIGHT_RED else GuiColour.WHITE,
+                )
+            },
+        )
+
+        /**
+         * Scribe Scrolls, once a mage is chosen: the scrolls their book lacks,
+         * a line each, and Exit.
+         */
+        fun scribing(names: List<String>, picked: Int, greyed: Set<PartySlot> = emptySet()) = CampMenu(
+            title = "",
+            titleLeft = 0,
+            greyed = greyed,
+            says = CampSpellMessages.CHOOSE_SCROLLS,
+            saysLeft = PROMPT_LEFT,
+            saysTop = TITLE_TOP,
+            saysColour = GuiColour.LIGHT_BLUE,
+            entries = listLines(names.size) { MenuChoice.ScribeLine(it) } + MenuEntry(
+                label = MenuChoice.OpenCamp.label,
+                left = LEAVE_X,
+                top = LIST_BUTTONS_TOP,
+                width = LEAVE_WIDTH,
+                height = LINE_HEIGHT,
+                choice = MenuChoice.OpenCamp,
+                centred = true,
+            ),
+            notes = names.mapIndexed { line, name ->
+                MenuNote(
+                    text = name,
+                    left = LIST_X,
+                    top = LIST_TOP + line * LIST_STEP,
+                    colour = if (line == picked) GuiColour.LIGHT_RED else GuiColour.WHITE,
+                )
+            },
+        )
+
+        /**
+         * What the game puts up in a small box of its own over a menu and takes
+         * down again on a click, or by itself a moment later.
+         */
+        fun message(says: List<String>, over: CampMenu) = CampMenu(
+            title = "",
+            titleLeft = 0,
+            over = over,
+            left = ASKED_LEFT,
+            top = ASKED_TOP,
+            width = ASKED_WIDTH,
+            height = ASKED_HEIGHT,
+            says = says,
+            saysLeft = MESSAGE_TEXT_INDENT,
+            saysTop = MESSAGE_TEXT_INDENT,
+            // a click anywhere on the screen is what reads it
+            entries = listOf(
+                MenuEntry(
+                    label = "",
+                    left = -ASKED_LEFT,
+                    top = -ASKED_TOP,
+                    width = SCREEN_WIDTH,
+                    height = SCREEN_HEIGHT,
+                    choice = MenuChoice.Dismiss,
+                    framed = false,
+                ),
+            ),
+        )
+
+        /** How long a message box stays up if nobody clicks it away. */
+        const val MESSAGE_LASTS_MILLIS = 1440L
+
+        /** Invisible lines down the list, a click on each answering for that line. */
+        private fun listLines(count: Int, choice: (Int) -> MenuChoice) =
+            List(minOf(count, LIST_LINES)) { line ->
+                MenuEntry(
+                    label = "",
+                    left = LIST_X,
+                    top = LIST_TOP + line * LIST_STEP,
+                    width = LIST_WIDTH,
+                    height = LIST_STEP,
+                    choice = choice(line),
+                    framed = false,
+                )
+            }
 
         /**
          * The two things the player may choose, each line saying which way it
@@ -327,6 +507,33 @@ data class CampMenu(
         private const val LEAVE_TOP = 122
         private const val LEAVE_WIDTH = 40
 
+        // Where the spell menus put things.
+        private const val PROMPT_LEFT = 5
+        private const val FIRST_TAB_LEFT = 11
+        private const val TAB_STEP = 27
+        private const val TAB_TOP = 16
+        private const val TAB_WIDTH = 20
+        private const val TAB_HEIGHT = 18
+        private const val REMAINING_TOP = 38
+        private const val LIST_X = 8
+        private const val LIST_TOP = 50
+        private const val LIST_STEP = 9
+        private const val LIST_WIDTH = 160
+        private const val LIST_LINES = 8
+        private const val LIST_BUTTONS_TOP = 126
+        private const val CLEAR_X = 8
+        private const val CLEAR_WIDTH = 48
+        private const val MESSAGE_TEXT_INDENT = 5
+
+        // A click on a portrait, over the champion boxes down the right.
+        private val PORTRAIT_BUTTON_LEFTS = listOf(184, 256)
+        private val PORTRAIT_BUTTON_TOPS = listOf(0, 56, 112)
+        private const val PORTRAIT_BUTTON_WIDTH = 64
+        private const val PORTRAIT_BUTTON_HEIGHT = 48
+
+        private const val SCREEN_WIDTH = 320
+        private const val SCREEN_HEIGHT = 200
+
         private const val SLOT_TITLE_LEFT = 52
         private const val SLOT_X = 4
         private const val SLOT_WIDTH = 167
@@ -336,6 +543,9 @@ data class CampMenu(
     }
 }
 
+/** Words at a place of their own on a menu, in a colour of their own. */
+data class MenuNote(val text: String, val left: Int, val top: Int, val colour: GuiColour)
+
 data class MenuEntry(
     val label: String,
     val left: Int,
@@ -343,6 +553,12 @@ data class MenuEntry(
     val width: Int,
     val height: Int,
     val choice: MenuChoice,
+    /** Drawn as a button, or only a place that answers a click — a portrait, a line of a list. */
+    val framed: Boolean = true,
+    /** The label in the middle of the button rather than at its left. */
+    val centred: Boolean = false,
+    /** The label in light red: the page a menu is on. */
+    val highlighted: Boolean = false,
 ) {
     fun contains(x: Int, y: Int) = x in left until left + width && y in top until top + height
 
@@ -377,6 +593,27 @@ sealed class MenuChoice(val label: String) {
     data object KeepResting : MenuChoice("Yes")
 
     data object StopResting : MenuChoice("No")
+
+    /** Memorize Spells, Pray for Spells, Scribe Scrolls. */
+    data class DoSpellWork(val work: CampSpellWork) : MenuChoice(work.label)
+
+    /** The champion clicked as the one to do it. */
+    data class ThisOneDoesIt(val whose: PartySlot) : MenuChoice("")
+
+    data class SpellPage(val page: Int) : MenuChoice("${page + 1}")
+
+    /** A line of the spells offered, which a click adds one of. */
+    data class SpellLine(val line: Int) : MenuChoice("")
+
+    data object ClearSpellPage : MenuChoice(CampSpellMessages.CLEAR)
+
+    data object LeaveSpells : MenuChoice("Exit")
+
+    /** A line of the scrolls offered, which a click copies. */
+    data class ScribeLine(val line: Int) : MenuChoice("")
+
+    /** A message box read, or left to time out. */
+    data object Dismiss : MenuChoice("")
 
     data object DropCharacter : MenuChoice("Drop Character")
 

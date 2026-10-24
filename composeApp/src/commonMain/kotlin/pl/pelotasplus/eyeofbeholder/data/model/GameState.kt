@@ -2023,7 +2023,7 @@ data class GameState(
     fun somethingCursedOn(whom: Champion): Boolean =
         whom.carrying.any { item(it)?.stuckToItsSlot == true }
 
-    private fun withChampion(whom: PartySlot, changed: (Champion) -> Champion): GameState {
+    fun withChampion(whom: PartySlot, changed: (Champion) -> Champion): GameState {
         val who = champions.getOrNull(whom.index) ?: return this
         return copy(
             champions = champions.toMutableList().also { it[whom.index] = changed(who) },

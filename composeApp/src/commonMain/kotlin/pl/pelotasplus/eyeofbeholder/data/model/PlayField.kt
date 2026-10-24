@@ -394,11 +394,25 @@ class PlayField(
                 font = font,
                 left = menu.left + menu.saysLeft,
                 top = menu.top + menu.saysTop + line * font.height,
-                colour = MENU_LABEL,
+                colour = menu.saysColour.index,
             )
         }
 
+        menu.notes.forEach { note ->
+            write(
+                text = note.text,
+                font = font,
+                left = menu.left + note.left,
+                top = menu.top + note.top,
+                colour = note.colour.index,
+            )
+        }
+
+        menu.greyed.forEach { whose -> checkerTheName(championBoxes[whose.index]) }
+
         menu.entries.forEachIndexed { row, entry ->
+            if (!entry.framed) return@forEachIndexed
+
             drawMenuBox(
                 left = menu.left + entry.left,
                 top = menu.top + entry.top,
@@ -407,12 +421,17 @@ class PlayField(
             )
 
             val naming = menu.naming?.takeIf { it.slot == row }
+            val label = naming?.typed ?: entry.label
             write(
-                text = naming?.typed ?: entry.label,
+                text = label,
                 font = font,
-                left = menu.left + entry.labelLeft,
-                top = menu.top + entry.labelTop,
-                colour = if (naming == null) MENU_LABEL else BEING_TYPED,
+                left = menu.left + if (entry.centred) entry.left + (entry.width - font.widthOf(label)) / 2 + 1 else entry.labelLeft,
+                top = menu.top + if (entry.centred) entry.top + (entry.height - CENTRED_LABEL_HEIGHT) / 2 else entry.labelTop,
+                colour = when {
+                    naming != null -> BEING_TYPED
+                    entry.highlighted -> LABEL_HIGHLIGHTED
+                    else -> MENU_LABEL
+                },
             )
 
             // the caret sits where the next letter will land
@@ -423,6 +442,19 @@ class PlayField(
                         draw(caret + x, menu.top + entry.labelTop + y, palette.colors[CARET.value])
                     }
                 }
+            }
+        }
+    }
+
+    /**
+     * A champion's name strip checkered over in black, every other pixel —
+     * how a champion who is no answer to the question is shown.
+     */
+    private fun checkerTheName(box: ChampionBox) {
+        val black = palette.colors[GuiColour.BLACK.index.value]
+        for (y in 0 until NAME_CHECKER_HEIGHT) {
+            for (x in 0 until ChampionBox.WIDTH) {
+                if ((x + y) % 2 == 0) draw(box.left + x, box.top + y, black)
             }
         }
     }
@@ -1173,6 +1205,15 @@ class PlayField(
         /** Camp menu colours. */
         private val MENU_TITLE = GuiColour.LIGHT_BLUE.index
         private val MENU_LABEL = GuiColour.WHITE.index
+
+        /** A button's label when it is the one a menu is on. */
+        private val LABEL_HIGHLIGHTED = GuiColour.LIGHT_RED.index
+
+        /** A centred label sits as if the font were seven high, whatever it is. */
+        private const val CENTRED_LABEL_HEIGHT = 7
+
+        /** Rows of a name strip the checkering covers. */
+        private const val NAME_CHECKER_HEIGHT = 8
         private val BEING_TYPED = GuiColour.BLUE.index
         private val CARET = GuiColour.DARK_RED.index
 

@@ -464,6 +464,8 @@ value class CarrySlot(val index: Int) {
 
         val BOTH_HANDS = List(HANDS) { CarrySlot(it) }
 
+        val EVERY_ONE = List(ALL_OF_THEM) { CarrySlot(it) }
+
         /** How many a champion has, filled or not. */
         const val ALL_OF_THEM = 27
 
