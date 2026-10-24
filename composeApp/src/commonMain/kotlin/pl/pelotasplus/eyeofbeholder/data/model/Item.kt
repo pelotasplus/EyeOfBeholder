@@ -304,8 +304,9 @@ data class ItemTypes(private val types: List<ItemType>) {
             ItemKind.KEY,
             ItemKind.GEM -> HandUse.NotUsedThisWay
 
-            ItemKind.SPELLBOOK,
-            ItemKind.HOLY_SYMBOL,
+            ItemKind.SPELLBOOK -> HandUse.OpenTheBook(Discipline.MAGE)
+            ItemKind.HOLY_SYMBOL -> HandUse.OpenTheBook(Discipline.CLERIC)
+
             ItemKind.WAND,
             ItemKind.AMULET,
             ItemKind.SOMETHING_TO_READ,

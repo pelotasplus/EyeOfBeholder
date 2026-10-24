@@ -151,6 +151,17 @@ private const val GRID_Y = 88
 private const val GRID_WIDTH = 32
 private const val GRID_HEIGHT = 16
 
+/** The same grid, half as high, laid over buttons that do nothing. */
+fun Cps.wideGrid(): Cps.ItemIcon = cut(
+    x = GRID_X,
+    y = WIDE_GRID_Y,
+    w = GRID_WIDTH,
+    h = WIDE_GRID_HEIGHT,
+)
+
+private const val WIDE_GRID_Y = 104
+private const val WIDE_GRID_HEIGHT = 8
+
 /**
  * The splash a blow's outcome is written on, cut from the sheet of things that
  * can be thrown — which is where it is kept, along with the beams and the

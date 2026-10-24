@@ -83,6 +83,10 @@ class PlayField(
         /** Whether a detect magic is running, which draws what is magical blue. */
         magicShowing: Boolean = false,
         sparksOverTheParty: SparksOverTheParty? = null,
+        /** A champion's spells open over the compass. */
+        book: SpellBook? = null,
+        /** Whether that book is resting after a casting, which lays the grid over it. */
+        bookResting: Boolean = false,
     ): PlayField {
         this.magicShowing = magicShowing
         // Something held up over the view is read off a champion's own page,
@@ -108,6 +112,7 @@ class PlayField(
         drawViewPort(viewPort)
         portal?.let(::drawPortal)
         drawCompass(direction)
+        book?.let { drawBook(it, bookResting) }
         drawMessages(messages)
         dialogue?.let(::drawDialogue)
 
@@ -443,6 +448,81 @@ class PlayField(
                     }
                 }
             }
+        }
+    }
+
+    /**
+     * The book, over the compass: a tab for each level of spell, the one open
+     * framed as the interface is and the rest in duller colours; the spells
+     * ready on it, the picked one on dark red; and the way out and the two
+     * scroll buttons along the bottom, the scroll buttons greyed when there is
+     * nothing further down to scroll to.
+     */
+    private fun drawBook(book: SpellBook, resting: Boolean) {
+        val font = font ?: return
+        val grids = decorations.palette ?: palette
+        val layout = SpellBookLayout
+
+        repeat(SpellBook.TABS) { tab ->
+            val left = layout.TAB_LEFT + tab * layout.TAB_WIDTH
+            if (tab == book.at.page) {
+                drawBox(left, layout.TOP, layout.TAB_WIDTH, layout.TAB_HEIGHT)
+            } else {
+                drawBox(
+                    left, layout.TOP, layout.TAB_WIDTH, layout.TAB_HEIGHT,
+                    topRight = TAB_EDGE_LIT, bottomLeft = TAB_EDGE_SHADED, fill = TAB_FILL,
+                )
+            }
+            write("${tab + 1}", font, left + layout.TAB_LABEL_LEFT, layout.TOP + layout.TAB_LABEL_TOP, GuiColour.BLACK.index)
+        }
+
+        drawBox(layout.TAB_LEFT, layout.LIST_TOP, SpellBook.TABS * layout.TAB_WIDTH, layout.LIST_HEIGHT)
+        drawBox(layout.ABORT_LEFT, layout.ABORT_TOP, layout.ABORT_WIDTH, layout.BUTTON_HEIGHT)
+        drawBox(layout.UP_LEFT, layout.ABORT_TOP, layout.UP_WIDTH, layout.BUTTON_HEIGHT)
+        drawBox(layout.DOWN_LEFT, layout.ABORT_TOP, layout.DOWN_WIDTH, layout.BUTTON_HEIGHT)
+        drawScrollArrow(layout.UP_ARROW_LEFT, layout.ABORT_TOP + 1, down = false)
+        drawScrollArrow(layout.DOWN_ARROW_LEFT, layout.ABORT_TOP + 1, down = true)
+
+        book.lines.forEachIndexed { line, spell ->
+            spell ?: return@forEachIndexed
+            val name = CampSpellMessages.menuNameOf(spell, book.discipline)
+            val top = layout.LINE_TOP + line * layout.LINE_HEIGHT
+            if (line == book.at.line) {
+                fill(layout.LINE_LEFT, top, font.widthOf(name), layout.LINE_HEIGHT, GuiColour.DARK_RED.index)
+            }
+            write(name, font, layout.LINE_LEFT, top, GuiColour.WHITE.index)
+        }
+
+        if (book.onAbort) {
+            fill(layout.ABORT_LEFT + 1, layout.ABORT_TOP + 1, layout.ABORT_WIDTH - 2, layout.BUTTON_HEIGHT - 2, GuiColour.DARK_RED.index)
+        }
+        write(
+            layout.ABORT_LABEL, font, layout.ABORT_LABEL_LEFT, layout.ABORT_LABEL_TOP,
+            if (book.onAbort) GuiColour.WHITE.index else GuiColour.BLACK.index,
+        )
+
+        if (resting) {
+            layout.GRID_TOPS.forEach { top ->
+                layout.GRID_LEFTS.forEach { left -> drawIcon(decorations.weaponSlotGrid(), grids, left, top) }
+            }
+        }
+
+        if (!book.canScroll) drawIcon(decorations.wideGrid(), grids, layout.UP_LEFT, layout.ABORT_TOP)
+    }
+
+    /** One of the book's scroll arrows: a point, a widening head, and a stem. */
+    private fun drawScrollArrow(left: Int, top: Int, down: Boolean) {
+        val black = palette.colors[GuiColour.BLACK.index.value]
+        draw(left + 3, if (down) top + 5 else top, black)
+        for (row in 1..5) {
+            val y = if (down) top + 5 - row else top + row
+            for (x in ARROW_FROM[row]..ARROW_TO[row]) draw(left + x, y, black)
+        }
+    }
+
+    private fun fill(left: Int, top: Int, width: Int, height: Int, colour: PaletteIndex) {
+        for (y in top until top + height) {
+            for (x in left until left + width) draw(x, y, palette.colors[colour.value])
         }
     }
 
@@ -1211,6 +1291,15 @@ class PlayField(
 
         /** A centred label sits as if the font were seven high, whatever it is. */
         private const val CENTRED_LABEL_HEIGHT = 7
+
+        /** A book's tabs other than the open one. */
+        private val TAB_EDGE_LIT = PaletteIndex(177)
+        private val TAB_EDGE_SHADED = PaletteIndex(182)
+        private val TAB_FILL = PaletteIndex(180)
+
+        /** Each row of a scroll arrow, from its point down, as a run of pixels. */
+        private val ARROW_FROM = listOf(0, 2, 1, 0, 2, 2)
+        private val ARROW_TO = listOf(2, 4, 5, 6, 4, 4)
 
         /** Rows of a name strip the checkering covers. */
         private const val NAME_CHECKER_HEIGHT = 8

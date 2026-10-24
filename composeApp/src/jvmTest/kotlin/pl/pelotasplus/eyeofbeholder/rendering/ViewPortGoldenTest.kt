@@ -27,6 +27,10 @@ import pl.pelotasplus.eyeofbeholder.data.model.CampSpellWork
 import pl.pelotasplus.eyeofbeholder.data.model.Discipline
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterInstance
 import pl.pelotasplus.eyeofbeholder.data.model.SpellChoosing
+import pl.pelotasplus.eyeofbeholder.data.model.BookPosition
+import pl.pelotasplus.eyeofbeholder.data.model.SpellBook
+import pl.pelotasplus.eyeofbeholder.data.model.SpellPages
+import pl.pelotasplus.eyeofbeholder.data.model.SpellSlot
 import pl.pelotasplus.eyeofbeholder.data.model.WhoDoesIt
 import pl.pelotasplus.eyeofbeholder.data.model.WhoDoesTheWork
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterProperty
@@ -1689,7 +1693,12 @@ class ViewPortGoldenTest {
         screenOver(menu, withTheParty).toImage()
 
     /** @param withTheParty the quick start party down the right, as a menu asking about them needs. */
-    private fun screenOver(menu: CampMenu?, withTheParty: Boolean = false): PlayField = runBlocking {
+    private fun screenOver(
+        menu: CampMenu?,
+        withTheParty: Boolean = false,
+        book: SpellBook? = null,
+        bookResting: Boolean = false,
+    ): PlayField = runBlocking {
         val resources = ResourceRepositoryImpl()
         val cps = CpsRepositoryImpl(resources)
         val repository = repository()
@@ -1726,8 +1735,78 @@ class ViewPortGoldenTest {
             portraits = if (withTheParty) cps.loadCps("CHARGENA.CPS").getOrThrow() else null,
             metPortraits = if (withTheParty) cps.loadCps(NpcMeeting.FACES).getOrThrow() else null,
             carrying = { slot -> world?.item(slot) },
+            book = book,
+            bookResting = bookResting,
         )
     }
+
+    /** [book] open over the compass, with the quick start party beside it. */
+    private fun bookOver(book: SpellBook, resting: Boolean = false): BufferedImage =
+        screenOver(menu = null, withTheParty = true, book = book, bookResting = resting).toImage()
+
+    private fun spellPages(vararg places: Pair<Int, SpellSlot>) =
+        places.fold(SpellPages.NONE) { pages, (at, place) -> pages.with(at, place) }
+
+    /**
+     * Laurann's book on her first level: two magic missiles and a shield
+     * ready, a detect magic still being learned between them as a blank line,
+     * and the second magic missile picked.
+     */
+    private val laurannsBook get() = SpellBook(
+        PartySlot(3),
+        Discipline.MAGE,
+        spellPages(
+            0 to SpellSlot.Ready(Spell.MAGIC_MISSILE),
+            1 to SpellSlot.Learning(Spell.DETECT_MAGIC),
+            2 to SpellSlot.Ready(Spell.MAGIC_MISSILE),
+            3 to SpellSlot.Ready(Spell.SHIELD),
+            10 to SpellSlot.Ready(Spell.MELFS_ACID_ARROW),
+        ),
+        BookPosition(line = 2),
+    )
+
+    @Test
+    fun `book - a mage's first level`() = checkGolden("book-mage", bookOver(laurannsBook))
+
+    @Test
+    fun `book - another tab`() = checkGolden("book-second-tab", bookOver(laurannsBook.onTab(1)))
+
+    /** Nothing ready on the tab, so the way out is what is picked. */
+    @Test
+    fun `book - nothing ready`() = checkGolden("book-nothing-ready", bookOver(laurannsBook.onTab(3)))
+
+    @Test
+    fun `book - resting after a casting`() = checkGolden("book-resting", bookOver(laurannsBook.cast(), resting = true))
+
+    /** Eight ready, scrolled to the last three of the nine shown. */
+    @Test
+    fun `book - scrolled`() = checkGolden(
+        "book-scrolled",
+        bookOver(
+            laurannsBook.copy(
+                pages = spellPages(*Array(8) { it to SpellSlot.Ready(if (it % 2 == 0) Spell.MAGIC_MISSILE else Spell.SHIELD) }),
+                at = BookPosition(),
+            ).scrolled(down = true),
+        ),
+    )
+
+    /** Wolfspirit's holy symbol, turn undead in its first place as a cleric always has it. */
+    @Test
+    fun `book - a cleric's`() = checkGolden(
+        "book-cleric",
+        bookOver(
+            SpellBook(
+                PartySlot(2),
+                Discipline.CLERIC,
+                spellPages(
+                    0 to SpellSlot.Ready(Spell.TURN_UNDEAD),
+                    1 to SpellSlot.Ready(Spell.BLESS),
+                    2 to SpellSlot.Ready(Spell.CURE_LIGHT_WOUNDS),
+                ),
+                BookPosition(line = 2),
+            ),
+        ),
+    )
 
     /** The quick start party, for the menus that open on one of them. */
     private val quickStart by lazy {

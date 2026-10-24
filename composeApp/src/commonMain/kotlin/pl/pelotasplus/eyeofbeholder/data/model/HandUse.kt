@@ -61,6 +61,13 @@ sealed interface HandUse {
      */
     data class Cast(val spell: Spell) : HandUse
 
+    /**
+     * A mage's book or a cleric's holy symbol, opened over the compass on the
+     * holder's spells of that kind — see [SpellBook]. Whoever holds one can
+     * open it; a champion with nothing learned finds it empty.
+     */
+    data class OpenTheBook(val discipline: Discipline) : HandUse
+
     /** A wand with nothing left in it, which says so and does nothing. */
     data object NothingLeftInIt : HandUse
 

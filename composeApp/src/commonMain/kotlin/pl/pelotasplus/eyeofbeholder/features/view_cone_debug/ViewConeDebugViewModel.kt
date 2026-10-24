@@ -125,6 +125,9 @@ import pl.pelotasplus.eyeofbeholder.data.model.anybodyStillHurt
 import pl.pelotasplus.eyeofbeholder.data.model.inSight
 import pl.pelotasplus.eyeofbeholder.data.model.night
 import pl.pelotasplus.eyeofbeholder.data.model.RestQuestion
+import pl.pelotasplus.eyeofbeholder.data.model.SpellBook
+import pl.pelotasplus.eyeofbeholder.data.model.SpellBookLayout
+import pl.pelotasplus.eyeofbeholder.data.model.withBook
 import pl.pelotasplus.eyeofbeholder.data.model.WatchingTheRest
 import pl.pelotasplus.eyeofbeholder.data.model.SoundBank
 import pl.pelotasplus.eyeofbeholder.data.model.TrackIndex
@@ -1285,7 +1288,11 @@ class ViewConeDebugViewModel(
         viewModelScope.launch {
             // camping puts a champion's page down and the party back up
             _state.update { it.copy(sheet = null) }
-            if (opening) spellsWantARest = false
+            if (opening) {
+                spellsWantARest = false
+                // the camp changes what the book would show
+                openBook = null
+            }
             showMenu(if (opening) CampMenu.camp() else null)
         }
     }
@@ -1910,6 +1917,11 @@ class ViewConeDebugViewModel(
                 return
             }
 
+            if (openBook != null && SpellBookLayout.covers(x, y)) {
+                bookClicked(x, y)
+                return
+            }
+
             handAt(x, y)?.let { hand ->
                 swapHandWith(hand.champion, hand.holds)
                 return
@@ -2241,7 +2253,13 @@ class ViewConeDebugViewModel(
                 return
             }
 
-            is HandUse.Cast -> castFromAScroll(whose, slot.slot, doing.spell)
+            is HandUse.Cast -> castSpell(whose, doing.spell, CastFrom.AScroll(slot.slot))
+
+            // Opening a book is not taking anything to the wall ahead.
+            is HandUse.OpenTheBook -> {
+                if (slot.slot.isAHand) openTheBook(whose, slot.slot, doing.discipline)
+                return
+            }
 
             // A wand with nothing in it is waved and says so, which is all it
             // says: the line does not admit the thing is a wand, so waving one
@@ -3086,9 +3104,9 @@ class ViewConeDebugViewModel(
      * The hand the spell was not read from, charged. It was found free before
      * anything was spent, so this only fails for a charge already running.
      */
-    private suspend fun chargeTheOtherHand(whose: PartySlot, readFrom: CarrySlot, spell: Spell) {
+    private suspend fun chargeTheOtherHand(whose: PartySlot, readFrom: CarrySlot, spell: Spell, casterLevel: Int) {
         val other = CarrySlot.BOTH_HANDS.first { it != readFrom }
-        val charged = _state.value.game.handCharged(whose, other, spell, ThrownSpell.AS_READ_FROM_A_SCROLL)
+        val charged = _state.value.game.handCharged(whose, other, spell, casterLevel)
             ?: return
 
         _state.update { it.copy(game = charged) }
@@ -3233,11 +3251,11 @@ class ViewConeDebugViewModel(
      * place it would have gone: one champion's blur is no reason to refuse
      * another champion theirs.
      */
-    private suspend fun runOverTheParty(whose: PartySlot, spell: Spell) {
+    private suspend fun runOverTheParty(whose: PartySlot, spell: Spell, casterLevel: Int) {
         val begun = _state.value.game.spellBegunWhereItSettles(
             spell = spell,
             by = whose,
-            casterLevel = ThrownSpell.AS_READ_FROM_A_SCROLL,
+            casterLevel = casterLevel,
         )
 
         if (begun == null) {
@@ -3405,6 +3423,69 @@ class ViewConeDebugViewModel(
     private fun sayWhatGaveThemAway(before: GameState) {
         _state.value.game.hidingsGoneSince(before).forEach { over ->
             sayOf(over.on ?: over.castBy) { SpellMessages.expires(it, over.spell.calledIt) }
+        }
+    }
+
+    /**
+     * The book open over the compass, or none. One at a time: opening
+     * another champion's closes this one.
+     */
+    private var openBook: SpellBook? = null
+
+    /** Whose books are resting after a casting, and cannot be cast from yet. */
+    private var restingBooks: Set<PartySlot> = emptySet()
+
+    private fun openTheBook(whose: PartySlot, hand: CarrySlot, discipline: Discipline) {
+        val champion = _state.value.game.championIn(whose) ?: return
+        openBook = SpellBook.opened(champion, whose, discipline)
+        bookHand = hand
+        renderViewPort()
+    }
+
+    /** Which hand the open book was opened from, which a spell wanting a free hand asks about. */
+    private var bookHand: CarrySlot = CarrySlot.BOTH_HANDS.first()
+
+    private fun closeTheBook() {
+        if (openBook == null) return
+        openBook = null
+        renderViewPort()
+    }
+
+    /** [book] put where its owner keeps it, and shown. */
+    private fun turnTo(book: SpellBook) {
+        openBook = book
+        _state.update { it.copy(game = it.game.withChampion(book.whose) { champion -> champion.withBook(book) }) }
+        renderViewPort()
+    }
+
+    /**
+     * A click on the open book: a tab, a line, the way out, or the scroll
+     * buttons beside it. Clicking a line both picks it and casts it, unless
+     * the book is resting, when it is only picked.
+     */
+    private fun bookClicked(x: Int, y: Int) {
+        val book = openBook ?: return
+        when (val part = SpellBookLayout.partAt(x, y)) {
+            is SpellBookLayout.Part.Tab -> turnTo(book.onTab(part.page))
+            is SpellBookLayout.Part.Line -> {
+                val picked = book.picked(part.line) ?: return
+                turnTo(picked)
+                val spell = picked.pickedSpell ?: return
+                castSpell(book.whose, spell, CastFrom.TheBook(bookHand, book.discipline))
+            }
+            SpellBookLayout.Part.Abort -> closeTheBook()
+            is SpellBookLayout.Part.Scroll -> turnTo(book.scrolled(down = part.down))
+            null -> Unit
+        }
+    }
+
+    /** The book out of use for a moment after a casting, shown with the grid over it. */
+    private fun restTheBook(whose: PartySlot) {
+        restingBooks = restingBooks + whose
+        viewModelScope.launch {
+            tick(SpellBookLayout.RESTS_FOR)
+            restingBooks = restingBooks - whose
+            renderViewPort()
         }
     }
 
@@ -4018,8 +4099,8 @@ class ViewConeDebugViewModel(
         if (scriptHasTheParty) this else copy(party = live.party)
 
     /**
-     * A spell read off a scroll, which the square the party stand on is asked
-     * what it makes of.
+     * A spell read off a scroll or out of a champion's book — see [CastFrom] —
+     * which the square the party stand on is asked what it makes of.
      *
      * The square rather than the wall ahead: casting is not aimed at anything,
      * so a carving that answers a spell answers it from wherever the party are
@@ -4030,11 +4111,13 @@ class ViewConeDebugViewModel(
      * scroll in the whole dungeon carrying the spell those carvings want, and
      * six squares that each need a casting to open.
      */
-    private fun castFromAScroll(whose: PartySlot, hand: CarrySlot, spell: Spell) {
-        if (_state.value.game.isRecovering(whose, hand)) return
+    private fun castSpell(whose: PartySlot, spell: Spell, from: CastFrom) {
+        if (!canCastFrom(whose, from)) return
         if (casting?.isActive == true) return
 
         Logger.d(TAG) { "Casts ${spell.name} at ${_state.value.game.party.position}" }
+        val level = casterLevel(whose, from)
+        val hand = from.hand
 
         // A mending does nothing whatever until it is told who it is for — not
         // the words, not the scroll, not the hand's rest. Asking first and
@@ -4042,7 +4125,7 @@ class ViewConeDebugViewModel(
         // costing anything: a scroll spent before the answer would be a scroll
         // spent on nobody every time the party thought better of it.
         if (spell.laidOn != null || spell.settlesOn == SettlesOn.WHOEVER_IS_POINTED_AT) {
-            askWhoItIsFor(whose, hand, spell)
+            askWhoItIsFor(whose, from, spell)
             return
         }
 
@@ -4078,11 +4161,7 @@ class ViewConeDebugViewModel(
             // reach nobody new, so it can still be cast to cover somebody
             // who has joined since.
             spell.settlesOn == SettlesOn.EVERY_CHAMPION ->
-                _state.value.game.spellBegunWhereItSettles(
-                    spell,
-                    whose,
-                    ThrownSpell.AS_READ_FROM_A_SCROLL,
-                ) == null
+                _state.value.game.spellBegunWhereItSettles(spell, whose, level) == null
 
             else -> _state.value.game.running.isRunning(spell)
         }
@@ -4103,16 +4182,13 @@ class ViewConeDebugViewModel(
         }
 
         val beforeTheWords = _state.value.game
-        _state.update { it.copy(game = it.game.handCast(whose, hand, spell)) }
+        spend(whose, spell, from)
         sayWhatGaveThemAway(beforeTheWords)
-        keepHandsRecovering()
 
-        spell.throws?.let { thrown -> loose(whose, thrown) }
+        spell.throws?.let { thrown -> loose(whose, thrown, level) }
 
         // Read last, because reading it is what may take it out of the hand.
-        itemTypes?.let { types ->
-            _state.update { it.copy(game = it.game.castOutOf(whose, hand, types)) }
-        }
+        readOut(whose, from)
 
         sayOf(whose) { SpellMessages.casts(it, spell.calledIt) }
 
@@ -4125,12 +4201,12 @@ class ViewConeDebugViewModel(
             // The shield is its own thing: it can be put up again while the
             // spell that raised it still runs, which no other spell can do.
             if (spell == Spell.MYSTIC_DEFENCE) shieldTheParty(whose, spell)
-            else if (spell.chargesAHand != null) chargeTheOtherHand(whose, hand, spell)
-            else if (spell.lasts != null) runOverTheParty(whose, spell)
+            else if (spell.chargesAHand != null) chargeTheOtherHand(whose, hand, spell, level)
+            else if (spell.lasts != null) runOverTheParty(whose, spell, level)
             else if (spell.spreadsAsACone) {
-                freezeWhatIsInFront(ThrownSpell.AS_READ_FROM_A_SCROLL)
+                freezeWhatIsInFront(level)
             } else if (spell.shutsOffTheSquareAhead) {
-                shutOffTheSquareAhead(ThrownSpell.AS_READ_FROM_A_SCROLL)
+                shutOffTheSquareAhead(level)
             } else if (spell.unmakesTheSquareAhead) {
                 unmakeTheSquareAhead()
             } else if (spell.feedsThemAll) {
@@ -4169,22 +4245,79 @@ class ViewConeDebugViewModel(
 
     private data class WaitingCasting(
         val caster: PartySlot,
-        val hand: CarrySlot,
+        val from: CastFrom,
         val reading: ItemIndex,
         val spell: Spell,
     )
 
-    private fun askWhoItIsFor(caster: PartySlot, hand: CarrySlot, spell: Spell) {
-        val reading = _state.value.game.championIn(caster)?.holding(hand) ?: return
+    private fun askWhoItIsFor(caster: PartySlot, from: CastFrom, spell: Spell) {
+        val reading = _state.value.game.championIn(caster)?.holding(from.hand) ?: return
 
         // An open page takes the six boxes' side of the screen, so a scroll
         // read off one leaves the question with nothing to point at. The page
         // closes rather than the question going unanswerable.
         showSheet(null)
 
-        castingWaitingOnAnAnswer = WaitingCasting(caster, hand, reading, spell)
+        castingWaitingOnAnAnswer = WaitingCasting(caster, from, reading, spell)
         say(SpellMessages.castOnWhom(spell.calledIt))
         drawWords()
+    }
+
+    /**
+     * Where a spell is cast from: a scroll or wand in a hand, which spends
+     * the scroll and rests the hand, or a champion's own book opened from a
+     * hand, which uses up the spell's place and rests the book.
+     */
+    private sealed interface CastFrom {
+        val hand: CarrySlot
+
+        data class AScroll(override val hand: CarrySlot) : CastFrom
+        data class TheBook(override val hand: CarrySlot, val discipline: Discipline) : CastFrom
+    }
+
+    /** Whether [from] is ready: a hand back from its rest, or a book back from its own. */
+    private fun canCastFrom(whose: PartySlot, from: CastFrom): Boolean = when (from) {
+        is CastFrom.AScroll -> !_state.value.game.isRecovering(whose, from.hand)
+        is CastFrom.TheBook -> whose !in restingBooks && openBook?.whose == whose
+    }
+
+    private fun casterLevel(whose: PartySlot, from: CastFrom): Int = when (from) {
+        is CastFrom.AScroll -> ThrownSpell.AS_READ_FROM_A_SCROLL
+        is CastFrom.TheBook -> _state.value.game.championIn(whose)
+            ?.let { SpellBook.casterLevel(it, from.discipline) }
+            ?: 1
+    }
+
+    /**
+     * What casting [spell] costs [whose]: a scroll's hand rests, and the
+     * book's place is used up and the book rests. Either way the words may
+     * give a hidden caster away.
+     */
+    private fun spend(whose: PartySlot, spell: Spell, from: CastFrom) {
+        when (from) {
+            is CastFrom.AScroll -> {
+                _state.update { it.copy(game = it.game.handCast(whose, from.hand, spell)) }
+                keepHandsRecovering()
+            }
+
+            is CastFrom.TheBook -> {
+                val book = openBook?.takeIf { it.whose == whose }?.cast() ?: return
+                openBook = book
+                _state.update {
+                    val heard = if (spell.givesTheCasterAway) it.game.seenAgain(whose) else it.game
+                    it.copy(game = heard.withChampion(whose) { champion -> champion.withBook(book) })
+                }
+                restTheBook(whose)
+            }
+        }
+    }
+
+    /** A scroll or wand read out of the hand, which may leave it empty; a book is not. */
+    private fun readOut(whose: PartySlot, from: CastFrom) {
+        if (from !is CastFrom.AScroll) return
+        itemTypes?.let { types ->
+            _state.update { it.copy(game = it.game.castOutOf(whose, from.hand, types)) }
+        }
     }
 
     /**
@@ -4206,7 +4339,7 @@ class ViewConeDebugViewModel(
             spell = waiting.spell,
             whom = whom,
             by = waiting.caster,
-            casterLevel = ThrownSpell.AS_READ_FROM_A_SCROLL,
+            casterLevel = casterLevel(waiting.caster, waiting.from),
         )
 
         if (settled == null) {
@@ -4218,18 +4351,12 @@ class ViewConeDebugViewModel(
 
         sayOf(waiting.caster) { SpellMessages.casts(it, waiting.spell.calledIt) }
 
-        _state.update {
-            it.copy(game = settled.handCast(waiting.caster, waiting.hand, waiting.spell))
-        }
-        keepHandsRecovering()
+        _state.update { it.copy(game = settled) }
+        spend(waiting.caster, waiting.spell, waiting.from)
         keepTheSpellsRunning()
 
         // Read last, because reading it is what may take it out of the hand.
-        itemTypes?.let { types ->
-            _state.update {
-                it.copy(game = it.game.castOutOf(waiting.caster, waiting.hand, types))
-            }
-        }
+        readOut(waiting.caster, waiting.from)
 
         waiting.spell.heardAs?.let { heard -> viewModelScope.launch { playTrack(heard) } }
         casting = viewModelScope.launch {
@@ -4262,7 +4389,8 @@ class ViewConeDebugViewModel(
         // The scroll can have been put away while the question stood, and the
         // hand can have been filled with something else. Either way this is no
         // longer the casting that was asked about.
-        if (caster.holding(waiting.hand) != waiting.reading) {
+        val bookMoved = waiting.from is CastFrom.TheBook && openBook?.pickedSpell != waiting.spell
+        if (caster.holding(waiting.from.hand) != waiting.reading || !canCastFrom(waiting.caster, waiting.from) || bookMoved) {
             say(SpellMessages.nothingLeftToReadFrom())
             drawWords()
             return
@@ -4289,22 +4417,12 @@ class ViewConeDebugViewModel(
 
         sayOf(waiting.caster) { SpellMessages.casts(it, waiting.spell.calledIt) }
 
-        _state.update {
-            it.copy(
-                game = it.game
-                    .handCast(waiting.caster, waiting.hand, waiting.spell)
-                    .withTheSpellLaidOn(whom, laidOn, caster),
-            )
-        }
-        keepHandsRecovering()
+        _state.update { it.copy(game = it.game.withTheSpellLaidOn(whom, laidOn, caster)) }
+        spend(waiting.caster, waiting.spell, waiting.from)
         whatCameOfIt(laidOn, pointedAt, waiting.spell)?.let(::say)
 
         // Read last, because reading it is what may take it out of the hand.
-        itemTypes?.let { types ->
-            _state.update {
-                it.copy(game = it.game.castOutOf(waiting.caster, waiting.hand, types))
-            }
-        }
+        readOut(waiting.caster, waiting.from)
 
         // Heard and seen together, both over the one they were meant for.
         waiting.spell.heardAs?.let { heard -> viewModelScope.launch { playTrack(heard) } }
@@ -4386,12 +4504,12 @@ class ViewConeDebugViewModel(
      * drawn down the middle whoever cast it — but it is what decides who a
      * spell that takes either side comes back through.
      *
-     * How hard it lands is not the reader's doing. Anything cast out of a
-     * scroll or a wand is cast as a ninth-level caster would cast it, however
-     * new the champion holding it — which is why a scroll is worth carrying to
+     * How hard it lands is [casterLevel]'s doing: a champion's own from their
+     * book, and a ninth level's out of a scroll or a wand however new the
+     * champion holding it — which is why a scroll is worth carrying to
      * somebody who could never learn the spell.
      */
-    private fun loose(whose: PartySlot, thrown: ThrownSpell) {
+    private fun loose(whose: PartySlot, thrown: ThrownSpell, casterLevel: Int) {
         val party = _state.value.game.party
 
         _state.update {
@@ -4404,7 +4522,7 @@ class ViewConeDebugViewModel(
                         going = party.facing,
                         squaresLeft = thrown.flies.reach,
                         thrownBy = Projectile.Thrower.AChampion(whose),
-                        harm = thrown.dealtBy(ThrownSpell.AS_READ_FROM_A_SCROLL),
+                        harm = thrown.dealtBy(casterLevel),
                         spell = thrown.flies,
                     ),
                 ),
@@ -5203,6 +5321,8 @@ class ViewConeDebugViewModel(
                     unseen = { whom -> _state.value.game.running.unseen(whom) },
                     magicShowing = _state.value.game.magicIsShowing,
                     sparksOverTheParty = _state.value.game.sparklingOverTheParty,
+                    book = openBook,
+                    bookResting = openBook?.whose in restingBooks,
                 )
                 .toImageBitmap()
         } else {
