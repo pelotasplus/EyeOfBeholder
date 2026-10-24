@@ -24,10 +24,13 @@ import pl.pelotasplus.eyeofbeholder.data.model.Location
 import pl.pelotasplus.eyeofbeholder.data.model.PartyState
 import pl.pelotasplus.eyeofbeholder.data.model.PortraitId
 import pl.pelotasplus.eyeofbeholder.data.model.Rest
+import pl.pelotasplus.eyeofbeholder.data.model.RestQuestion
 import pl.pelotasplus.eyeofbeholder.data.model.Resting
 import pl.pelotasplus.eyeofbeholder.data.model.Ring
+import pl.pelotasplus.eyeofbeholder.data.model.WatchingTheRest
 import pl.pelotasplus.eyeofbeholder.data.model.XpPoints
-import pl.pelotasplus.eyeofbeholder.data.model.sleptAnHour
+import pl.pelotasplus.eyeofbeholder.data.model.aStretchSlept
+import pl.pelotasplus.eyeofbeholder.data.model.night
 import pl.pelotasplus.eyeofbeholder.data.repository.ItemTypesRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.ItemsRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.ResourceRepositoryImpl
@@ -141,10 +144,10 @@ class WhatARingOfSustenanceSavesTest {
             champion(hitPoints = 10),
         )
 
-        val woken = party.sleptAnHour(HOURS_A_MENDED_POINT, itemTypes)
+        val woken = party.aStretchSlept(HOURS_A_MENDED_POINT, itemTypes).first
 
         assertEquals(100, woken.champions[0].food.value, "the ring paid for the sleep")
-        assertEquals(98, woken.champions[1].food.value)
+        assertEquals(95, woken.champions[1].food.value)
     }
 
     /** And the sleep still mends what it would have mended. */
@@ -152,9 +155,9 @@ class WhatARingOfSustenanceSavesTest {
     fun `the wearer mends all the same`() {
         val party = world(champion(hitPoints = 10, wearing = aRingOf(Ring.SUSTENANCE)))
 
-        val woken = party.sleptAnHour(HOURS_A_MENDED_POINT, itemTypes)
+        val woken = party.aStretchSlept(HOURS_A_MENDED_POINT, itemTypes).first
 
-        assertEquals(40, woken.champions[0].hitPoints.current)
+        assertEquals(11, woken.champions[0].hitPoints.current)
     }
 
     /**
@@ -167,16 +170,15 @@ class WhatARingOfSustenanceSavesTest {
     fun `an empty stomach stays empty, ring or no ring`() {
         val starving = world(champion(food = 0, hitPoints = 10, wearing = aRingOf(Ring.SUSTENANCE)))
 
-        val woken = starving.sleptAnHour(HOURS_A_MENDED_POINT, itemTypes)
+        val woken = starving.aStretchSlept(HOURS_A_MENDED_POINT, itemTypes).first
 
         assertEquals(0, woken.champions[0].food.value)
         assertEquals(10, woken.champions[0].hitPoints.current, "an empty stomach mended something")
     }
 
     /**
-     * A whole rest rather than one stretch of it. The party lie there until
-     * nobody is hurt any more, which is several stretches for somebody badly
-     * hurt, and the wearer pays for none of them.
+     * A whole rest rather than one stretch of it. Two short of full is two
+     * stretches of resting until healed, and the wearer pays for neither.
      *
      * Worth asking separately: a rest is what the party actually do, and it
      * reaches the sleeping through a different route than a single stretch.
@@ -184,16 +186,24 @@ class WhatARingOfSustenanceSavesTest {
     @Test
     fun `a rest long enough to mend somebody costs the wearer nothing`() {
         val party = world(
-            champion(hitPoints = 1, wearing = aRingOf(Ring.SUSTENANCE)),
-            champion(hitPoints = 1),
+            champion(hitPoints = 38, wearing = aRingOf(Ring.SUSTENANCE)),
+            champion(hitPoints = 38),
         )
+        val untilHealed = object : WatchingTheRest {
+            override suspend fun asked(question: RestQuestion, hours: Int) = question == RestQuestion.STILL_INJURED
+            override suspend fun said(words: String) = Unit
+            override suspend fun anHourPassed(hours: Int) = Unit
+            override suspend fun stepped(world: GameState) = Unit
+        }
 
-        val slept = Resting(kinds = emptyList(), types = itemTypes).rest(party)
+        val slept = runBlocking {
+            Resting(kinds = emptyList(), types = itemTypes).night(party, walking = null, watching = untilHealed)
+        }
 
-        val woken = assertIs<Rest.Slept>(slept).world
+        val woken = assertIs<Rest.Woke>(slept).world
         assertEquals(40, woken.champions[0].hitPoints.current, "the rest did not run long enough")
         assertEquals(100, woken.champions[0].food.value, "the ring paid for the rest")
-        assertEquals(96, woken.champions[1].food.value)
+        assertEquals(90, woken.champions[1].food.value)
     }
 
     private companion object {

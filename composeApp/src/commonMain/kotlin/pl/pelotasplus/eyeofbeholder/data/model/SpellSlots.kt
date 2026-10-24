@@ -36,19 +36,23 @@ enum class Discipline {
 @Serializable
 sealed interface SpellSlot {
 
+    val spell: Spell?
+
     @Serializable
     @SerialName("empty")
-    data object Empty : SpellSlot
+    data object Empty : SpellSlot {
+        override val spell: Spell? get() = null
+    }
 
     /** Chosen, and not learned yet: a rest is what turns it [Ready]. */
     @Serializable
     @SerialName("learning")
-    data class Learning(val spell: Spell) : SpellSlot
+    data class Learning(override val spell: Spell) : SpellSlot
 
     /** Learned, and there to be cast. Casting it puts it back to [Learning]. */
     @Serializable
     @SerialName("ready")
-    data class Ready(val spell: Spell) : SpellSlot
+    data class Ready(override val spell: Spell) : SpellSlot
 }
 
 /**
@@ -65,6 +69,8 @@ sealed interface SpellSlot {
 data class SpellPages(val slots: List<SpellSlot> = List(PAGES * PER_PAGE) { SpellSlot.Empty }) {
 
     fun page(index: Int): List<SpellSlot> = slots.subList(index * PER_PAGE, (index + 1) * PER_PAGE)
+
+    fun with(at: Int, place: SpellSlot) = SpellPages(slots.toMutableList().also { it[at] = place })
 
     companion object {
         const val PAGES = 8

@@ -121,15 +121,11 @@ import pl.pelotasplus.eyeofbeholder.data.model.RunningSpell
 import pl.pelotasplus.eyeofbeholder.data.model.SettlesOn
 import pl.pelotasplus.eyeofbeholder.data.model.TheGameIsWatched
 import pl.pelotasplus.eyeofbeholder.data.model.tintedAsMagical
-import pl.pelotasplus.eyeofbeholder.data.model.anybodyCanStillMend
 import pl.pelotasplus.eyeofbeholder.data.model.anybodyStillHurt
-import pl.pelotasplus.eyeofbeholder.data.model.anybodyStarving
-import pl.pelotasplus.eyeofbeholder.data.model.starvedADay
-import pl.pelotasplus.eyeofbeholder.data.model.somebodyRanOutOfFood
-import pl.pelotasplus.eyeofbeholder.data.model.HOURS_A_STARVED_POINT
-import pl.pelotasplus.eyeofbeholder.data.model.HOURS_A_MENDED_POINT
 import pl.pelotasplus.eyeofbeholder.data.model.inSight
-import pl.pelotasplus.eyeofbeholder.data.model.sleptAnHour
+import pl.pelotasplus.eyeofbeholder.data.model.night
+import pl.pelotasplus.eyeofbeholder.data.model.RestQuestion
+import pl.pelotasplus.eyeofbeholder.data.model.WatchingTheRest
 import pl.pelotasplus.eyeofbeholder.data.model.SoundBank
 import pl.pelotasplus.eyeofbeholder.data.model.TrackIndex
 import pl.pelotasplus.eyeofbeholder.data.model.Volume
@@ -1396,107 +1392,75 @@ class ViewConeDebugViewModel(
     }
 
     /**
-     * The party lie down where they stand, and the hours run until everyone is
-     * mended, the food is gone, or the player says to stop.
+     * The party lie down where they stand, and the rest runs ten minutes at a
+     * time until there is nothing more to learn or mend, a question is
+     * answered no, a monster comes near, or the player does anything at all.
      *
-     * The hours are counted on a clock rather than added up at once: a rest is
-     * something the player watches and can cut short, which is the whole point
-     * of the way out in the corner of the box.
+     * It is watched rather than added up at once: the hours count up on the
+     * box, and what is learned and healed is said as it happens.
      */
-    private suspend fun onRest() {
+    private fun onRest() {
         val inf = _state.value.inf
         val kinds = inf?.subLevels?.getOrNull(_state.value.subLevel)?.monsters.orEmpty()
         val resting = Resting(kinds = kinds, stepping = stepping(), types = itemTypes)
 
-        when (val begun = resting.begin(_state.value.game, walking())) {
-            Rest.NotHere -> {
-                showMenu(null)
-                say(CANNOT_REST_HERE)
-                renderViewPort()
-            }
-
-            is Rest.SomethingIsNear -> {
-                _state.update { it.copy(game = begun.world) }
-                showMenu(null)
-                say(MONSTERS_ARE_NEAR)
-                renderViewPort()
-            }
-
-            is Rest.Slept -> {
-                _state.update { it.copy(game = begun.world) }
-                keepResting(resting)
-            }
-        }
-    }
-
-    private fun keepResting(resting: Resting) {
         sleeping?.cancel()
         hoursSlept = 0
 
         sleeping = viewModelScope.launch {
             showMenu(CampMenu.resting(hoursSlept))
 
-            // A rest runs until the party are mended, which is a long time to
-            // have agreed to by accident — so lying down hurt is asked about
-            // before any of it passes, and asked once.
-            if (_state.value.game.anybodyStillHurt &&
-                !asking(CampMenu.stillInjured(hoursSlept))
-            ) {
-                wakeUp(hoursSlept)
-                return@launch
-            }
-            showMenu(CampMenu.resting(hoursSlept))
-
-            while (_state.value.game.anybodyStillHurt) {
-                val world = _state.value.game
-
-                // Nothing more to be had from lying here: nobody can mend and
-                // nobody is going hungry for it either.
-                if (!world.anybodyCanStillMend && !world.anybodyStarving) break
-
-                tick(AN_HOUR_OF_SLEEP)
-
-                // The floor does not hold still while the party sleep: the
-                // monsters take their turns between the hours, and one that
-                // wanders up wakes the party where they lie.
-                when (val still = resting.begin(_state.value.game, walking())) {
-                    is Rest.SomethingIsNear -> {
-                        _state.update { it.copy(game = still.world) }
-                        showMenu(null)
-                        say(MONSTERS_ARE_NEAR)
-                        renderViewPort()
-                        return@launch
-                    }
-
-                    is Rest.Slept -> _state.update { it.copy(game = still.world) }
-                    Rest.NotHere -> Unit
+            when (val ended = resting.night(_state.value.game, walking(), watchingTheRest)) {
+                Rest.NotHere -> {
+                    sleeping = null
+                    showMenu(null)
+                    say(CANNOT_REST_HERE)
+                    renderViewPort()
                 }
 
-                hoursSlept += HOURS_A_MENDED_POINT
-
-                val before = _state.value.game
-                var slept = before.sleptAnHour(HOURS_A_MENDED_POINT, itemTypes)
-
-                // A day on an empty stomach costs a hit point, and a day is
-                // three of these stretches rather than one.
-                val aDayGone = hoursSlept % HOURS_A_STARVED_POINT == 0
-                val starved = if (!aDayGone) slept else slept.starvedADay()
-                val anybodyWasStarved = starved.champions != slept.champions
-                slept = starved
-
-                _state.update { it.copy(game = slept) }
-                showMenu(CampMenu.resting(hoursSlept))
-
-                // Asked when a stomach empties, and again on each day it costs
-                // somebody a hit point — not on every stretch, which would put
-                // the question up faster than the party could answer it.
-                if (before.somebodyRanOutOfFood(slept) || anybodyWasStarved) {
-                    if (!asking(CampMenu.starving(hoursSlept))) break
-                    showMenu(CampMenu.resting(hoursSlept))
+                is Rest.SomethingIsNear -> {
+                    sleeping = null
+                    _state.update { it.copy(game = ended.world.asAScriptLeaves(it.game)) }
+                    showMenu(null)
+                    say(MONSTERS_ARE_NEAR)
+                    renderViewPort()
                 }
-            }
 
-            wakeUp(hoursSlept)
+                is Rest.Woke -> wakeUp(ended.hours, ended.fullyRested)
+                is Rest.Slept -> wakeUp(hoursSlept)
+            }
+        }
+    }
+
+    private val watchingTheRest = object : WatchingTheRest {
+        override suspend fun asked(question: RestQuestion, hours: Int): Boolean {
+            val answer = asking(
+                when (question) {
+                    RestQuestion.HEALERS -> CampMenu.healers(hours)
+                    RestQuestion.STILL_INJURED -> CampMenu.stillInjured(hours)
+                    RestQuestion.STARVING -> CampMenu.starving(hours)
+                },
+            )
+            showMenu(CampMenu.resting(hours))
+            return answer
+        }
+
+        override suspend fun said(words: String) {
+            say(words)
+            drawWords()
+            tick(A_LINE_OF_REST)
+        }
+
+        override suspend fun anHourPassed(hours: Int) {
+            hoursSlept = hours
+            showMenu(CampMenu.resting(hours))
+            tick(AN_HOUR_OF_SLEEP)
+        }
+
+        // The rest carries the world it lay down in, so the hands and blows
+        // on their own clocks are kept as they are now rather than put back.
+        override suspend fun stepped(world: GameState) {
+            _state.update { it.copy(game = world.asAScriptLeaves(it.game)) }
         }
     }
 
@@ -1537,32 +1501,24 @@ class ViewConeDebugViewModel(
         return asked.await().also { sleepingOnHungry = null }
     }
 
-    /** The party up again, however the rest ended. */
-    private suspend fun wakeUp(hours: Int) {
+    /**
+     * The party up again, back in the camp, however the rest ended short of a
+     * monster. Only a party with nobody left to mend are told anything.
+     */
+    private suspend fun wakeUp(hours: Int, fullyRested: Boolean = !_state.value.game.anybodyStillHurt) {
         val clock = sleeping
         sleeping = null
         sleepingOnHungry = null
         clock?.cancel()
 
-        showMenu(null)
-
         // The spells on the party are told how long they slept only now they
         // are up, so one that ran out says so after the rest rather than during
         // it. Saying so is the spell's own clock's business.
         _state.update { it.copy(game = it.game.spellsRunThroughARest(hours)) }
+        spellsWantARest = false
 
-        // What to say is what actually happened. Nobody hurt is a party fully
-        // rested; hurt with nothing left to eat is a party that cannot mend at
-        // all, and telling them they are rested would be a plain lie.
-        val world = _state.value.game
-        say(
-            when {
-                !world.anybodyStillHurt -> FULLY_RESTED
-                !world.anybodyCanStillMend -> STARVING
-                hours > 0 -> "Hours rested: $hours"
-                else -> FULLY_RESTED
-            }
-        )
+        showMenu(CampMenu.camp())
+        if (fullyRested) showMessage(CampSpellMessages.FULLY_RESTED, then = CampMenu.camp())
         renderViewPort()
     }
 
@@ -5480,10 +5436,11 @@ class ViewConeDebugViewModel(
         /** How long an hour of sleep takes to watch. */
         private val AN_HOUR_OF_SLEEP = Ticks(3)
 
+        /** How long a spell learned or a healing cast over a rest stays the last thing said. */
+        private const val A_LINE_OF_REST = 80L
+
         private const val CANNOT_REST_HERE = "You do not feel it is safe to rest here."
         private const val MONSTERS_ARE_NEAR = "You can't rest here, monsters are near."
-        private const val FULLY_RESTED = "All characters are fully rested."
-        private const val STARVING = "Your party is starving."
 
         private val WALL_BUMP = TrackIndex(29)
         private val EAT = TrackIndex(9)

@@ -173,6 +173,7 @@ object CampSpellMessages {
     val CHOOSE_SCROLLS = listOf("Select the scroll(s)", "you wish to scribe.")
 
     val NEEDS_A_REST = listOf(" Your party needs", " to rest to gain", " spells.")
+    val FULLY_RESTED = listOf("", " All characters", " are fully", " rested.")
 
     const val SPELLS_AVAILABLE = "Spells Available:"
     const val CLEAR = "Clear"

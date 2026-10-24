@@ -14,21 +14,23 @@ import pl.pelotasplus.eyeofbeholder.data.model.Holding
 import pl.pelotasplus.eyeofbeholder.data.model.WhatABlowLeaves
 import pl.pelotasplus.eyeofbeholder.data.model.Inf
 import pl.pelotasplus.eyeofbeholder.data.model.Location
-import pl.pelotasplus.eyeofbeholder.data.model.MonsterInstance
+import pl.pelotasplus.eyeofbeholder.data.model.MonsterMode
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterSlot
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterStepping
+import pl.pelotasplus.eyeofbeholder.data.model.Night
 import pl.pelotasplus.eyeofbeholder.data.model.PartySlot
 import pl.pelotasplus.eyeofbeholder.data.model.PartyState
 import pl.pelotasplus.eyeofbeholder.data.model.Rest
+import pl.pelotasplus.eyeofbeholder.data.model.RestQuestion
 import pl.pelotasplus.eyeofbeholder.data.model.Resting
-import pl.pelotasplus.eyeofbeholder.data.model.anybodyCanStillMend
+import pl.pelotasplus.eyeofbeholder.data.model.WatchingTheRest
+import pl.pelotasplus.eyeofbeholder.data.model.aStretchSlept
+import pl.pelotasplus.eyeofbeholder.data.model.anHourSlept
 import pl.pelotasplus.eyeofbeholder.data.model.anybodyStillHurt
-import pl.pelotasplus.eyeofbeholder.data.model.anybodyStarving
-import pl.pelotasplus.eyeofbeholder.data.model.starvedADay
-import pl.pelotasplus.eyeofbeholder.data.model.somebodyRanOutOfFood
 import pl.pelotasplus.eyeofbeholder.data.model.HOURS_A_MENDED_POINT
-import pl.pelotasplus.eyeofbeholder.data.model.sleptAnHour
+import pl.pelotasplus.eyeofbeholder.data.model.HOURS_A_STARVED_POINT
 import pl.pelotasplus.eyeofbeholder.data.model.isBesideTheParty
+import pl.pelotasplus.eyeofbeholder.data.model.night
 import pl.pelotasplus.eyeofbeholder.data.repository.CpsRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.DecRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.InfRepositoryImpl
@@ -45,10 +47,10 @@ import kotlin.test.assertTrue
 /**
  * The party bedding down where they stand, in level 5's temple.
  *
- * A step of sleep is worth a hit point and costs five food: they sleep until
- * nobody is hurt or the food runs out. Whether anything stops them is played
- * out rather than measured — the monsters take their turns first, and the rest
- * is refused if any of them ends up beside the party.
+ * A stretch of eight hours' sleep is worth a hit point and costs five food.
+ * Whether anything stops them is played out rather than measured — the
+ * monsters take their turns first, and again every ten minutes, and the rest
+ * is refused or broken if any of them ends up beside the party.
  */
 @Category(NeedsGameData::class)
 class RestingTest {
@@ -99,20 +101,29 @@ class RestingTest {
      * forward by however long they lay there.
      *
      * An hour is a dozen times longer than the longest grip, so a party who
-     * lie down at all get up free of one.
+     * lie down for an hour get up free of one.
      */
     @Test
     fun `an hour of sleep outlasts anything holding somebody`() {
-        val held = world(champion(food = 100, hurt = HitPoints(10, 20))).copy(
-            holding = listOf(
-                Holding(PartySlot(0), WhatABlowLeaves.PARALYSIS, ticksLeft = aFreshGrip),
-            ),
-        )
+        val held = heldWorld()
 
-        val woken = held.sleptAnHour(HOURS_A_MENDED_POINT)
-
-        assertEquals(emptyList(), woken.holding, "they slept and something still had hold of them")
+        assertEquals(emptyList(), held.anHourSlept().holding, "they slept and something still had hold of them")
     }
+
+    /** Ten minutes is not an hour: the clocks move by the hour. */
+    @Test
+    fun `and less than an hour lets nobody go`() {
+        var night = Night(heldWorld())
+        repeat(Night.STEPS_AN_HOUR - 1) { night = night.stepped(types = null, dice = { _, _, m -> m }).night }
+
+        assertEquals(heldWorld().holding, night.world.holding, "less than an hour let a grip go")
+    }
+
+    private fun heldWorld() = world(champion(food = 100, hurt = HitPoints(10, 20))).copy(
+        holding = listOf(
+            Holding(PartySlot(0), WhatABlowLeaves.PARALYSIS, ticksLeft = aFreshGrip),
+        ),
+    )
 
     /**
      * Venom is the one thing sleeping makes worse. It goes on taking what it
@@ -122,13 +133,13 @@ class RestingTest {
     fun `sleeping poisoned costs ten an hour`() {
         val hale = champion(food = 100, hurt = HitPoints(100, 200))
 
-        val clean = world(hale).sleptAnHour(HOURS_A_MENDED_POINT)
-        val bitten = world(hale.poisoned(true)).sleptAnHour(HOURS_A_MENDED_POINT)
+        val clean = world(hale).anHourSlept()
+        val bitten = world(hale.poisoned(true)).anHourSlept()
 
         assertEquals(
-            VENOM_AN_HOUR * HOURS_A_MENDED_POINT,
+            VENOM_AN_HOUR,
             clean.champions[0].hitPoints.current - bitten.champions[0].hitPoints.current,
-            "the venom charged something other than ten an hour for the night",
+            "the venom charged something other than ten for the hour",
         )
     }
 
@@ -138,9 +149,8 @@ class RestingTest {
         val hale = champion(food = 100, hurt = HitPoints(100, 200))
 
         assertEquals(
-            world(hale).sleptAnHour(HOURS_A_MENDED_POINT).champions[0].hitPoints.current,
-            world(hale.poisoned(true).poisoned(false))
-                .sleptAnHour(HOURS_A_MENDED_POINT).champions[0].hitPoints.current,
+            world(hale).anHourSlept().champions[0].hitPoints.current,
+            world(hale.poisoned(true).poisoned(false)).anHourSlept().champions[0].hitPoints.current,
             "somebody cured before lying down was charged anyway",
         )
     }
@@ -150,12 +160,11 @@ class RestingTest {
     fun `each of them is charged for their own venom`() {
         val hale = champion(food = 100, hurt = HitPoints(100, 200))
 
-        val night = world(hale.poisoned(true), hale.poisoned(true), hale)
-            .sleptAnHour(HOURS_A_MENDED_POINT)
-        val clean = world(hale, hale, hale).sleptAnHour(HOURS_A_MENDED_POINT)
+        val night = world(hale.poisoned(true), hale.poisoned(true), hale).anHourSlept()
+        val clean = world(hale, hale, hale).anHourSlept()
 
         assertEquals(
-            listOf(VENOM_AN_HOUR * HOURS_A_MENDED_POINT, VENOM_AN_HOUR * HOURS_A_MENDED_POINT, 0),
+            listOf(VENOM_AN_HOUR, VENOM_AN_HOUR, 0),
             clean.champions.zip(night.champions).map { (was, now) ->
                 was.hitPoints.current - now.hitPoints.current
             },
@@ -170,24 +179,8 @@ class RestingTest {
 
         assertEquals(
             Champion.BEYOND_RAISING,
-            world(gone).sleptAnHour(HOURS_A_MENDED_POINT).champions[0].hitPoints.current,
+            world(gone).anHourSlept().champions[0].hitPoints.current,
             "the venom went on taking from somebody it could not reach",
-        )
-    }
-
-    /** Too short a sleep to mend anything is too short to let go of anybody. */
-    @Test
-    fun `and a sleep too short to mend is too short to let go`() {
-        val held = world(champion(food = 100, hurt = HitPoints(10, 20))).copy(
-            holding = listOf(
-                Holding(PartySlot(0), WhatABlowLeaves.PARALYSIS, ticksLeft = aFreshGrip),
-            ),
-        )
-
-        assertEquals(
-            held.holding,
-            held.sleptAnHour(HOURS_A_MENDED_POINT - 1).holding,
-            "a rest that mended nothing let a grip go anyway",
         )
     }
 
@@ -217,25 +210,35 @@ class RestingTest {
     @Test
     fun `a script can forbid rest here`() {
         val forbidden = world(champion(100, HitPoints(5, 20)), forbidden = true)
-        assertEquals(Rest.NotHere, resting().rest(forbidden))
+        assertEquals(Rest.NotHere, resting().begin(forbidden))
     }
 
     @Test
     fun `a monster already beside the party stops them`() {
         val hurt = world(champion(100, HitPoints(5, 20)), monstersOn = listOf(Location(13, 11)))
+            .let { it.copy(monsters = it.monsters.map { m -> m.takingUpTheHunt() }) }
 
-        assertIs<Rest.SomethingIsNear>(resting().rest(hurt))
+        assertIs<Rest.SomethingIsNear>(resting().begin(hurt))
+    }
+
+    /** Unless it is standing by until it sees them, which it has not yet. */
+    @Test
+    fun `one standing by beside them does not`() {
+        val beside = world(champion(100, HitPoints(5, 20)), monstersOn = listOf(Location(13, 11)))
+            .let { it.copy(monsters = it.monsters.map { m -> m.copy(mode = MonsterMode.WAITING_TO_SEE.asWritten) }) }
+
+        assertIs<Rest.Slept>(resting().begin(beside))
     }
 
     /**
      * Standing still, a monster a few squares off is no trouble at all: the
-     * party bed down and mend.
+     * party bed down.
      */
     @Test
     fun `a monster that cannot come near does not stop them`() {
         val hurt = world(champion(100, HitPoints(5, 20)), monstersOn = listOf(Location(13, 8)))
 
-        assertIs<Rest.Slept>(resting(theyWalk = false).rest(hurt))
+        assertIs<Rest.Slept>(resting(theyWalk = false).begin(hurt))
     }
 
     /**
@@ -248,7 +251,7 @@ class RestingTest {
         val hurt = world(champion(100, HitPoints(5, 20)), monstersOn = listOf(Location(13, 9)))
             .let { it.copy(monsters = it.monsters.map { m -> m.copy(provoked = true) }) }
 
-        val stopped = resting(theyWalk = true).rest(hurt, walking())
+        val stopped = resting(theyWalk = true).begin(hurt, walking())
 
         assertIs<Rest.SomethingIsNear>(stopped)
         assertTrue(
@@ -267,7 +270,7 @@ class RestingTest {
         val held = world(champion(100, HitPoints(5, 20)), monstersOn = listOf(Location(13, 9)))
             .let { it.copy(monsters = it.monsters.map { m -> m.copy(provoked = true) }) }
 
-        val slept = resting(theyWalk = true).rest(held, walking = null)
+        val slept = resting(theyWalk = true).begin(held, walking = null)
 
         val after = assertIs<Rest.Slept>(slept).world.monsters.first()
         assertEquals(Location(13, 9), Location(after.x, after.y), "it walked while rooted")
@@ -280,13 +283,39 @@ class RestingTest {
         val hurt = world(champion(100, HitPoints(5, 20)), monstersOn = listOf(Location(13, 9)))
             .let { it.copy(monsters = it.monsters.map { m -> m.copy(provoked = true) }) }
 
-        val after = resting(theyWalk = true).rest(hurt, walking())
+        val after = resting(theyWalk = true).begin(hurt, walking())
 
         val moved = assertIs<Rest.SomethingIsNear>(after).world.monsters.first()
         assertTrue(
             Location(moved.x, moved.y) != Location(13, 9),
             "it stood still through five turns of walking",
         )
+    }
+
+    /**
+     * The floor does not hold still while they sleep: the monsters have their
+     * turns every ten minutes of it, and are measured against the party each
+     * time, the same way as when the party lay down. One hunting three squares
+     * off, walled from them, is seen to keep moving through the night.
+     */
+    @Test
+    fun `the monsters keep moving through the rest`() {
+        val hurt = world(champion(100, HitPoints(19, 20)), monstersOn = listOf(Location(16, 12)))
+            .let { it.copy(monsters = it.monsters.map { m -> m.takingUpTheHunt() }) }
+        val seenOn = mutableSetOf<Location>()
+        val watching = object : WatchingTheRest {
+            override suspend fun asked(question: RestQuestion, hours: Int) = true
+            override suspend fun said(words: String) = Unit
+            override suspend fun anHourPassed(hours: Int) = Unit
+            override suspend fun stepped(world: GameState) {
+                world.monsters.first().let { seenOn += Location(it.x, it.y) }
+            }
+        }
+
+        val woke = assertIs<Rest.Woke>(runBlocking { resting(theyWalk = true).night(hurt, walking(), watching) })
+
+        assertEquals(HOURS_A_MENDED_POINT, woke.hours)
+        assertTrue(seenOn.size > 1, "it stood where it was all night")
     }
 
     // --- how far a monster counts as beside them ------------------------------
@@ -308,47 +337,34 @@ class RestingTest {
         assertTrue(!further.isBesideTheParty(two), "two squares off is not beside them")
     }
 
-    // --- the sleep itself -----------------------------------------------------
+    // --- a stretch of sleep ---------------------------------------------------
 
     @Test
-    fun `sleep mends hit points and eats food`() {
-        val slept = resting().rest(world(champion(100, HitPoints(15, 20))))
+    fun `a stretch of sleep mends a hit point and eats five`() {
+        val after = world(champion(100, HitPoints(10, 100))).aStretchSlept(HOURS_A_MENDED_POINT, null).first
 
-        val who = assertIs<Rest.Slept>(slept).world.champions.first()
-        assertEquals(20, who.hitPoints.current, "not fully mended")
-        // one stretch carries them the last five, and eats one meal doing it
-        assertEquals(98, who.food.value, "a stretch of sleep costs a meal")
+        assertEquals(11, after.champions.first().hitPoints.current)
+        assertEquals(95, after.champions.first().food.value)
     }
 
-    /**
-     * A rest does not go on for ever on an empty stomach: what the food buys is
-     * all the mending there is, and a champion out of food wakes still hurt.
-     */
     @Test
-    fun `food running out stops the mending`() {
-        // hurt far past what the food can mend, so the food is what runs out
-        val slept = resting().rest(world(champion(4, HitPoints(2, 400))))
+    fun `mending stops at full health`() {
+        val after = world(champion(100, HitPoints(20, 20))).aStretchSlept(HOURS_A_MENDED_POINT, null).first
 
-        val who = assertIs<Rest.Slept>(slept).world.champions.first()
-        assertEquals(0, who.food.value)
-        assertEquals(66, who.hitPoints.current, "four food is two stretches and no more")
+        assertEquals(20, after.champions.first().hitPoints.current, "mended past full")
     }
 
     /**
      * Being down is not being past mending. A champion at nothing left is
      * unconscious rather than gone, and a rest brings them round — only ten
-     * below is past what sleep can do. Read the other way, a party carrying
-     * somebody at nothing left are told they are fully rested and left to
-     * carry them.
+     * below is past what sleep can do.
      */
     @Test
     fun `a champion at nothing left is mended by sleeping`() {
         val down = world(champion(100, HitPoints(0, 82)))
 
         assertTrue(down.anybodyStillHurt, "nobody is hurt with one of them at nothing")
-
-        val woken = assertIs<Rest.Slept>(resting().rest(down)).world.champions.first()
-        assertEquals(82, woken.hitPoints.current, "sleep left them where they lay")
+        assertEquals(1, down.aStretchSlept(HOURS_A_MENDED_POINT, null).first.champions.first().hitPoints.current)
     }
 
     /** Past raising is past a bed, though: that wants a cleric. */
@@ -357,9 +373,10 @@ class RestingTest {
         val gone = world(champion(100, HitPoints(Champion.BEYOND_RAISING, 82)))
 
         assertTrue(!gone.anybodyStillHurt, "a rest counted somebody past raising as mendable")
-
-        val woken = assertIs<Rest.Slept>(resting().rest(gone)).world.champions.first()
-        assertEquals(Champion.BEYOND_RAISING, woken.hitPoints.current)
+        assertEquals(
+            Champion.BEYOND_RAISING,
+            gone.aStretchSlept(HOURS_A_MENDED_POINT, null).first.champions.first().hitPoints.current,
+        )
     }
 
     @Test
@@ -368,99 +385,37 @@ class RestingTest {
         assertEquals(100, fed.champions.first().food.value, "ate past full")
     }
 
-    // --- the hours, as the box counts them ------------------------------------
-
-    /**
-     * A rest is watched rather than added up at once, so it goes a stretch at a
-     * time — and a rest cut short after one stretch is worth exactly that much
-     * mending and that much hunger.
-     */
-    @Test
-    fun `a stretch of sleep mends a stretch's worth and eats one meal`() {
-        // a wide gap to mend, so the stretch is not cut short by full health
-        val begun = world(champion(100, HitPoints(10, 100)))
-
-        val after = begun.sleptAnHour(HOURS_A_MENDED_POINT)
-
-        assertEquals(42, after.champions.first().hitPoints.current)
-        assertEquals(98, after.champions.first().food.value)
-    }
-
-    /** However much a stretch mends, it never mends past full. */
-    @Test
-    fun `mending stops at full health`() {
-        val after = world(champion(100, HitPoints(19, 20))).sleptAnHour(HOURS_A_MENDED_POINT)
-
-        assertEquals(20, after.champions.first().hitPoints.current, "mended past full")
-    }
-
-    /**
-     * The three things a rest can end as, which are what the party are told.
-     * Hurt with an empty stomach is not the same as rested, and saying so is
-     * the difference between a party who know to go and eat and one who think
-     * they are well.
-     */
-    @Test
-    fun `hurt with nothing to eat is not the same as rested`() {
-        val rested = world(champion(100, HitPoints(20, 20)))
-        assertTrue(!rested.anybodyStillHurt, "nobody is hurt")
-
-        val starving = world(champion(0, HitPoints(5, 20)))
-        assertTrue(starving.anybodyStillHurt, "they are hurt")
-        assertTrue(!starving.anybodyCanStillMend, "they cannot mend on an empty stomach")
-
-        val fed = world(champion(100, HitPoints(5, 20)))
-        assertTrue(fed.anybodyStillHurt && fed.anybodyCanStillMend, "they can mend")
-    }
-
-    /** A rest that mends nothing because there is no food leaves them hurt. */
-    @Test
-    fun `a starving party wake no better than they lay down`() {
-        val hungry = world(champion(0, HitPoints(5, 20)))
-
-        val slept = assertIs<Rest.Slept>(resting().rest(hungry)).world
-
-        assertEquals(5, slept.champions.first().hitPoints.current, "mended on no food")
-        assertTrue(slept.anybodyStillHurt && !slept.anybodyCanStillMend)
-    }
-
     // --- starving through a rest ----------------------------------------------
 
     /**
-     * Sleeping on an empty stomach costs rather than mends: a day of it is a
-     * hit point gone. It is the one thing a rest takes away, which is why it is
-     * asked for before it is done.
+     * Eating the last of it is when the party are asked whether to sleep on,
+     * the five that empties a stomach included; a stretch of an empty one that
+     * costs nothing is not asked about again.
+     */
+    @Test
+    fun `running out of food is a moment and not a state`() {
+        val (empty, emptied) = world(champion(5, HitPoints(5, 400))).aStretchSlept(HOURS_A_MENDED_POINT, null)
+
+        assertEquals(0, empty.champions.first().food.value)
+        assertTrue(emptied, "their last mouthful went unnoticed")
+        assertTrue(!empty.aStretchSlept(2 * HOURS_A_MENDED_POINT, null).second, "it counted an empty stomach as emptying again")
+    }
+
+    /**
+     * Sleeping on an empty stomach costs rather than mends: the stretch that
+     * ends a day takes a hit point, and that is asked about too.
      */
     @Test
     fun `a day asleep on an empty stomach costs a hit point`() {
         val hungry = world(champion(0, HitPoints(10, 20)))
 
-        val aDayOn = hungry.starvedADay()
+        val (mid, askedMid) = hungry.aStretchSlept(HOURS_A_MENDED_POINT, null)
+        val (day, askedAtDay) = hungry.aStretchSlept(HOURS_A_STARVED_POINT, null)
 
-        assertEquals(9, aDayOn.champions.first().hitPoints.current)
-    }
-
-    /** A full stomach sleeps through the same day untouched. */
-    @Test
-    fun `a fed champion does not starve`() {
-        val fed = world(champion(100, HitPoints(10, 20)))
-
-        assertEquals(10, fed.starvedADay().champions.first().hitPoints.current)
-    }
-
-    /**
-     * Starving cannot carry a champion past raising: at ten below they are as
-     * far gone as hunger takes them, and a party left sleeping does not grind
-     * them any further.
-     */
-    @Test
-    fun `starving stops at the point past raising`() {
-        val gone = world(champion(0, HitPoints(Champion.BEYOND_RAISING, 20)))
-
-        assertEquals(
-            Champion.BEYOND_RAISING,
-            gone.starvedADay().champions.first().hitPoints.current,
-        )
+        assertEquals(10, mid.champions.first().hitPoints.current, "an empty stomach mended something")
+        assertTrue(!askedMid)
+        assertEquals(9, day.champions.first().hitPoints.current)
+        assertTrue(askedAtDay)
     }
 
     // --- growing hungry as they go ------------------------------------------
@@ -502,58 +457,5 @@ class RestingTest {
         val empty = world(champion(0, HitPoints(20, 20)))
 
         assertEquals(0, empty.hungrier().champions.first().food.value)
-    }
-
-    /**
-     * The question is put when a party *become* starving, not for as long as
-     * they are: asking on every stretch would put it up faster than anybody
-     * could answer it. So the moment worth catching is the last mouthful going
-     * in, which happens once for each champion.
-     */
-    @Test
-    fun `running out of food is a moment and not a state`() {
-        val fed = world(champion(2, HitPoints(5, 400)))
-        val empty = fed.sleptAnHour(HOURS_A_MENDED_POINT)
-
-        assertTrue(fed.somebodyRanOutOfFood(empty), "their last mouthful went unnoticed")
-        assertTrue(empty.anybodyStarving, "they are starving now")
-
-        // and the stretch after that is not another moment, only more of it
-        assertTrue(
-            !empty.somebodyRanOutOfFood(empty.sleptAnHour(HOURS_A_MENDED_POINT)),
-            "it counted an empty stomach as emptying again",
-        )
-    }
-
-    @Test
-    fun `an empty stomach is what counts as starving`() {
-        assertTrue(world(champion(0, HitPoints(20, 20))).anybodyStarving, "empty is starving")
-        assertTrue(!world(champion(5, HitPoints(20, 20))).anybodyStarving, "five is not")
-    }
-
-    @Test
-    fun `the party stop sleeping once nobody is mending`() {
-        val resting = resting()
-
-        assertTrue(resting.anybodyStillMending(world(champion(100, HitPoints(10, 20)))))
-        assertTrue(!resting.anybodyStillMending(world(champion(100, HitPoints(20, 20)))), "still hurt?")
-        assertTrue(!resting.anybodyStillMending(world(champion(0, HitPoints(10, 20)))), "slept on no food")
-    }
-
-    /**
-     * The floor does not hold still while they sleep. Beginning a rest again
-     * each hour is what lets a monster that wanders up wake them, and it is the
-     * same check that refused the rest in the first place.
-     */
-    @Test
-    fun `a monster that comes near mid-rest wakes them`() {
-        val settled = world(champion(100, HitPoints(5, 20)), monstersOn = listOf(Location(13, 9)))
-            .let { it.copy(monsters = it.monsters.map { m -> m.copy(provoked = true) }) }
-
-        // the first hour is undisturbed at that distance
-        assertIs<Rest.Slept>(resting(theyWalk = false).begin(settled))
-
-        // but with it walking, asking again is what catches it arriving
-        assertIs<Rest.SomethingIsNear>(resting(theyWalk = true).begin(settled, walking()))
     }
 }

@@ -292,9 +292,16 @@ data class CampMenu(
             saysTop = FIRST_LINE_TOP,
         )
 
+        /** Asked as the party lie down, when somebody is hurt and a healer could cure them. */
+        fun healers(hours: Int) = asked(
+            hours = hours,
+            says = listOf("", "Will your healers", "heal the party?"),
+        )
+
         /**
-         * Asked as the party lie down hurt: a rest runs until they are mended,
-         * and that is a long time to have agreed to by accident.
+         * Asked once there is nothing left to learn and somebody is still hurt:
+         * resting on runs until they are mended, and that is a long time to
+         * have agreed to by accident.
          */
         fun stillInjured(hours: Int) = asked(
             hours = hours,
