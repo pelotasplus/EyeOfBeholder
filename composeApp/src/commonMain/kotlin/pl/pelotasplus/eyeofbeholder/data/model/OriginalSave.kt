@@ -117,13 +117,25 @@ data class OriginalSave(
             val experience = List(CLASSES_PER_CHAMPION) { reader.readU32LE().toLong() and 0xFFFFFFFFL }
             reader.skip(4)
 
-            reader.skip(MAGE_SPELLS + CLERIC_SPELLS + AVAILABLE_SPELL_FLAGS)
+            val mageSpells = SpellPages.read(List(SPELL_SLOTS) { reader.readI8() }, Discipline.MAGE)
+            val clericSpells = SpellPages.read(List(SPELL_SLOTS) { reader.readI8() }, Discipline.CLERIC)
+            val knownMageSpells = mageSpellsWrittenIn(reader.readU32LE().toLong() and 0xFFFFFFFFL)
 
             val carrying = List(INVENTORY_SLOTS) { ItemIndex(reader.readI16LE()) }
 
             reader.skip(TIMERS + EVENTS + EFFECT_REMAINDERS + EFFECT_FLAGS)
             reader.readU8()                                 // damage taken, shown as a splat
-            reader.skip(SLOT_STATUS + TRAILING_PADDING)
+
+            // Five bytes of where things stood: two for what each hand last
+            // reported, and three for where the book was left — the line, the
+            // page and how far the list was scrolled.
+            reader.skip(HAND_REPORTS)
+            val bookLeftAt = BookPosition(
+                line = reader.readI8(),
+                page = reader.readI8(),
+                scrolledBy = reader.readI8(),
+            )
+            reader.skip(TRAILING_PADDING)
 
             return Champion(
                 name = name,
@@ -141,6 +153,10 @@ data class OriginalSave(
                     .filter { it.level > 0 },
                 carrying = carrying,
                 flags = flags,
+                mageSpells = mageSpells,
+                clericSpells = clericSpells,
+                knownMageSpells = knownMageSpells,
+                bookLeftAt = bookLeftAt,
             )
         }
 
@@ -176,14 +192,12 @@ data class OriginalSave(
         private const val ITEM_SLOTS = 600
         private const val MAZE_WIDTH = 32
 
-        private const val MAGE_SPELLS = 80
-        private const val CLERIC_SPELLS = 80
-        private const val AVAILABLE_SPELL_FLAGS = 4
+        private const val SPELL_SLOTS = SpellPages.PAGES * SpellPages.PER_PAGE
         private const val TIMERS = 40
         private const val EVENTS = 10
         private const val EFFECT_REMAINDERS = 4
         private const val EFFECT_FLAGS = 4
-        private const val SLOT_STATUS = 5
+        private const val HAND_REPORTS = 2
         private const val TRAILING_PADDING = 6
     }
 }

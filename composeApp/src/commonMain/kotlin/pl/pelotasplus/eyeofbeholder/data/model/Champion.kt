@@ -44,8 +44,24 @@ data class Champion(
     val levels: List<ClassLevel>,
     val carrying: List<ItemIndex>,
     private val flags: ChampionFlags,
+    val mageSpells: SpellPages = SpellPages.NONE,
+    val clericSpells: SpellPages = SpellPages.NONE,
+    /** The mage spells written in their book — the only ones a mage may choose. */
+    val knownMageSpells: Set<Spell> = emptySet(),
+    val bookLeftAt: BookPosition = BookPosition.START,
 ) {
     val inTheParty: Boolean get() = flags.inTheParty
+
+    /** Their level in [of], or none for a class they have no levels in. */
+    fun levelIn(of: CharacterClass): Int? {
+        val at = characterClass?.levelledIn?.indexOf(of)?.takeIf { it >= 0 } ?: return null
+        return levels.getOrNull(at)?.level
+    }
+
+    fun spellsOf(discipline: Discipline): SpellPages = when (discipline) {
+        Discipline.MAGE -> mageSpells
+        Discipline.CLERIC -> clericSpells
+    }
 
     /**
      * Whether the panel draws this one in red — the name and the numbers
