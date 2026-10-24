@@ -50,6 +50,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.wallsInSight
 import pl.pelotasplus.eyeofbeholder.data.model.LevelScriptRunner
 import pl.pelotasplus.eyeofbeholder.data.model.FloorReach
 import pl.pelotasplus.eyeofbeholder.data.model.Location
+import pl.pelotasplus.eyeofbeholder.data.model.Flight
 import pl.pelotasplus.eyeofbeholder.data.model.MessageId
 import pl.pelotasplus.eyeofbeholder.data.model.OnAParchment
 import pl.pelotasplus.eyeofbeholder.data.model.Naming
@@ -2931,6 +2932,74 @@ class ViewPortGoldenTest {
     }
 
     /**
+     * An acid arrow the party cast, every place it is over on its way down
+     * the corridor, from a champion on each side of the party.
+     *
+     * Flown rather than placed: the arrow is loosed the way a casting looses
+     * it and moved by the same steps as in play, and a frame is frozen each
+     * time it comes over a new quarter. It keeps the side it was cast from,
+     * so the frames are the only thing that shows it crossing to the other
+     * side or drawn down the middle on the way.
+     */
+    @Test
+    fun `an acid arrow cast down the corridor, every step`() {
+        listOf(PartySlot(0) to "left", PartySlot(3) to "right").forEach { (caster, side) ->
+            theFlightOf(Spell.MELFS_ACID_ARROW, caster).forEachIndexed { step, frame ->
+                checkGolden("acid-arrow-$side-$step", frame)
+            }
+        }
+    }
+
+    /** One frame for each quarter the spell comes over, as [caster] casts it from the party's square. */
+    private fun theFlightOf(spell: Spell, caster: PartySlot): List<ViewPort> = runBlocking {
+        val repository = repository()
+        val inf = repository.loadLevel("LEVEL2.INF").getOrThrow()
+        val at = Location(3, 11)
+        val sublevel = inf.subLevels[inf.subLevelAt(0, at.x, at.y, Direction.NORTH)]
+        val thrown = requireNotNull(spell.throws)
+
+        var world = GameState(party = PartyState(at, Direction.NORTH))
+            .arrivingAt(level = 2, places = emptyList(), maz = sublevel.maz)
+            .copy(
+                monsters = emptyList(),
+                inFlight = listOf(
+                    Projectile(
+                        what = null,
+                        at = at,
+                        place = caster.standsIn.onASquareFacing(Direction.NORTH),
+                        going = Direction.NORTH,
+                        squaresLeft = thrown.flies.reach,
+                        thrownBy = Projectile.Thrower.AChampion(caster),
+                        harm = thrown.dealtBy(ThrownSpell.AS_READ_FROM_A_SCROLL),
+                        spell = thrown.flies,
+                    ),
+                ),
+            )
+        val flight = Flight(sublevel = sublevel, level = 2)
+
+        val frames = mutableListOf<ViewPort>()
+        var last: Pair<Location, SquarePlace>? = null
+        repeat(FLIGHT_STEPS) {
+            val flying = world.inFlight.singleOrNull() ?: return@repeat
+            val over = flying.at to flying.place
+            if (over != last && frames.size < FLIGHT_FRAMES) {
+                frames += repository.renderPosition(
+                    items = dungeonItems,
+                    monsters = emptyList(),
+                    sublevel = sublevel,
+                    playerX = at.x,
+                    playerY = at.y,
+                    direction = Direction.NORTH,
+                    inFlight = world.inFlight,
+                ).getOrThrow()
+                last = over
+            }
+            world = flight.onward(world).world
+        }
+        frames
+    }
+
+    /**
      * The sparks a casting throws about the room, at four points of their life.
      *
      * Sixteen places, fixed in the view rather than anywhere in the corridor,
@@ -3578,6 +3647,10 @@ class ViewPortGoldenTest {
     companion object {
         /** Render the last frame a script drew rather than its first. */
         private const val LAST_FRAME = -1
+
+        /** Turns of the clock a flight is followed for, and how many of its quarters are frozen. */
+        private const val FLIGHT_STEPS = 200
+        private const val FLIGHT_FRAMES = 8
 
         /** The capability bit that marks a kind as one nobody can see. */
         private const val A_HIDDEN_KIND = 0x100

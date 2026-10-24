@@ -23,6 +23,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.SubLevel
 import pl.pelotasplus.eyeofbeholder.data.model.TeleporterPulse
 import pl.pelotasplus.eyeofbeholder.data.model.ViewBlock
 import pl.pelotasplus.eyeofbeholder.data.model.ViewPlace
+import pl.pelotasplus.eyeofbeholder.data.model.InFlightSight
 import pl.pelotasplus.eyeofbeholder.data.model.ViewPort
 import pl.pelotasplus.eyeofbeholder.data.model.ViewWindow
 import pl.pelotasplus.eyeofbeholder.data.model.WallSet
@@ -407,9 +408,10 @@ class ViewConeRepositoryImpl(
         // a bolt invisible for exactly the square that matters most.
         inFlight.filter { it.what == null && it.at.x == playerX && it.at.y == playerY }
             .forEach { flying ->
-                bolts[flying.looksLike]?.let { bolt ->
-                    viewPort.drawInFlight(bolt, ViewPort.OWN_BLOCK_INDEX, ScaleSteps(0))
-                }
+                val bolt = bolts[flying.looksLike] ?: return@forEach
+                val (over, shrunk) = seenOver(flying, direction, ViewPort.OWN_BLOCK_INDEX, ScaleSteps(0))
+                    ?: return@forEach
+                viewPort.drawInFlight(bolt, ViewPort.OWN_BLOCK_INDEX, shrunk, over = over, mirrored = flying.onTheRightOfItsWay)
             }
 
         // A burst on the party's own square is not on any of the squares they
@@ -679,27 +681,10 @@ class ViewConeRepositoryImpl(
                         it.at.y == playerY + dy
                 }.forEach { flying ->
                     val bolt = bolts[flying.looksLike] ?: return@forEach
+                    val (over, shrunk) = seenOver(flying, direction, block.blockIndex, ScaleSteps(NEAREST_DIM - dim))
+                        ?: return@forEach
 
-                    // Shrunk the way anything else on that row is: the row's
-                    // dim counts up as it nears, the shrinking counts down.
-                    //
-                    // Nearly every conjured thing is drawn down the middle
-                    // whatever quarter it is really crossing, so a mage on the
-                    // left of the party still sends a fireball down the centre
-                    // of the corridor. The two that keep their quarter are the
-                    // two drawn as a line rather than a ball.
-                    val over = if (flying.downTheMiddle) {
-                        ViewPlace.MIDDLE
-                    } else {
-                        flying.place.asSeenFacing(direction) ?: ViewPlace.MIDDLE
-                    }
-
-                    viewPort.drawInFlight(
-                        bolt,
-                        block.blockIndex,
-                        ScaleSteps(NEAREST_DIM - dim),
-                        over = over,
-                    )
+                    viewPort.drawInFlight(bolt, block.blockIndex, shrunk, over = over, mirrored = flying.onTheRightOfItsWay)
                 }
 
                 drawWhatIsInTheAir(
@@ -794,16 +779,43 @@ class ViewConeRepositoryImpl(
             .forEach { flying ->
                 val what = items.getOrNull(flying.what?.value ?: return@forEach) ?: return@forEach
 
+                val (over, shrunk) = seenOver(flying, direction, blockIndex, ScaleSteps(NEAREST_DIM - dim))
+                    ?: return@forEach
                 inTheAir(flying, what, direction, thrownIcons, smallIcons, largeIcons)?.let {
-                    viewPort.drawInFlight(
-                        it.shape,
-                        blockIndex,
-                        ScaleSteps(NEAREST_DIM - dim),
-                        over = flying.place.asSeenFacing(direction) ?: ViewPlace.MIDDLE,
-                        mirrored = it.mirrored,
-                    )
+                    viewPort.drawInFlight(it.shape, blockIndex, shrunk, over = over, mirrored = it.mirrored)
                 }
             }
+    }
+
+    /**
+     * Whether a thing in the air is on the right of its own line of travel,
+     * which is what turns its picture over: the pictures are drawn for the
+     * left, and one on the right is the same thing seen from the other side.
+     * A conjured bolt follows the rule as much as a thrown dagger does.
+     */
+    private val Projectile.onTheRightOfItsWay: Boolean
+        get() = place.asSeenFacing(going)?.isOnTheRight == true
+
+    /**
+     * Where on the square at [blockIndex] a thing in the air is drawn and how
+     * small, or null where that quarter shows nothing — see [InFlightSight].
+     *
+     * Nearly every conjured thing is drawn down the middle whatever quarter
+     * it is really crossing, so a mage on the left of the party still sends a
+     * fireball down the centre of the corridor; but whether it is seen at all,
+     * and its size, are still the quarter's. One with no quarter of its own
+     * keeps the size of the row it is on.
+     */
+    private fun seenOver(
+        flying: Projectile,
+        direction: Direction,
+        blockIndex: Int,
+        rowSize: ScaleSteps,
+    ): Pair<ViewPlace, ScaleSteps>? {
+        val corner = flying.place.asSeenFacing(direction) ?: ViewPlace.MIDDLE
+        if (corner == ViewPlace.MIDDLE) return ViewPlace.MIDDLE to rowSize
+        val shrunk = InFlightSight.shrunkBy(blockIndex, corner) ?: return null
+        return (if (flying.downTheMiddle) ViewPlace.MIDDLE else corner) to shrunk
     }
 
     /** A thing in the air: the picture of it, and which way round it goes. */
@@ -843,7 +855,7 @@ class ViewConeRepositoryImpl(
             Cps.inFlightShapeOf(what.icon, comingBack)?.let { where ->
                 return InTheAir(
                     shape = thrown.cut(where.x, where.y, where.w, where.h),
-                    mirrored = flying.place.asSeenFacing(flying.going)?.isOnTheRight == true,
+                    mirrored = flying.onTheRightOfItsWay,
                 )
             }
         }
