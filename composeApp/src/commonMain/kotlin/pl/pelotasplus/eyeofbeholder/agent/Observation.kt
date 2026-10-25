@@ -12,6 +12,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.ItemTypes
 import pl.pelotasplus.eyeofbeholder.data.model.Location
 import pl.pelotasplus.eyeofbeholder.data.model.Maz
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterInstance
+import pl.pelotasplus.eyeofbeholder.data.model.SpellBook
 import pl.pelotasplus.eyeofbeholder.data.model.SpellSlot
 import pl.pelotasplus.eyeofbeholder.data.model.SubLevel
 import pl.pelotasplus.eyeofbeholder.data.model.WallSet
@@ -40,6 +41,21 @@ data class Observation(
     val holding: String?,
     val messages: List<String>,
     val menu: SeenMenu?,
+    val book: SeenBook? = null,
+)
+
+/**
+ * The book open over the compass: whose, which tab, the six lines as shown
+ * (an empty one is a place still being learned or not chosen), which line is
+ * picked, and whether it is resting after a casting.
+ */
+@Serializable
+data class SeenBook(
+    val champion: Int,
+    val tab: Int,
+    val lines: List<String?>,
+    val picked: Int?,
+    val resting: Boolean,
 )
 
 /**
@@ -106,6 +122,8 @@ fun observe(
     types: ItemTypes?,
     messages: List<String>,
     menu: CampMenu?,
+    book: SpellBook? = null,
+    bookResting: Boolean = false,
 ): Observation {
     val facing = world.party.facing
     fun squareAt(across: Int, ahead: Int): Location {
@@ -179,6 +197,15 @@ fun observe(
                 title = open.title,
                 says = open.says.map { it.trim() }.filter { it.isNotEmpty() },
                 choices = open.entries.map { it.label }.filter { it.isNotBlank() },
+            )
+        },
+        book = book?.let { open ->
+            SeenBook(
+                champion = open.whose.index,
+                tab = open.at.page,
+                lines = open.lines.map { spell -> spell?.let { CampSpellMessages.menuNameOf(it, open.discipline) } },
+                picked = if (open.onAbort) null else open.at.line,
+                resting = bookResting,
             )
         },
     )

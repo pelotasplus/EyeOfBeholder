@@ -121,7 +121,10 @@ import pl.pelotasplus.eyeofbeholder.data.model.RunningSpell
 import pl.pelotasplus.eyeofbeholder.data.model.SettlesOn
 import pl.pelotasplus.eyeofbeholder.data.model.TheGameIsWatched
 import pl.pelotasplus.eyeofbeholder.agent.AgentTime
+import pl.pelotasplus.eyeofbeholder.agent.AgentAction
 import pl.pelotasplus.eyeofbeholder.agent.Observation
+import pl.pelotasplus.eyeofbeholder.agent.Png
+import pl.pelotasplus.eyeofbeholder.data.model.ChampionBox
 import pl.pelotasplus.eyeofbeholder.agent.observe
 import pl.pelotasplus.eyeofbeholder.data.model.tintedAsMagical
 import pl.pelotasplus.eyeofbeholder.data.model.anybodyStillHurt
@@ -222,16 +225,17 @@ class ViewConeDebugViewModel(
      * started while hidden does not fire its first beat immediately on being
      * looked at again.
      *
-     * While an agent is playing, the wait is in its time and not the wall's —
+     * While an agent is playing, the game runs only when it says to wait —
      * see [AgentTime] — and whether anybody is looking does not come into it.
      */
     private suspend fun tick(wait: Long) {
+        delay(wait)
+
         if (agentTime.driving.value) {
-            agentTime.passes(wait)
+            agentTime.mayRun()
             return
         }
 
-        delay(wait)
         if (watched.watched.value) return
 
         // One line per clock, so eight of them on a tab being hidden. Kept at
@@ -405,6 +409,128 @@ class ViewConeDebugViewModel(
     private val _state = MutableStateFlow(State())
     val state = _state.asStateFlow()
 
+    /**
+     * Why [event] would be turned away now, or nothing where it would be
+     * done. Asked before anything else of an event, in this order, which is
+     * also what an agent is told when what it did came to nothing.
+     */
+    private fun turnedAway(event: Event): String? {
+        // A scene that has taken the whole screen has taken the keyboard with
+        // it. There is no dungeon on screen to act on, and the party are not
+        // standing anywhere yet — swinging at the room they will be put back
+        // into is how a fight starts in the forest before the ending is over.
+        if (theScreenIsGivenOver && event !is Event.Initialize) return "a scene has the screen"
+
+        // A script running is not a reason to stand still: a door swinging
+        // somewhere can be watched, or turned away from, while it swings. Only
+        // a script that has taken the party — walked them somewhere, turned
+        // them to face something — steers them, and then they are its until it
+        // is done. Answering is never steering; it is what a script asking a
+        // question waits for.
+        if (scriptHasTheParty && event !is Event.DialogAnswered) return "a script is moving the party"
+
+        // Anything wakes a sleeping party, which is doing something.
+        if (sleeping?.isActive == true && sleepingOnHungry == null && event.isTheirOwnDoing) return null
+
+        // An open menu takes clicks, typing and the camp, and nothing else.
+        val menu = _state.value.menu
+        if (menu != null && event !is Event.Initialize) {
+            return if (event is Event.ClickedTheView || event is Event.Typed || event is Event.Camp) null
+            else "a menu is open"
+        }
+
+        // A dialogue owns the screen the same way, and goes the same two ways
+        // it came: one of its own words is clicked, or the script that put it
+        // up finishes. A key pressed under it does nothing — the party do not
+        // walk out from under a speech, and a step that took them out of one
+        // was a step that answered nothing.
+        if (_state.value.dialog != null && event.isTheirOwnDoing) return "a dialogue is up"
+
+        // Nothing the party do gets done while an arm is coming down at them.
+        // Only the party are held: the doors and the other monsters carry on
+        // underneath, which keeps them from hitching.
+        if (event.isTheirOwnDoing && _state.value.game.pinnedByASwing) return "the party are being swung at"
+
+        // A party do not move as fast as a key repeats. Four ticks a step is
+        // transcribed rather than tuned, and it is what makes stepping round a
+        // monster a matter of timing rather than of holding a key down.
+        if (event.isAStep && stepStillRunning > 0) return "the last step is still being taken"
+
+        return null
+    }
+
+    /** The last play field drawn, which is what an agent is shown as the screen. */
+    private var lastScreen: PlayField? = null
+
+    /** The screen as it was last drawn, as a PNG, or none before the first. */
+    fun frame(): ByteArray? = lastScreen?.getRows()?.let(Png::of)
+
+    /**
+     * An agent doing what a player does — see [AgentAction] — by the same
+     * click or key the player's would be. Says why it could not, or nothing
+     * where it was done.
+     */
+    fun act(action: AgentAction): String? {
+        val event: Event = when (action) {
+            is AgentAction.Step -> when (action.way) {
+                AgentAction.Way.FORWARD -> Event.MoveForward
+                AgentAction.Way.BACK -> Event.MoveBackwards
+                AgentAction.Way.LEFT -> Event.StrafeLeft
+                AgentAction.Way.RIGHT -> Event.StrafeRight
+            }
+            is AgentAction.Turn -> if (action.toThe == AgentAction.Side.LEFT) Event.RotateLeft else Event.RotateRight
+            AgentAction.FrontRankStrikes -> Event.FrontRankStrikes
+            AgentAction.Camp -> Event.Camp
+            is AgentAction.Answer -> Event.DialogAnswered(DialogAnswer.forButton(action.button))
+            is AgentAction.UseHand -> handPoint(action.champion, action.hand)?.let { (x, y) -> Event.UsedWhatIsAt(x, y) }
+                ?: return "There is no hand ${action.hand} on champion ${action.champion}."
+            is AgentAction.TakeHand -> handPoint(action.champion, action.hand)?.let { (x, y) -> Event.ClickedTheView(x, y) }
+                ?: return "There is no hand ${action.hand} on champion ${action.champion}."
+            is AgentAction.CastOn -> championBoxes.getOrNull(action.champion)
+                ?.let { Event.ClickedTheView(it.left + BOX_INSET, it.top + BOX_INSET) }
+                ?: return "There is no champion ${action.champion}."
+            is AgentAction.Choose -> {
+                val menu = _state.value.menu ?: return "No menu is open."
+                val entry = menu.entries.firstOrNull { it.label.trim().equals(action.label.trim(), ignoreCase = true) }
+                    ?: return "The menu has no \"${action.label}\": ${menu.entries.map { it.label }.filter { it.isNotBlank() }}"
+                Event.ClickedTheView(menu.left + entry.left + entry.width / 2, menu.top + entry.top + entry.height / 2)
+            }
+            is AgentAction.BookTab -> {
+                if (openBook == null) return "No book is open."
+                Event.ClickedTheView(
+                    SpellBookLayout.TAB_LEFT + action.page * SpellBookLayout.TAB_WIDTH + SpellBookLayout.TAB_WIDTH / 2,
+                    SpellBookLayout.TOP + SpellBookLayout.TAB_HEIGHT / 2,
+                )
+            }
+            is AgentAction.BookLine -> {
+                if (openBook == null) return "No book is open."
+                Event.ClickedTheView(
+                    SpellBookLayout.LINE_LEFT + BOX_INSET,
+                    SpellBookLayout.LINE_TOP + action.line * SpellBookLayout.LINE_HEIGHT + SpellBookLayout.LINE_HEIGHT / 2,
+                )
+            }
+            AgentAction.BookAbort -> {
+                if (openBook == null) return "No book is open."
+                Event.ClickedTheView(SpellBookLayout.ABORT_LEFT + BOX_INSET, SpellBookLayout.ABORT_TOP + SpellBookLayout.BUTTON_HEIGHT / 2)
+            }
+            is AgentAction.Click -> Event.ClickedTheView(action.x, action.y)
+            is AgentAction.Use -> Event.UsedWhatIsAt(action.x, action.y)
+        }
+        turnedAway(event)?.let { why -> return "Not done: $why." }
+        onEvent(event)
+        return null
+    }
+
+    /** A point on the screen inside [champion]'s [hand] slot, found the way a click is. */
+    private fun handPoint(champion: Int, hand: Int): Pair<Int, Int>? {
+        val box = championBoxes.getOrNull(champion) ?: return null
+        if (_state.value.game.championIn(PartySlot(champion)) == null || hand !in 0 until Champion.HANDS) return null
+        val inside = (box.top until box.top + ChampionBox.HEIGHT).flatMap { y ->
+            (box.left until box.left + ChampionBox.WIDTH).map { x -> x to y }
+        }.filter { (x, y) -> box.holdsHandAt(x, y, hand) }
+        return inside.getOrNull(inside.size / 2)
+    }
+
     /** What an agent playing is told of the game as it stands — see [Observation]. */
     fun observation(): Observation? {
         val now = _state.value
@@ -418,6 +544,8 @@ class ViewConeDebugViewModel(
             types = itemTypes,
             messages = now.messages.map { it.text },
             menu = now.menu,
+            book = openBook,
+            bookResting = openBook?.whose in restingBooks,
         )
     }
 
@@ -429,23 +557,8 @@ class ViewConeDebugViewModel(
         // pressing that the speaker is waiting for.
         if (event !is Event.Initialize) audioSink.wake()
 
-        // A scene that has taken the whole screen has taken the keyboard with
-        // it. There is no dungeon on screen to act on, and the party are not
-        // standing anywhere yet — swinging at the room they will be put back
-        // into is how a fight starts in the forest before the ending is over.
-        if (theScreenIsGivenOver && event !is Event.Initialize) {
-            Logger.d(TAG) { "Ignoring $event while a scene has the screen" }
-            return
-        }
-
-        // A script running is not a reason to stand still: a door swinging
-        // somewhere can be watched, or turned away from, while it swings. Only
-        // a script that has taken the party — walked them somewhere, turned
-        // them to face something — steers them, and then they are its until it
-        // is done. Answering is never steering; it is what a script asking a
-        // question waits for.
-        if (scriptHasTheParty && event !is Event.DialogAnswered) {
-            Logger.d(TAG) { "Ignoring $event while a script is moving the party" }
+        turnedAway(event)?.let { why ->
+            Logger.d(TAG) { "Ignoring $event: $why" }
             return
         }
 
@@ -475,28 +588,6 @@ class ViewConeDebugViewModel(
             return
         }
 
-        // A dialogue owns the screen the same way, and goes the same two ways
-        // it came: one of its own words is clicked, or the script that put it
-        // up finishes. A key pressed under it does nothing — the party do not
-        // walk out from under a speech, and a step that took them out of one
-        // was a step that answered nothing.
-        if (_state.value.dialog != null && event.isTheirOwnDoing) {
-            Logger.d(TAG) { "Ignoring $event while a dialogue is up" }
-            return
-        }
-
-        // Nothing the party do gets done while an arm is coming down at them.
-        // Only the party are held: the doors and the other monsters carry on
-        // underneath, which keeps them from hitching.
-        if (event.isTheirOwnDoing && _state.value.game.pinnedByASwing) {
-            Logger.d(TAG) { "Ignoring $event while the party are being swung at" }
-            return
-        }
-
-        // A party do not move as fast as a key repeats. Four ticks a step is
-        // transcribed rather than tuned, and it is what makes stepping round a
-        // monster a matter of timing rather than of holding a key down.
-        if (event.isAStep && stepStillRunning > 0) return
         if (event.isAStep) {
             stepStillRunning = GameState.A_STEP.value
             keepTheFightGoing()
@@ -5417,6 +5508,7 @@ class ViewConeDebugViewModel(
                     book = openBook,
                     bookResting = openBook?.whose in restingBooks,
                 )
+                .also { lastScreen = it }
                 .toImageBitmap()
         } else {
             // the frame art failed to load; still show the raw view
@@ -5651,6 +5743,9 @@ class ViewConeDebugViewModel(
 
         /** How long a spell learned or a healing cast over a rest stays the last thing said. */
         private const val A_LINE_OF_REST = 80L
+
+        /** How far inside a box or button an agent's click lands, clear of its edge. */
+        private const val BOX_INSET = 8
 
         private const val CANNOT_REST_HERE = "You do not feel it is safe to rest here."
         private const val MONSTERS_ARE_NEAR = "You can't rest here, monsters are near."
