@@ -210,9 +210,17 @@ class Fighting(
         return world.wallByte(level, aheadOf(world), facingUs) in wallsThatGiveWay
     }
 
-    /** What a monster killed outright is worth, and what it leaves behind. */
-    private fun GameState.paidForAndSearched(killed: MonsterInstance): GameState {
-        val worth = kinds.firstOrNull { it.id == killed.type.value }?.experience ?: 0
-        return partyEarns(XpPoints(worth.toLong()), dice).whatAMonsterDrops(killed, level, dice)
-    }
+    private fun GameState.paidForAndSearched(killed: MonsterInstance): GameState =
+        paidForAndSearched(killed, kinds, level, dice)
+}
+
+/** What a monster killed outright is worth, and what it leaves behind on [level]. */
+fun GameState.paidForAndSearched(
+    killed: MonsterInstance,
+    kinds: List<MonsterProperty>,
+    level: Int,
+    dice: Dice,
+): GameState {
+    val worth = kinds.firstOrNull { it.id == killed.type.value }?.experience ?: 0
+    return partyEarns(XpPoints(worth.toLong()), dice).whatAMonsterDrops(killed, level, dice)
 }

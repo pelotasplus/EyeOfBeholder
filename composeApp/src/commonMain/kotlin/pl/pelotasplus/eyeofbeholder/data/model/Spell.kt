@@ -178,6 +178,9 @@ enum class Spell(
      * and only one hand of theirs charged at a time.
      */
     val chargesAHand: DamageDice? = null,
+
+    /** What it does to the creature ahead it is laid on or loosed at — see [Wounds]. */
+    val wounds: Wounding? = null,
 ) {
     ARMOUR(1, "armor", TrackIndex(92)),
     BURNING_HANDS(2, "burning hands", TrackIndex(87)),
@@ -380,7 +383,12 @@ enum class Spell(
     // spell at all.
 
     BLESS(34, "bless", TrackIndex(91), sparksOverTheParty = true),
-    CAUSE_LIGHT_WOUNDS(35, "cause light wounds", TrackIndex(107)),
+    CAUSE_LIGHT_WOUNDS(
+        35,
+        "cause light wounds",
+        TrackIndex(107),
+        wounds = Wounding.ByTouch(DamageDice(times = 1, pips = 8, base = 0)),
+    ),
     CURE_LIGHT_WOUNDS(
         36,
         "cure light wounds",
@@ -423,7 +431,12 @@ enum class Spell(
     MAGICAL_VESTMENT(45, "magical vestment", TrackIndex(113)),
     PRAYER(46, "prayer", TrackIndex(91), sparksOverTheParty = true),
     REMOVE_PARALYSIS(47, "remove paralysis", TrackIndex(114), sparksOverTheParty = true),
-    CAUSE_SERIOUS_WOUNDS(48, "cause serious wounds", TrackIndex(108)),
+    CAUSE_SERIOUS_WOUNDS(
+        48,
+        "cause serious wounds",
+        TrackIndex(108),
+        wounds = Wounding.ByTouch(DamageDice(times = 2, pips = 8, base = 1)),
+    ),
     CURE_SERIOUS_WOUNDS(
         49,
         "cure serious wounds",
@@ -442,7 +455,12 @@ enum class Spell(
         TrackIndex(110),
         sparksOverTheParty = true,
     ),
-    CAUSE_CRITICAL_WOUNDS(52, "cause critical wounds", TrackIndex(109)),
+    CAUSE_CRITICAL_WOUNDS(
+        52,
+        "cause critical wounds",
+        TrackIndex(109),
+        wounds = Wounding.ByTouch(DamageDice(times = 3, pips = 8, base = 3)),
+    ),
     CURE_CRITICAL_WOUNDS(
         53,
         "cure critical wounds",
@@ -463,7 +481,7 @@ enum class Spell(
         ),
     ),
     RAISE_DEAD(55, "raise dead", TrackIndex(117), laidOn = LaidOnAChampion.Raises),
-    SLAY_LIVING(56, "slay living", TrackIndex(72)),
+    SLAY_LIVING(56, "slay living", TrackIndex(72), wounds = Wounding.Slays),
     A_CLERICS_TRUE_SEEING(
         57,
         "true seeing",
@@ -472,7 +490,7 @@ enum class Spell(
         lasts = SpellLasts(base = 0, perLevel = 1),
         seesTheHidden = true,
     ),
-    HARM(58, "harm", TrackIndex(70)),
+    HARM(58, "harm", TrackIndex(70), wounds = Wounding.AllButAFew),
     HEAL(59, "heal", TrackIndex(84), laidOn = LaidOnAChampion.Mends(Mending.ToTheBrim)),
     RESURRECTION(60, "ressurection"),
     LAY_ON_HANDS(

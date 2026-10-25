@@ -274,6 +274,15 @@ object SpellMessages {
     /** Put up while a mending waits to be told which of the six it is for. */
     fun castOnWhom(spell: String) = "Cast $spell on whom?"
 
+    /** A wound laid on by hand from the back rank. */
+    fun mustBeInTheFront(whose: String) = "$whose must be in the front ranks to hit!"
+
+    /**
+     * A wound laid on by hand with nothing in front to lay it on. The game's
+     * own words, though nothing was there to miss.
+     */
+    fun missedTheMonster(whose: String) = "$whose missed the monster."
+
     fun mended(whose: String) = "$whose feels better."
 
     /** Somebody who needed nothing, which turns the casting down rather than spending it. */

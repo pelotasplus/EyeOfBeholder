@@ -128,6 +128,8 @@ import pl.pelotasplus.eyeofbeholder.data.model.RestQuestion
 import pl.pelotasplus.eyeofbeholder.data.model.SpellBook
 import pl.pelotasplus.eyeofbeholder.data.model.SpellBookLayout
 import pl.pelotasplus.eyeofbeholder.data.model.withBook
+import pl.pelotasplus.eyeofbeholder.data.model.Wounding
+import pl.pelotasplus.eyeofbeholder.data.model.Wounds
 import pl.pelotasplus.eyeofbeholder.data.model.WatchingTheRest
 import pl.pelotasplus.eyeofbeholder.data.model.SoundBank
 import pl.pelotasplus.eyeofbeholder.data.model.TrackIndex
@@ -3065,6 +3067,43 @@ class ViewConeDebugViewModel(
         }
     }
 
+    /**
+     * A wound laid on the creature ahead, or loosed at one up to two squares
+     * off — see [Wounds]. What is wounded is roused by it, so the fight is
+     * kept going.
+     */
+    private fun woundWhatIsAhead(whose: PartySlot, wounding: Wounding) {
+        val inf = _state.value.inf ?: return
+        val level = levelNumber(inf.name)
+        val sublevel = inf.subLevels.getOrNull(_state.value.subLevel) ?: return
+        val wounds = Wounds(kinds = sublevel.monsters, level = level)
+        val world = _state.value.game
+
+        val dealt = if (wounding == Wounding.Slays) {
+            val facingBack = world.party.facing.wallSideFacingBack
+            wounds.slainBy(world, whose) { at -> sublevel.canBeWalkedOnto(world.wall(level, at, facingBack)) }
+        } else {
+            wounds.touchBy(world, whose, wounding)
+        }
+
+        val said = when (dealt.came) {
+            Wounds.CameTo.NOT_IN_THE_FRONT_RANK -> SpellMessages::mustBeInTheFront
+            Wounds.CameTo.NOTHING_THERE -> SpellMessages::missedTheMonster.takeIf { wounding != Wounding.Slays }
+            Wounds.CameTo.CAME_TO_NOTHING, Wounds.CameTo.LANDED -> null
+        }
+        if (said != null) {
+            sayOf(whose) { said(it) }
+            viewModelScope.launch { playTrack(WARNING) }
+            drawWords()
+            return
+        }
+
+        _state.update { it.copy(game = dealt.world) }
+        renderViewPort()
+        letTheFlashFade()
+        keepTheFightGoing()
+    }
+
     /** A disintegrate: the square ahead unmade — see [Disintegration]. */
     private fun unmakeTheSquareAhead() {
         val inf = _state.value.inf ?: return
@@ -4243,6 +4282,8 @@ class ViewConeDebugViewModel(
                 turnTheNearestAheadToStone(whose)
             } else if (spell.frightensWhatIsAhead) {
                 frightenWhatIsAhead()
+            } else if (spell.wounds != null) {
+                woundWhatIsAhead(whose, spell.wounds)
             }
 
             runTriggersAt(

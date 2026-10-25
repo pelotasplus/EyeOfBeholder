@@ -60,6 +60,9 @@ value class MonsterImmunities(private val written: Int) {
     /** Whether it cannot be frightened off, whatever the throw. */
     val neverAfraid: Boolean get() = written and NEVER_AFRAID != 0
 
+    /** Whether a spell that kills outright passes it by, though one that wounds still wounds. */
+    val notSlainByMagic: Boolean get() = written and NEVER_SLAIN != 0
+
     /**
      * What a blow of [damage] comes to once this has turned some of it aside.
      *
@@ -102,6 +105,7 @@ value class MonsterImmunities(private val written: Int) {
 
         const val NEVER_HELD = 0x2
         const val NEVER_AFRAID = 0x4
+        const val NEVER_SLAIN = 0x8
         const val NOTHING_OF_THE_SORT = 0x10
 
         const val BLADES_HALVED = 0x100

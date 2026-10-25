@@ -1363,9 +1363,11 @@ data class GameState(
      * reaches. A blow struck by hand lands on this one, and so does a spell
      * that takes one creature on that square.
      */
-    fun theMonsterNearestAhead(whose: PartySlot): MonsterInstance? {
-        val ahead = party.facing.oneStepFrom(party.position)
+    fun theMonsterNearestAhead(whose: PartySlot): MonsterInstance? =
+        theMonsterNearestOn(party.facing.oneStepFrom(party.position), whose)
 
+    /** The same, on any square in the direction the party face. */
+    fun theMonsterNearestOn(ahead: Location, whose: PartySlot): MonsterInstance? {
         val there = monsters.filter { it.x == ahead.x && it.y == ahead.y }
         if (there.isEmpty()) return null
 
