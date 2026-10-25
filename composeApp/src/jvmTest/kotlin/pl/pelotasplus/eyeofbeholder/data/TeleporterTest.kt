@@ -10,6 +10,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.isTeleporter
 import pl.pelotasplus.eyeofbeholder.data.model.teleporterHazeAt
 import pl.pelotasplus.eyeofbeholder.data.model.teleporterHazes
 import pl.pelotasplus.eyeofbeholder.data.model.teleportersInView
+import pl.pelotasplus.eyeofbeholder.data.model.ViewSquare
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -75,7 +76,7 @@ class TeleporterTest {
             wallAt = wallAt(Location(9, 8), WallSide.EAST),
         )
 
-        assertEquals(listOf(13), inView.map { it.blockIndex }, "the square straight ahead")
+        assertEquals(listOf(ViewSquare.AHEAD), inView.map { it.square }, "the square straight ahead")
     }
 
     @Test

@@ -496,7 +496,6 @@ class ViewPort(
      *
      * @param largeIcons The floor-item icon sheet (ITEML1.CPS)
      * @param iconIdx Item icon index
-     * @param blockIndex Visible-block index 0-17
      * @param place Where on the block, as the party see it
      * @param scaleSteps 2/3 shrink steps from [itemScaleStepsAt]
      */
@@ -504,17 +503,17 @@ class ViewPort(
         largeIcons: Cps,
         iconIdx: ItemIconId,
         slot: ItemIndex,
-        blockIndex: Int,
+        square: ViewSquare,
         place: ViewPlace,
         scaleSteps: ScaleSteps,
         nudge: ItemNudge,
     ) {
-        Logger.d(TAG) { "drawFloorItem $iconIdx block=$blockIndex at=$place scale=$scaleSteps" }
+        Logger.d(TAG) { "drawFloorItem $iconIdx square=${square.index} at=$place scale=$scaleSteps" }
 
         var icon = largeIcons.getItemIcon(iconIdx) ?: return
         repeat(scaleSteps.value) { icon = scaleDown(icon) }
 
-        val spot = blockSpot(blockIndex, place)
+        val spot = blockSpot(square,place)
         val startX = ScreenX(spot.x + 88 - icon.w / 2 + nudge.across)
         val startY = ScreenY(spot.y + 124 - icon.h + nudge.down)
 
@@ -543,7 +542,7 @@ class ViewPort(
         iconIdx: ItemIconId,
         slot: ItemIndex,
         reach: FloorReach,
-        blockIndex: Int,
+        square: ViewSquare,
         place: ViewPlace,
         scaleSteps: ScaleSteps,
         nudge: ItemNudge,
@@ -551,7 +550,7 @@ class ViewPort(
         var icon = largeIcons.getItemIcon(iconIdx) ?: return
         repeat(scaleSteps.value) { icon = scaleDown(icon) }
 
-        val spot = blockSpot(blockIndex, place)
+        val spot = blockSpot(square,place)
 
         landings += Landing(
             reach = reach,
@@ -570,17 +569,16 @@ class ViewPort(
      *
      * @param smallIcons The niche-item icon sheet (ITEMS1.CPS)
      * @param iconIdx Item icon index
-     * @param blockIndex Visible-block index 0-17 into [nicheItemX]
      * @param dim Depth row 0-3 (0 = three rows ahead); selects baseline and scale
      */
     fun drawNicheItem(
         smallIcons: Cps,
         iconIdx: ItemIconId,
-        blockIndex: Int,
+        square: ViewSquare,
         dim: Int,
         nudge: ItemNudge,
     ) {
-        Logger.d(TAG) { "drawNicheItem $iconIdx block=$blockIndex dim=$dim" }
+        Logger.d(TAG) { "drawNicheItem $iconIdx square=${square.index} dim=$dim" }
 
         // a niche is drawn at the size the far-left corner of its square would be
         val scaleSteps = itemScaleStepsAt(dim, ViewPlace.FAR_LEFT)
@@ -588,7 +586,7 @@ class ViewPort(
         repeat(scaleSteps.value) { icon = scaleDown(icon) }
 
         // sideways only: a shelf is not deep enough to move a thing along
-        val startX = nicheItemX[blockIndex] - icon.w / 2 + nudge.across
+        val startX = nicheItemX[square.index] - icon.w / 2 + nudge.across
         val startY = nicheItemY[dim] - icon.h
 
         drawIcon(icon, startX, startY, fadeSteps = scaleSteps)
@@ -601,18 +599,17 @@ class ViewPort(
      * distance: each depth row has its own blobs cut at the size it needs.
      *
      * @param decorations DECORATE.CPS, which the blobs are cut from
-     * @param blockIndex Visible-block index 0-17 into [nicheItemX]
      * @param dim Depth row 0-3; the party's own row shows nothing
      * @param pulse Which half of the flicker to draw
      */
     fun drawTeleporter(
         decorations: Cps,
-        blockIndex: Int,
+        square: ViewSquare,
         dim: Int,
         pulse: TeleporterPulse,
     ) {
         val haze = teleporterHazeAt(dim) ?: return
-        val left = nicheItemX[blockIndex] - haze.leftOfNiche
+        val left = nicheItemX[square.index] - haze.leftOfNiche
 
         haze.clouds.forEachIndexed { index, cloud ->
             val blob = haze.blobFor(index, pulse)
@@ -635,18 +632,17 @@ class ViewPort(
      * needs, laid out in a grid across the doorway.
      *
      * @param decorations DECORATE.CPS, which the tiles are cut from
-     * @param blockIndex Visible-block index 0-17 into [forceCurtainX]
      * @param dim Depth row 0-3; the party's own row shows nothing
      * @param pulse Which half of the flicker to draw
      */
     fun drawWallOfForce(
         decorations: Cps,
-        blockIndex: Int,
+        square: ViewSquare,
         dim: Int,
         pulse: TeleporterPulse,
     ) {
         val curtain = forceCurtains.getOrNull(dim) ?: return
-        val left = forceCurtainX.getOrNull(blockIndex) ?: return
+        val left = forceCurtainX.getOrNull(square.index) ?: return
 
         var top = curtain.top
         repeat(curtain.down) { row ->
@@ -689,7 +685,6 @@ class ViewPort(
      *
      * @param frame Near-size pose cut from the sprite sheet
      * @param decorations Overlays for this pose, drawn over the frame in order
-     * @param blockIndex Visible-block index 0-17
      * @param place Where on the block, as the party see it
      * @param mirrored Draw horizontally flipped (for right-facing side poses)
      * @param scaleSteps Number of 2/3 shrink steps for distance
@@ -699,7 +694,7 @@ class ViewPort(
     fun drawMonster(
         frame: Cps.ItemIcon,
         decorations: List<MonsterDecoration>,
-        blockIndex: Int,
+        square: ViewSquare,
         place: ViewPlace,
         mirrored: Boolean,
         scaleSteps: ScaleSteps,
@@ -714,7 +709,7 @@ class ViewPort(
 
         val icon = frame.shrunk(scaleSteps)
 
-        val spot = if (halfASquare) pairedSpot(blockIndex, place, scaleSteps, faceOn) else blockSpot(blockIndex, place)
+        val spot = if (halfASquare) pairedSpot(square, place, scaleSteps, faceOn) else blockSpot(square,place)
         val startX = ScreenX(spot.x + 88 - icon.w / 2)
         val startY = ScreenY(spot.y + 127 - icon.h)
 
@@ -740,13 +735,13 @@ class ViewPort(
      * behind the near edge; seen side-on, they are lined up down the middle,
      * each at its own depth. One alone at a corner is drawn the same way.
      */
-    private fun pairedSpot(blockIndex: Int, place: ViewPlace, scaleSteps: ScaleSteps, faceOn: Boolean): BlockSpot {
-        val own = blockSpot(blockIndex, place)
+    private fun pairedSpot(square: ViewSquare, place: ViewPlace, scaleSteps: ScaleSteps, faceOn: Boolean): BlockSpot {
+        val own = blockSpot(square,place)
         if (place == ViewPlace.MIDDLE) return own
         return if (faceOn) {
-            BlockSpot(own.x, blockSpot(blockIndex, ViewPlace.FAR_LEFT).y + PAIR_STANDS_BACK.getOrElse(scaleSteps.value) { 0 })
+            BlockSpot(own.x, blockSpot(square,ViewPlace.FAR_LEFT).y + PAIR_STANDS_BACK.getOrElse(scaleSteps.value) { 0 })
         } else {
-            BlockSpot(blockSpot(blockIndex, ViewPlace.MIDDLE).x, own.y)
+            BlockSpot(blockSpot(square,ViewPlace.MIDDLE).x, own.y)
         }
     }
 
@@ -857,18 +852,18 @@ class ViewPort(
      */
     fun drawInFlight(
         icon: Cps.ItemIcon,
-        blockIndex: Int,
+        square: ViewSquare,
         scaleSteps: ScaleSteps,
         over: ViewPlace = ViewPlace.MIDDLE,
         mirrored: Boolean = false,
     ) {
         Logger.d(TAG) {
-            "drawInFlight ${icon.w}x${icon.h} block=$blockIndex over=$over " +
+            "drawInFlight ${icon.w}x${icon.h} square=${square.index} over=$over " +
                 "scale=$scaleSteps mirrored=$mirrored"
         }
 
         val shape = icon.shrunk(scaleSteps)
-        val spot = blockSpot(blockIndex, over)
+        val spot = blockSpot(square,over)
 
         blit(
             shape,
@@ -889,11 +884,11 @@ class ViewPort(
      */
     fun drawBurst(
         burst: Burst,
-        blockIndex: Int,
+        square: ViewSquare,
         howFarOff: DistanceFromParty,
         shrunkBy: Int,
     ) {
-        val middle = blockSpot(blockIndex, ViewPlace.MIDDLE).x + 88
+        val middle = blockSpot(square,ViewPlace.MIDDLE).x + 88
 
         at(howFarOff, hiddenByCloserThings = true) {
             burst.sparks.forEach { spark ->
@@ -961,9 +956,6 @@ class ViewPort(
         const val TILE_SIZE = 8
         const val TILES_PER_ROW = 22
         const val TILES_PER_COL = 15
-
-        /** Visible-block index of the party's own square in [blockScreenCoords]. */
-        const val OWN_BLOCK_INDEX = 16
     }
 }
 

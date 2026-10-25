@@ -23,6 +23,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.SubLevel
 import pl.pelotasplus.eyeofbeholder.data.model.TeleporterPulse
 import pl.pelotasplus.eyeofbeholder.data.model.ViewBlock
 import pl.pelotasplus.eyeofbeholder.data.model.ViewPlace
+import pl.pelotasplus.eyeofbeholder.data.model.ViewSquare
 import pl.pelotasplus.eyeofbeholder.data.model.InFlightSight
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterPose
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterSize
@@ -388,7 +389,7 @@ class ViewConeRepositoryImpl(
         drawItemsAtBlock(
             viewPort, items, fromTheBottomUp, smallIcons, largeIcons, sublevel,
             mazX = playerX, mazY = playerY,
-            blockIndex = ViewPort.OWN_BLOCK_INDEX, dim = 3,
+            square = ViewSquare.THE_PARTYS_OWN, dim = 3,
             partyFacing = direction,
             shelved = DistanceFromParty.shelvedInThatFace(0, 0),
         )
@@ -400,7 +401,7 @@ class ViewConeRepositoryImpl(
         drawWhatIsInTheAir(
             viewPort, items, smallIcons, largeIcons, thrownIcons, inFlight, direction,
             at = Location(playerX, playerY),
-            blockIndex = ViewPort.OWN_BLOCK_INDEX,
+            square = ViewSquare.THE_PARTYS_OWN,
             dim = 3,
         )
 
@@ -411,9 +412,9 @@ class ViewConeRepositoryImpl(
         inFlight.filter { it.what == null && it.at.x == playerX && it.at.y == playerY }
             .forEach { flying ->
                 val bolt = bolts[flying.looksLike] ?: return@forEach
-                val (over, shrunk) = seenOver(flying, direction, ViewPort.OWN_BLOCK_INDEX, ScaleSteps(0))
+                val (over, shrunk) = seenOver(flying, direction, ViewSquare.THE_PARTYS_OWN, ScaleSteps(0))
                     ?: return@forEach
-                viewPort.drawInFlight(bolt, ViewPort.OWN_BLOCK_INDEX, shrunk, over = over, mirrored = flying.onTheRightOfItsWay)
+                viewPort.drawInFlight(bolt, ViewSquare.THE_PARTYS_OWN, shrunk, over = over, mirrored = flying.onTheRightOfItsWay)
             }
 
         // A burst on the party's own square is not on any of the squares they
@@ -422,7 +423,7 @@ class ViewConeRepositoryImpl(
         // going off around them rather than somewhere down the corridor.
         bursting
             .filter { it.inYourFace }
-            .forEach { viewPort.drawBurst(it, blockIndex = OWN_SQUARE, howFarOff = HERE, shrunkBy = 0) }
+            .forEach { viewPort.drawBurst(it, square = ViewSquare.THE_PARTYS_OWN, howFarOff = HERE, shrunkBy = 0) }
 
         holding?.let { slot ->
             items.getOrNull(slot.value)?.let { held ->
@@ -521,7 +522,7 @@ class ViewConeRepositoryImpl(
         }
 
         for (block in teleporters.filter { it.relativeY == relativeY }) {
-            val window = windows[block.blockIndex]
+            val window = windows[block.square.index]
             if (window.closed) continue
 
             viewPort.at(
@@ -529,7 +530,7 @@ class ViewConeRepositoryImpl(
                 hiddenByCloserThings = true,
                 within = window,
             ) {
-                viewPort.drawTeleporter(decorations, block.blockIndex, dim, pulse)
+                viewPort.drawTeleporter(decorations, block.square, dim, pulse)
             }
         }
     }
@@ -558,7 +559,7 @@ class ViewConeRepositoryImpl(
         }
 
         for (block in forceWalls.filter { it.relativeY == relativeY }) {
-            val window = windows[block.blockIndex]
+            val window = windows[block.square.index]
             if (window.closed) continue
 
             viewPort.at(
@@ -566,7 +567,7 @@ class ViewConeRepositoryImpl(
                 hiddenByCloserThings = true,
                 within = window,
             ) {
-                viewPort.drawWallOfForce(decorations, block.blockIndex, dim, pulse)
+                viewPort.drawWallOfForce(decorations, block.square, dim, pulse)
             }
         }
     }
@@ -597,7 +598,7 @@ class ViewConeRepositoryImpl(
         val facingUs = direction.transformWallSide(WallSide.SOUTH)
 
         for (block in viewBlockRows.getValue(relativeY)) {
-            val window = windows[block.blockIndex]
+            val window = windows[block.square.index]
             if (window.closed) continue
 
             val (dx, dy) = direction.transformCoordinates(block.relativeX, block.relativeY)
@@ -617,7 +618,7 @@ class ViewConeRepositoryImpl(
                 drawItemsAtBlock(
                     viewPort, items, fromTheBottomUp, smallIcons, largeIcons, sublevel,
                     mazX = playerX + dx, mazY = playerY + dy,
-                    blockIndex = block.blockIndex, dim = dim,
+                    square = block.square, dim = dim,
                     partyFacing = direction,
                     shelved = DistanceFromParty.shelvedInThatFace(
                         block.relativeX,
@@ -664,7 +665,7 @@ class ViewConeRepositoryImpl(
         val facingUs = direction.transformWallSide(WallSide.SOUTH)
 
         for (block in viewBlockRows.getValue(relativeY)) {
-            val window = windows[block.blockIndex]
+            val window = windows[block.square.index]
             if (window.closed) continue
 
             val (dx, dy) = direction.transformCoordinates(block.relativeX, block.relativeY)
@@ -683,16 +684,16 @@ class ViewConeRepositoryImpl(
                         it.at.y == playerY + dy
                 }.forEach { flying ->
                     val bolt = bolts[flying.looksLike] ?: return@forEach
-                    val (over, shrunk) = seenOver(flying, direction, block.blockIndex, ScaleSteps(NEAREST_DIM - dim))
+                    val (over, shrunk) = seenOver(flying, direction, block.square, ScaleSteps(NEAREST_DIM - dim))
                         ?: return@forEach
 
-                    viewPort.drawInFlight(bolt, block.blockIndex, shrunk, over = over, mirrored = flying.onTheRightOfItsWay)
+                    viewPort.drawInFlight(bolt, block.square, shrunk, over = over, mirrored = flying.onTheRightOfItsWay)
                 }
 
                 drawWhatIsInTheAir(
                     viewPort, items, smallIcons, largeIcons, thrownIcons, inFlight, direction,
                     at = Location(playerX + dx, playerY + dy),
-                    blockIndex = block.blockIndex,
+                    square = block.square,
                     dim = dim,
                 )
 
@@ -707,7 +708,7 @@ class ViewConeRepositoryImpl(
                     .forEach { burst ->
                         viewPort.drawBurst(
                             burst,
-                            blockIndex = block.blockIndex,
+                            square = block.square,
                             howFarOff = DistanceFromParty.standingOnSquare(
                                 block.relativeX,
                                 block.relativeY,
@@ -737,7 +738,7 @@ class ViewConeRepositoryImpl(
 
         FloorReach.entries.forEach { reach ->
             val place = reach.placeFacing(direction).asSeenFacing(direction) ?: return@forEach
-            val blockIndex = if (reach.aheadOfTheParty) AHEAD_BLOCK_INDEX else ViewPort.OWN_BLOCK_INDEX
+            val square = if (reach.aheadOfTheParty) ViewSquare.AHEAD else ViewSquare.THE_PARTYS_OWN
             val dim = if (reach.aheadOfTheParty) 2 else 3
             val scaleSteps = itemScaleStepsAt(dim, place)
             if (!scaleSteps.isVisible) return@forEach
@@ -747,7 +748,7 @@ class ViewConeRepositoryImpl(
                 iconIdx = held.icon,
                 slot = slot,
                 reach = reach,
-                blockIndex = blockIndex,
+                square = square,
                 place = place,
                 scaleSteps = scaleSteps,
                 nudge = nudgeOf(slot),
@@ -773,7 +774,7 @@ class ViewConeRepositoryImpl(
         inFlight: List<Projectile>,
         direction: Direction,
         at: Location,
-        blockIndex: Int,
+        square: ViewSquare,
         dim: Int,
     ) {
         inFlight
@@ -781,10 +782,10 @@ class ViewConeRepositoryImpl(
             .forEach { flying ->
                 val what = items.getOrNull(flying.what?.value ?: return@forEach) ?: return@forEach
 
-                val (over, shrunk) = seenOver(flying, direction, blockIndex, ScaleSteps(NEAREST_DIM - dim))
+                val (over, shrunk) = seenOver(flying, direction, square, ScaleSteps(NEAREST_DIM - dim))
                     ?: return@forEach
                 inTheAir(flying, what, direction, thrownIcons, smallIcons, largeIcons)?.let {
-                    viewPort.drawInFlight(it.shape, blockIndex, shrunk, over = over, mirrored = it.mirrored)
+                    viewPort.drawInFlight(it.shape, square, shrunk, over = over, mirrored = it.mirrored)
                 }
             }
     }
@@ -799,7 +800,7 @@ class ViewConeRepositoryImpl(
         get() = place.asSeenFacing(going)?.isOnTheRight == true
 
     /**
-     * Where on the square at [blockIndex] a thing in the air is drawn and how
+     * Where on the square at [square] a thing in the air is drawn and how
      * small, or null where that quarter shows nothing — see [InFlightSight].
      *
      * Nearly every conjured thing is drawn down the middle whatever quarter
@@ -811,12 +812,12 @@ class ViewConeRepositoryImpl(
     private fun seenOver(
         flying: Projectile,
         direction: Direction,
-        blockIndex: Int,
+        square: ViewSquare,
         rowSize: ScaleSteps,
     ): Pair<ViewPlace, ScaleSteps>? {
         val corner = flying.place.asSeenFacing(direction) ?: ViewPlace.MIDDLE
         if (corner == ViewPlace.MIDDLE) return ViewPlace.MIDDLE to rowSize
-        val shrunk = InFlightSight.shrunkBy(blockIndex, corner) ?: return null
+        val shrunk = InFlightSight.shrunkBy(square, corner) ?: return null
         return (if (flying.downTheMiddle) ViewPlace.MIDDLE else corner) to shrunk
     }
 
@@ -876,7 +877,7 @@ class ViewConeRepositoryImpl(
         sublevel: SubLevel,
         mazX: Int,
         mazY: Int,
-        blockIndex: Int,
+        square: ViewSquare,
         dim: Int,
         partyFacing: Direction,
         /** How far off a thing set into this square's face is, rather than lying on it. */
@@ -895,7 +896,7 @@ class ViewConeRepositoryImpl(
         }
 
         for ((slot, item) in itemsHere) {
-            Logger.d(TAG) { "drawItem icon=${item.icon} at ($mazX, $mazY) ${item.place} block=$blockIndex" }
+            Logger.d(TAG) { "drawItem icon=${item.icon} at ($mazX, $mazY) ${item.place} block=$square" }
 
             val nudge = nudgeOf(slot)
 
@@ -907,7 +908,7 @@ class ViewConeRepositoryImpl(
                             // Set into the wall rather than standing on the
                             // floor behind it, so it is measured at the wall.
                             viewPort.at(shelved, hiddenByCloserThings = true) {
-                                viewPort.drawNicheItem(sheet, item.icon, blockIndex, dim, nudge)
+                                viewPort.drawNicheItem(sheet, item.icon, square, dim, nudge)
                             }
                         }
                     }
@@ -922,7 +923,7 @@ class ViewConeRepositoryImpl(
                                 largeIcons = sheet,
                                 iconIdx = item.icon,
                                 slot = slot,
-                                blockIndex = blockIndex,
+                                square = square,
                                 place = seenAt,
                                 scaleSteps = scaleSteps,
                                 nudge = nudge,
@@ -966,7 +967,7 @@ class ViewConeRepositoryImpl(
         val facingUs = direction.transformWallSide(WallSide.SOUTH)
 
         for (block in viewBlockRows.getValue(relativeY)) {
-            val window = windows[block.blockIndex]
+            val window = windows[block.square.index]
             if (window.closed) continue
 
             val (dx, dy) = direction.transformCoordinates(block.relativeX, block.relativeY)
@@ -1014,7 +1015,7 @@ class ViewConeRepositoryImpl(
                     viewPort.drawMonster(
                         frame = frame,
                         decorations = decorations,
-                        blockIndex = block.blockIndex,
+                        square = block.square,
                         place = seenAt,
                         mirrored = facing.mirrored && monster.striking == null,
                         scaleSteps = block.scaleSteps,
@@ -1060,20 +1061,10 @@ class ViewConeRepositoryImpl(
         private const val FIRST_SPARK = 232
         private const val SPARK_SIDE = 16
 
-        /**
-         * The middle of the three view slots on the party's own row, which is
-         * the square they are standing on. The other two of that row are the
-         * squares either side, and the game draws a burst on neither.
-         */
-        private const val OWN_SQUARE = 16
-
         /** Nothing is nearer than the square you are standing on. */
         private val HERE = DistanceFromParty.standingOnSquare(0, 0)
 
         /** The row a monster has to be on for its arm to be in the fight. */
         private const val NEXT_TO_THE_PARTY = -1
-
-        /** The square straight in front, among the eighteen in sight. */
-        private const val AHEAD_BLOCK_INDEX = 13
     }
 }

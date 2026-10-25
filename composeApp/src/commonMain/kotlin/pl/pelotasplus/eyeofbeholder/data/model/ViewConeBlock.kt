@@ -1,5 +1,24 @@
 package pl.pelotasplus.eyeofbeholder.data.model
 
+import kotlin.jvm.JvmInline
+
+/**
+ * One of the eighteen squares in sight, numbered three rows ahead first and
+ * left to right along each row: seven, five, three, and the party's own row
+ * of three last. Every table of where things go in the view is kept in this
+ * order.
+ */
+@JvmInline
+value class ViewSquare(val index: Int) {
+    companion object {
+        /** The square straight in front of the party. */
+        val AHEAD = ViewSquare(13)
+
+        /** The square the party stand on. */
+        val THE_PARTYS_OWN = ViewSquare(16)
+    }
+}
+
 /**
  * One square of the view cone that can hold something standing on it — an
  * item, a monster — ordered back-to-front.
@@ -9,14 +28,12 @@ package pl.pelotasplus.eyeofbeholder.data.model
  *
  * @property relativeX X offset from the player when facing NORTH (negative = left)
  * @property relativeY Y offset from the player when facing NORTH (negative = ahead)
- * @property blockIndex The visible-block index (0-17) used to
- *           address [blockScreenCoords]
  * @property scaleSteps 2/3-shrink steps applied at this distance
  */
 data class ViewBlock(
     val relativeX: Int,
     val relativeY: Int,
-    val blockIndex: Int,
+    val square: ViewSquare,
     val scaleSteps: ScaleSteps,
 )
 
@@ -24,13 +41,13 @@ data class ViewBlock(
  * Visible blocks by depth row, nearest last.
  *
  * The party's own row is not one of them: the square they stand on is drawn
- * on its own, at [ViewPort.OWN_BLOCK_INDEX], and the two beside it are not
+ * on its own, as [ViewSquare.THE_PARTYS_OWN], and the two beside it are not
  * drawn at all.
  */
 val viewBlockRows: Map<Int, List<ViewBlock>> = mapOf(
-    -3 to (-3..3).mapIndexed { i, vx -> ViewBlock(vx, -3, i, scaleSteps = ScaleSteps(2)) },
-    -2 to (-2..2).mapIndexed { i, vx -> ViewBlock(vx, -2, 7 + i, scaleSteps = ScaleSteps(1)) },
-    -1 to (-1..1).mapIndexed { i, vx -> ViewBlock(vx, -1, 12 + i, scaleSteps = ScaleSteps(0)) },
+    -3 to (-3..3).mapIndexed { i, vx -> ViewBlock(vx, -3, ViewSquare(i), scaleSteps = ScaleSteps(2)) },
+    -2 to (-2..2).mapIndexed { i, vx -> ViewBlock(vx, -2, ViewSquare(7 + i), scaleSteps = ScaleSteps(1)) },
+    -1 to (-1..1).mapIndexed { i, vx -> ViewBlock(vx, -1, ViewSquare(12 + i), scaleSteps = ScaleSteps(0)) },
 )
 
 /**
@@ -38,8 +55,8 @@ val viewBlockRows: Map<Int, List<ViewBlock>> = mapOf(
  * from the middle of the viewport, [BlockSpot.y] from the baseline its feet
  * stand on.
  */
-fun blockSpot(blockIndex: Int, place: ViewPlace): BlockSpot {
-    val coord = (blockIndex * ViewPlace.entries.size + place.ordinal) * 2
+fun blockSpot(square: ViewSquare, place: ViewPlace): BlockSpot {
+    val coord = (square.index * ViewPlace.entries.size + place.ordinal) * 2
     return BlockSpot(blockScreenCoords[coord], blockScreenCoords[coord + 1])
 }
 

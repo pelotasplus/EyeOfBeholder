@@ -21,7 +21,7 @@ class ViewGeometryTest {
     fun `the squares things stand on are numbered as the view lists them`() {
         viewBlockRows.values.flatten().forEach { block ->
             assertEquals(
-                block.blockIndex,
+                block.square.index,
                 visibleBlocks.indexOf(BlockOffset(block.relativeX, block.relativeY)),
                 "square at ${block.relativeX},${block.relativeY}",
             )

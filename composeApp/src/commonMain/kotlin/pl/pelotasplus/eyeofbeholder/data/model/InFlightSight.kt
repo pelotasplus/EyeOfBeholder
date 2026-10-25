@@ -13,10 +13,10 @@ package pl.pelotasplus.eyeofbeholder.data.model
  */
 object InFlightSight {
 
-    /** How far a thing over [corner] of the square at [blockIndex] is shrunk, or null where it is not drawn. */
-    fun shrunkBy(blockIndex: Int, corner: ViewPlace): ScaleSteps? {
+    /** How far a thing over [corner] of [square] is shrunk, or null where it is not drawn. */
+    fun shrunkBy(square: ViewSquare, corner: ViewPlace): ScaleSteps? {
         if (corner == ViewPlace.MIDDLE) return null
-        val value = TABLE.getOrNull(blockIndex * CORNERS + corner.ordinal) ?: return null
+        val value = TABLE.getOrNull(square.index * CORNERS + corner.ordinal) ?: return null
         return if (value == NOT_DRAWN) null else ScaleSteps(value)
     }
 
