@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "eob": {
+      "command": "./agentServer/build/install/eob-agent/bin/eob-agent",
+      "args": []
+    }
+  }
+}

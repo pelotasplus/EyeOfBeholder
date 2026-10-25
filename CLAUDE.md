@@ -21,6 +21,7 @@ The detail lives in `.claude/rules/`, loaded automatically every session:
 | `architecture-data.md` | Repositories, domain models, binary parsing, LCW, common Kotlin patterns |
 | `rendering.md` | Vcn/Vmp/ViewPort/ViewSlot, Direction and WallSide |
 | `build-platform.md` | Platform targets, build settings, logging, resources, rendering the sounds, web dev loop |
+| `agent-player.md` | Playing the game as an agent through the `eob` MCP server, and keeping it fair |
 
 ## Common Commands
 
@@ -49,6 +50,9 @@ The detail lives in `.claude/rules/`, loaded automatically every session:
 
 # Run web app (JS - slower, older browser support)
 ./gradlew :composeApp:jsBrowserDevelopmentRun
+
+# Build the agent server the `eob` MCP tools run (see .claude/rules/agent-player.md)
+./gradlew :agentServer:installDist
 ```
 
 ### Test Commands

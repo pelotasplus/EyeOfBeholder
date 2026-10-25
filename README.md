@@ -62,6 +62,30 @@ Rendering is guarded by golden-image tests: each one draws a known frame with
 the real assets and compares it byte for byte against a reference PNG in
 `composeApp/src/jvmTest/goldens/`.
 
+## Letting an agent play
+
+The game can be played by an AI agent through MCP. The agent is told only
+what a player could know: the squares in sight as they look, the party, the
+messages, the screen as a picture. It acts by naming what a player does
+(step, turn, use a hand, cast from the book), and the game stands still
+between its actions, running only when it says to wait.
+
+```bash
+# Once, and again after changing it: the server the agent talks to
+./gradlew :agentServer:installDist
+```
+
+1. Start Claude Code in this project. `.mcp.json` registers the server as
+   `eob`; allow it when asked.
+2. Run the game, open the **Debug** menu and switch **Agent** on. It calls the
+   server on `127.0.0.1:47110` and reads **Agent: connected** once it is there.
+3. Ask the agent to play.
+
+The game only ever connects out, to this machine, and only while the switch is
+on. Switching it off, or the server going away, gives the game back to the
+player. The design is in `agentServer/` and
+`composeApp/src/commonMain/kotlin/pl/pelotasplus/eyeofbeholder/agent/`.
+
 ## Credits
 
 This project would not have been possible without the people who worked out
