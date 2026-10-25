@@ -2112,6 +2112,13 @@ class ViewConeDebugViewModel(
             }
         }
 
+        // A book is open on a place in the party rather than on a person, so
+        // it is put away rather than left open on whoever moved into it.
+        if (waiting != null && waiting != whose) {
+            if (openBook?.whose == waiting || openBook?.whose == whose) closeTheBook()
+            restingBooks = restingBooks.map { if (it == waiting) whose else if (it == whose) waiting else it }.toSet()
+        }
+
         keepTheNameFlickering(_state.value.swapping != null)
         drawWords()
         return true
@@ -3445,6 +3452,19 @@ class ViewConeDebugViewModel(
     /** Which hand the open book was opened from, which a spell wanting a free hand asks about. */
     private var bookHand: CarrySlot = CarrySlot.BOTH_HANDS.first()
 
+    /**
+     * Whether [book]'s owner is still holding it and still able to read from
+     * it. A book taken out of the hand, or a reader knocked down or turned to
+     * stone, is a book that casts nothing.
+     */
+    private fun stillInHand(book: SpellBook): Boolean {
+        val world = _state.value.game
+        val owner = world.championIn(book.whose) ?: return false
+        if (owner.hitPoints.current <= 0 || owner.petrified) return false
+        val held = world.item(owner.holding(bookHand)) ?: return false
+        return itemTypes?.whatAHandDoesWith(held) == HandUse.OpenTheBook(book.discipline)
+    }
+
     private fun closeTheBook() {
         if (openBook == null) return
         openBook = null
@@ -3465,6 +3485,10 @@ class ViewConeDebugViewModel(
      */
     private fun bookClicked(x: Int, y: Int) {
         val book = openBook ?: return
+        if (!stillInHand(book)) {
+            closeTheBook()
+            return
+        }
         when (val part = SpellBookLayout.partAt(x, y)) {
             is SpellBookLayout.Part.Tab -> turnTo(book.onTab(part.page))
             is SpellBookLayout.Part.Line -> {
@@ -4278,7 +4302,7 @@ class ViewConeDebugViewModel(
     /** Whether [from] is ready: a hand back from its rest, or a book back from its own. */
     private fun canCastFrom(whose: PartySlot, from: CastFrom): Boolean = when (from) {
         is CastFrom.AScroll -> !_state.value.game.isRecovering(whose, from.hand)
-        is CastFrom.TheBook -> whose !in restingBooks && openBook?.whose == whose
+        is CastFrom.TheBook -> whose !in restingBooks && openBook?.whose == whose && openBook?.let(::stillInHand) == true
     }
 
     private fun casterLevel(whose: PartySlot, from: CastFrom): Int = when (from) {

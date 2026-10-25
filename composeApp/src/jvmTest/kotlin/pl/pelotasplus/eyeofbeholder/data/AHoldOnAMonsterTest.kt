@@ -88,6 +88,22 @@ class AHoldOnAMonsterTest {
     }
 
     /**
+     * A creature across the square that throws the hold off has had its
+     * chance: it is not asked again for every moment the bolt is over it.
+     * Each asking begins with the dodge, a die of a hundred, so that die is
+     * thrown once.
+     */
+    @Test
+    fun `a creature across the square throws a hold off once`() {
+        var dodges = 0
+        val counting = Dice { _, pips, _ -> if (pips == 100) dodges++; MAKES_IT }
+
+        castAt(Spell.HOLD_PERSON, aCreatureMarked = A_PERSON, throwing = MAKES_IT, standingIn = SquarePlace.NORTH_EAST, dice = counting)
+
+        assertEquals(1, dodges, "the creature was asked again while the hold was over it")
+    }
+
+    /**
      * Laid over the whole square, not on the corner the bolt crosses: a
      * person across the square from the side it was cast down is held.
      */
@@ -263,6 +279,7 @@ class AHoldOnAMonsterTest {
         immunities: MonsterImmunities = MonsterImmunities(0),
         dodgingOneTimeIn: Int = NEVER_DODGES,
         standingIn: SquarePlace = SquarePlace.MIDDLE,
+        dice: Dice = Dice { _, _, _ -> throwing },
     ): GameState {
         val thrown = requireNotNull(spell.throws) { "${spell.calledIt} throws nothing" }
         var world = worldWith(aCreature(marked = aCreatureMarked).copy(place = standingIn)).copy(
@@ -284,7 +301,7 @@ class AHoldOnAMonsterTest {
             sublevel = here,
             level = LEVEL,
             kinds = listOf(aKind(aCreatureMarked, immunities, dodgingOneTimeIn)),
-            dice = { _, _, _ -> throwing },
+            dice = dice,
         )
 
         repeat(UNTIL_IT_ARRIVES) { world = flying.onward(world).world }

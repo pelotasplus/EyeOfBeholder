@@ -420,10 +420,8 @@ private val atEachQuarter = listOf(
         // in the corner it crosses, and asks each of them in turn.
         flying.harm.holds?.let { hold ->
             if (overThem) return@let
-            val onTheSquare = world.monsters
-                .filter { it.x == flying.at.x && it.y == flying.at.y && it.couldBeHurt }
-                .filterNot { it.index in flying.alreadyTried }
-            if (onTheSquare.isNotEmpty()) return onTheSquare.mapNotNull { takesHold(hold, it) }
+            val notTried = onTheSquare(world, flying).filterNot { it.index in flying.alreadyTried }
+            if (notTried.isNotEmpty()) return notTried.mapNotNull { takesHold(hold, it) }
         }
 
         val monsters = if (overThem) {
@@ -507,7 +505,12 @@ private val atEachQuarter = listOf(
      * one that walks up afterwards has not been asked yet.
      */
     private fun triedHere(world: GameState, flying: Projectile): Set<MonsterSlot> =
-        flying.alreadyTried + monstersUnder(world, flying).map { it.index }
+        flying.alreadyTried + (if (flying.harm.holds != null) onTheSquare(world, flying) else monstersUnder(world, flying))
+            .map { it.index }
+
+    /** Every creature on the square [flying] is over, whichever corner — what a hold is laid on. */
+    private fun onTheSquare(world: GameState, flying: Projectile) = world.monsters
+        .filter { it.x == flying.at.x && it.y == flying.at.y && it.couldBeHurt }
 
     /**
      * Whoever of the party is under [flying], which is nobody unless they are
