@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
@@ -52,6 +53,12 @@ class AgentLink(private val time: AgentTime, private val port: Int = PORT) {
         fun observation(): Observation?
         fun frame(): ByteArray?
         fun act(action: AgentAction): String?
+
+        /** QA mode only: the world behind the view. */
+        fun inspection(): Inspection?
+
+        /** QA mode only: a shortcut to where a check starts. Says why it could not, or nothing. */
+        fun setUp(setup: QaSetup): String?
     }
 
     private var game: Game? = null
@@ -65,6 +72,20 @@ class AgentLink(private val time: AgentTime, private val port: Int = PORT) {
 
     private val _connected = MutableStateFlow(false)
     val connected: StateFlow<Boolean> = _connected.asStateFlow()
+
+    private val _qa = MutableStateFlow(false)
+
+    /**
+     * Whether the agent is in QA mode, told everything and allowed shortcuts
+     * — see [QaSetup]. Off is fair play. Only the person at the game sets it;
+     * nothing the agent sends can.
+     */
+    val qa: StateFlow<Boolean> = _qa.asStateFlow()
+
+    fun allowQa(allowed: Boolean) {
+        _qa.value = allowed
+        if (allowed) Diagnostics.listen()
+    }
 
     fun attach(game: Game) {
         this.game = game
@@ -158,6 +179,27 @@ class AgentLink(private val time: AgentTime, private val port: Int = PORT) {
                     reply(id, buildJsonObject { put("released", true) })
                 }
 
+                "diagnostics", "inspect", "setup" -> {
+                    if (!_qa.value) return reply(id, error = NOT_IN_QA)
+                    when (asked["method"]?.jsonPrimitive?.content) {
+                        "diagnostics" -> {
+                            val after = params["after"]?.jsonPrimitive?.long ?: 0L
+                            reply(id, json.encodeToJsonElement(ListSerializer(Diagnostics.Note.serializer()), Diagnostics.since(after)))
+                        }
+
+                        "inspect" -> {
+                            val seen = onMain { game.inspection() } ?: return reply(id, error = "no level is open")
+                            reply(id, json.encodeToJsonElement(Inspection.serializer(), seen))
+                        }
+
+                        else -> {
+                            val setup = json.decodeFromJsonElement(QaSetup.serializer(), params["setup"] ?: JsonNull)
+                            val refused = onMain { game.setUp(setup) }
+                            reply(id, buildJsonObject { if (refused == null) put("done", true) else put("refused", refused) })
+                        }
+                    }
+                }
+
                 else -> reply(id, error = "no such method")
             }
         } catch (e: Exception) {
@@ -180,6 +222,8 @@ class AgentLink(private val time: AgentTime, private val port: Int = PORT) {
         private const val PATH = "/game"
 
         private const val GAME_NAME = "Eye of the Beholder II"
+        private const val NOT_IN_QA =
+            "QA mode is off: the agent knows only what the party know. Whoever is at the game can switch it on in the Debug menu."
         private const val TRY_AGAIN = 2_000L
         private const val TAG = "AgentLink"
 

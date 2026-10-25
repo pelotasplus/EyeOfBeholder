@@ -123,6 +123,16 @@ import pl.pelotasplus.eyeofbeholder.data.model.TheGameIsWatched
 import pl.pelotasplus.eyeofbeholder.agent.AgentTime
 import pl.pelotasplus.eyeofbeholder.agent.AgentAction
 import pl.pelotasplus.eyeofbeholder.agent.AgentLink
+import pl.pelotasplus.eyeofbeholder.agent.Diagnostics
+import pl.pelotasplus.eyeofbeholder.agent.InspectedChampion
+import pl.pelotasplus.eyeofbeholder.agent.InspectedMonster
+import pl.pelotasplus.eyeofbeholder.agent.Inspection
+import pl.pelotasplus.eyeofbeholder.agent.QaSetup
+import pl.pelotasplus.eyeofbeholder.data.model.MonsterMode
+import pl.pelotasplus.eyeofbeholder.data.model.SpellCapacity
+import pl.pelotasplus.eyeofbeholder.data.model.SpellPages
+import pl.pelotasplus.eyeofbeholder.data.model.SpellSlot
+import pl.pelotasplus.eyeofbeholder.data.model.script.CreateMonster
 import pl.pelotasplus.eyeofbeholder.agent.Observation
 import pl.pelotasplus.eyeofbeholder.agent.Png
 import pl.pelotasplus.eyeofbeholder.data.model.ChampionBox
@@ -535,6 +545,140 @@ class ViewConeDebugViewModel(
             (box.left until box.left + ChampionBox.WIDTH).map { x -> x to y }
         }.filter { (x, y) -> box.holdsHandAt(x, y, hand) }
         return inside.getOrNull(inside.size / 2)
+    }
+
+    override fun inspection(): Inspection? {
+        val now = _state.value
+        val inf = now.inf ?: return null
+        val sublevel = inf.subLevels.getOrNull(now.subLevel) ?: return null
+        val world = now.game
+        return Inspection(
+            level = levelNumber(inf.name),
+            at = world.party.position,
+            facing = world.party.facing,
+            monsters = world.monsters.map { monster ->
+                InspectedMonster(
+                    slot = monster.index.value,
+                    looksLike = sublevel.monsterGfx.getOrNull(monster.gfxIndex)?.name ?: "picture ${monster.gfxIndex}",
+                    kind = monster.type.value,
+                    at = monster.location,
+                    place = monster.place.name.lowercase(),
+                    facing = monster.direction,
+                    hitPoints = "${monster.hitPoints.current}/${monster.hitPoints.max}",
+                    mode = monster.mode,
+                    provoked = monster.provoked,
+                    stone = monster.stone,
+                    heldFor = monster.heldFor,
+                )
+            },
+            party = world.champions.mapIndexedNotNull { slot, champion ->
+                if (!champion.inTheParty) return@mapIndexedNotNull null
+                InspectedChampion(
+                    slot = slot,
+                    name = champion.name,
+                    characterClass = champion.characterClass?.name?.lowercase() ?: "none",
+                    levels = champion.levels.map { it.level },
+                    hitPoints = "${champion.hitPoints.current}/${champion.hitPoints.max}",
+                    food = champion.food.value,
+                    armorClass = champion.armorClass.value,
+                    carrying = champion.carrying.mapNotNull { world.item(it) }
+                        .map { itemNames?.of(it, itemTypes, evenIfUnknown = true) ?: "item of type ${it.type}" },
+                )
+            },
+            running = world.running.all.map { running ->
+                "${running.spell.calledIt}, cast by ${running.castBy.index}" + (running.on?.let { " on ${it.index}" } ?: "")
+            },
+        )
+    }
+
+    override fun setUp(setup: QaSetup): String? {
+        val now = _state.value
+        val inf = now.inf ?: return "No level is open."
+        val sublevel = inf.subLevels.getOrNull(now.subLevel) ?: return "No level is open."
+        val level = levelNumber(inf.name)
+        val world = now.game
+
+        when (setup) {
+            is QaSetup.Teleport -> {
+                val event = Event.JumpTo("LEVEL${setup.level}.INF", setup.x, setup.y, setup.facing)
+                turnedAway(event)?.let { why -> return "Not done: $why." }
+                onEvent(event)
+                return null
+            }
+
+            QaSetup.Heal -> _state.update {
+                it.copy(
+                    game = it.game.copy(
+                        champions = it.game.champions.map { champion ->
+                            champion.copy(hitPoints = champion.hitPoints.copy(current = champion.hitPoints.max))
+                        },
+                    ),
+                )
+            }
+
+            is QaSetup.GiveSpell -> {
+                val spell = Spell.entries.firstOrNull {
+                    it.calledIt.equals(setup.spell, ignoreCase = true) || it.name.equals(setup.spell.replace(' ', '_'), ignoreCase = true)
+                } ?: return "No spell is called \"${setup.spell}\"."
+                val discipline = Discipline.entries.firstOrNull { it.spellNumbered(it.numberOf(spell)) == spell }
+                    ?: return "${spell.calledIt} is nobody's to learn."
+                val page = SpellCapacity.pageOf(spell, discipline) ?: return "${spell.calledIt} has no level to learn it at."
+                val whose = PartySlot(setup.champion)
+                val champion = world.championIn(whose) ?: return "There is no champion ${setup.champion}."
+                val pages = champion.spellsOf(discipline)
+                val free = (0 until SpellPages.PER_PAGE).map { page * SpellPages.PER_PAGE + it }
+                    .firstOrNull { pages.slots[it] == SpellSlot.Empty }
+                    ?: return "Page ${page + 1} of ${champion.name}'s ${discipline.name.lowercase()} spells is full."
+                val written = pages.with(free, if (setup.ready) SpellSlot.Ready(spell) else SpellSlot.Learning(spell))
+                _state.update {
+                    it.copy(
+                        game = it.game.withChampion(whose) { who ->
+                            when (discipline) {
+                                Discipline.MAGE -> who.copy(mageSpells = written, knownMageSpells = who.knownMageSpells + spell)
+                                Discipline.CLERIC -> who.copy(clericSpells = written)
+                            }
+                        },
+                    )
+                }
+            }
+
+            is QaSetup.GiveItem -> {
+                val names = itemNames ?: return "The items are not loaded."
+                if (world.inHand.isSomething) return "Something is on the pointer already; put it down first."
+                val found = world.items.indexOfFirst {
+                    names.of(it, itemTypes, evenIfUnknown = true).contains(setup.name, ignoreCase = true)
+                }
+                if (found < 0) return "No item in the world is called anything like \"${setup.name}\"."
+                _state.update { it.copy(game = it.game.itemCopiedIntoTheHand(ItemIndex(found), level, SquarePlace.MIDDLE)) }
+            }
+
+            is QaSetup.SpawnMonster -> {
+                val placedHere = inf.monsterInstances.filter { it.subLevel == now.subLevel }
+                fun looksOf(monster: MonsterInstance) = sublevel.monsterGfx.getOrNull(monster.gfxIndex)?.name
+                val template = placedHere.firstOrNull { looksOf(it).equals(setup.looksLike, ignoreCase = true) }
+                    ?: return "Nothing on this level looks like \"${setup.looksLike}\"; it has ${placedHere.mapNotNull(::looksOf).distinct()}."
+
+                var at = world.party.position
+                repeat(setup.ahead.coerceAtLeast(1)) { at = world.party.facing.oneStepFrom(at) }
+                val spawn = CreateMonster(
+                    unit = 0,
+                    location = at,
+                    place = SquarePlace.MIDDLE,
+                    direction = world.party.facing.turnedBy(HALF_TURN),
+                    type = template.type,
+                    gfxIndex = template.gfxIndex,
+                    mode = MonsterMode.HUNTING.asWritten,
+                    pause = 0,
+                    weapon = 0,
+                    pocketItem = 0,
+                )
+                val before = world.monsters.size
+                _state.update { it.copy(game = it.game.monsterCreated(spawn, it.subLevel, sublevel.monsters, level = level)) }
+                if (_state.value.game.monsters.size == before) return "That square could not take it."
+            }
+        }
+        renderViewPort()
+        return null
     }
 
     /** What an agent playing is told of the game as it stands — see [Observation]. */
@@ -2400,10 +2544,13 @@ class ViewConeDebugViewModel(
             // tells the party nothing they could not have guessed.
             HandUse.NothingLeftInIt -> say(ItemMessages.NO_APPARENT_EFFECT)
 
+            HandUse.NotWrittenYet -> held?.let {
+                Diagnostics.notWrittenYet("using ${itemTypes?.kindOf(it) ?: "an item of type ${it.type}"} from a hand")
+            }
+
             is HandUse.Read,
             HandUse.WorksByBeingWorn,
-            HandUse.NotUsedThisWay,
-            HandUse.NotWrittenYet -> Unit
+            HandUse.NotUsedThisWay -> Unit
         }
 
         // And whatever it was, the wall in front of the party is asked what it
@@ -4409,6 +4556,10 @@ class ViewConeDebugViewModel(
                 frightenWhatIsAhead()
             } else if (spell.wounds != null) {
                 woundWhatIsAhead(whose, spell.wounds)
+            } else if (spell.throws == null) {
+                Diagnostics.notWrittenYet(
+                    "${spell.calledIt} has no effect of its own (a script on the square may still answer it)",
+                )
             }
 
             runTriggersAt(
@@ -5752,6 +5903,9 @@ class ViewConeDebugViewModel(
 
         /** How far inside a box or button an agent's click lands, clear of its edge. */
         private const val BOX_INSET = 8
+
+        /** Quarter turns from facing the party's way to facing them. */
+        private const val HALF_TURN = 2
 
         private const val CANNOT_REST_HERE = "You do not feel it is safe to rest here."
         private const val MONSTERS_ARE_NEAR = "You can't rest here, monsters are near."

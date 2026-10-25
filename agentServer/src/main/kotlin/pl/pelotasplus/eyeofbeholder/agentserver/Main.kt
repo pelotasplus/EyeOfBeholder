@@ -108,6 +108,11 @@ class Tools(private val games: Games) {
                     answerOf(game.ask("wait", buildJsonObject { put("ms", ms) }, within = ms + Games.ANSWER_WITHIN)) { text("waited $ms ms") }
                 }
                 "release" -> answerOf(game.ask("release")) { text("the game runs on its own again") }
+                "diagnostics" -> answerOf(
+                    game.ask("diagnostics", buildJsonObject { put("after", arguments["after"]?.jsonPrimitive?.long ?: 0L) }),
+                ) { text(pretty(it)) }
+                "inspect" -> answerOf(game.ask("inspect")) { text(pretty(it)) }
+                "setup" -> answerOf(game.ask("setup", buildJsonObject { put("setup", arguments["setup"] ?: JsonNull) })) { text(pretty(it)) }
                 else -> failed("no such tool: $name")
             }
         } catch (e: Exception) {
@@ -170,7 +175,9 @@ class Tools(private val games: Games) {
                 "The game stands still between your actions while you act; it runs only when you call wait. " +
                 "Look with observe (what the party can see and know, in words) and frame (the screen as a 320x200 picture). " +
                 "Act with act. Many actions take a moment in the game: after a step, wait about 250 ms before the next one; " +
-                "an act that cannot be done yet says why. Call release to let the game run on its own again."
+                "an act that cannot be done yet says why. Call release to let the game run on its own again. " +
+                "diagnostics, inspect and setup are QA mode: they answer only once the person at the game has " +
+                "switched QA on, and otherwise you play knowing only what the party know."
 
         private fun gameArgument() = buildJsonObject {
             put("type", "integer")
@@ -246,6 +253,44 @@ class Tools(private val games: Games) {
                 ),
             )
             add(tool("release", "Stop driving the game: it runs in real time on its own again until you act or wait."))
+            add(
+                tool(
+                    "diagnostics",
+                    "QA mode only. What the game noticed about itself: its warnings and errors, and every place it reached " +
+                        "something not written yet (a spell with no effect, an item used from a hand that does nothing). " +
+                        "Numbered; pass after to get only what came since the last you saw.",
+                    properties = buildJsonObject {
+                        putJsonObject("after") {
+                            put("type", "integer")
+                            put("description", "Only the notes numbered higher than this.")
+                        }
+                    },
+                ),
+            )
+            add(
+                tool(
+                    "inspect",
+                    "QA mode only. The whole world behind the view: every monster on the floor (where, hit points, mode, " +
+                        "provoked, held), the party with true names of everything carried, the spells running.",
+                ),
+            )
+            add(
+                tool(
+                    "setup",
+                    "QA mode only. A shortcut to where a check starts. setup is an object with a \"type\": " +
+                        "{type: teleport, level, x, y, facing: NORTH|EAST|SOUTH|WEST}, " +
+                        "{type: give_spell, champion: 0-5, spell: name, ready: true|false} (onto the page of its level), " +
+                        "{type: give_item, name} (a copy of the first item whose true name holds it, onto the pointer), " +
+                        "{type: spawn_monster, looksLike, ahead: 1..} (copied from one of that look the level places), {type: heal}.",
+                    properties = buildJsonObject {
+                        putJsonObject("setup") {
+                            put("type", "object")
+                            put("description", "The shortcut, as described above.")
+                        }
+                    },
+                    required = listOf("setup"),
+                ),
+            )
         }
     }
 }

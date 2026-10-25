@@ -23,6 +23,25 @@ to keep it working.
   cannot name: a decoration's picture, whether something looks wrong.
 - `release` when done, so the game runs on its own.
 
+## QA mode
+
+Switched on by the person at the game ("Agent knows: everything (QA)" in the
+Debug menu); until then the QA tools answer that it is off. It is for finding
+what is missing or broken, and breaks fair play on purpose:
+
+- `diagnostics` — the game's warnings and errors, and every place it reached
+  something not written yet (a spell with no effect, a hand use that does
+  nothing). Pass `after` to get only what is new.
+- `inspect` — the whole world: every monster's hit points and mode, true names
+  of what the party carry, the spells running.
+- `setup` — shortcuts: teleport, give a spell (ready or to learn), give an item
+  onto the pointer, spawn a monster ahead, heal.
+
+A QA session sets each case up, plays it, compares what happened with what the
+spell or item should do (the audit in the vault, ScummVM, the original's
+tables), and writes the findings up — `diagnostics` says where to look, not
+whether a number is right.
+
 ## Changing it
 
 - The game side is `composeApp/.../agent/`: `AgentTime` (the clock),

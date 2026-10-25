@@ -93,6 +93,7 @@ private fun DebugMenuPanel(
 ) {
     val agentAllowed by agentLink.allowed.collectAsState()
     val agentConnected by agentLink.connected.collectAsState()
+    val agentQa by agentLink.qa.collectAsState()
     val wallsArePassable by debugging.wallsArePassable.collectAsState()
     val monstersMayWalk by debugging.monstersMayWalk.collectAsState()
     val everythingIdentified by debugging.everythingIdentified.collectAsState()
@@ -155,6 +156,18 @@ private fun DebugMenuPanel(
                 },
                 textAlign = TextAlign.Center,
             )
+        }
+
+        if (agentAllowed) {
+            Button(
+                onClick = { agentLink.allowQa(!agentQa) },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(
+                    text = if (agentQa) "Agent knows: everything (QA)" else "Agent knows: what the party know",
+                    textAlign = TextAlign.Center,
+                )
+            }
         }
 
 

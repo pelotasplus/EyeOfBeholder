@@ -81,6 +81,12 @@ between its actions, running only when it says to wait.
    server on `127.0.0.1:47110` and reads **Agent: connected** once it is there.
 3. Ask the agent to play.
 
+With the agent switched on, the Debug menu also offers **QA mode**: the agent
+is then told everything — the game's own warnings, what has not been written
+yet, the whole world behind the view — and can set a check up directly
+(teleport, give a spell or an item, spawn a monster, heal). It is for hunting
+bugs, and is off unless the person at the game turns it on.
+
 The game only ever connects out, to this machine, and only while the switch is
 on. Switching it off, or the server going away, gives the game back to the
 player. The design is in `agentServer/` and
