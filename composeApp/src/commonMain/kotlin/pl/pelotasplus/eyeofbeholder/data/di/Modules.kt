@@ -4,6 +4,7 @@ import org.jetbrains.compose.resources.ExperimentalResourceApi
 import org.koin.dsl.module
 import pl.pelotasplus.eyeofbeholder.data.model.Debugging
 import pl.pelotasplus.eyeofbeholder.data.model.TheGameIsWatched
+import pl.pelotasplus.eyeofbeholder.agent.AgentTime
 import pl.pelotasplus.eyeofbeholder.data.repository.CpsRepository
 import pl.pelotasplus.eyeofbeholder.data.repository.CpsRepositoryImpl
 import pl.pelotasplus.eyeofbeholder.data.repository.CreditsRepository
@@ -108,4 +109,5 @@ val sharedDataModule = module {
 
     // The screen sets this and the clocks read it, so likewise one.
     single { TheGameIsWatched() }
+    single { AgentTime() }
 }

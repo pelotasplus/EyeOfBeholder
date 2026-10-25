@@ -120,6 +120,9 @@ import pl.pelotasplus.eyeofbeholder.data.model.Resting
 import pl.pelotasplus.eyeofbeholder.data.model.RunningSpell
 import pl.pelotasplus.eyeofbeholder.data.model.SettlesOn
 import pl.pelotasplus.eyeofbeholder.data.model.TheGameIsWatched
+import pl.pelotasplus.eyeofbeholder.agent.AgentTime
+import pl.pelotasplus.eyeofbeholder.agent.Observation
+import pl.pelotasplus.eyeofbeholder.agent.observe
 import pl.pelotasplus.eyeofbeholder.data.model.tintedAsMagical
 import pl.pelotasplus.eyeofbeholder.data.model.anybodyStillHurt
 import pl.pelotasplus.eyeofbeholder.data.model.inSight
@@ -204,6 +207,7 @@ class ViewConeDebugViewModel(
     private val audioSink: AudioSink,
     private val debugging: Debugging,
     private val watched: TheGameIsWatched,
+    private val agentTime: AgentTime,
 ) : ViewModel() {
 
     /**
@@ -217,8 +221,16 @@ class ViewConeDebugViewModel(
      * The waiting comes after the delay rather than before it so that a clock
      * started while hidden does not fire its first beat immediately on being
      * looked at again.
+     *
+     * While an agent is playing, the wait is in its time and not the wall's —
+     * see [AgentTime] — and whether anybody is looking does not come into it.
      */
     private suspend fun tick(wait: Long) {
+        if (agentTime.driving.value) {
+            agentTime.passes(wait)
+            return
+        }
+
         delay(wait)
         if (watched.watched.value) return
 
@@ -392,6 +404,22 @@ class ViewConeDebugViewModel(
 
     private val _state = MutableStateFlow(State())
     val state = _state.asStateFlow()
+
+    /** What an agent playing is told of the game as it stands — see [Observation]. */
+    fun observation(): Observation? {
+        val now = _state.value
+        val inf = now.inf ?: return null
+        val sublevel = inf.subLevels.getOrNull(now.subLevel) ?: return null
+        return observe(
+            world = now.game,
+            level = levelNumber(inf.name),
+            sublevel = sublevel,
+            names = itemNames,
+            types = itemTypes,
+            messages = now.messages.map { it.text },
+            menu = now.menu,
+        )
+    }
 
     fun onEvent(event: Event) {
         // Every event but the one that starts the game is the player doing
@@ -1751,7 +1779,7 @@ class ViewConeDebugViewModel(
 
         messageTimeout?.cancel()
         messageTimeout = viewModelScope.launch {
-            delay(CampMenu.MESSAGE_LASTS_MILLIS)
+            tick(CampMenu.MESSAGE_LASTS_MILLIS)
             if (_state.value.menu?.entries?.singleOrNull()?.choice == MenuChoice.Dismiss) showMenu(then)
         }
     }

@@ -3,6 +3,7 @@ package pl.pelotasplus.eyeofbeholder.data
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withTimeout
+import pl.pelotasplus.eyeofbeholder.agent.AgentTime
 import pl.pelotasplus.eyeofbeholder.data.model.Debugging
 import pl.pelotasplus.eyeofbeholder.data.model.TheGameIsWatched
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
@@ -80,6 +81,9 @@ class ThePlayField {
 
     val saves = SavesInMemory()
 
+    /** The clock an agent would drive; real time unless a test takes it over. */
+    val agentTime = AgentTime()
+
     val viewModel = ViewConeDebugViewModel(
         viewConeRepository = ViewConeRepositoryImpl(inf, cps, dcr),
         cpsRepository = cps,
@@ -96,6 +100,7 @@ class ThePlayField {
         debugging = Debugging(),
         // Nothing on a bench is ever hidden, so the clocks run throughout.
         watched = TheGameIsWatched(),
+        agentTime = agentTime,
     )
 
     /** Opens a floor with the party standing on [at], and waits for it. */
