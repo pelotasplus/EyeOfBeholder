@@ -3,6 +3,7 @@ package pl.pelotasplus.eyeofbeholder.data
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withTimeout
+import pl.pelotasplus.eyeofbeholder.agent.AgentLink
 import pl.pelotasplus.eyeofbeholder.agent.AgentTime
 import pl.pelotasplus.eyeofbeholder.data.model.Debugging
 import pl.pelotasplus.eyeofbeholder.data.model.TheGameIsWatched
@@ -101,6 +102,7 @@ class ThePlayField {
         // Nothing on a bench is ever hidden, so the clocks run throughout.
         watched = TheGameIsWatched(),
         agentTime = agentTime,
+        agentLink = AgentLink(agentTime),
     )
 
     /** Opens a floor with the party standing on [at], and waits for it. */

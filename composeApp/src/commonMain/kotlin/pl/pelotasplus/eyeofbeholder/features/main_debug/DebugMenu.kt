@@ -22,6 +22,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import org.koin.compose.koinInject
 import pl.pelotasplus.eyeofbeholder.BuildInfo
+import pl.pelotasplus.eyeofbeholder.agent.AgentLink
 import pl.pelotasplus.eyeofbeholder.data.model.Debugging
 import pl.pelotasplus.eyeofbeholder.navigation.Route
 
@@ -88,7 +89,10 @@ private fun DebugMenuPanel(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
     debugging: Debugging = koinInject(),
+    agentLink: AgentLink = koinInject(),
 ) {
+    val agentAllowed by agentLink.allowed.collectAsState()
+    val agentConnected by agentLink.connected.collectAsState()
     val wallsArePassable by debugging.wallsArePassable.collectAsState()
     val monstersMayWalk by debugging.monstersMayWalk.collectAsState()
     val everythingIdentified by debugging.everythingIdentified.collectAsState()
@@ -135,6 +139,20 @@ private fun DebugMenuPanel(
         ) {
             Text(
                 text = if (everythingIdentified) "Names: all identified" else "Names: must identify",
+                textAlign = TextAlign.Center,
+            )
+        }
+
+        Button(
+            onClick = { agentLink.allow(!agentAllowed) },
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text(
+                text = when {
+                    !agentAllowed -> "Agent: off"
+                    agentConnected -> "Agent: connected"
+                    else -> "Agent: waiting"
+                },
                 textAlign = TextAlign.Center,
             )
         }

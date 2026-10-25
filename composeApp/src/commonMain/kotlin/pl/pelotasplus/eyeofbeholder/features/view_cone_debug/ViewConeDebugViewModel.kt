@@ -122,6 +122,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.SettlesOn
 import pl.pelotasplus.eyeofbeholder.data.model.TheGameIsWatched
 import pl.pelotasplus.eyeofbeholder.agent.AgentTime
 import pl.pelotasplus.eyeofbeholder.agent.AgentAction
+import pl.pelotasplus.eyeofbeholder.agent.AgentLink
 import pl.pelotasplus.eyeofbeholder.agent.Observation
 import pl.pelotasplus.eyeofbeholder.agent.Png
 import pl.pelotasplus.eyeofbeholder.data.model.ChampionBox
@@ -211,7 +212,12 @@ class ViewConeDebugViewModel(
     private val debugging: Debugging,
     private val watched: TheGameIsWatched,
     private val agentTime: AgentTime,
-) : ViewModel() {
+    agentLink: AgentLink,
+) : ViewModel(), AgentLink.Game {
+
+    init {
+        agentLink.attach(this)
+    }
 
     /**
      * One beat of a clock: the wait, and then however long nobody was looking.
@@ -463,14 +469,14 @@ class ViewConeDebugViewModel(
     private var lastScreen: PlayField? = null
 
     /** The screen as it was last drawn, as a PNG, or none before the first. */
-    fun frame(): ByteArray? = lastScreen?.getRows()?.let(Png::of)
+    override fun frame(): ByteArray? = lastScreen?.getRows()?.let(Png::of)
 
     /**
      * An agent doing what a player does — see [AgentAction] — by the same
      * click or key the player's would be. Says why it could not, or nothing
      * where it was done.
      */
-    fun act(action: AgentAction): String? {
+    override fun act(action: AgentAction): String? {
         val event: Event = when (action) {
             is AgentAction.Step -> when (action.way) {
                 AgentAction.Way.FORWARD -> Event.MoveForward
@@ -532,7 +538,7 @@ class ViewConeDebugViewModel(
     }
 
     /** What an agent playing is told of the game as it stands — see [Observation]. */
-    fun observation(): Observation? {
+    override fun observation(): Observation? {
         val now = _state.value
         val inf = now.inf ?: return null
         val sublevel = inf.subLevels.getOrNull(now.subLevel) ?: return null

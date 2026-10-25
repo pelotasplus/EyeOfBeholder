@@ -153,6 +153,18 @@ kotlin {
             implementation(libs.kotlinx.collections.immutable)
             implementation(libs.kotlinx.coroutinesCore)
             implementation(libs.kotlinx.serializationJson)
+            implementation(libs.ktor.client.core)
+            implementation(libs.ktor.client.websockets)
+        }
+        // What the agent link connects with, which each platform has its own of.
+        getByName("jvmSharedMain").dependencies {
+            implementation(libs.ktor.client.cio)
+        }
+        webMain.dependencies {
+            implementation(libs.ktor.client.js)
+        }
+        iosMain.dependencies {
+            implementation(libs.ktor.client.darwin)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
