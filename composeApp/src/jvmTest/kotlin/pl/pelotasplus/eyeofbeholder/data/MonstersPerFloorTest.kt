@@ -197,6 +197,22 @@ class MonstersPerFloorTest {
         assertEquals(emptyList(), back.monsters, "the dead came back")
     }
 
+    /** Without a count a monster would throw forever. */
+    @Test
+    fun `a monster out of a save that never counted its shots gets its kind's count`() {
+        val uncounted = standing(level = 3, howMany = 1).map { it.copy(level = 3, shotsLeft = null) }
+        val spent = standing(level = 3, howMany = 1).map { it.copy(index = MonsterSlot(1), level = 3, shotsLeft = 0) }
+        val loaded = world().copy(monsters = uncounted + spent).leaving(3)
+
+        val arrived = loaded.arrivingAt(
+            level = 3,
+            places = onThree,
+            kinds = listOf(kind(3).copy(numRemoteAttacks = 1)),
+        )
+
+        assertEquals(listOf(1, 0), arrived.monsters.map { it.shotsLeft })
+    }
+
     private fun kind(id: Int) = MonsterProperty(
         id = id,
         armorClass = 0, hitChance = 0, level = 1,

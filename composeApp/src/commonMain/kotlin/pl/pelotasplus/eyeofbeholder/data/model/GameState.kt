@@ -910,7 +910,7 @@ data class GameState(
         kinds: List<MonsterProperty> = emptyList(),
         dice: Dice = Dice.random,
     ) = copy(
-        monsters = remembersOn(level, kinds) ?: places.map {
+        monsters = remembersOn(level, kinds)?.map { it.shotsCountedIfNot(kinds) } ?: places.map {
             it.copy(subLevel = subLevel, level = level).rolledIfKnown(kinds, dice)
         },
         mazes = if (maz == null) mazes else mazes + (level to maz),
@@ -1415,6 +1415,12 @@ data class GameState(
 
     private fun MonsterInstance.rolledIfKnown(kinds: List<MonsterProperty>, dice: Dice) =
         kinds.firstOrNull { it.id == type.value }?.let { rolledFor(it, dice) } ?: this
+
+    // A save written before shots were counted has no count, and no count
+    // would never run out.
+    private fun MonsterInstance.shotsCountedIfNot(kinds: List<MonsterProperty>) =
+        if (shotsLeft != null) this
+        else kinds.firstOrNull { it.id == type.value }?.let { copy(shotsLeft = it.numRemoteAttacks) } ?: this
 
     /**
      * The world a moment later, with whatever was struck no longer showing it.
