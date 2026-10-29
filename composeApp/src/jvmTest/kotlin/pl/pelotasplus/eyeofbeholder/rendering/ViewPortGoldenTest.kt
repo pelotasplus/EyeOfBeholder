@@ -1917,6 +1917,16 @@ class ViewPortGoldenTest {
         blurred: List<Int> = emptyList(),
         /** And which are hastened, which frames theirs yellow. */
         framedYellow: List<Int> = emptyList(),
+        /**
+         * A spell actually cast over the party, which decides the frames
+         * itself rather than being told which boxes to draw.
+         *
+         * The frames are the same ones [framedYellow] asks for by slot. What
+         * this adds is the half above them: that the spell reaches every box
+         * without being handed a list, which a scene drawn from a list cannot
+         * say.
+         */
+        cast: Spell? = null,
         /** And which cannot be seen, which darkens their face nearly away. */
         unseen: List<Int> = emptyList(),
         /** Which hands a spell has charged, by champion and hand. */
@@ -1936,6 +1946,11 @@ class ViewPortGoldenTest {
             .getOrThrow()
 
         val world = GameState(party = saved.standing, items = saved.items)
+            .let { standing ->
+                cast?.let {
+                    standing.spellBegunWhereItSettles(it, by = PartySlot(0), casterLevel = 9)
+                } ?: standing
+            }
 
         var hurt = 0
         val party = saved.party.mapIndexed { slot, champion ->
@@ -1994,7 +2009,9 @@ class ViewPortGoldenTest {
             swapping = swapping?.let(::PartySlot),
             shielded = shielded,
             underASpell = { whom -> whom.index in blurred },
-            framedYellow = { whom -> whom.index in framedYellow },
+            framedYellow = { whom ->
+                whom.index in framedYellow || world.running.framedYellow(whom)
+            },
             unseen = { whom -> whom.index in unseen },
             magicShowing = magicShowing,
             sparksOverTheParty = sparks,
@@ -2388,6 +2405,41 @@ class ViewPortGoldenTest {
         checkGolden(
             "party-panel-hastened",
             partyOver(level = "LEVEL4.INF", x = 15, y = 11, framedYellow = listOf(0, 1, 2, 3)),
+        )
+
+    /**
+     * A bless, cast rather than drawn from a list: every box framed yellow
+     * because the spell is over the party, with nothing naming the boxes.
+     *
+     * The picture is the hastened one — the frame is the same frame, and
+     * saying so is the point, since a bless and a haste are a champion's own
+     * spell and a spell over all of them and look identical. What this scene
+     * guards is the path to it: cast the spell, and the four boxes come out
+     * framed without anybody being told which.
+     */
+    @Test
+    fun `party panel under a bless`() =
+        checkGolden(
+            "party-panel-blessed",
+            partyOver(level = "LEVEL4.INF", x = 15, y = 11, cast = Spell.BLESS),
+        )
+
+    /**
+     * And the moment a prayer is read: the frames are up and its sparks have
+     * not yet gone out, which is the only picture either spell has of its
+     * own.
+     */
+    @Test
+    fun `party panel the moment a prayer is cast`() =
+        checkGolden(
+            "party-panel-prayer-cast",
+            partyOver(
+                level = "LEVEL4.INF",
+                x = 15,
+                y = 11,
+                cast = Spell.PRAYER,
+                sparks = SparksOverTheParty(frame = 12),
+            ),
         )
 
     /**

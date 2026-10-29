@@ -103,6 +103,16 @@ enum class Spell(
     val feedsThemAll: Boolean = false,
 
     /**
+     * Whether it frames the box of whoever is under it in yellow.
+     *
+     * Not worked out from what the spell does, because the four that do it
+     * have nothing else in common: two help a champion strike, one hurries
+     * their hand and one lends them hit points. It is a list, so it is said
+     * here rather than guessed at the point of drawing.
+     */
+    val framesTheBoxYellow: Boolean = false,
+
+    /**
      * Whether it spreads over the squares in front of the caster the moment
      * it is cast, rather than throwing anything — see [AConeOfCold].
      */
@@ -282,6 +292,7 @@ enum class Spell(
         lasts = SpellLasts(base = 3, perLevel = 1),
         settlesOn = SettlesOn.EVERY_CHAMPION,
         hastens = true,
+        framesTheBoxYellow = true,
     ),
     HOLD_PERSON(
         15,
@@ -382,7 +393,16 @@ enum class Spell(
     // Thirty-three is the gap the two halves are separated by, and is no
     // spell at all.
 
-    BLESS(34, "bless", TrackIndex(91), sparksOverTheParty = true),
+    BLESS(
+        34,
+        "bless",
+        TrackIndex(91),
+        sparksOverTheParty = true,
+        // The one spell whose time does not grow with its caster.
+        lasts = SpellLasts(base = 6, perLevel = 0),
+        helpsStriking = 1,
+        framesTheBoxYellow = true,
+    ),
     CAUSE_LIGHT_WOUNDS(
         35,
         "cause light wounds",
@@ -411,6 +431,7 @@ enum class Spell(
         settlesOn = SettlesOn.WHOEVER_IS_POINTED_AT,
         helpsStriking = 1,
         lends = DamageDice(times = 1, pips = 8, base = 0),
+        framesTheBoxYellow = true,
     ),
     FLAME_BLADE(40, "flame blade", TrackIndex(99)),
     A_CLERICS_HOLD_PERSON(
@@ -429,7 +450,16 @@ enum class Spell(
     ),
     A_CLERICS_DISPEL_MAGIC(44, "dispel magic", TrackIndex(97), throwsSparks = true),
     MAGICAL_VESTMENT(45, "magical vestment", TrackIndex(113)),
-    PRAYER(46, "prayer", TrackIndex(91), sparksOverTheParty = true),
+    PRAYER(
+        46,
+        "prayer",
+        TrackIndex(91),
+        sparksOverTheParty = true,
+        lasts = SpellLasts(base = 0, perLevel = 1),
+        helpsStriking = 1,
+        hindersStriking = 1,
+        framesTheBoxYellow = true,
+    ),
     REMOVE_PARALYSIS(47, "remove paralysis", TrackIndex(114), sparksOverTheParty = true),
     CAUSE_SERIOUS_WOUNDS(
         48,

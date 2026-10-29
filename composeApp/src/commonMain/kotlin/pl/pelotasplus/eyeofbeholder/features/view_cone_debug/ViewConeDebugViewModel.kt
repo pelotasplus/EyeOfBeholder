@@ -5656,9 +5656,7 @@ class ViewConeDebugViewModel(
                     portal = portalShowing,
                     shielded = _state.value.game.partyShielded,
                     underASpell = { whom -> _state.value.game.running.blurred(whom) },
-                    framedYellow = { whom ->
-                        _state.value.game.running.let { it.hastened(whom) || it.aided(whom) }
-                    },
+                    framedYellow = { whom -> _state.value.game.running.framedYellow(whom) },
                     unseen = { whom -> _state.value.game.running.unseen(whom) },
                     magicShowing = _state.value.game.magicIsShowing,
                     sparksOverTheParty = _state.value.game.sparklingOverTheParty,

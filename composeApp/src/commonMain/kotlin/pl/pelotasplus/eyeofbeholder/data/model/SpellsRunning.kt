@@ -303,6 +303,16 @@ data class SpellsRunning(val all: List<RunningSpell> = emptyList()) {
     /** Whether [whom] is carrying lent hit points, which frames their box. */
     fun aided(whom: PartySlot): Boolean = over(whom).any { it.lent > 0 }
 
+    /**
+     * Whether anything on [whom] frames their box yellow.
+     *
+     * Over the party counts, so a bless shows on all six at once — a box is
+     * framed for what is on the champion in it, and from there a spell over
+     * the party is no different from one laid on them.
+     */
+    fun framedYellow(whom: PartySlot): Boolean =
+        over(whom).any { it.spell.framesTheBoxYellow }
+
     /** Every one of them ended at once, which is what a rest does. */
     fun allEnded(): SpellsRunning = SpellsRunning()
 
