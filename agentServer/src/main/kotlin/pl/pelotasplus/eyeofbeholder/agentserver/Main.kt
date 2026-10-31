@@ -281,6 +281,7 @@ class Tools(private val games: Games) {
                         "{type: teleport, level, x, y, facing: NORTH|EAST|SOUTH|WEST}, " +
                         "{type: give_spell, champion: 0-5, spell: name, ready: true|false} (onto the page of its level), " +
                         "{type: give_item, name} (a copy of the first item whose true name holds it, onto the pointer), " +
+                        "{type: give_scroll, spell: name} (a scroll of any spell, onto the pointer), " +
                         "{type: spawn_monster, looksLike, ahead: 1..} (copied from one of that look the level places), {type: heal}.",
                     properties = buildJsonObject {
                         putJsonObject("setup") {

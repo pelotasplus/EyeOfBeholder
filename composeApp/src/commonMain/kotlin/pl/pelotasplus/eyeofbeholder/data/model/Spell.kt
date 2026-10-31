@@ -233,7 +233,7 @@ enum class Spell(
      * Whether it turns the creature on the square ahead nearest its caster to
      * stone, for good — see [FleshToStone].
      */
-    val turnsTheNearestAheadToStone: Boolean = false,
+    val turnsToStone: TurningToStone? = null,
 
     /** Whether it frightens off everything on the square ahead — see [Frightening]. */
     val frightensWhatIsAhead: Boolean = false,
@@ -488,7 +488,7 @@ enum class Spell(
         "flesh to stone",
         TrackIndex(68),
         throwsSparks = true,
-        turnsTheNearestAheadToStone = true,
+        turnsToStone = TurningToStone.ON_THE_SQUARE_AHEAD,
     ),
     STONE_TO_FLESH(
         28,
@@ -505,7 +505,8 @@ enum class Spell(
         seesTheHidden = true,
     ),
     FINGER_OF_DEATH(30, "finger of death"),
-    POWER_WORD_STUN(31, "power word stun"),
+    /** Silent and without a spark, and it does not give a hiding caster away. */
+    POWER_WORD_STUN(31, "power word stun", turnsToStone = TurningToStone.BY_A_WORD),
     BIGBYS_CLENCHED_FIST(32, "bigby's clenched fist"),
 
     // Thirty-three is the gap the two halves are separated by, and is no

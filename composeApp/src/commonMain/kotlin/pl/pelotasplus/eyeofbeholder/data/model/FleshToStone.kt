@@ -1,5 +1,14 @@
 package pl.pelotasplus.eyeofbeholder.data.model
 
+/** How a spell that turns a creature to stone finds it. */
+enum class TurningToStone {
+    /** See [FleshToStone.castBy]. */
+    ON_THE_SQUARE_AHEAD,
+
+    /** See [FleshToStone.spokenBy]. */
+    BY_A_WORD,
+}
+
 /**
  * Flesh to stone: one creature on the square ahead turned to stone for good.
  *
@@ -27,6 +36,26 @@ class FleshToStone(
         val target = world.theMonsterNearestAhead(whose)
             ?: return Cast(world, CameTo.NOTHING_IN_REACH)
 
+        return turning(target, world)
+    }
+
+    /**
+     * Power word stun, which for all its name leaves the same statue: the
+     * nearest creature on the first two squares the party can see onto,
+     * [reachable] saying which they can.
+     *
+     * Anything with [TOO_MUCH_LEFT] hit points or more is passed over before
+     * any die is thrown, so it gets no chance to dodge and none is needed.
+     */
+    fun spokenBy(world: GameState, whose: PartySlot, reachable: (Location) -> Boolean): Cast {
+        val target = world.theMonsterNearestWithin(WORD_REACH, whose, reachable)
+            ?: return Cast(world, CameTo.NOTHING_IN_REACH)
+
+        if (target.hitPoints.current >= TOO_MUCH_LEFT) return Cast(world, CameTo.RESISTED)
+        return turning(target, world)
+    }
+
+    private fun turning(target: MonsterInstance, world: GameState): Cast {
         val kind = kinds.firstOrNull { it.id == target.type.value }
         if (kind == null || kind.escapesASpellAimedAtIt(dice)) {
             return Cast(world, CameTo.RESISTED)
@@ -40,5 +69,10 @@ class FleshToStone(
             ),
             CameTo.TURNED,
         )
+    }
+
+    private companion object {
+        const val WORD_REACH = 2
+        const val TOO_MUCH_LEFT = 90
     }
 }

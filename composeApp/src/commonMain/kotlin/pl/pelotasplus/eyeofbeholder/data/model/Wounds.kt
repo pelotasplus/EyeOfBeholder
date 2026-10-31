@@ -86,15 +86,8 @@ class Wounds(
      * but for a kind no spell kills outright.
      */
     fun slainBy(world: GameState, whose: PartySlot, reachable: (Location) -> Boolean): Dealt {
-        var at = world.party.position
-        var found: MonsterInstance? = null
-        for (step in 1..SLAY_REACH) {
-            at = world.party.facing.oneStepFrom(at)
-            if (!reachable(at)) return Dealt(world, CameTo.NOTHING_THERE)
-            found = world.theMonsterNearestOn(at, whose)
-            if (found != null) break
-        }
-        if (found == null) return Dealt(world, CameTo.NOTHING_THERE)
+        val found = world.theMonsterNearestWithin(SLAY_REACH, whose, reachable)
+            ?: return Dealt(world, CameTo.NOTHING_THERE)
         val roused = world.rousedBy(found.index)
 
         val kind = kinds.firstOrNull { it.id == found.type.value } ?: return Dealt(roused, CameTo.CAME_TO_NOTHING)

@@ -34,6 +34,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.PortraitId
 import pl.pelotasplus.eyeofbeholder.data.model.Projectile
 import pl.pelotasplus.eyeofbeholder.data.model.Spell
 import pl.pelotasplus.eyeofbeholder.data.model.SquarePlace
+import pl.pelotasplus.eyeofbeholder.data.model.TurningToStone
 import pl.pelotasplus.eyeofbeholder.data.model.WhatTheBlowCameTo
 import pl.pelotasplus.eyeofbeholder.data.model.XpPoints
 import pl.pelotasplus.eyeofbeholder.data.repository.CpsRepositoryImpl
@@ -137,7 +138,7 @@ class WhatFleshToStoneLeavesTest {
     /** Aimed down the corridor: nobody is asked, and nothing lasts. */
     @Test
     fun `it is aimed ahead rather than laid on anybody`() {
-        assertTrue(Spell.FLESH_TO_STONE.turnsTheNearestAheadToStone)
+        assertEquals(TurningToStone.ON_THE_SQUARE_AHEAD, Spell.FLESH_TO_STONE.turnsToStone)
         assertNull(Spell.FLESH_TO_STONE.laidOn)
         assertNull(Spell.FLESH_TO_STONE.lasts)
         assertTrue(Spell.FLESH_TO_STONE.givesTheCasterAway)

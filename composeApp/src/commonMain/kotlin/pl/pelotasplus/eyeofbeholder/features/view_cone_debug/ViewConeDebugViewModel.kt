@@ -99,6 +99,9 @@ import pl.pelotasplus.eyeofbeholder.data.model.inTheFrontRank
 import pl.pelotasplus.eyeofbeholder.data.model.ChampionMessages
 import pl.pelotasplus.eyeofbeholder.data.model.Damage
 import pl.pelotasplus.eyeofbeholder.data.model.ItemKind
+import pl.pelotasplus.eyeofbeholder.data.model.TurningToStone
+import pl.pelotasplus.eyeofbeholder.data.model.script.ItemOverrides
+import pl.pelotasplus.eyeofbeholder.data.model.SubLevel
 import pl.pelotasplus.eyeofbeholder.data.model.ItemMessages
 import pl.pelotasplus.eyeofbeholder.data.model.Potion
 import pl.pelotasplus.eyeofbeholder.data.model.ItemNames
@@ -620,9 +623,7 @@ class ViewConeDebugViewModel(
             }
 
             is QaSetup.GiveSpell -> {
-                val spell = Spell.entries.firstOrNull {
-                    it.calledIt.equals(setup.spell, ignoreCase = true) || it.name.equals(setup.spell.replace(' ', '_'), ignoreCase = true)
-                } ?: return "No spell is called \"${setup.spell}\"."
+                val spell = spellCalled(setup.spell) ?: return "No spell is called \"${setup.spell}\"."
                 // Whichever discipline has a level for it. Asking the
                 // numbering to say instead cannot work: a mage's list is the
                 // spell numbers themselves, so every spell round-trips
@@ -657,6 +658,23 @@ class ViewConeDebugViewModel(
                 }
                 if (found < 0) return "No item in the world is called anything like \"${setup.name}\"."
                 _state.update { it.copy(game = it.game.itemCopiedIntoTheHand(ItemIndex(found), level, SquarePlace.MIDDLE)) }
+            }
+
+            is QaSetup.GiveScroll -> {
+                val spell = spellCalled(setup.spell) ?: return "No spell is called \"${setup.spell}\"."
+                if (world.inHand.isSomething) return "Something is on the pointer already; put it down first."
+                val found = world.items.indexOfFirst { itemTypes?.kindOf(it) == ItemKind.MAGE_SCROLL }
+                if (found < 0) return "No scroll is in the world to copy."
+                _state.update {
+                    it.copy(
+                        game = it.game.itemCopiedIntoTheHand(
+                            ItemIndex(found),
+                            level,
+                            SquarePlace.MIDDLE,
+                            ItemOverrides(value = spell.asWritten),
+                        ),
+                    )
+                }
             }
 
             is QaSetup.SpawnMonster -> {
@@ -3359,8 +3377,7 @@ class ViewConeDebugViewModel(
         val world = _state.value.game
 
         val dealt = if (wounding == Wounding.Slays) {
-            val facingBack = world.party.facing.wallSideFacingBack
-            wounds.slainBy(world, whose) { at -> sublevel.canBeWalkedOnto(world.wall(level, at, facingBack)) }
+            wounds.slainBy(world, whose, withinReach(sublevel, level))
         } else {
             wounds.touchBy(world, whose, wounding)
         }
@@ -3390,10 +3407,7 @@ class ViewConeDebugViewModel(
         val sublevel = inf.subLevels.getOrNull(_state.value.subLevel) ?: return
         val ahead = theSquareAhead()
 
-        // Reach is the party's own: what they could not walk onto, the spell
-        // cannot pick a creature off either.
-        val facingBack = _state.value.game.party.facing.wallSideFacingBack
-        val reachable = sublevel.canBeWalkedOnto(_state.value.game.wall(level, ahead, facingBack))
+        val reachable = withinReach(sublevel, level)(ahead)
 
         val unmade = Disintegration(
             kinds = sublevel.monsters,
@@ -3423,6 +3437,30 @@ class ViewConeDebugViewModel(
 
         _state.update { it.copy(game = cast.world) }
         renderViewPort()
+    }
+
+    /** A power word: nothing is said either way, whether or not anything was there. */
+    private fun speakTheNearestToStone(whose: PartySlot) {
+        val inf = _state.value.inf ?: return
+        val level = levelNumber(inf.name)
+        val sublevel = inf.subLevels.getOrNull(_state.value.subLevel) ?: return
+
+        val cast = FleshToStone(kinds = sublevel.monsters)
+            .spokenBy(_state.value.game, whose, withinReach(sublevel, level))
+
+        _state.update { it.copy(game = cast.world) }
+        renderViewPort()
+    }
+
+    private fun spellCalled(name: String): Spell? = Spell.entries.firstOrNull {
+        it.calledIt.equals(name, ignoreCase = true) || it.name.equals(name.replace(' ', '_'), ignoreCase = true)
+    }
+
+    /** Reach is the party's own: what they could not walk onto, a spell cannot pick a creature off. */
+    private fun withinReach(sublevel: SubLevel, level: Int): (Location) -> Boolean {
+        val world = _state.value.game
+        val facingBack = world.party.facing.wallSideFacingBack
+        return { at -> sublevel.canBeWalkedOnto(world.wall(level, at, facingBack)) }
     }
 
     /**
@@ -4589,8 +4627,11 @@ class ViewConeDebugViewModel(
             } else if (spell.namesWhatIsHeld) {
                 _state.update { it.copy(game = it.game.heldThingsNamed(whose)) }
                 drawViewPort()
-            } else if (spell.turnsTheNearestAheadToStone) {
-                turnTheNearestAheadToStone(whose)
+            } else if (spell.turnsToStone != null) {
+                when (spell.turnsToStone) {
+                    TurningToStone.ON_THE_SQUARE_AHEAD -> turnTheNearestAheadToStone(whose)
+                    TurningToStone.BY_A_WORD -> speakTheNearestToStone(whose)
+                }
             } else if (spell.frightensWhatIsAhead) {
                 frightenWhatIsAhead()
             } else if (spell.wounds != null) {

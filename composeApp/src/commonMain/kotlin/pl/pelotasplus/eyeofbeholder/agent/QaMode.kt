@@ -30,6 +30,11 @@ sealed interface QaSetup {
     @SerialName("give_item")
     data class GiveItem(val name: String) : QaSetup
 
+    /** A scroll of [spell] put on the pointer, whether or not the dungeon holds one. */
+    @Serializable
+    @SerialName("give_scroll")
+    data class GiveScroll(val spell: String) : QaSetup
+
     /**
      * A monster drawn as [looksLike] put [ahead] squares in front of the
      * party, facing them, copied from one of that look the level places.

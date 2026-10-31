@@ -46,9 +46,12 @@ import pl.pelotasplus.eyeofbeholder.data.model.NpcId
 import pl.pelotasplus.eyeofbeholder.data.model.NpcMeeting
 import pl.pelotasplus.eyeofbeholder.data.model.WallByte
 import pl.pelotasplus.eyeofbeholder.data.model.WallSide
+import pl.pelotasplus.eyeofbeholder.data.model.canBeWalkedOnto
 import pl.pelotasplus.eyeofbeholder.data.model.getWall
 import pl.pelotasplus.eyeofbeholder.data.model.wallsInSight
 import pl.pelotasplus.eyeofbeholder.data.model.LevelScriptRunner
+import pl.pelotasplus.eyeofbeholder.data.model.FleshToStone
+import pl.pelotasplus.eyeofbeholder.data.model.HitPoints
 import pl.pelotasplus.eyeofbeholder.data.model.FloorReach
 import pl.pelotasplus.eyeofbeholder.data.model.Location
 import pl.pelotasplus.eyeofbeholder.data.model.Flight
@@ -204,6 +207,30 @@ class ViewPortGoldenTest {
             "level5-monster-stone",
             renderFrame("LEVEL5.INF", x = 13, y = 9, direction = Direction.NORTH) { monsters ->
                 monsters.map { if (it.place == SquarePlace.SOUTH_WEST) it.turnedToStone() else it }
+            },
+        )
+
+    /**
+     * A power word from two squares off, really spoken: the nearer of the
+     * clerics on the far square turned, which is further than flesh to stone
+     * reaches.
+     */
+    @Test
+    fun `level5 a monster turned to stone by a word from two squares off`() =
+        checkGolden(
+            "level5-power-word-two-squares-off",
+            renderFrame("LEVEL5.INF", x = 13, y = 10, direction = Direction.NORTH) { monsters ->
+                val sublevel = runBlocking { repository().loadLevel("LEVEL5.INF").getOrThrow() }.subLevels[0]
+                val noEscape = Dice { _, pips, _ -> if (pips == 100) 100 else 1 }
+                val facingBack = Direction.NORTH.wallSideFacingBack
+
+                FleshToStone(sublevel.monsters, noEscape).spokenBy(
+                    GameState(
+                        party = PartyState(Location(13, 10), Direction.NORTH),
+                        monsters = monsters.map { it.copy(hitPoints = HitPoints(50, 50)) },
+                    ),
+                    PartySlot(0),
+                ) { at -> sublevel.canBeWalkedOnto(sublevel.maz.square(at).getWall(facingBack)) }.world.monsters
             },
         )
 

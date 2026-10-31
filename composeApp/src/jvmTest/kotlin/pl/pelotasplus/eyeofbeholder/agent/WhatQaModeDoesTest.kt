@@ -1,16 +1,14 @@
 package pl.pelotasplus.eyeofbeholder.agent
 
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
-import org.junit.Assume
+import kotlinx.coroutines.withTimeout
 import org.junit.experimental.categories.Category
-import pl.pelotasplus.eyeofbeholder.data.model.CampSpellMessages
 import pl.pelotasplus.eyeofbeholder.NeedsGameData
 import pl.pelotasplus.eyeofbeholder.data.ThePlayField
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
-import pl.pelotasplus.eyeofbeholder.data.model.Discipline
 import pl.pelotasplus.eyeofbeholder.data.model.Location
 import pl.pelotasplus.eyeofbeholder.data.model.Spell
-import pl.pelotasplus.eyeofbeholder.data.model.SpellCapacity
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -61,44 +59,51 @@ class WhatQaModeDoesTest {
     }
 
     /**
-     * A prayer nothing has been written for yet, given to the cleric and
-     * read out of her book: the casting is noted as reaching nothing.
-     *
-     * **This test is running out of subject matter, and that is the point of
-     * the comment.** It wants a spell the saved party can actually cast that
-     * does nothing, and there is no longer one: every spell of either
-     * discipline at a level this party has reached now has an effect. The
-     * nine that do not are all learnt above the mage's seventh level or
-     * belong to the cleric, who carries no holy symbol in this save and so
-     * has no book to open.
-     *
-     * So it stands down rather than passing on nothing. When the next thing
-     * worth noting appears — a hand use that does nothing, an item with no
-     * answer — this is the shape to write it in, and the assumption below is
-     * what to delete.
+     * A spell with no effect, read off a scroll: the casting is noted as
+     * reaching nothing. A book has no tab for a spell this high.
      */
     @Test
     fun `a spell with no effect is noted when cast`() = runBlocking {
         val field = field("LEVEL12.INF", Location(19, 15), Direction.SOUTH)
         val before = Diagnostics.since(0).lastOrNull()?.number ?: 0
-        val nothingYet = Spell.POWER_WORD_STUN
+        val nothingYet = Spell.BIGBYS_CLENCHED_FIST
 
-        assertNull(field.viewModel.setUp(QaSetup.GiveSpell(champion = THE_MAGE, spell = nothingYet.calledIt)))
-        assertNull(field.viewModel.act(AgentAction.UseHand(champion = THE_MAGE, hand = 1)))
-        field.until("the book") { field.viewModel.observation()?.book != null }
-
-        val page = assertNotNull(SpellCapacity.pageOf(nothingYet, Discipline.MAGE))
-        field.viewModel.act(AgentAction.BookTab(page))
-        val written = CampSpellMessages.menuNameOf(nothingYet, Discipline.MAGE)
-        val reached = field.viewModel.observation()?.book?.lines?.firstOrNull() == written
-
-        Assume.assumeTrue(
-            "${nothingYet.calledIt} is above this party's level, and nothing they can cast does nothing",
-            reached,
-        )
-
-        assertNull(field.viewModel.act(AgentAction.BookLine(0)))
+        // A casting straight after the floor opens can be lost to the opening.
+        delay(THE_OPENING)
+        field.read(nothingYet)
         field.until("the note") { Diagnostics.since(before).any { nothingYet.calledIt in it.said } }
+    }
+
+    /**
+     * A power word read at a wolf two squares off, through the whole of a
+     * casting: the wiring from the spell to the stone, on the floor's real
+     * walls. Read until it takes, since the wolf gets a throw and real dice.
+     */
+    @Test
+    fun `a power word turns a wolf two squares off to stone`() = runBlocking {
+        val field = field("LEVEL4.INF", Location(18, 14), Direction.NORTH)
+        assertNull(field.viewModel.setUp(QaSetup.SpawnMonster(looksLike = "wolf", ahead = 2)))
+
+        fun aWolfIsStone() = requireNotNull(field.viewModel.inspection()).monsters
+            .any { it.looksLike == "wolf" && it.stone }
+
+        withTimeout(ALL_THE_READINGS) {
+            while (!aWolfIsStone()) {
+                field.read(Spell.POWER_WORD_STUN)
+                delay(A_CASTING)
+                assertNull(field.viewModel.act(AgentAction.TakeHand(champion = THE_MAGE, hand = 0)))
+            }
+        }
+    }
+
+    /** A scroll of [spell] swapped into the mage's free hand and read. */
+    private suspend fun ThePlayField.read(spell: Spell) {
+        until("the hand to come back to rest") {
+            viewModel.observation()?.party?.get(THE_MAGE)?.hands?.first()?.contains("recovering") == false
+        }
+        assertNull(viewModel.setUp(QaSetup.GiveScroll(spell.calledIt)))
+        assertNull(viewModel.act(AgentAction.TakeHand(champion = THE_MAGE, hand = 0)))
+        assertNull(viewModel.act(AgentAction.UseHand(champion = THE_MAGE, hand = 0)))
     }
 
     @Test
@@ -138,5 +143,9 @@ class WhatQaModeDoesTest {
     private companion object {
         /** Which of the saved party keeps a spellbook in hand. */
         const val THE_MAGE = 3
+
+        const val THE_OPENING = 1_000L
+        const val A_CASTING = 300L
+        const val ALL_THE_READINGS = 60_000L
     }
 }

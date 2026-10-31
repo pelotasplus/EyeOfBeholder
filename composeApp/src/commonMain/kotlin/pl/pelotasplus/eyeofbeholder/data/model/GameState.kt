@@ -1369,6 +1369,24 @@ data class GameState(
     fun theMonsterNearestAhead(whose: PartySlot): MonsterInstance? =
         theMonsterNearestOn(party.facing.oneStepFrom(party.position), whose)
 
+    /**
+     * The nearest creature on the first [squares] ahead, stopping at the first
+     * square [reachable] turns down, however much stands beyond it.
+     */
+    fun theMonsterNearestWithin(
+        squares: Int,
+        whose: PartySlot,
+        reachable: (Location) -> Boolean,
+    ): MonsterInstance? {
+        var at = party.position
+        repeat(squares) {
+            at = party.facing.oneStepFrom(at)
+            if (!reachable(at)) return null
+            theMonsterNearestOn(at, whose)?.let { return it }
+        }
+        return null
+    }
+
     /** The same, on any square in the direction the party face. */
     fun theMonsterNearestOn(ahead: Location, whose: PartySlot): MonsterInstance? {
         val there = monsters.filter { it.x == ahead.x && it.y == ahead.y }
