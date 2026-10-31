@@ -119,6 +119,12 @@ enum class Spell(
     val spreadsAsACone: Boolean = false,
 
     /**
+     * Whether it burns the one square in front of the party the moment it is
+     * cast — see [BurningHands].
+     */
+    val burnsTheSquareAhead: Boolean = false,
+
+    /**
      * Whether it shuts off the square ahead of the party for a while — see
      * [WallsOfForce]. Refused where that square will not hold one.
      */
@@ -193,7 +199,7 @@ enum class Spell(
     val wounds: Wounding? = null,
 ) {
     ARMOUR(1, "armor", TrackIndex(92)),
-    BURNING_HANDS(2, "burning hands", TrackIndex(87)),
+    BURNING_HANDS(2, "burning hands", TrackIndex(87), burnsTheSquareAhead = true),
     DETECT_MAGIC(
         3,
         "detect magic",

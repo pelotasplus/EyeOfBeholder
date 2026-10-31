@@ -71,6 +71,9 @@ data class GameState(
     /** The swirl of a cone of cold, while one is going off. Never saved. */
     val vortex: AVortex? = null,
 
+    /** The fan of a burning hands, while one is going off. Never saved. */
+    val flames: AFanOfFlame? = null,
+
     /** The walls of force standing anywhere, and what is left of each. */
     val wallsOfForce: WallsOfForce = WallsOfForce(),
 
@@ -1931,6 +1934,11 @@ data class GameState(
 
     /** The swirl a frame on, and gone once its last spark has gone out. */
     fun vortexStepped() = copy(vortex = vortex?.stepped()?.takeIf { it.stillGoing })
+
+    /** The world with a burning hands' flame up over the view, and without it. */
+    fun flamesThrownUp() = copy(flames = AFanOfFlame)
+
+    fun flamesGone() = copy(flames = null)
 
     fun sparksBegun() = copy(sparkling = SparksInTheRoom())
 

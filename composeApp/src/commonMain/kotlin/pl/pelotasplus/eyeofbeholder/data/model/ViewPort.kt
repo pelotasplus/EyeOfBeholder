@@ -904,6 +904,22 @@ class ViewPort(
     }
 
     /**
+     * The fan of flame a burning hands throws up, across the bottom of the
+     * view.
+     *
+     * Over everything, like the swirl: it is coming off the caster's own
+     * hands rather than standing anywhere in the room, so nothing in the
+     * corridor is in front of it.
+     *
+     * @param thrown THROWN.CPS, which the three beams are cut from
+     */
+    fun drawFlames(thrown: Cps) {
+        AFanOfFlame.FLAMES.forEach { flame ->
+            blit(thrown.flame(flame.beam), flame.at, flame.and, flame.mirrored, ScaleSteps(0))
+        }
+    }
+
+    /**
      * The swirl of a cone of cold, a lit pixel per spark.
      *
      * Drawn over everything rather than at a distance. The cold is not

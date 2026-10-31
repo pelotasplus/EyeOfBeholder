@@ -1,6 +1,7 @@
 package pl.pelotasplus.eyeofbeholder.data.repository
 
 import co.touchlab.kermit.Logger
+import pl.pelotasplus.eyeofbeholder.data.model.AFanOfFlame
 import pl.pelotasplus.eyeofbeholder.data.model.AVortex
 import pl.pelotasplus.eyeofbeholder.data.model.Burst
 import pl.pelotasplus.eyeofbeholder.data.model.ConjuredBolt
@@ -114,6 +115,8 @@ interface ViewConeRepository {
         sparkling: SparksInTheRoom? = null,
         /** And the swirl of a cone of cold, while one is going off. */
         vortex: AVortex? = null,
+        /** And the fan of a burning hands, while one is going off. */
+        flames: AFanOfFlame? = null,
     ): Result<ViewPort>
 }
 
@@ -194,6 +197,7 @@ class ViewConeRepositoryImpl(
         bursting: List<Burst>,
         sparkling: SparksInTheRoom?,
         vortex: AVortex?,
+        flames: AFanOfFlame?,
     ): Result<ViewPort> {
         // The sublevel is on the line because which one is showing decides
         // what is drawn and what is not, and a trace without it cannot say why
@@ -440,6 +444,9 @@ class ViewConeRepositoryImpl(
         // anywhere in the room, so it goes over the whole view like the
         // sparks do and nothing in the corridor is in front of it.
         vortex?.let { viewPort.drawVortex(it) }
+
+        // And the flame, for the same reason.
+        flames?.let { viewPort.drawFlames(getThrownShapes()) }
 
         return Result.success(viewPort)
     }

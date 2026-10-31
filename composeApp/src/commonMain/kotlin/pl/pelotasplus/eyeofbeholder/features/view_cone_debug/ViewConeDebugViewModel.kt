@@ -45,6 +45,8 @@ import pl.pelotasplus.eyeofbeholder.data.model.DamageShown
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.Blow
 import pl.pelotasplus.eyeofbeholder.data.model.AConeOfCold
+import pl.pelotasplus.eyeofbeholder.data.model.AFanOfFlame
+import pl.pelotasplus.eyeofbeholder.data.model.BurningHands
 import pl.pelotasplus.eyeofbeholder.data.model.AWallOfForce
 import pl.pelotasplus.eyeofbeholder.data.model.Disintegration
 import pl.pelotasplus.eyeofbeholder.data.model.AVortex
@@ -3543,6 +3545,33 @@ class ViewConeDebugViewModel(
         letTheFlashFade()
     }
 
+    /**
+     * Burning hands: the fan of flame over the view, held a moment, and then
+     * whatever it reached on the square ahead burnt.
+     *
+     * The fan goes up before the harm for the reason the cone's swirl does:
+     * dealing it first would take anything killed off the screen before the
+     * spell that killed it had finished being drawn.
+     */
+    private suspend fun burnWhatIsAhead(casterLevel: Int) {
+        val kinds = _state.value.inf
+            ?.subLevels?.getOrNull(_state.value.subLevel)?.monsters.orEmpty()
+
+        _state.update { it.copy(game = it.game.flamesThrownUp()) }
+        drawViewPort()
+        tick(AFanOfFlame.HELD_FOR)
+
+        val struck = BurningHands(kinds = kinds, itemTypes = itemTypes)
+            .castBy(_state.value.game, casterLevel)
+
+        // The fan comes off in the same frame that shows what it left, so the
+        // flame is never drawn over a square it has already emptied.
+        _state.update { it.copy(game = struck.world.flamesGone()) }
+        drawViewPort()
+
+        letTheFlashFade()
+    }
+
     /** A shield already up refuses the casting, and says so as a warning is said. */
     private suspend fun shieldTheParty(whose: PartySlot, spell: Spell) {
         val shielded = _state.value.game.mysticDefenceCast(whose)
@@ -3724,13 +3753,6 @@ class ViewConeDebugViewModel(
     }
 
     /**
-     * Counts the swung hands back to rest, and redraws as each comes back so
-     * the grid over it lifts.
-     *
-     * The same shape as the door clock, and for the same reason: the party are
-     * free while it runs.
-     */
-    /**
      * Says so where acting has cost somebody their hiding.
      *
      * Named for whoever lost it rather than whoever cast it: a champion hidden
@@ -3824,6 +3846,13 @@ class ViewConeDebugViewModel(
         }
     }
 
+    /**
+     * Counts the swung hands back to rest, and redraws as each comes back so
+     * the grid over it lifts.
+     *
+     * The same shape as the door clock, and for the same reason: the party are
+     * free while it runs.
+     */
     private fun keepHandsRecovering() {
         if (recoveringHands?.isActive == true) return
 
@@ -4542,6 +4571,8 @@ class ViewConeDebugViewModel(
             else if (spell.lasts != null) runOverTheParty(whose, spell, level)
             else if (spell.spreadsAsACone) {
                 freezeWhatIsInFront(level)
+            } else if (spell.burnsTheSquareAhead) {
+                burnWhatIsAhead(level)
             } else if (spell.shutsOffTheSquareAhead) {
                 shutOffTheSquareAhead(level)
             } else if (spell.unmakesTheSquareAhead) {
@@ -5025,8 +5056,6 @@ class ViewConeDebugViewModel(
      *   rather than taking its place. For the few effects written to be heard
      *   together: a pair meant as one noise is two clicks if the second stops
      *   the first.
-     */
-    /**
      * @param from which bank to take it out of, for the one scene that is not
      *   played on a floor and so has no floor's bank to use. Everything else
      *   takes the bank of the sublevel the party are standing in.
@@ -5520,6 +5549,7 @@ class ViewConeDebugViewModel(
             bursting = _state.value.game.bursting,
             sparkling = _state.value.game.sparkling,
             vortex = _state.value.game.vortex,
+            flames = _state.value.game.flames,
         ).onSuccess { viewPort ->
             drawn = viewPort
             paint(viewPort, sublevel.palette)

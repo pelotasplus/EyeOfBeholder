@@ -59,6 +59,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.PaletteIndex
 import pl.pelotasplus.eyeofbeholder.data.model.PartySlot
 import pl.pelotasplus.eyeofbeholder.data.model.PartyState
 import pl.pelotasplus.eyeofbeholder.data.model.Burst
+import pl.pelotasplus.eyeofbeholder.data.model.AFanOfFlame
 import pl.pelotasplus.eyeofbeholder.data.model.AVortex
 import pl.pelotasplus.eyeofbeholder.data.model.ConjuredBolt
 import pl.pelotasplus.eyeofbeholder.data.model.Dice
@@ -1366,17 +1367,6 @@ class ViewPortGoldenTest {
         )
 
     /**
-     * A monster standing on a plate set into the floor, walked up to a square
-     * at a time.
-     *
-     * The plate is under it and stays under it. A floor decoration is kept as
-     * a face of its square like any wall is, but it is not one: it lies flat
-     * on the ground rather than standing across the view, and whatever is on
-     * that square is on top of it. Three squares because the mistake is a
-     * matter of how far off the square is, and shows at some distances and
-     * not others.
-     */
-    /**
      * The fourteenth floor's riddle, which is two rooms and a comparison.
      *
      * The west room's squares are cut into the ceiling and the east room's
@@ -1455,6 +1445,17 @@ class ViewPortGoldenTest {
         checkGolden("level14-hole-underfoot-21x4-south", "LEVEL14.INF", 21, 4, Direction.SOUTH)
     }
 
+    /**
+     * A monster standing on a plate set into the floor, walked up to a square
+     * at a time.
+     *
+     * The plate is under it and stays under it. A floor decoration is kept as
+     * a face of its square like any wall is, but it is not one: it lies flat
+     * on the ground rather than standing across the view, and whatever is on
+     * that square is on top of it. Three squares because the mistake is a
+     * matter of how far off the square is, and shows at some distances and
+     * not others.
+     */
     @Test
     fun `a monster stands on the plate rather than under it`() {
         listOf(14, 13, 12).forEach { y ->
@@ -2389,6 +2390,29 @@ class ViewPortGoldenTest {
             )
         }
     }
+
+    /**
+     * A burning hands going off: six shapes across the bottom of the view,
+     * three of them cut from the sheet and each drawn twice.
+     *
+     * One picture rather than a sequence, the fan having no frames — it is
+     * drawn, held for two ticks, and taken off. What it is worth a picture for
+     * is that the six abut: the outer pair reach the edges of the view and the
+     * inner pair meet in the middle of it, so a coordinate a pixel out shows
+     * here as a seam and nowhere else.
+     */
+    @Test
+    fun `a burning hands flaring over a corridor`() =
+        checkGolden("burning-hands", theFlamesOver("LEVEL2.INF", 3, 11, Direction.NORTH))
+
+    /**
+     * And over a monster, which the flame covers rather than standing behind:
+     * it comes off the caster's own hands, so nothing in the room is in front
+     * of it.
+     */
+    @Test
+    fun `a burning hands flaring over a monster`() =
+        checkGolden("burning-hands-over-a-monster", theFlamesOver("LEVEL3.INF", 3, 12, Direction.SOUTH))
 
     /**
      * Two champions carrying a blur, framed in red while the other two are
@@ -3482,10 +3506,6 @@ class ViewPortGoldenTest {
     }
 
     /**
-     * A bolt in the air on the square [squaresOff] ahead of the party, which
-     * is the only thing this draws that is not standing on a floor.
-     */
-    /**
      * The cone of cold's swirl over a corridor, stepped to an explicit frame.
      *
      * Thrown from a seeded draw rather than a random one, so the same hundred
@@ -3519,6 +3539,35 @@ class ViewPortGoldenTest {
         viewPort
     }
 
+    /**
+     * The fan of flame a burning hands throws up, which has one frame and so
+     * needs no moment choosing.
+     */
+    private fun theFlamesOver(
+        level: String,
+        x: Int,
+        y: Int,
+        direction: Direction,
+    ): ViewPort = runBlocking {
+        val repository = repository()
+        val inf = repository.loadLevel(level).getOrThrow()
+        val sublevel = inf.subLevels[inf.subLevelAt(0, x, y, direction)]
+
+        repository.renderPosition(
+            items = dungeonItems,
+            monsters = inf.monsterInstances,
+            sublevel = sublevel,
+            playerX = x,
+            playerY = y,
+            direction = direction,
+            flames = AFanOfFlame,
+        ).getOrThrow()
+    }
+
+    /**
+     * A bolt in the air on the square [squaresOff] ahead of the party, which
+     * is the only thing this draws that is not standing on a floor.
+     */
     private fun aBoltInFlight(
         level: String,
         x: Int,

@@ -165,7 +165,7 @@ private const val WIDE_GRID_HEIGHT = 8
  * other splash that is red.
  */
 fun Cps.greenSplat(): Cps.ItemIcon = cut(
-    x = SPLAT_X,
+    x = SHAPES_X,
     y = SPLAT_Y,
     w = SPLAT_WIDTH,
     h = SPLAT_HEIGHT,
@@ -176,20 +176,34 @@ fun Cps.greenSplat(): Cps.ItemIcon = cut(
  * rather than in the slot a weapon reports from.
  */
 fun Cps.redSplat(): Cps.ItemIcon = cut(
-    x = SPLAT_X,
+    x = SHAPES_X,
     y = RED_SPLAT_Y,
     w = SPLAT_WIDTH,
     h = RED_SPLAT_HEIGHT,
 )
 
+/**
+ * And one of the three beams of flame, stacked above the two splashes in the
+ * same column, innermost first. The outer one is narrower than the other two.
+ */
+fun Cps.flame(beam: AFanOfFlame.Beam): Cps.ItemIcon = cut(
+    x = SHAPES_X,
+    y = beam.ordinal * FLAME_HEIGHT,
+    w = if (beam == AFanOfFlame.Beam.OUTER) OUTER_FLAME_WIDTH else FLAME_WIDTH,
+    h = FLAME_HEIGHT,
+)
+
 const val THROWN_CPS = "THROWN.CPS"
 
-private const val SPLAT_X = 128
+private const val SHAPES_X = 128
 private const val SPLAT_Y = 96
 private const val SPLAT_WIDTH = 40
 private const val SPLAT_HEIGHT = 16
 private const val RED_SPLAT_Y = 72
 private const val RED_SPLAT_HEIGHT = 24
+private const val FLAME_WIDTH = 32
+private const val OUTER_FLAME_WIDTH = 24
+private const val FLAME_HEIGHT = 24
 
 /**
  * One of the 44 faces a champion can wear, cut from CHARGENA.CPS, where they
