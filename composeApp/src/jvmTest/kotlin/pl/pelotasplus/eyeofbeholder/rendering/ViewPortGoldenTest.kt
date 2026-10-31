@@ -1643,7 +1643,30 @@ class ViewPortGoldenTest {
             ),
         )
 
-    /** And the same page bare, so the two are read against each other. */
+    /**
+     * And the same page under a vestment, which reads five.
+     *
+     * Five rather than six because the mage prays as a novice, and a
+     * vestment is worth *less* the better its wearer prays — so the one
+     * champion in this party it does anything for is the one who could never
+     * have prayed for it. That is the rule the picture is here to show, and
+     * it is the one thing in these three spells that looks like a mistake.
+     */
+    @Test
+    fun `a champion's stats under a magical vestment`() =
+        checkGolden(
+            "character-sheet-stats-vested",
+            sheetOver(
+                "LEVEL4.INF",
+                x = 15,
+                y = 11,
+                slot = THE_MAGE,
+                page = CharacterSheet.Page.STATS,
+                under = Spell.MAGICAL_VESTMENT,
+            ),
+        )
+
+    /** And the same page bare, so the three are read against each other. */
     @Test
     fun `the same champion's stats without one`() =
         checkGolden(

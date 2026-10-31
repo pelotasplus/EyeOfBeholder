@@ -4732,7 +4732,7 @@ class ViewConeDebugViewModel(
         // sign that it bought nothing.
         val (after, wasted) = settled.armourThatStoppedHelpingDropped()
         wasted.firstOrNull()?.spell?.holdsArmourClassAt?.let { held ->
-            say(SpellMessages.alreadyBetterArmoured(pointedAt.name, held.forSomeone(pointedAt.nimbleness)))
+            say(SpellMessages.alreadyBetterArmoured(pointedAt.name, held.forSomeone(pointedAt)))
         }
 
         _state.update { it.copy(game = after) }

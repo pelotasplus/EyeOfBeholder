@@ -1745,7 +1745,7 @@ data class GameState(
         val held = running.holdingArmourClass(whose)
         if (held.isEmpty()) return who.armorClass
 
-        val best = held.minOf { it.forSomeone(who.nimbleness).value }
+        val best = held.minOf { it.forSomeone(who).value }
         return ArmorClass(
             maxOf(minOf(who.armorClass.value, best), THE_BEST_ARMOUR_CLASS_THERE_IS),
         )
@@ -1765,7 +1765,7 @@ data class GameState(
             if (!running.spell.endsWhereItWouldNotHelp) return@filter false
             val held = running.spell.holdsArmourClassAt ?: return@filter false
             val who = running.on?.let { championIn(it) } ?: return@filter true
-            who.armorClass.value <= held.forSomeone(who.nimbleness).value
+            who.armorClass.value <= held.forSomeone(who).value
         }
 
         if (over.isEmpty()) return this to emptyList()

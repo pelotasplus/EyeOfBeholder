@@ -132,7 +132,13 @@ class WhatAnImprovedIdentifyNamesTest {
     @Test
     fun `the spells that spark over the caster are the ones the table marks`() {
         assertEquals(
-            setOf(Spell.SHIELD, Spell.SHOCKING_GRASP, Spell.BLUR, Spell.IMPROVED_IDENTIFY),
+            setOf(
+                Spell.SHIELD,
+                Spell.SHOCKING_GRASP,
+                Spell.BLUR,
+                Spell.IMPROVED_IDENTIFY,
+                Spell.MAGICAL_VESTMENT,
+            ),
             Spell.entries.filter { it.sparksOverTheCaster }.toSet(),
         )
     }

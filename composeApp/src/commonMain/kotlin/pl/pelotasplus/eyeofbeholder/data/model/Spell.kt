@@ -569,7 +569,24 @@ enum class Spell(
         feedsThemAll = true,
     ),
     A_CLERICS_DISPEL_MAGIC(44, "dispel magic", TrackIndex(97), throwsSparks = true),
-    MAGICAL_VESTMENT(45, "magical vestment", TrackIndex(113)),
+    /**
+     * A vestment woven over whoever prayed for it, for two and a half
+     * minutes a level — the longest of the three that hold an armour class,
+     * and the only one that asks how practised its wearer is.
+     *
+     * What it holds them at is [ArmourHeldAt.AVestment], which is worth
+     * reading: it is worth less to a better cleric, not more.
+     */
+    MAGICAL_VESTMENT(
+        45,
+        "magical vestment",
+        TrackIndex(113),
+        sparksOverTheCaster = true,
+        lasts = SpellLasts(base = 0, perLevel = 5),
+        settlesOn = SettlesOn.WHOEVER_CAST_IT,
+        holdsArmourClassAt = ArmourHeldAt.AVestment,
+        framesTheBoxRed = true,
+    ),
     PRAYER(
         46,
         "prayer",

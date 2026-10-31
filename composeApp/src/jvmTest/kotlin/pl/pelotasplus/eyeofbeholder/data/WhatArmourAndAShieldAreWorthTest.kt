@@ -6,6 +6,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.Abilities
 import pl.pelotasplus.eyeofbeholder.data.model.Ability
 import pl.pelotasplus.eyeofbeholder.data.model.ArmorClass
 import pl.pelotasplus.eyeofbeholder.data.model.ArmourHeldAt
+import pl.pelotasplus.eyeofbeholder.data.model.praysAsSomeoneOfLevel
 import pl.pelotasplus.eyeofbeholder.data.model.CarrySlot
 import pl.pelotasplus.eyeofbeholder.data.model.Champion
 import pl.pelotasplus.eyeofbeholder.data.model.ChampionFlags
@@ -250,6 +251,67 @@ class WhatArmourAndAShieldAreWorthTest {
         assertEquals(emptyList(), shielded.armourThatStoppedHelpingDropped().second)
     }
 
+    // --- and the third of them ------------------------------------------------
+
+    /**
+     * A vestment is woven over whoever prayed for it, for two and a half
+     * minutes a level — the longest of the three and the only one that asks
+     * how practised its wearer is.
+     */
+    @Test
+    fun `a vestment lasts two and a half minutes a level, on whoever prayed for it`() {
+        assertEquals(ArmourHeldAt.AVestment, Spell.MAGICAL_VESTMENT.holdsArmourClassAt)
+        assertEquals(SettlesOn.WHOEVER_CAST_IT, Spell.MAGICAL_VESTMENT.settlesOn)
+        assertEquals(TrackIndex(113), Spell.MAGICAL_VESTMENT.heardAs)
+
+        val lasts = assertIs<SpellLasts>(Spell.MAGICAL_VESTMENT.lasts)
+        assertEquals(SpellLasts(base = 0, perLevel = 5), lasts)
+        assertEquals(Ticks(24570), lasts.castBySomeoneOfLevel(OFF_A_SCROLL))
+    }
+
+    /**
+     * Five, and a point worse for every three levels of cleric past the
+     * fifth — so it holds at five up to the seventh level and loses ground
+     * from the eighth on.
+     *
+     * Named level by level rather than as a formula, because a formula is
+     * what is in doubt: this is the one rule in the three that reads like a
+     * sign the wrong way round.
+     */
+    @Test
+    fun `a vestment is worth less to a better cleric, not more`() {
+        val vested = mapOf(1 to 5, 5 to 5, 6 to 5, 7 to 5, 8 to 6, 9 to 6, 10 to 6, 11 to 7, 14 to 8)
+
+        vested.forEach { (level, held) ->
+            assertEquals(
+                ArmorClass(held),
+                ArmourHeldAt.AVestment.forSomeone(cleric(level)),
+                "a cleric of $level",
+            )
+        }
+    }
+
+    /** A paladin prays as somebody eight levels less practised, and anybody else as a novice. */
+    @Test
+    fun `a paladin is vested as a lesser cleric and a mage as none at all`() {
+        assertEquals(1, cleric(1).praysAsSomeoneOfLevel)
+        assertEquals(9, cleric(9).praysAsSomeoneOfLevel)
+        assertEquals(1, paladin(8).praysAsSomeoneOfLevel, "a paladin below the ninth prays as a novice")
+        assertEquals(3, paladin(11).praysAsSomeoneOfLevel)
+        assertEquals(1, unhurried().praysAsSomeoneOfLevel, "a mage is no cleric")
+    }
+
+    /** And the ceiling is a ceiling here too, so plate under it is untouched. */
+    @Test
+    fun `a vestment over better armour is worth nothing`() {
+        val plated = cleric(9).copy(armorClass = ArmorClass(2))
+        val world = world(plated).let {
+            assertNotNull(it.spellBegunWhereItSettles(Spell.MAGICAL_VESTMENT, caster, OFF_A_SCROLL))
+        }
+
+        assertEquals(ArmorClass(2), world.armourClassOf(caster))
+    }
+
     // --- the one bolt a shield stops ------------------------------------------
 
     /**
@@ -366,6 +428,16 @@ class WhatArmourAndAShieldAreWorthTest {
     /** Quick enough for it to be worth something, and clumsy enough that it is not. */
     private fun nimble() = champion(dexterity = 18)
     private fun unhurried() = champion(dexterity = 10)
+
+    private fun cleric(level: Int) = champion(dexterity = 10).copy(
+        characterClass = CharacterClass.CLERIC,
+        levels = listOf(ClassLevel(level, XpPoints(0))),
+    )
+
+    private fun paladin(level: Int) = champion(dexterity = 10).copy(
+        characterClass = CharacterClass.PALADIN,
+        levels = listOf(ClassLevel(level, XpPoints(0))),
+    )
 
     private companion object {
         /** A scroll is always read at ninth-level strength. */

@@ -22,12 +22,47 @@ sealed interface ArmourHeldAt {
      */
     data class OverTheirNimbleness(val points: Int) : ArmourHeldAt
 
-    /** What it holds a champion [nimbleness] nimble at. */
-    fun forSomeone(nimbleness: Int): ArmorClass = when (this) {
+    /**
+     * What a vestment comes to: five, and a point worse for every three
+     * levels of cleric past the fifth.
+     *
+     * Worse, which reads like a sign the wrong way round — a practised cleric
+     * is vested less well than a new one, and from the eighth level on it is
+     * worth less than a first-level mage's shield. It is transcribed rather
+     * than worked out, and nothing in the shipped data can settle it, so
+     * turning it the other way would be a change to the game and not a fix
+     * to this.
+     */
+    data object AVestment : ArmourHeldAt
+
+    /** What it holds [who] at. */
+    fun forSomeone(who: Champion): ArmorClass = when (this) {
         is At -> armourClass
-        is OverTheirNimbleness -> ArmorClass(nimbleness + points)
+        is OverTheirNimbleness -> ArmorClass(who.nimbleness + points)
+        AVestment -> ArmorClass(
+            VESTED + ((who.praysAsSomeoneOfLevel - VESTED) / EVERY_THREE).coerceAtLeast(0),
+        )
+    }
+
+    private companion object {
+        const val VESTED = 5
+        const val EVERY_THREE = 3
     }
 }
+
+/**
+ * How practised a champion is at a cleric's prayers.
+ *
+ * A cleric's own level, or a paladin's less the eight they spend learning to
+ * pray at all — and one for anybody else, so that a thing which asks never
+ * has to deal with nobody.
+ */
+val Champion.praysAsSomeoneOfLevel: Int
+    get() = levelIn(CharacterClass.CLERIC)
+        ?: levelIn(CharacterClass.PALADIN)?.takeIf { it > A_PALADIN_PRAYS_FROM }?.minus(A_PALADIN_PRAYS_FROM)
+        ?: 1
+
+private const val A_PALADIN_PRAYS_FROM = 8
 
 /**
  * What a champion's armour class comes to, from how nimble they are and what
