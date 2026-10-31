@@ -102,6 +102,9 @@ enum class Spell(
     /** Whether it fills every champion's stomach, which one spell does. */
     val feedsThemAll: Boolean = false,
 
+    /** Whether it lets go of the paralysed: see [GameState.heldFreed]. */
+    val freesTheHeld: Boolean = false,
+
     /**
      * Whether it frames the box of whoever is under it in yellow.
      *
@@ -637,7 +640,7 @@ enum class Spell(
         hindersStriking = 1,
         framesTheBoxYellow = true,
     ),
-    REMOVE_PARALYSIS(47, "remove paralysis", TrackIndex(114), sparksOverTheParty = true),
+    REMOVE_PARALYSIS(47, "remove paralysis", TrackIndex(114), sparksOverTheParty = true, freesTheHeld = true),
     CAUSE_SERIOUS_WOUNDS(
         48,
         "cause serious wounds",

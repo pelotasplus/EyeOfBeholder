@@ -685,6 +685,16 @@ class ViewConeDebugViewModel(
                 _state.update { it.copy(game = it.game.championPoisoned(whose)) }
             }
 
+            is QaSetup.Paralyse -> {
+                val whose = PartySlot(setup.champion)
+                val who = world.championIn(whose) ?: return "There is no champion ${setup.champion}."
+                if (!who.canBeHurt) return "${who.name} is past being paralysed."
+                _state.update { state ->
+                    val held = state.game.champions.mapIndexed { slot, it -> if (slot == whose.index) it.paralysed(true) else it }
+                    state.copy(game = state.game.copy(champions = held).gripsFoundForTheHeld())
+                }
+            }
+
             is QaSetup.SpawnMonster -> {
                 val placedHere = inf.monsterInstances.filter { it.subLevel == now.subLevel }
                 fun looksOf(monster: MonsterInstance) = sublevel.monsterGfx.getOrNull(monster.gfxIndex)?.name
@@ -4635,6 +4645,9 @@ class ViewConeDebugViewModel(
                 unmakeTheSquareAhead()
             } else if (spell.feedsThemAll) {
                 _state.update { it.copy(game = it.game.partyFedToTheBrim()) }
+                drawViewPort()
+            } else if (spell.freesTheHeld) {
+                _state.update { it.copy(game = it.game.heldFreed()) }
                 drawViewPort()
             } else if (spell.namesWhatIsHeld) {
                 _state.update { it.copy(game = it.game.heldThingsNamed(whose)) }

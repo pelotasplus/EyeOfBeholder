@@ -48,6 +48,11 @@ sealed interface QaSetup {
     @SerialName("poison")
     data class Poison(val champion: Int) : QaSetup
 
+    /** [champion] paralysed, on a grip as long as a blow's. */
+    @Serializable
+    @SerialName("paralyse")
+    data class Paralyse(val champion: Int) : QaSetup
+
     /** Every champion back to full hit points, and nothing else changed. */
     @Serializable
     @SerialName("heal")

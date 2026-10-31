@@ -115,6 +115,25 @@ class WhatQaModeDoesTest {
      * settled on the poisoned mage.
      */
     @Test
+    fun `a remove paralysis read in play frees whoever is held`() = runBlocking {
+        val field = field("LEVEL12.INF", Location(19, 15), Direction.SOUTH)
+        delay(THE_OPENING)
+        assertNull(field.viewModel.setUp(QaSetup.Paralyse(THE_MAGE)))
+
+        fun world() = field.viewModel.state.value.game
+        assertTrue(world().championIn(PartySlot(THE_MAGE))!!.paralysed)
+
+        field.read(Spell.REMOVE_PARALYSIS, by = THE_CLERIC)
+
+        field.until("the mage to be let go") { !world().championIn(PartySlot(THE_MAGE))!!.paralysed }
+        assertEquals(emptyList(), world().holding)
+        assertTrue(
+            field.viewModel.observation()!!.messages.none { "no longer paralyzed" in it },
+            "the grip wore off by itself, which only a grip's own clock announces",
+        )
+    }
+
+    @Test
     fun `a slow poison is refused the healthy and settles on the poisoned`() = runBlocking {
         val field = field("LEVEL12.INF", Location(19, 15), Direction.SOUTH)
         delay(THE_OPENING)

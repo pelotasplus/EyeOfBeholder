@@ -1623,6 +1623,23 @@ data class GameState(
     }
 
     /**
+     * The first four held, in party order, let go of along with their grips: a
+     * grip left behind would cut short a later paralysis. With five or six
+     * held, those at the back stay held, however high the caster's level.
+     */
+    fun heldFreed(): GameState {
+        val freed = champions.indices.map(::PartySlot)
+            .filter { champions[it.index].paralysed }
+            .take(HELD_FREED_AT_ONCE)
+        return copy(
+            champions = champions.mapIndexed { slot, who ->
+                if (PartySlot(slot) in freed) who.paralysed(false) else who
+            },
+            holding = holding.filterNot { it.whose in freed },
+        )
+    }
+
+    /**
      * [whose] poisoned, or cured of it.
      *
      * Poisoning somebody already poisoned does nothing rather than starting
@@ -2678,6 +2695,8 @@ data class GameState(
 
     companion object {
         private const val TAG = "GameState"
+
+        private const val HELD_FREED_AT_ONCE = 4
 
 
         /** How often the thing a monster only might carry actually drops. */
