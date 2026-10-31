@@ -74,18 +74,6 @@ class WhereASpellLands(
     private val missiles get() = (castAt - 1) / 2
 
     /**
-     * Everybody in the party hurt, each rolled for separately and each given
-     * their own throw.
-     *
-     * A throw made halves it rather than turning it aside, which is the whole
-     * difference between this and the spells that pick somebody: there is
-     * nowhere to stand on your own square that is out of the way of a burning
-     * one, so the best anybody manages is to take less of it.
-     *
-     * Everyone counts, including whoever is already down — this is what
-     * finishes off a champion lying at the party's feet.
-     */
-    /**
      * A dragon's fire, which a mystic defence takes most of. The shield is
      * used up by the blast reaching anybody at all, whatever the throws.
      */
@@ -97,6 +85,18 @@ class WhereASpellLands(
         return turned.copy(world = turned.world.mysticDefenceSpent())
     }
 
+    /**
+     * Everybody in the party hurt, each rolled for separately and each given
+     * their own throw.
+     *
+     * A throw made halves it rather than turning it aside, which is the whole
+     * difference between this and the spells that pick somebody: there is
+     * nowhere to stand on your own square that is out of the way of a burning
+     * one, so the best anybody manages is to take less of it.
+     *
+     * Everyone counts, including whoever is already down — this is what
+     * finishes off a champion lying at the party's feet.
+     */
     private fun everybodyTakes(world: GameState, dealing: DamageDice, times: Int = 1): Landed {
         var after = world
         val hurt = mutableListOf<PartySlot>()

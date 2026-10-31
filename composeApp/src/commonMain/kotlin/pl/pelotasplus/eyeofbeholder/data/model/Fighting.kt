@@ -105,14 +105,6 @@ class Fighting(
         // This sits here rather than beside the click that starts a swing
         // because there is more than one such click, and the key that sets the
         // whole front rank going was not asking.
-        // A hand swings a weapon, or nothing at all. Anything else in it is
-        // held rather than wielded, and asking it to strike is asking the
-        // wrong question of it — before this, a shield rolled its own dice and
-        // a set of lock picks hit for whatever the table said they were worth.
-        //
-        // This sits here rather than beside the click that starts a swing
-        // because there is more than one such click, and the key that sets the
-        // whole front rank going was not asking.
         val inHand = world.item(champion.holding(hand))
         if (inHand != null && !itemTypes.isSwungByHand(inHand)) return Blow.NotAWeapon
 

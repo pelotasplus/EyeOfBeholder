@@ -231,12 +231,11 @@ data class MonsterInstance(
     }
 
     /**
-     * The same monster [by] hit points worse off, showing it, and no longer
+     * The same creature [by] hit points worse off, showing it, and no longer
      * willing to be talked to.
-     */
-    /**
-     * The same creature having been hurt. A blow also ends being afraid: one
-     * chased down and struck from behind turns and fights.
+     *
+     * A blow also ends being afraid: one chased down and struck from behind
+     * turns and fights.
      */
     fun hurt(by: Damage) = copy(
         hitPoints = hitPoints.copy(current = hitPoints.current - by.points),
