@@ -918,6 +918,8 @@ class ViewConeDebugViewModel(
         // a save written before the items were part of the world has none, and
         // its champions would be carrying nothing they could be asked about
         if (saved.world.items.isEmpty()) itemsFromTheQuickStart()
+
+        keepTheSpellsRunning()
     }
 
     /**

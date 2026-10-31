@@ -1,5 +1,7 @@
 package pl.pelotasplus.eyeofbeholder.data.model
 
+import kotlinx.serialization.Serializable
+
 /**
  * How long a spell goes on for once it has been cast.
  *
@@ -65,6 +67,7 @@ data class SpellLasts(
  * [castBy] is kept because the end is announced in the caster's name, however
  * long ago they read it and whoever is holding what now.
  */
+@Serializable
 data class RunningSpell(
     val spell: Spell,
     val castBy: PartySlot,
@@ -136,6 +139,7 @@ data class RunningSpell(
  *
  * [strikesFor] has the caster's level already counted into its base.
  */
+@Serializable
 data class ChargedHand(
     val hand: CarrySlot,
     val strikesFor: DamageDice,
@@ -234,6 +238,7 @@ enum class SettlesOn {
 }
 
 /** Every spell still running over the party, and nothing that has ended. */
+@Serializable
 data class SpellsRunning(val all: List<RunningSpell> = emptyList()) {
 
     /** The party-wide one, which is the only kind asked for without a slot. */

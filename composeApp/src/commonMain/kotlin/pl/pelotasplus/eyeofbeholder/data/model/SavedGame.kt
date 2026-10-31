@@ -94,6 +94,9 @@ data class SavedWorld(
      * and set it off again.
      */
     val inFlight: List<Projectile> = emptyList(),
+
+    /** The spells still running, with what is left of each. */
+    val running: SpellsRunning = SpellsRunning(),
 )
 
 /** One floor, and what the party have seen of it. */

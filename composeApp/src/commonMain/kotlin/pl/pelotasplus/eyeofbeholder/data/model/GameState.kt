@@ -77,11 +77,7 @@ data class GameState(
     /** The walls of force standing anywhere, and what is left of each. */
     val wallsOfForce: WallsOfForce = WallsOfForce(),
 
-    /**
-     * The spells still running over the party.
-     *
-     * Not saved, the way the spell timers of a game put down are not.
-     */
+    /** The spells still running over the party. */
     val running: SpellsRunning = SpellsRunning(),
 
     /** Whose slot the held thing came out of, while it is still that thing; never saved. */
@@ -2639,6 +2635,7 @@ data class GameState(
         },
         visited = visited.map { (level, squares) -> VisitedFloor(level, squares) },
         inFlight = inFlight,
+        running = running,
     )
 
     companion object {
@@ -2727,6 +2724,7 @@ data class GameState(
             // were kept has none, and its party walk into a room that has
             // stopped rather than one that never started.
             inFlight = saved.inFlight,
+            running = saved.running,
         )
 
         /**

@@ -106,4 +106,39 @@ class WhatASpellFollowsItsChampionTest {
         assertEquals(emptyList(), dropped.running.all)
     }
 
+    @Test
+    fun `it comes back from a save with what is left of it`() {
+        val slowed = bothPoisoned().slowed()
+        val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
+
+        val back = json.decodeFromString<SavedWorld>(json.encodeToString(SavedWorld.serializer(), slowed.saved()))
+        val loaded = GameState.restoredFrom(back, on = 1).copy(champions = slowed.champions)
+
+        assertEquals(slowed.running, loaded.running)
+        assertEquals(listOf(other), loaded.bittenByVenom)
+    }
+
+    /** A charged hand has the most to lose, being a spell and a hand and a picture. */
+    @Test
+    fun `a charged hand comes back from a save`() {
+        val charged = assertNotNull(
+            bothPoisoned().handCharged(one, CarrySlot(1), Spell.SHOCKING_GRASP, casterLevel = 9),
+        )
+        val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
+
+        val back = json.decodeFromString<SavedWorld>(json.encodeToString(SavedWorld.serializer(), charged.saved()))
+
+        assertEquals(charged.running, back.running)
+    }
+
+    @Test
+    fun `a save from before spells were kept reads as none running`() {
+        val slowed = bothPoisoned().slowed()
+        val json = Json { ignoreUnknownKeys = true; encodeDefaults = false }
+
+        val written = json.encodeToString(SavedWorld.serializer(), slowed.saved().copy(running = GameState(party = slowed.party).running))
+
+        assertEquals(emptyList(), json.decodeFromString<SavedWorld>(written).running.all)
+        assertFalse(written.contains("\"running\""))
+    }
 }
