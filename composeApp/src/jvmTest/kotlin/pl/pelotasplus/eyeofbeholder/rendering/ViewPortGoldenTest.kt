@@ -7,6 +7,7 @@ import kotlinx.coroutines.runBlocking
 import org.junit.experimental.categories.Category
 import pl.pelotasplus.eyeofbeholder.NeedsGameData
 import pl.pelotasplus.eyeofbeholder.data.model.CampMenu
+import pl.pelotasplus.eyeofbeholder.data.model.CarrySlot
 import pl.pelotasplus.eyeofbeholder.data.model.Champion
 import pl.pelotasplus.eyeofbeholder.data.model.CharacterSheet
 import pl.pelotasplus.eyeofbeholder.data.model.OpenSheet
@@ -1929,8 +1930,12 @@ class ViewPortGoldenTest {
         cast: Spell? = null,
         /** And which cannot be seen, which darkens their face nearly away. */
         unseen: List<Int> = emptyList(),
-        /** Which hands a spell has charged, by champion and hand. */
-        charged: Set<Pair<Int, Int>> = emptySet(),
+        /**
+         * Which hands are charged, by champion and hand, and by which spell —
+         * really cast, so what the hand shows is the spell's own and not a
+         * picture the scene was told to draw.
+         */
+        charged: Map<Pair<Int, Int>, Spell> = emptyMap(),
         /** Whether a detect magic is running, which draws what is magical blue. */
         magicShowing: Boolean = false,
         sparks: SparksOverTheParty? = null,
@@ -1950,6 +1955,12 @@ class ViewPortGoldenTest {
                 cast?.let {
                     standing.spellBegunWhereItSettles(it, by = PartySlot(0), casterLevel = 9)
                 } ?: standing
+            }
+            .let { standing ->
+                charged.entries.fold(standing) { world, (whose, spell) ->
+                    val (slot, hand) = whose
+                    world.handCharged(PartySlot(slot), CarrySlot(hand), spell, casterLevel = 9) ?: world
+                }
             }
 
         var hurt = 0
@@ -2003,7 +2014,7 @@ class ViewPortGoldenTest {
             metPortraits = cps.loadCps(NpcMeeting.FACES).getOrThrow(),
             carrying = { slot -> world.item(slot) },
             recovering = { whose, hand -> (whose.index to hand.index) in swung },
-            charged = { whose, hand -> (whose.index to hand.index) in charged },
+            charged = { whose, hand -> world.running.chargeOn(whose, hand)?.looksLike },
             reporting = { whose, hand -> reported[whose.index to hand.index] },
             hurt = { whose -> splattered[whose.index] },
             swapping = swapping?.let(::PartySlot),
@@ -2478,7 +2489,24 @@ class ViewPortGoldenTest {
                 x = 15,
                 y = 11,
                 lendingTo = 0 to ItemIndex(ItemIndex.NOTHING),
-                charged = setOf(0 to 1),
+                charged = mapOf((0 to 1) to Spell.SHOCKING_GRASP),
+            ),
+        )
+
+    /**
+     * And the same hand charged by a flame blade, which is a weapon rather
+     * than a touch and shows a different thing in the hand for it.
+     */
+    @Test
+    fun `party panel with a hand holding a flame blade`() =
+        checkGolden(
+            "party-panel-flame-blade",
+            partyOver(
+                level = "LEVEL4.INF",
+                x = 15,
+                y = 11,
+                lendingTo = 0 to ItemIndex(ItemIndex.NOTHING),
+                charged = mapOf((0 to 1) to Spell.FLAME_BLADE),
             ),
         )
 

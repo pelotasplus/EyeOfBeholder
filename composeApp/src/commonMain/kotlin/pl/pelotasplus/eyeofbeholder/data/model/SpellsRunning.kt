@@ -115,7 +115,34 @@ data class RunningSpell(
  *
  * [strikesFor] has the caster's level already counted into its base.
  */
-data class ChargedHand(val hand: CarrySlot, val strikesFor: DamageDice)
+data class ChargedHand(
+    val hand: CarrySlot,
+    val strikesFor: DamageDice,
+    val looksLike: ItemIconId,
+)
+
+/**
+ * What a spell puts into a hand, and how long it stays there.
+ *
+ * The two spells that charge a hand read alike and are nothing alike to use.
+ * One is a touch: it is worth more in a better mage's hand, and it is gone
+ * into the first blow that does any harm, so its whole duration is time to
+ * find something to hit. The other is a weapon: the same in anybody's hand,
+ * and it strikes with for as long as the spell runs.
+ *
+ * [grownByCasterLevel] is the first of those and [goesIntoOneBlow] the
+ * second, said separately because they are separate facts about the charge
+ * even though two spells happen to divide them between them.
+ */
+data class HandCharge(
+    val strikesFor: DamageDice,
+
+    /** The icon the hand shows while the charge is in it, from the item sheet. */
+    val looksLike: ItemIconId,
+
+    val grownByCasterLevel: Boolean = false,
+    val goesIntoOneBlow: Boolean = false,
+)
 
 /**
  * Whom a lasting spell settles on once it is cast.
@@ -217,9 +244,23 @@ data class SpellsRunning(val all: List<RunningSpell> = emptyList()) {
     /** Whether either of [whose]'s hands is charged. */
     fun hasAChargedHand(whose: PartySlot): Boolean = all.any { it.on == whose && it.charged != null }
 
-    /** [whose]'s [hand] with its charge spent, the spell that charged it still running. */
+    /**
+     * [whose]'s [hand] after a blow that did harm, the spell that charged it
+     * still running.
+     *
+     * A touch is gone into the blow; a weapon is not, and strikes with for as
+     * long as the spell runs — see [HandCharge.goesIntoOneBlow].
+     */
     fun chargeSpent(whose: PartySlot, hand: CarrySlot) = SpellsRunning(
-        all.map { if (it.on == whose && it.charged?.hand == hand) it.copy(charged = null) else it }
+        all.map {
+            if (it.on == whose && it.charged?.hand == hand &&
+                it.spell.chargesAHand?.goesIntoOneBlow == true
+            ) {
+                it.copy(charged = null)
+            } else {
+                it
+            }
+        }
     )
 
     /**

@@ -4195,7 +4195,9 @@ class ViewConeDebugViewModel(
             champion = champion,
             carrying = champion.carrying.map { world.item(it) },
             arrows = world.stackedIn(champion.holding(CarrySlot.QUIVER)),
-            charged = CarrySlot.BOTH_HANDS.filter { world.running.chargeOn(sheet.slot, it) != null }.toSet(),
+            charged = CarrySlot.BOTH_HANDS
+                .mapNotNull { hand -> world.running.chargeOn(sheet.slot, hand)?.let { hand to it.looksLike } }
+                .toMap(),
         )
     }
 
@@ -5648,7 +5650,7 @@ class ViewConeDebugViewModel(
                     sheet = openSheet(),
                     carrying = { _state.value.game.item(it) },
                     recovering = { whose, hand -> _state.value.game.isRecovering(whose, hand) },
-                    charged = { whose, hand -> _state.value.game.running.chargeOn(whose, hand) != null },
+                    charged = { whose, hand -> _state.value.game.running.chargeOn(whose, hand)?.looksLike },
                     reporting = { whose, hand -> _state.value.game.reportIn(whose, hand) },
                     hurt = { whose -> _state.value.game.damageShownOn(whose) },
                     swapping = _state.value.swapping

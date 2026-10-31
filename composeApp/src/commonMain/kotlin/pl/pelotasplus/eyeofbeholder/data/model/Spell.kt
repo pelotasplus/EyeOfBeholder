@@ -183,11 +183,11 @@ enum class Spell(
     val frightensWhatIsAhead: Boolean = false,
 
     /**
-     * What a hand it charges strikes for, before its caster's level is added
-     * — see [ChargedHand]. Casting it wants the caster's other hand empty,
-     * and only one hand of theirs charged at a time.
+     * What it puts into a hand, where it puts anything — see [HandCharge].
+     * Casting it wants the caster's other hand empty, and only one hand of
+     * theirs charged at a time.
      */
-    val chargesAHand: DamageDice? = null,
+    val chargesAHand: HandCharge? = null,
 
     /** What it does to the creature ahead it is laid on or loosed at — see [Wounds]. */
     val wounds: Wounding? = null,
@@ -220,7 +220,12 @@ enum class Spell(
         sparksOverTheCaster = true,
         lasts = SpellLasts(base = 0, perLevel = 1),
         settlesOn = SettlesOn.WHOEVER_CAST_IT,
-        chargesAHand = DamageDice(times = 1, pips = 8, base = 0),
+        chargesAHand = HandCharge(
+            strikesFor = DamageDice(times = 1, pips = 8, base = 0),
+            looksLike = ItemIconId(82),
+            grownByCasterLevel = true,
+            goesIntoOneBlow = true,
+        ),
     ),
     BLUR(
         7,
@@ -433,7 +438,17 @@ enum class Spell(
         lends = DamageDice(times = 1, pips = 8, base = 0),
         framesTheBoxYellow = true,
     ),
-    FLAME_BLADE(40, "flame blade", TrackIndex(99)),
+    FLAME_BLADE(
+        40,
+        "flame blade",
+        TrackIndex(99),
+        lasts = SpellLasts(base = 4, perLevel = 1),
+        settlesOn = SettlesOn.WHOEVER_CAST_IT,
+        chargesAHand = HandCharge(
+            strikesFor = DamageDice(times = 1, pips = 4, base = 4),
+            looksLike = ItemIconId(84),
+        ),
+    ),
     A_CLERICS_HOLD_PERSON(
         41,
         "hold person",

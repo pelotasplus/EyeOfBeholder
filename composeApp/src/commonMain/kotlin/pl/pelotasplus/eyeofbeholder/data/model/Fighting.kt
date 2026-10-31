@@ -178,6 +178,13 @@ class Fighting(
             ?.softened(dealt, DealtBy.AWeapon(enchantment = 0, edged = false))
             ?: dealt
 
+        // A charge is magic, and only magic. A creature that shrugs magic off
+        // takes nothing from one; a creature that shrugs off fire takes a
+        // flame blade in full, which reads like an oversight and is not —
+        // what a spell looks like is not what a blow from it is made of, and
+        // a kind of harm only reaches a creature from a spell that flies.
+        if (kind?.immunities?.shrugsOff(setOf(HarmKind.MAGIC)) == true) return Damage(0)
+
         if (kind != null && dice.roll(1, 100, 0) < kind.dmgModifierEvade) return Damage(0)
         return softened
     }

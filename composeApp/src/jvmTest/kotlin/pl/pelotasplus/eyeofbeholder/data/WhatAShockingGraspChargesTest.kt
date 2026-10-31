@@ -135,7 +135,10 @@ class WhatAShockingGraspChargesTest {
     @Test
     fun `it is the caster's own and charges a d8`() {
         assertEquals(SettlesOn.WHOEVER_CAST_IT, Spell.SHOCKING_GRASP.settlesOn)
-        assertEquals(DamageDice(times = 1, pips = 8, base = 0), Spell.SHOCKING_GRASP.chargesAHand)
+        assertEquals(
+            DamageDice(times = 1, pips = 8, base = 0),
+            Spell.SHOCKING_GRASP.chargesAHand?.strikesFor,
+        )
         assertFalse(Spell.SHOCKING_GRASP.givesTheCasterAway)
     }
 

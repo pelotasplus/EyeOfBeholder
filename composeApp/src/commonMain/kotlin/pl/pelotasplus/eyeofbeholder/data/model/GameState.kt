@@ -2008,8 +2008,13 @@ data class GameState(
      * casting again replaces it: there is nothing left of it to refuse for.
      */
     fun handCharged(whose: PartySlot, hand: CarrySlot, spell: Spell, casterLevel: Int): GameState? {
-        val dice = spell.chargesAHand ?: return null
-        val charge = ChargedHand(hand, dice.copy(base = dice.base + casterLevel))
+        val puts = spell.chargesAHand ?: return null
+        val dice = puts.strikesFor
+        val charge = ChargedHand(
+            hand = hand,
+            strikesFor = if (puts.grownByCasterLevel) dice.copy(base = dice.base + casterLevel) else dice,
+            looksLike = puts.looksLike,
+        )
 
         val spentOnes = SpellsRunning(
             running.all.filterNot { it.spell == spell && it.on == whose && it.charged == null }

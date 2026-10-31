@@ -58,8 +58,8 @@ class PlayField(
         carrying: (ItemIndex) -> Item? = { null },
         /** Whether that hand has yet to come back to rest from a swing. */
         recovering: (PartySlot, CarrySlot) -> Boolean = { _, _ -> false },
-        /** Whether a spell has charged that hand, which shows it glowing. */
-        charged: (PartySlot, CarrySlot) -> Boolean = { _, _ -> false },
+        /** How the charge in that hand looks, where a spell has put one there. */
+        charged: (PartySlot, CarrySlot) -> ItemIconId? = { _, _ -> null },
         /** What that hand's last swing came to, while the slot is still saying. */
         reporting: (PartySlot, CarrySlot) -> WhatTheBlowCameTo? = { _, _ -> null },
         /** What that champion has just been hit for, while it is still showing. */
@@ -316,7 +316,7 @@ class PlayField(
         }
     }
 
-    private fun drawCarried(carrying: List<Item?>, arrows: Int, charged: Set<CarrySlot>) {
+    private fun drawCarried(carrying: List<Item?>, arrows: Int, charged: Map<CarrySlot, ItemIconId>) {
         inventorySlotPositions.forEach { slot ->
             if (slot.isQuiver) {
                 drawTally(slot, arrows)
@@ -325,7 +325,7 @@ class PlayField(
 
             val icons = itemIcons ?: return@forEach
             val item = carrying.getOrNull(slot.slot.index)
-            val shown = item?.icon ?: CHARGED_HAND.takeIf { slot.slot in charged } ?: return@forEach
+            val shown = item?.icon ?: charged[slot.slot] ?: return@forEach
 
             val colours = icons.palette ?: palette
             drawIcon(
@@ -559,7 +559,7 @@ class PlayField(
         metPortraits: Cps?,
         carrying: (ItemIndex) -> Item?,
         recovering: (PartySlot, CarrySlot) -> Boolean,
-        charged: (PartySlot, CarrySlot) -> Boolean,
+        charged: (PartySlot, CarrySlot) -> ItemIconId?,
         reporting: (PartySlot, CarrySlot) -> WhatTheBlowCameTo?,
         hurt: (PartySlot) -> Damage?,
         swapping: PartySlot?,
@@ -680,7 +680,7 @@ class PlayField(
         hurt: Damage?,
         swapping: Boolean = false,
         unseen: Boolean = false,
-        charged: (Int) -> Boolean = { false },
+        charged: (Int) -> ItemIconId? = { null },
     ) {
         // Past raising, the face goes and the rest of the box stays.
         if (champion.deadForGood) {
@@ -765,7 +765,7 @@ class PlayField(
         carrying: (ItemIndex) -> Item?,
         recovering: (Int) -> Boolean,
         reporting: (Int) -> WhatTheBlowCameTo?,
-        charged: (Int) -> Boolean,
+        charged: (Int) -> ItemIconId?,
     ) {
         val icons = itemIcons ?: return
 
@@ -779,11 +779,7 @@ class PlayField(
 
             val held = champion.carrying.getOrNull(hand)?.let(carrying)
             val colours = icons.palette ?: palette
-            val shown = when {
-                held != null -> held.icon
-                charged(hand) -> CHARGED_HAND
-                else -> emptyHandIcon(hand)
-            }
+            val shown = held?.icon ?: charged(hand) ?: emptyHandIcon(hand)
             drawIcon(
                 icon = carriedIcon(icons, colours, held, shown),
                 colours = colours,
