@@ -100,6 +100,9 @@ data class SavedWorld(
 
     /** Whatever has hold of somebody, which nothing else would ever let go of. */
     val holding: List<Holding> = emptyList(),
+
+    /** The walls of force standing, whose wall bytes are in [changedWalls] and whose clocks are here. */
+    val wallsOfForce: WallsOfForce = WallsOfForce(),
 )
 
 /** One floor, and what the party have seen of it. */

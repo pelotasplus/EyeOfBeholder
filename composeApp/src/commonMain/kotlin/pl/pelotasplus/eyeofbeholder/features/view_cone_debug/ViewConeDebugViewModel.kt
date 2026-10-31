@@ -921,6 +921,7 @@ class ViewConeDebugViewModel(
         if (saved.world.items.isEmpty()) itemsFromTheQuickStart()
 
         keepTheSpellsRunning()
+        keepTheWallsOfForceStanding()
     }
 
     /**

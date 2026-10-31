@@ -158,6 +158,54 @@ class WhatQaModeDoesTest {
         assertEquals(mage, hitPointsOf(THE_MAGE), "the venom bit through the slow poison")
     }
 
+    /**
+     * A game loaded through the menus with a spell and a grip about to run
+     * out: both clocks have to be going again, or neither would ever end.
+     */
+    @Test
+    fun `a loaded game's spell runs out and its grip lets go`() = runBlocking {
+        val field = field("LEVEL12.INF", Location(19, 15), Direction.SOUTH)
+        delay(THE_OPENING)
+        val whose = PartySlot(THE_MAGE)
+        val game = field.viewModel.state.value.game
+        val heldMage = game.champions.mapIndexed { slot, who -> if (slot == THE_MAGE) who.paralysed(true) else who }
+        val shut = Location(19, 16)
+        val walled = game.wallsChanged(12, shut, WALL_OF_FORCE_BYTE)
+
+        SavedGameRepositoryImpl(field.saves).save(
+            slot = SaveSlot.numbered.first(),
+            description = "Back later",
+            savedAt = 0,
+            level = 12,
+            subLevel = field.viewModel.state.value.subLevel,
+            champions = heldMage,
+            world = walled.copy(
+                champions = heldMage,
+                running = SpellsRunning(listOf(RunningSpell(Spell.BLUR, whose, ticksLeft = A_FEW_TICKS, on = whose))),
+                holding = listOf(Holding(whose, WhatABlowLeaves.PARALYSIS, ticksLeft = A_FEW_TICKS)),
+                wallsOfForce = WallsOfForce(listOf(AWallOfForce(12, shut, ticksLeft = A_FEW_TICKS))),
+            ),
+            messages = emptyList(),
+            preferences = Preferences(),
+        ).getOrThrow()
+
+        fun world() = field.viewModel.state.value.game
+
+        assertNull(field.viewModel.act(AgentAction.Camp))
+        for (line in listOf("Game Options", "Load Game", "Back later")) {
+            field.until("\"$line\" to be offered") { field.viewModel.state.value.menu?.entries?.any { line in it.label } == true }
+            assertNull(field.viewModel.act(AgentAction.Choose(field.viewModel.state.value.menu!!.entries.first { line in it.label }.label)))
+        }
+
+        field.until("the save to come back") { world().running.isOn(Spell.BLUR, whose) }
+        assertTrue(world().championIn(whose)!!.paralysed)
+        assertEquals(WALL_OF_FORCE_BYTE, world().wallByte(12, shut, WallSide.NORTH))
+
+        field.until("the spell to run out") { !world().running.isOn(Spell.BLUR, whose) }
+        field.until("the grip to let go") { !world().championIn(whose)!!.paralysed }
+        field.until("the wall to come down") { world().wallByte(12, shut, WallSide.NORTH) != WALL_OF_FORCE_BYTE }
+    }
+
     @Test
     fun `a scroll given is of the discipline its spell belongs to`() {
         val field = field("LEVEL12.INF", Location(19, 15), Direction.SOUTH)

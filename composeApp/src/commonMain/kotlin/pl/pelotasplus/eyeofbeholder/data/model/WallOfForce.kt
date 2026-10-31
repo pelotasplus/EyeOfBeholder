@@ -1,5 +1,7 @@
 package pl.pelotasplus.eyeofbeholder.data.model
 
+import kotlinx.serialization.Serializable
+
 /**
  * The curtain of light that fills a doorway a wall of force stands in.
  *
@@ -36,6 +38,7 @@ private const val WALL_OF_FORCE = 74
  * It is on a square rather than on a side: all four faces are raised at once,
  * so it cannot be walked round or entered from behind.
  */
+@Serializable
 data class AWallOfForce(
     val level: Int,
     val at: Location,
@@ -52,6 +55,7 @@ data class AWallOfForce(
  * They are kept here rather than on the squares because a square only knows
  * the byte, and a byte cannot say when to stop being one.
  */
+@Serializable
 data class WallsOfForce(val standing: List<AWallOfForce> = emptyList()) {
 
     /**

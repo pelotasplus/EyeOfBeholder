@@ -142,6 +142,29 @@ class WhatASpellFollowsItsChampionTest {
         assertEquals(emptyList(), bothPoisoned().gripsFoundForTheHeld().holding)
     }
 
+    @Test
+    fun `a wall of force comes back from a save with what is left of it`() {
+        val raised = assertNotNull(bothPoisoned().wallOfForceRaised(1, Location(13, 8), casterLevel = 9))
+        val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
+
+        val back = json.decodeFromString<SavedWorld>(json.encodeToString(SavedWorld.serializer(), raised.saved()))
+
+        assertEquals(raised.wallsOfForce, GameState.restoredFrom(back, on = 1).wallsOfForce)
+    }
+
+    /** A save from before their clocks were kept held the wall, on all four sides, and no clock. */
+    @Test
+    fun `a wall of force with no clock is given the shortest one, and goes when it runs out`() {
+        val raised = assertNotNull(bothPoisoned().wallOfForceRaised(1, Location(13, 8), casterLevel = 9))
+
+        val older = GameState.restoredFrom(raised.saved().copy(wallsOfForce = WallsOfForce()), on = 1)
+
+        assertEquals(listOf(AWallOfForce(1, Location(13, 8), 546)), older.wallsOfForce.standing)
+
+        val gone = older.wallsOfForceRunDown(Ticks(546)).first
+        assertEquals(WallByte(0), gone.wallByte(1, Location(13, 8), WallSide.NORTH))
+    }
+
     /** A charged hand has the most to lose, being a spell and a hand and a picture. */
     @Test
     fun `a charged hand comes back from a save`() {

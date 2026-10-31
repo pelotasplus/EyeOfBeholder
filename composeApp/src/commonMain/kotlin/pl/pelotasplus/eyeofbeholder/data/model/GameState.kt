@@ -2637,7 +2637,31 @@ data class GameState(
         inFlight = inFlight,
         running = running,
         holding = holding,
+        wallsOfForce = wallsOfForce,
     )
+
+    /**
+     * A clock on any wall of force standing with none, for a save written
+     * before they were kept: it held the wall and not its clock, so the square
+     * would otherwise stay shut for the rest of the game. How long was left is
+     * gone, so it gets the shortest a wall can last.
+     */
+    fun clocksFoundForTheWallsOfForce(): GameState {
+        val stranded = changedWalls
+            .filterValues { it.isAWallOfForce }
+            .keys
+            .map { it.level to it.at }
+            .distinct()
+            .filter { (level, at) -> wallsOfForce.standing.none { it.level == level && it.at == at } }
+
+        return copy(
+            wallsOfForce = WallsOfForce(
+                wallsOfForce.standing + stranded.map { (level, at) ->
+                    AWallOfForce(level, at, WallsOfForce.lastsForACasterOf(0).value)
+                },
+            ),
+        )
+    }
 
     /**
      * A fresh grip on anybody paralysed with none to let them go, for a save
@@ -2740,7 +2764,8 @@ data class GameState(
             inFlight = saved.inFlight,
             running = saved.running,
             holding = saved.holding,
-        )
+            wallsOfForce = saved.wallsOfForce,
+        ).clocksFoundForTheWallsOfForce()
 
         /**
          * The one wall a forced door leaves behind as a doorway of the level's
