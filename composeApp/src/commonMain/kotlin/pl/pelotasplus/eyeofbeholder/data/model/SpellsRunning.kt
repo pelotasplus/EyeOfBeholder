@@ -323,6 +323,13 @@ data class SpellsRunning(val all: List<RunningSpell> = emptyList()) {
     fun holdingArmourClass(whom: PartySlot): List<ArmourHeldAt> =
         over(whom).mapNotNull { it.spell.holdsArmourClassAt }
 
+    /**
+     * Everything laid on [whom] gone, for somebody past raising or turned to
+     * stone. Nothing is said, and what is over the party stays over the party.
+     */
+    fun nothingLeftOn(whom: PartySlot): SpellsRunning =
+        SpellsRunning(all.filterNot { it.on == whom })
+
     /** What is left once the spells in [these] have been taken off. */
     fun without(these: List<RunningSpell>): SpellsRunning =
         SpellsRunning(all.filterNot { it in these })

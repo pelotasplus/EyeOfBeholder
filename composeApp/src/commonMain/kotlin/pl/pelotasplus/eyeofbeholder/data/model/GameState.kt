@@ -1584,6 +1584,7 @@ data class GameState(
             holding = what.holdsFor
                 ?.let { holding + Holding(whose, what, it.value) }
                 ?: holding,
+            running = if (what == WhatABlowLeaves.PETRIFICATION) running.nothingLeftOn(whose) else running,
         )
     }
 
@@ -1851,7 +1852,7 @@ data class GameState(
             champions = champions.toMutableList().also {
                 it[whose.index] = who.copy(hitPoints = who.hitPoints.copy(current = left))
             },
-            running = worn,
+            running = if (left <= Champion.BEYOND_RAISING) worn.nothingLeftOn(whose) else worn,
             // A second blow before the first has faded shows its own number
             // rather than the two added up.
             showingDamage = showingDamage.filterNot { it.whose == whose } +

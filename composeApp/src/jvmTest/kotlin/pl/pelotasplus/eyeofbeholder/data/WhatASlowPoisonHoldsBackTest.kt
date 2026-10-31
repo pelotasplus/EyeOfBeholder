@@ -126,6 +126,42 @@ class WhatASlowPoisonHoldsBackTest {
         assertEquals(listOf(one, other), drunk.bittenByVenom)
     }
 
+    /** Raised and bitten again, they are not protected by a spell from before. */
+    @Test
+    fun `going past raising ends it, and a blow short of that does not`() {
+        val slowed = bothPoisoned().slowed()
+
+        assertTrue(slowed.championHurt(one, Damage(109)).running.isOn(Spell.SLOW_POISON, one))
+        assertFalse(slowed.championHurt(one, Damage(110)).running.isOn(Spell.SLOW_POISON, one))
+    }
+
+    @Test
+    fun `turning to stone ends it`() {
+        val makesNoThrow = Dice { _, _, _ -> 1 }
+
+        val stone = assertNotNull(
+            bothPoisoned().slowed()
+                .championLeftWith(one, WhatABlowLeaves.PETRIFICATION, makesNoThrow),
+        )
+
+        assertFalse(stone.running.isOn(Spell.SLOW_POISON, one))
+    }
+
+    /** Every spell laid on them goes, and only theirs. */
+    @Test
+    fun `it goes for anything laid on them, and not for others or the party`() {
+        val world = bothPoisoned().slowed()
+            .let { assertNotNull(it.spellBegunWhereItSettles(Spell.BLUR, one, OFF_A_SCROLL)) }
+            .let { assertNotNull(it.spellBegunWhereItSettles(Spell.BLUR, other, OFF_A_SCROLL)) }
+            .let { assertNotNull(it.spellBegunWhereItSettles(Spell.BLESS, one, OFF_A_SCROLL)) }
+
+        val after = world.championHurt(one, Damage(110)).running
+
+        assertFalse(after.isOn(Spell.BLUR, one))
+        assertTrue(after.isOn(Spell.BLUR, other))
+        assertTrue(after.isRunning(Spell.BLESS))
+    }
+
     private companion object {
         /** A scroll is always read at ninth-level strength. */
         const val OFF_A_SCROLL = 9
