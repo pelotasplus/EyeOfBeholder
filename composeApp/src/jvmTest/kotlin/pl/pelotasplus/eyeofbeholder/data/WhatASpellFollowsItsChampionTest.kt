@@ -118,6 +118,30 @@ class WhatASpellFollowsItsChampionTest {
         assertEquals(listOf(other), loaded.bittenByVenom)
     }
 
+    @Test
+    fun `a grip comes back from a save with what is left of it`() {
+        val held = assertNotNull(
+            bothPoisoned().championLeftWith(one, WhatABlowLeaves.PARALYSIS, Dice { _, _, _ -> 1 }),
+        )
+        val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
+
+        val back = json.decodeFromString<SavedWorld>(json.encodeToString(SavedWorld.serializer(), held.saved()))
+
+        assertEquals(held.holding, GameState.restoredFrom(back, on = 1).holding)
+    }
+
+    /** A save from before grips were kept held the paralysis and not its clock. */
+    @Test
+    fun `somebody held with no grip is given one, and somebody with one is left alone`() {
+        val held = assertNotNull(
+            bothPoisoned().championLeftWith(one, WhatABlowLeaves.PARALYSIS, Dice { _, _, _ -> 1 }),
+        )
+
+        assertEquals(held.holding, held.gripsFoundForTheHeld().holding)
+        assertEquals(held.holding, held.copy(holding = emptyList()).gripsFoundForTheHeld().holding)
+        assertEquals(emptyList(), bothPoisoned().gripsFoundForTheHeld().holding)
+    }
+
     /** A charged hand has the most to lose, being a spell and a hand and a picture. */
     @Test
     fun `a charged hand comes back from a save`() {

@@ -909,7 +909,8 @@ class ViewConeDebugViewModel(
             it.copy(
                 inf = null,
                 game = GameState.restoredFrom(saved.world, on = saved.level)
-                    .copy(champions = saved.champions),
+                    .copy(champions = saved.champions)
+                    .gripsFoundForTheHeld(),
                 messages = saved.messages,
                 preferences = saved.preferences,
             )

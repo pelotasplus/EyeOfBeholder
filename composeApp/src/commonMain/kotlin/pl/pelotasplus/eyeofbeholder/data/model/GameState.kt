@@ -2636,7 +2636,21 @@ data class GameState(
         visited = visited.map { (level, squares) -> VisitedFloor(level, squares) },
         inFlight = inFlight,
         running = running,
+        holding = holding,
     )
+
+    /**
+     * A fresh grip on anybody paralysed with none to let them go, for a save
+     * written before grips were kept: it held the paralysis and not its clock,
+     * so they would otherwise stay held for the rest of the game.
+     */
+    fun gripsFoundForTheHeld(): GameState {
+        val lasts = WhatABlowLeaves.PARALYSIS.holdsFor?.value ?: return this
+        val unheld = champions.indices.map(::PartySlot).filter { whose ->
+            champions[whose.index].paralysed && holding.none { it.whose == whose }
+        }
+        return copy(holding = holding + unheld.map { Holding(it, WhatABlowLeaves.PARALYSIS, lasts) })
+    }
 
     companion object {
         private const val TAG = "GameState"
@@ -2725,6 +2739,7 @@ data class GameState(
             // stopped rather than one that never started.
             inFlight = saved.inFlight,
             running = saved.running,
+            holding = saved.holding,
         )
 
         /**

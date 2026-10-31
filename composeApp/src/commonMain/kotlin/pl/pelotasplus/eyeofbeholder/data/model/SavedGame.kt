@@ -97,6 +97,9 @@ data class SavedWorld(
 
     /** The spells still running, with what is left of each. */
     val running: SpellsRunning = SpellsRunning(),
+
+    /** Whatever has hold of somebody, which nothing else would ever let go of. */
+    val holding: List<Holding> = emptyList(),
 )
 
 /** One floor, and what the party have seen of it. */
