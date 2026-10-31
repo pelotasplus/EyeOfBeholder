@@ -312,16 +312,12 @@ object SpellMessages {
 
     fun expires(whose: String, spell: String) = "$whose's $spell spell expires."
 
-    /**
-     * What is said when a casting cannot happen where it was aimed — a wall
-     * of force with nowhere to stand. The game's own line, and it is the
-     * blunter of the two it keeps: no exclamation mark on this one.
-     */
-    fun theSpellFails() = "The spell fails"
+    /** What is said when a casting cannot happen where it was aimed — a wall of force with nowhere to stand. */
+    fun theSpellFails() = "The spell fails!"
 
     /** Already carrying this one, so a second would be spent on nothing. */
     fun alreadyUnder(whose: String, spell: String) =
-        "$whose is already under the effect of an $spell spell."
+        "$whose is already under the effect of a $spell spell."
 
     /** And nothing of them left for it to help. */
     fun ofNoUseTo(whose: String) = "The spell has no effect on $whose."
