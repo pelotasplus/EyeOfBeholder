@@ -1620,9 +1620,10 @@ data class GameState(
         val who = champions.getOrNull(whose.index) ?: return this
         if (who.poisoned == yes) return this
 
-        return copy(
+        val after = copy(
             champions = champions.toMutableList().also { it[whose.index] = who.poisoned(yes) },
         )
+        return if (yes) after else after.poisonNoLongerSlowed(whose)
     }
 
     /**
@@ -1645,6 +1646,18 @@ data class GameState(
                     who.poisoned && who.inTheParty && !who.deadForGood
                 }
             }
+
+    /** Those the venom's clock bites, which is everyone it has but the ones a slow poison is on. */
+    val bittenByVenom: List<PartySlot>
+        get() = poisoned.filterNot { running.isOn(Spell.SLOW_POISON, it) }
+
+    /** [whose] after drinking poison, which ends any slow poison on them however poisoned they were. */
+    fun poisonDrunk(whose: PartySlot) = championPoisoned(whose).poisonNoLongerSlowed(whose)
+
+    /** [whose] with any slow poison on them gone, the poison itself left as it is. */
+    fun poisonNoLongerSlowed(whose: PartySlot) = copy(
+        running = running.without(running.all.filter { it.spell == Spell.SLOW_POISON && it.on == whose }),
+    )
 
     /** [whose] with a full stomach outright, which is what vitality does. */
     fun championSated(whose: PartySlot): GameState {
@@ -2051,6 +2064,7 @@ data class GameState(
         }
 
         is LaidOnAChampion.Lifts -> withChampion(whom) { laidOn.what.liftedFrom(it) }
+            .let { if (laidOn.what == Ailment.POISON) it.poisonNoLongerSlowed(whom) else it }
 
         LaidOnAChampion.Raises -> withChampion(whom) { it.raised() }
 

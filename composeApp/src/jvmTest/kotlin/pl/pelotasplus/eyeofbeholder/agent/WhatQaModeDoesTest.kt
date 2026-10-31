@@ -109,6 +109,55 @@ class WhatQaModeDoesTest {
         }
     }
 
+    /**
+     * A slow poison read through the whole of a casting: turned away from
+     * somebody with no poison and the scroll kept for the next try, then
+     * settled on the poisoned mage.
+     */
+    @Test
+    fun `a slow poison is refused the healthy and settles on the poisoned`() = runBlocking {
+        val field = field("LEVEL12.INF", Location(19, 15), Direction.SOUTH)
+        delay(THE_OPENING)
+        assertNull(field.viewModel.setUp(QaSetup.Poison(THE_MAGE)))
+
+        fun slowed() = requireNotNull(field.viewModel.inspection()).running.toString().contains("slow poison", ignoreCase = true)
+
+        field.read(Spell.SLOW_POISON, by = THE_CLERIC)
+        assertNull(field.viewModel.act(AgentAction.CastOn(champion = 0)))
+        field.until("the refusal") { field.viewModel.observation()?.messages?.last()?.contains("no effect") == true }
+        assertFalse(slowed())
+
+        assertNull(field.viewModel.act(AgentAction.UseHand(champion = THE_CLERIC, hand = 0)))
+        assertNull(field.viewModel.act(AgentAction.CastOn(champion = THE_MAGE)))
+        field.until("the spell to settle") { slowed() }
+    }
+
+    /**
+     * The venom's live clock, held still until the spell is on: its first bite
+     * takes the unslowed champion and passes over the slowed one.
+     */
+    @Test
+    fun `the venom's clock bites past a slow poison`() = runBlocking {
+        val field = field("LEVEL12.INF", Location(19, 15), Direction.SOUTH)
+        delay(THE_OPENING)
+        field.agentTime.takeOver()
+
+        assertNull(field.viewModel.setUp(QaSetup.Poison(THE_MAGE)))
+        assertNull(field.viewModel.setUp(QaSetup.Poison(ANOTHER)))
+        field.read(Spell.SLOW_POISON, by = THE_CLERIC)
+        assertNull(field.viewModel.act(AgentAction.CastOn(champion = THE_MAGE)))
+
+        fun hitPointsOf(slot: Int) = requireNotNull(field.viewModel.observation()).party[slot].hitPoints
+        val mage = hitPointsOf(THE_MAGE)
+        val other = hitPointsOf(ANOTHER)
+
+        withTimeout(ALL_THE_READINGS) {
+            while (hitPointsOf(ANOTHER) == other) field.agentTime.advance(A_CASTING)
+        }
+
+        assertEquals(mage, hitPointsOf(THE_MAGE), "the venom bit through the slow poison")
+    }
+
     @Test
     fun `a scroll given is of the discipline its spell belongs to`() {
         val field = field("LEVEL12.INF", Location(19, 15), Direction.SOUTH)

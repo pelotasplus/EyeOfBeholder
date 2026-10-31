@@ -43,6 +43,11 @@ sealed interface QaSetup {
     @SerialName("spawn_monster")
     data class SpawnMonster(val looksLike: String, val ahead: Int = 1) : QaSetup
 
+    /** [champion] poisoned, as a bite would leave them. */
+    @Serializable
+    @SerialName("poison")
+    data class Poison(val champion: Int) : QaSetup
+
     /** Every champion back to full hit points, and nothing else changed. */
     @Serializable
     @SerialName("heal")

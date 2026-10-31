@@ -585,7 +585,22 @@ enum class Spell(
         TrackIndex(101),
         throws = ThrownSpell.thatHolds(MonsterSpell.HOLD_PERSON, AHold.OF_A_PERSON),
     ),
-    SLOW_POISON(42, "slow poison", TrackIndex(111)),
+    /**
+     * Stops the venom's bites on whoever is pointed at, without curing them:
+     * they are still poisoned, a night's sleep still costs them, and the bites
+     * start again when it ends.
+     *
+     * Its unit is 32760 ticks and not the half-minute every other spell is
+     * counted in, so it lasts hours rather than minutes. Data.
+     */
+    SLOW_POISON(
+        42,
+        "slow poison",
+        TrackIndex(111),
+        lasts = SpellLasts(base = 1, perLevel = 1, length = 32760),
+        settlesOn = SettlesOn.WHOEVER_IS_POINTED_AT,
+        framesTheBoxYellow = true,
+    ),
     CREATE_FOOD(
         43,
         "create food",

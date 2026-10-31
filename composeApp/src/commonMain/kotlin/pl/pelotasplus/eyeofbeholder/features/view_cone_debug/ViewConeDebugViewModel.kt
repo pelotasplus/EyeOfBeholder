@@ -678,6 +678,13 @@ class ViewConeDebugViewModel(
                 }
             }
 
+            is QaSetup.Poison -> {
+                val whose = PartySlot(setup.champion)
+                val who = world.championIn(whose) ?: return "There is no champion ${setup.champion}."
+                if (!who.canBeHurt) return "${who.name} is past being poisoned."
+                _state.update { it.copy(game = it.game.championPoisoned(whose)) }
+            }
+
             is QaSetup.SpawnMonster -> {
                 val placedHere = inf.monsterInstances.filter { it.subLevel == now.subLevel }
                 fun looksOf(monster: MonsterInstance) = sublevel.monsterGfx.getOrNull(monster.gfxIndex)?.name
@@ -1651,7 +1658,7 @@ class ViewConeDebugViewModel(
             // Drinking the poison is being poisoned, which is the same thing a
             // spider does and works itself off the same way.
             Potion.POISON -> {
-                _state.update { it.copy(game = it.game.championPoisoned(whose)) }
+                _state.update { it.copy(game = it.game.poisonDrunk(whose)) }
                 sayOf(whose) { ChampionMessages.nowIs(it, WhatABlowLeaves.POISON.calledIt) }
             }
 
@@ -2908,7 +2915,7 @@ class ViewConeDebugViewModel(
                     // of at once, and takes the same from each: a flat five,
                     // rolled for by nobody and saved against by nobody.
                     if (poisonBites) {
-                        bitten = world.poisoned
+                        bitten = world.bittenByVenom
                         bitten.forEach { world = world.championHurt(it, POISON_TAKES) }
                     }
 
@@ -4750,7 +4757,7 @@ class ViewConeDebugViewModel(
      * from an aid. Either way the scroll stays in the hand.
      */
     private fun settleItOn(waiting: WaitingCasting, whom: PartySlot, pointedAt: Champion) {
-        if (!pointedAt.canBeHurt) {
+        if (!pointedAt.canBeHurt || (waiting.spell == Spell.SLOW_POISON && !pointedAt.poisoned)) {
             say(SpellMessages.ofNoUseTo(pointedAt.name))
             viewModelScope.launch { playTrack(WARNING) }
             drawWords()

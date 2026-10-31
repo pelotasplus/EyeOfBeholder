@@ -2645,6 +2645,24 @@ class ViewPortGoldenTest {
         )
 
     /**
+     * A slow poison on a poisoned champion: the name still red, because they
+     * are not cured, and the box framed yellow, because the bites have stopped.
+     * The second champion is poisoned with nothing on them, to read it against.
+     */
+    @Test
+    fun `party panel with a slow poison on one of two poisoned`() =
+        checkGolden(
+            "party-panel-slow-poison",
+            partyOver(
+                level = "LEVEL4.INF",
+                x = 15,
+                y = 11,
+                poisoned = listOf(0, 1),
+                cast = listOf(Spell.SLOW_POISON),
+            ),
+        )
+
+    /**
      * One champion under a shield and a haste at once: the two frames are
      * wanted together and neither wins, so the border alternates between the
      * defensive colour and the other one.
