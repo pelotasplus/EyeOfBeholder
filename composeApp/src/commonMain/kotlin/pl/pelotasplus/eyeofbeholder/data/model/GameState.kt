@@ -1773,6 +1773,28 @@ data class GameState(
     }
 
     /**
+     * The world with one champion [by] hit points better off, over their own
+     * maximum where it comes to more than they were short.
+     *
+     * Not a mending, which stops where a champion is whole: this is what a
+     * blow took off something else, and all of it is handed over. Somebody
+     * carrying more than they can hold reads as more than full until they
+     * are hit, and nothing trims them back meanwhile.
+     */
+    fun championGiven(whose: PartySlot, by: Damage): GameState {
+        if (!by.landed) return this
+        val who = champions.getOrNull(whose.index) ?: return this
+
+        return copy(
+            champions = champions.toMutableList().also {
+                it[whose.index] = who.copy(
+                    hitPoints = who.hitPoints.copy(current = who.hitPoints.current + by.points),
+                )
+            },
+        )
+    }
+
+    /**
      * The world with one champion [by] hit points worse off.
      *
      * Nothing else happens to them here: going down at nothing left and being
@@ -2067,8 +2089,13 @@ data class GameState(
         val dice = puts.strikesFor
         val charge = ChargedHand(
             hand = hand,
-            strikesFor = if (puts.grownByCasterLevel) dice.copy(base = dice.base + casterLevel) else dice,
+            strikesFor = when (puts.grownBy) {
+                ChargeGrownBy.NOTHING -> dice
+                ChargeGrownBy.A_POINT_A_LEVEL -> dice.copy(base = dice.base + casterLevel)
+                ChargeGrownBy.A_DIE_EVERY_TWO_LEVELS -> dice.copy(times = casterLevel / 2)
+            },
             looksLike = puts.looksLike,
+            givesWhatItTakes = puts.givesWhatItTakes,
         )
 
         val spentOnes = SpellsRunning(

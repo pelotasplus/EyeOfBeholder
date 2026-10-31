@@ -140,20 +140,44 @@ data class ChargedHand(
     val hand: CarrySlot,
     val strikesFor: DamageDice,
     val looksLike: ItemIconId,
+
+    /** Whether what the blow takes goes to whoever struck it. */
+    val givesWhatItTakes: Boolean = false,
 )
+
+/**
+ * How the caster's level counts into what a charge strikes for.
+ *
+ * Three spells charge a hand and no two of them count it the same way,
+ * which is why this is a case rather than a flag.
+ */
+enum class ChargeGrownBy {
+    /** Not at all: the same in anybody's hand. */
+    NOTHING,
+
+    /** A point on the flat part for every level of the caster. */
+    A_POINT_A_LEVEL,
+
+    /**
+     * A die for every two levels, and nothing below the second — so one of
+     * these read by somebody new enough does nothing at all, and the spell
+     * is learnt late enough that nobody who can read it is that new.
+     */
+    A_DIE_EVERY_TWO_LEVELS,
+}
 
 /**
  * What a spell puts into a hand, and how long it stays there.
  *
- * The two spells that charge a hand read alike and are nothing alike to use.
- * One is a touch: it is worth more in a better mage's hand, and it is gone
- * into the first blow that does any harm, so its whole duration is time to
- * find something to hit. The other is a weapon: the same in anybody's hand,
- * and it strikes with for as long as the spell runs.
+ * The three spells that charge a hand read alike and are nothing alike to
+ * use. Two are touches, gone into the first blow that does any harm, so
+ * their whole duration is time to find something to hit — and one of those
+ * two takes what it does and gives it to whoever struck. The third is a
+ * weapon: the same in anybody's hand, and it strikes with for as long as
+ * the spell runs.
  *
- * [grownByCasterLevel] is the first of those and [goesIntoOneBlow] the
- * second, said separately because they are separate facts about the charge
- * even though two spells happen to divide them between them.
+ * Each fact is said separately, because they are separate facts about a
+ * charge even though three spells happen to divide them between them.
  */
 data class HandCharge(
     val strikesFor: DamageDice,
@@ -161,8 +185,17 @@ data class HandCharge(
     /** The icon the hand shows while the charge is in it, from the item sheet. */
     val looksLike: ItemIconId,
 
-    val grownByCasterLevel: Boolean = false,
+    val grownBy: ChargeGrownBy = ChargeGrownBy.NOTHING,
     val goesIntoOneBlow: Boolean = false,
+
+    /**
+     * Whether what it takes off a creature goes to whoever struck the blow.
+     *
+     * Every point of it, and over their own maximum where it comes to more
+     * than they were short: it is not a mending, and nothing trims it to
+     * what they had room for.
+     */
+    val givesWhatItTakes: Boolean = false,
 )
 
 /**

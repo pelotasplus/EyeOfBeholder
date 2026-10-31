@@ -623,9 +623,13 @@ class ViewConeDebugViewModel(
                 val spell = Spell.entries.firstOrNull {
                     it.calledIt.equals(setup.spell, ignoreCase = true) || it.name.equals(setup.spell.replace(' ', '_'), ignoreCase = true)
                 } ?: return "No spell is called \"${setup.spell}\"."
-                val discipline = Discipline.entries.firstOrNull { it.spellNumbered(it.numberOf(spell)) == spell }
-                    ?: return "${spell.calledIt} is nobody's to learn."
-                val page = SpellCapacity.pageOf(spell, discipline) ?: return "${spell.calledIt} has no level to learn it at."
+                // Whichever discipline has a level for it. Asking the
+                // numbering to say instead cannot work: a mage's list is the
+                // spell numbers themselves, so every spell round-trips
+                // through it and a cleric's could never be given.
+                val page = Discipline.entries.firstNotNullOfOrNull { SpellCapacity.pageOf(spell, it) }
+                    ?: return "${spell.calledIt} has no level to learn it at."
+                val discipline = Discipline.entries.first { SpellCapacity.pageOf(spell, it) == page }
                 val whose = PartySlot(setup.champion)
                 val champion = world.championIn(whose) ?: return "There is no champion ${setup.champion}."
                 val pages = champion.spellsOf(discipline)

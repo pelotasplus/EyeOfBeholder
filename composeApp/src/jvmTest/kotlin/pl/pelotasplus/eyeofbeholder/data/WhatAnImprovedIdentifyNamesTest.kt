@@ -138,6 +138,7 @@ class WhatAnImprovedIdentifyNamesTest {
                 Spell.BLUR,
                 Spell.IMPROVED_IDENTIFY,
                 Spell.MAGICAL_VESTMENT,
+                Spell.VAMPIRIC_TOUCH,
             ),
             Spell.entries.filter { it.sparksOverTheCaster }.toSet(),
         )

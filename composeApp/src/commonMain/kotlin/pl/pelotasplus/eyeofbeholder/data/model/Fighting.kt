@@ -55,8 +55,11 @@ class Fighting(
                 after = after.rousedBy(blow.monster)
                     .monsterHurt(blow.monster, blow.damage, kinds, itemTypes, dice)
 
-                // A charge goes into the first blow that does harm.
-                if (world.running.chargeOn(whose, hand) != null) {
+                // A charge goes into the first blow that does harm, and one
+                // of the three hands it back: what the blow cost goes to
+                // whoever struck, over their own maximum and all.
+                world.running.chargeOn(whose, hand)?.let { charge ->
+                    if (charge.givesWhatItTakes) after = after.championGiven(whose, blow.damage)
                     after = after.copy(running = after.running.chargeSpent(whose, hand))
                 }
 

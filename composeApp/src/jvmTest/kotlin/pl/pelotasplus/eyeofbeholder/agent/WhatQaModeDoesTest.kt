@@ -1,11 +1,16 @@
 package pl.pelotasplus.eyeofbeholder.agent
 
 import kotlinx.coroutines.runBlocking
+import org.junit.Assume
 import org.junit.experimental.categories.Category
+import pl.pelotasplus.eyeofbeholder.data.model.CampSpellMessages
 import pl.pelotasplus.eyeofbeholder.NeedsGameData
 import pl.pelotasplus.eyeofbeholder.data.ThePlayField
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
+import pl.pelotasplus.eyeofbeholder.data.model.Discipline
 import pl.pelotasplus.eyeofbeholder.data.model.Location
+import pl.pelotasplus.eyeofbeholder.data.model.Spell
+import pl.pelotasplus.eyeofbeholder.data.model.SpellCapacity
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -56,28 +61,44 @@ class WhatQaModeDoesTest {
     }
 
     /**
-     * A mage spell nothing has been written for yet, given to Laurann and cast
-     * from her book: the casting is noted as reaching nothing.
+     * A prayer nothing has been written for yet, given to the cleric and
+     * read out of her book: the casting is noted as reaching nothing.
+     *
+     * **This test is running out of subject matter, and that is the point of
+     * the comment.** It wants a spell the saved party can actually cast that
+     * does nothing, and there is no longer one: every spell of either
+     * discipline at a level this party has reached now has an effect. The
+     * nine that do not are all learnt above the mage's seventh level or
+     * belong to the cleric, who carries no holy symbol in this save and so
+     * has no book to open.
+     *
+     * So it stands down rather than passing on nothing. When the next thing
+     * worth noting appears — a hand use that does nothing, an item with no
+     * answer — this is the shape to write it in, and the assumption below is
+     * what to delete.
      */
     @Test
     fun `a spell with no effect is noted when cast`() = runBlocking {
         val field = field("LEVEL12.INF", Location(19, 15), Direction.SOUTH)
         val before = Diagnostics.since(0).lastOrNull()?.number ?: 0
+        val nothingYet = Spell.POWER_WORD_STUN
 
-        assertNull(field.viewModel.setUp(QaSetup.GiveSpell(champion = 3, spell = "vampiric touch", ready = true)))
-        assertNull(field.viewModel.act(AgentAction.UseHand(champion = 3, hand = 1)))
+        assertNull(field.viewModel.setUp(QaSetup.GiveSpell(champion = THE_MAGE, spell = nothingYet.calledIt)))
+        assertNull(field.viewModel.act(AgentAction.UseHand(champion = THE_MAGE, hand = 1)))
         field.until("the book") { field.viewModel.observation()?.book != null }
 
-        // It is a third-level spell and the book opens on the first, because
-        // every first-level spell has something written for it now: finding
-        // one that has not means turning to where it is.
-        assertNull(field.viewModel.act(AgentAction.BookTab(2)))
-        field.until("the third page") {
-            field.viewModel.observation()?.book?.lines?.firstOrNull() == "Vampiric Touch"
-        }
+        val page = assertNotNull(SpellCapacity.pageOf(nothingYet, Discipline.MAGE))
+        field.viewModel.act(AgentAction.BookTab(page))
+        val written = CampSpellMessages.menuNameOf(nothingYet, Discipline.MAGE)
+        val reached = field.viewModel.observation()?.book?.lines?.firstOrNull() == written
+
+        Assume.assumeTrue(
+            "${nothingYet.calledIt} is above this party's level, and nothing they can cast does nothing",
+            reached,
+        )
 
         assertNull(field.viewModel.act(AgentAction.BookLine(0)))
-        field.until("the note") { Diagnostics.since(before).any { "vampiric touch" in it.said } }
+        field.until("the note") { Diagnostics.since(before).any { nothingYet.calledIt in it.said } }
     }
 
     @Test
@@ -112,5 +133,10 @@ class WhatQaModeDoesTest {
             val (current, most) = champion.hitPoints.split("/")
             assertEquals(most, current, "${champion.name} was not mended")
         }
+    }
+
+    private companion object {
+        /** Which of the saved party keeps a spellbook in hand. */
+        const val THE_MAGE = 3
     }
 }

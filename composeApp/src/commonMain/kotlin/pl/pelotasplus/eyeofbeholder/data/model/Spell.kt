@@ -311,7 +311,7 @@ enum class Spell(
         chargesAHand = HandCharge(
             strikesFor = DamageDice(times = 1, pips = 8, base = 0),
             looksLike = ItemIconId(82),
-            grownByCasterLevel = true,
+            grownBy = ChargeGrownBy.A_POINT_A_LEVEL,
             goesIntoOneBlow = true,
         ),
     ),
@@ -418,7 +418,31 @@ enum class Spell(
             thrownOff = SavingThrow.A_SPELL,
         ),
     ),
-    VAMPIRIC_TOUCH(18, "vampiric touch", TrackIndex(102)),
+    /**
+     * The third of the hands a spell charges, and the one that takes rather
+     * than burns: whatever its blow costs the creature it found is given to
+     * whoever struck, over their own maximum and all.
+     *
+     * A die of six for every two levels of the caster, which is the only one
+     * of the three whose *dice* grow rather than its flat part — so it is
+     * nothing at all below the second level, and is learnt late enough that
+     * nobody who can read it is that new.
+     */
+    VAMPIRIC_TOUCH(
+        18,
+        "vampiric touch",
+        TrackIndex(102),
+        sparksOverTheCaster = true,
+        lasts = SpellLasts(base = 0, perLevel = 1),
+        settlesOn = SettlesOn.WHOEVER_CAST_IT,
+        chargesAHand = HandCharge(
+            strikesFor = DamageDice(times = 0, pips = 6, base = 0),
+            looksLike = ItemIconId(83),
+            grownBy = ChargeGrownBy.A_DIE_EVERY_TWO_LEVELS,
+            goesIntoOneBlow = true,
+            givesWhatItTakes = true,
+        ),
+    ),
     FEAR(19, "fear", TrackIndex(103), throwsSparks = true, frightensWhatIsAhead = true),
     ICE_STORM(
         20,
