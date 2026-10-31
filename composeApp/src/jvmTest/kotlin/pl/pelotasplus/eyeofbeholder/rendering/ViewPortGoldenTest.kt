@@ -2561,6 +2561,40 @@ class ViewPortGoldenTest {
         )
 
     /**
+     * A protection from evil over all six: every box framed the defensive
+     * colour, where the single-target one frames the one it was laid on.
+     *
+     * The pair are worth a picture each. Six boxes and one box is the whole
+     * visible difference between the two spells — they are the same two off
+     * the roll for the same length of time — so the two scenes side by side
+     * are what says which was cast.
+     */
+    @Test
+    fun `party panel under a protection from evil over all six`() =
+        checkGolden(
+            "party-panel-protection-ten-feet",
+            partyOver(
+                level = "LEVEL4.INF",
+                x = 15,
+                y = 11,
+                cast = listOf(Spell.PROTECTION_FROM_EVIL_TEN_FEET),
+            ),
+        )
+
+    /** And the one it is laid on alone, which is the other half of that pair. */
+    @Test
+    fun `party panel under a protection from evil on one champion`() =
+        checkGolden(
+            "party-panel-protection-one",
+            partyOver(
+                level = "LEVEL4.INF",
+                x = 15,
+                y = 11,
+                cast = listOf(Spell.PROTECTION_FROM_EVIL),
+            ),
+        )
+
+    /**
      * One champion under a shield and a haste at once: the two frames are
      * wanted together and neither wins, so the border alternates between the
      * defensive colour and the other one.

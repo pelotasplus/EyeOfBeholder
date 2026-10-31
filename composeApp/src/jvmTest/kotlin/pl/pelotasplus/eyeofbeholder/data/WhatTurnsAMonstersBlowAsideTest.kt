@@ -226,6 +226,32 @@ class WhatTurnsAMonstersBlowAsideTest {
     }
 
     /**
+     * The wider one is the same spell over all six: the same two off the
+     * roll, for the same length of time, on each of them separately.
+     *
+     * Separately and not over the party, so each can be dispelled on its own
+     * — which is why one casting makes six running spells and not one.
+     */
+    @Test
+    fun `the ten foot one reaches all six and the other reaches one`() {
+        val wide = assertNotNull(
+            world().spellBegunWhereItSettles(
+                Spell.PROTECTION_FROM_EVIL_TEN_FEET,
+                PartySlot(0),
+                casterLevel = 9,
+            )
+        )
+
+        (0 until 6).forEach { slot ->
+            assertEquals(2, wide.running.hindranceStriking(PartySlot(slot)), "slot $slot")
+        }
+        assertEquals(6, wide.running.all.count { it.spell == Spell.PROTECTION_FROM_EVIL_TEN_FEET })
+
+        assertEquals(Spell.PROTECTION_FROM_EVIL.lasts, Spell.PROTECTION_FROM_EVIL_TEN_FEET.lasts)
+        assertEquals(TrackIndex(110), Spell.PROTECTION_FROM_EVIL_TEN_FEET.heardAs)
+    }
+
+    /**
      * Three half-minutes a level and laid on whoever is pointed at, where a
      * blur is three and one a level on whoever read it — so the cleric's is
      * the shorter of the two at first level and much the longer after that.

@@ -599,11 +599,25 @@ enum class Spell(
         TrackIndex(115),
         laidOn = LaidOnAChampion.Lifts(Ailment.POISON),
     ),
+    /**
+     * The same two off a monster's roll as [PROTECTION_FROM_EVIL], for the
+     * same three half-minutes a level, over all six at once.
+     *
+     * Six spells rather than one over the party, which is the game's own
+     * choice and shows: each can be dispelled on its own, and somebody who
+     * joins afterwards is not under it. It passes over anybody there is
+     * nothing left of — past raising, or turned to stone — and reaches a
+     * champion merely lying at nothing, who is as worth protecting as any.
+     */
     PROTECTION_FROM_EVIL_TEN_FEET(
         51,
         "protection from evil 10' radius",
         TrackIndex(110),
         sparksOverTheParty = true,
+        lasts = SpellLasts(base = 0, perLevel = 3),
+        settlesOn = SettlesOn.EVERY_CHAMPION,
+        hindersStriking = 2,
+        framesTheBoxRed = true,
     ),
     CAUSE_CRITICAL_WOUNDS(
         52,
