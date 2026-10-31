@@ -270,17 +270,18 @@ class WhatArmourAndAShieldAreWorthTest {
     }
 
     /**
-     * Five, and a point worse for every three levels of cleric past the
-     * fifth — so it holds at five up to the seventh level and loses ground
+     * Five, and a point better for every three levels of cleric past the
+     * fifth — so it holds at five up to the seventh level and gains ground
      * from the eighth on.
      *
-     * Named level by level rather than as a formula, because a formula is
-     * what is in doubt: this is the one rule in the three that reads like a
-     * sign the wrong way round.
+     * Named level by level rather than as a formula, because this is the one
+     * place the three spells depart from what they were transcribed from:
+     * that number runs the other way, and a veteran vested worse than a
+     * novice is a sign the wrong way round rather than a rule.
      */
     @Test
-    fun `a vestment is worth less to a better cleric, not more`() {
-        val vested = mapOf(1 to 5, 5 to 5, 6 to 5, 7 to 5, 8 to 6, 9 to 6, 10 to 6, 11 to 7, 14 to 8)
+    fun `a vestment is worth more to a better cleric`() {
+        val vested = mapOf(1 to 5, 5 to 5, 6 to 5, 7 to 5, 8 to 4, 9 to 4, 10 to 4, 11 to 3, 14 to 2)
 
         vested.forEach { (level, held) ->
             assertEquals(
@@ -288,6 +289,14 @@ class WhatArmourAndAShieldAreWorthTest {
                 ArmourHeldAt.AVestment.forSomeone(cleric(level)),
                 "a cleric of $level",
             )
+        }
+    }
+
+    /** And never worse than a novice's, whatever the arithmetic does below the fifth. */
+    @Test
+    fun `a novice is vested no worse than the rule's own floor`() {
+        (1..5).forEach { level ->
+            assertEquals(ArmorClass(5), ArmourHeldAt.AVestment.forSomeone(cleric(level)), "a cleric of $level")
         }
     }
 

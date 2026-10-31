@@ -23,15 +23,17 @@ sealed interface ArmourHeldAt {
     data class OverTheirNimbleness(val points: Int) : ArmourHeldAt
 
     /**
-     * What a vestment comes to: five, and a point worse for every three
+     * What a vestment comes to: five, and a point better for every three
      * levels of cleric past the fifth.
      *
-     * Worse, which reads like a sign the wrong way round — a practised cleric
-     * is vested less well than a new one, and from the eighth level on it is
-     * worth less than a first-level mage's shield. It is transcribed rather
-     * than worked out, and nothing in the shipped data can settle it, so
-     * turning it the other way would be a change to the game and not a fix
-     * to this.
+     * Better, and written that way on purpose. The number this is taken from
+     * runs the other way and leaves a veteran vested worse than a novice —
+     * worse, from the eighth level, than a first-level mage's shield — which
+     * is a sign the wrong way round rather than a rule anybody meant. The
+     * base of five and the step of three are the pen-and-paper spell's own;
+     * only the direction differed, which is what makes it a slip and not a
+     * choice. Turning it back would make the spell worth less the better its
+     * caster gets.
      */
     data object AVestment : ArmourHeldAt
 
@@ -40,7 +42,7 @@ sealed interface ArmourHeldAt {
         is At -> armourClass
         is OverTheirNimbleness -> ArmorClass(who.nimbleness + points)
         AVestment -> ArmorClass(
-            VESTED + ((who.praysAsSomeoneOfLevel - VESTED) / EVERY_THREE).coerceAtLeast(0),
+            VESTED - ((who.praysAsSomeoneOfLevel - VESTED) / EVERY_THREE).coerceAtLeast(0),
         )
     }
 
