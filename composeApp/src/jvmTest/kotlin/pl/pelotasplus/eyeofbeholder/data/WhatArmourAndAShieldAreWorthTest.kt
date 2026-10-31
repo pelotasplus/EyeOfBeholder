@@ -87,12 +87,23 @@ class WhatArmourAndAShieldAreWorthTest {
         assertEquals(17, lasts.castBySomeoneOfLevel(OFF_A_SCROLL))
     }
 
+    /**
+     * Both are heard as the same noise and both frame the box the defensive
+     * colour — the one a blur draws, not the one a haste draws. Which spell
+     * draws which is a list rather than a rule, so it is named here.
+     */
     @Test
-    fun `both are heard as the same noise, and both frame the box`() {
+    fun `both are heard as the same noise, and both frame the box as a blur does`() {
         assertEquals(TrackIndex(92), Spell.ARMOUR.heardAs)
         assertEquals(TrackIndex(92), Spell.SHIELD.heardAs)
-        assertTrue(Spell.ARMOUR.framesTheBoxYellow)
-        assertTrue(Spell.SHIELD.framesTheBoxYellow)
+
+        assertTrue(Spell.ARMOUR.framesTheBoxRed)
+        assertTrue(Spell.SHIELD.framesTheBoxRed)
+        assertTrue(Spell.BLUR.framesTheBoxRed)
+
+        assertFalse(Spell.ARMOUR.framesTheBoxYellow)
+        assertFalse(Spell.SHIELD.framesTheBoxYellow)
+        assertTrue(Spell.HASTE.framesTheBoxYellow, "the other frame is still somebody's")
     }
 
     // --- the ceiling ----------------------------------------------------------

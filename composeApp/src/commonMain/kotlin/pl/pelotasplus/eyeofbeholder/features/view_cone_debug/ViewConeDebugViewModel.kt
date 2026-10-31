@@ -5697,7 +5697,7 @@ class ViewConeDebugViewModel(
                         ?.takeIf { !_state.value.swapShowing },
                     portal = portalShowing,
                     shielded = _state.value.game.partyShielded,
-                    underASpell = { whom -> _state.value.game.running.blurred(whom) },
+                    underASpell = { whom -> _state.value.game.running.framedRed(whom) },
                     framedYellow = { whom -> _state.value.game.running.framedYellow(whom) },
                     unseen = { whom -> _state.value.game.running.unseen(whom) },
                     magicShowing = _state.value.game.magicIsShowing,

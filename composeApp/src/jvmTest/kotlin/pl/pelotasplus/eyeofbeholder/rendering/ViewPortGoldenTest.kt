@@ -1962,7 +1962,7 @@ class ViewPortGoldenTest {
          * without being handed a list, which a scene drawn from a list cannot
          * say.
          */
-        cast: Spell? = null,
+        cast: List<Spell> = emptyList(),
         /** And which cannot be seen, which darkens their face nearly away. */
         unseen: List<Int> = emptyList(),
         /**
@@ -1985,11 +1985,13 @@ class ViewPortGoldenTest {
             .loadOriginalSave(OriginalSaveRepositoryImpl.QUICK_START)
             .getOrThrow()
 
-        val world = GameState(party = saved.standing, items = saved.items)
+        // The roster goes into the world and not only into the drawing, so
+        // that a spell cast on each of them separately has somebody to find.
+        val world = GameState(party = saved.standing, items = saved.items, champions = saved.party)
             .let { standing ->
-                cast?.let {
-                    standing.spellBegunWhereItSettles(it, by = PartySlot(0), casterLevel = 9)
-                } ?: standing
+                cast.fold(standing) { world, spell ->
+                    world.spellBegunWhereItSettles(spell, by = PartySlot(0), casterLevel = 9) ?: world
+                }
             }
             .let { standing ->
                 charged.entries.fold(standing) { world, (whose, spell) ->
@@ -2054,7 +2056,7 @@ class ViewPortGoldenTest {
             hurt = { whose -> splattered[whose.index] },
             swapping = swapping?.let(::PartySlot),
             shielded = shielded,
-            underASpell = { whom -> whom.index in blurred },
+            underASpell = { whom -> whom.index in blurred || world.running.framedRed(whom) },
             framedYellow = { whom ->
                 whom.index in framedYellow || world.running.framedYellow(whom)
             },
@@ -2501,7 +2503,7 @@ class ViewPortGoldenTest {
     fun `party panel under a bless`() =
         checkGolden(
             "party-panel-blessed",
-            partyOver(level = "LEVEL4.INF", x = 15, y = 11, cast = Spell.BLESS),
+            partyOver(level = "LEVEL4.INF", x = 15, y = 11, cast = listOf(Spell.BLESS)),
         )
 
     /**
@@ -2517,7 +2519,7 @@ class ViewPortGoldenTest {
                 level = "LEVEL4.INF",
                 x = 15,
                 y = 11,
-                cast = Spell.PRAYER,
+                cast = listOf(Spell.PRAYER),
                 sparks = SparksOverTheParty(frame = 12),
             ),
         )
@@ -2534,7 +2536,7 @@ class ViewPortGoldenTest {
     fun `party panel with a shield up`() =
         checkGolden(
             "party-panel-shield-spell",
-            partyOver(level = "LEVEL4.INF", x = 15, y = 11, cast = Spell.SHIELD),
+            partyOver(level = "LEVEL4.INF", x = 15, y = 11, cast = listOf(Spell.SHIELD)),
         )
 
     /**
@@ -2553,8 +2555,30 @@ class ViewPortGoldenTest {
                 level = "LEVEL4.INF",
                 x = 15,
                 y = 11,
-                cast = Spell.ARMOUR,
+                cast = listOf(Spell.ARMOUR),
                 sparks = SparksOverTheParty(frame = 12, over = PartySlot(0)),
+            ),
+        )
+
+    /**
+     * One champion under a shield and a haste at once: the two frames are
+     * wanted together and neither wins, so the border alternates between the
+     * defensive colour and the other one.
+     *
+     * Both really cast rather than the frames being asked for by slot, which
+     * is what makes this say the two spells land on the same box — and the
+     * two are chosen from opposite sides of the list, so a spell moved to the
+     * wrong frame shows here as a plain border rather than a dashed one.
+     */
+    @Test
+    fun `party panel with a shield and a haste on the same champion`() =
+        checkGolden(
+            "party-panel-shield-and-haste",
+            partyOver(
+                level = "LEVEL4.INF",
+                x = 15,
+                y = 11,
+                cast = listOf(Spell.SHIELD, Spell.HASTE),
             ),
         )
 

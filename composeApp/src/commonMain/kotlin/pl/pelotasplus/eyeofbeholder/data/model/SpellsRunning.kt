@@ -364,6 +364,12 @@ data class SpellsRunning(val all: List<RunningSpell> = emptyList()) {
     fun blurred(whom: PartySlot): Boolean = isOn(Spell.BLUR, whom)
 
     /**
+     * Whether anything on [whom] frames their box the colour the defensive
+     * spells share — see [framedYellow] for the other one.
+     */
+    fun framedRed(whom: PartySlot): Boolean = over(whom).any { it.spell.framesTheBoxRed }
+
+    /**
      * Whether [whom] cannot be seen, by whichever of the spells does it.
      *
      * Asked of the champion and not of a spell, because what being unseen is

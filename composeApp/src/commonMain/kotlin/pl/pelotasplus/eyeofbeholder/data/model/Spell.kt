@@ -113,6 +113,17 @@ enum class Spell(
     val framesTheBoxYellow: Boolean = false,
 
     /**
+     * And whether it frames the box the other colour, which is the one the
+     * defensive spells share.
+     *
+     * Two frames rather than one scale of them, and a champion can want both
+     * at once: the border alternates where they do. Which spell draws which
+     * is a list and not a rule — a blur and a shield are the same frame, and
+     * a haste is the other.
+     */
+    val framesTheBoxRed: Boolean = false,
+
+    /**
      * Whether it spreads over the squares in front of the caster the moment
      * it is cast, rather than throwing anything — see [AConeOfCold].
      */
@@ -252,7 +263,7 @@ enum class Spell(
         lasts = HowLongASpellRuns.WornThroughByHarm(base = 8, perLevel = 1),
         holdsArmourClassAt = ArmourHeldAt.OverTheirNimbleness(points = 6),
         endsWhereItWouldNotHelp = true,
-        framesTheBoxYellow = true,
+        framesTheBoxRed = true,
     ),
     BURNING_HANDS(2, "burning hands", TrackIndex(87), burnsTheSquareAhead = true),
     DETECT_MAGIC(
@@ -288,7 +299,7 @@ enum class Spell(
         holdsArmourClassAt = ArmourHeldAt.At(ArmorClass(4)),
         stopsAMagicMissile = true,
         castAgainRatherThanRefused = true,
-        framesTheBoxYellow = true,
+        framesTheBoxRed = true,
     ),
     SHOCKING_GRASP(
         6,
@@ -312,6 +323,7 @@ enum class Spell(
         lasts = SpellLasts(base = 3, perLevel = 1),
         settlesOn = SettlesOn.WHOEVER_CAST_IT,
         hindersStriking = 2,
+        framesTheBoxRed = true,
     ),
     DETECT_INVISIBILITY(
         8,
@@ -504,7 +516,23 @@ enum class Spell(
         sparksOverTheParty = true,
         lasts = SpellLasts(base = 0, perLevel = 2),
     ),
-    PROTECTION_FROM_EVIL(38, "protection from evil", TrackIndex(110)),
+    /**
+     * Laid on whichever champion is pointed at, and worth the same two off a
+     * monster's roll that a blur is worth — not armour, though its name and
+     * its place among the cleric's first-level spells both suggest otherwise.
+     *
+     * Nothing about it asks what is attacking. Everything in the dungeon is
+     * evil enough for it, so it is two off every roll and not two off some.
+     */
+    PROTECTION_FROM_EVIL(
+        38,
+        "protection from evil",
+        TrackIndex(110),
+        lasts = SpellLasts(base = 0, perLevel = 3),
+        settlesOn = SettlesOn.WHOEVER_IS_POINTED_AT,
+        hindersStriking = 2,
+        framesTheBoxRed = true,
+    ),
     AID(
         39,
         "aid",
