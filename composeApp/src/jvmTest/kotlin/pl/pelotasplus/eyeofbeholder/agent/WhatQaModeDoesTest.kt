@@ -7,10 +7,23 @@ import org.junit.experimental.categories.Category
 import pl.pelotasplus.eyeofbeholder.NeedsGameData
 import pl.pelotasplus.eyeofbeholder.data.ThePlayField
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
+import pl.pelotasplus.eyeofbeholder.data.model.Holding
 import pl.pelotasplus.eyeofbeholder.data.model.Location
+import pl.pelotasplus.eyeofbeholder.data.model.PartySlot
+import pl.pelotasplus.eyeofbeholder.data.model.Preferences
+import pl.pelotasplus.eyeofbeholder.data.model.RunningSpell
 import pl.pelotasplus.eyeofbeholder.data.model.Spell
+import pl.pelotasplus.eyeofbeholder.data.model.SpellsRunning
+import pl.pelotasplus.eyeofbeholder.data.model.AWallOfForce
+import pl.pelotasplus.eyeofbeholder.data.model.WALL_OF_FORCE_BYTE
+import pl.pelotasplus.eyeofbeholder.data.model.WallSide
+import pl.pelotasplus.eyeofbeholder.data.model.WallsOfForce
+import pl.pelotasplus.eyeofbeholder.data.model.WhatABlowLeaves
+import pl.pelotasplus.eyeofbeholder.data.repository.SaveSlot
+import pl.pelotasplus.eyeofbeholder.data.repository.SavedGameRepositoryImpl
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -96,14 +109,22 @@ class WhatQaModeDoesTest {
         }
     }
 
+    @Test
+    fun `a scroll given is of the discipline its spell belongs to`() {
+        val field = field("LEVEL12.INF", Location(19, 15), Direction.SOUTH)
+
+        assertNull(field.viewModel.setUp(QaSetup.GiveScroll(Spell.SLOW_POISON.calledIt)))
+        assertEquals("Cleric Scroll of slow poison", field.viewModel.observation()?.holding)
+    }
+
     /** A scroll of [spell] swapped into the mage's free hand and read. */
-    private suspend fun ThePlayField.read(spell: Spell) {
+    private suspend fun ThePlayField.read(spell: Spell, by: Int = THE_MAGE) {
         until("the hand to come back to rest") {
-            viewModel.observation()?.party?.get(THE_MAGE)?.hands?.first()?.contains("recovering") == false
+            viewModel.observation()?.party?.get(by)?.hands?.first()?.contains("recovering") == false
         }
         assertNull(viewModel.setUp(QaSetup.GiveScroll(spell.calledIt)))
-        assertNull(viewModel.act(AgentAction.TakeHand(champion = THE_MAGE, hand = 0)))
-        assertNull(viewModel.act(AgentAction.UseHand(champion = THE_MAGE, hand = 0)))
+        assertNull(viewModel.act(AgentAction.TakeHand(champion = by, hand = 0)))
+        assertNull(viewModel.act(AgentAction.UseHand(champion = by, hand = 0)))
     }
 
     @Test
@@ -143,6 +164,9 @@ class WhatQaModeDoesTest {
     private companion object {
         /** Which of the saved party keeps a spellbook in hand. */
         const val THE_MAGE = 3
+        const val THE_CLERIC = 2
+        const val ANOTHER = 0
+        const val A_FEW_TICKS = 40
 
         const val THE_OPENING = 1_000L
         const val A_CASTING = 300L

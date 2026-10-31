@@ -663,8 +663,9 @@ class ViewConeDebugViewModel(
             is QaSetup.GiveScroll -> {
                 val spell = spellCalled(setup.spell) ?: return "No spell is called \"${setup.spell}\"."
                 if (world.inHand.isSomething) return "Something is on the pointer already; put it down first."
-                val found = world.items.indexOfFirst { itemTypes?.kindOf(it) == ItemKind.MAGE_SCROLL }
-                if (found < 0) return "No scroll is in the world to copy."
+                val kind = if (SpellCapacity.pageOf(spell, Discipline.CLERIC) != null) ItemKind.CLERIC_SCROLL else ItemKind.MAGE_SCROLL
+                val found = world.items.indexOfFirst { itemTypes?.kindOf(it) == kind }
+                if (found < 0) return "No scroll of that kind is in the world to copy."
                 _state.update {
                     it.copy(
                         game = it.game.itemCopiedIntoTheHand(
