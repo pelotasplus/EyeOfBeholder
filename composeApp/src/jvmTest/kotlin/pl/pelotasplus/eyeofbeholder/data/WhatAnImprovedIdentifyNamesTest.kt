@@ -123,11 +123,16 @@ class WhatAnImprovedIdentifyNamesTest {
     /**
      * The spells that spark over the caster's own box. Data — read off the
      * spell table, not reasoned out — so a test names them.
+     *
+     * A spell that asks which champion sparks too, over the one it was
+     * pointed at rather than over whoever read it, and is not among these:
+     * the table marks the two cases apart, and the asking is what carries
+     * the second.
      */
     @Test
     fun `the spells that spark over the caster are the ones the table marks`() {
         assertEquals(
-            setOf(Spell.SHOCKING_GRASP, Spell.BLUR, Spell.IMPROVED_IDENTIFY),
+            setOf(Spell.SHIELD, Spell.SHOCKING_GRASP, Spell.BLUR, Spell.IMPROVED_IDENTIFY),
             Spell.entries.filter { it.sparksOverTheCaster }.toSet(),
         )
     }

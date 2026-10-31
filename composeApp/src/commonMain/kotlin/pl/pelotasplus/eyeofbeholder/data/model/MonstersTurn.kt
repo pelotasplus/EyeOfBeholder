@@ -460,7 +460,7 @@ class MonstersTurn(
                 val rolled = dice.roll(1, 20, 0)
                 val roll = if (rolled == NATURALLY_ALWAYS) rolled else rolled - harderToSee
                 val lands = rolled == NATURALLY_ALWAYS ||
-                    roll >= kind.hitChance - champion.armorClass.value
+                    roll >= kind.hitChance - world.armourClassOf(whom).value
 
                 if (lands) {
                     kind.dmgDc.getOrNull(attack)

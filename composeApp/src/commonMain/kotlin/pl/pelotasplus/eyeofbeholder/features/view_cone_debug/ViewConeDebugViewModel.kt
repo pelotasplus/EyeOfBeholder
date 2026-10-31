@@ -46,6 +46,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.Blow
 import pl.pelotasplus.eyeofbeholder.data.model.AConeOfCold
 import pl.pelotasplus.eyeofbeholder.data.model.AFanOfFlame
+import pl.pelotasplus.eyeofbeholder.data.model.nimbleness
 import pl.pelotasplus.eyeofbeholder.data.model.BurningHands
 import pl.pelotasplus.eyeofbeholder.data.model.AWallOfForce
 import pl.pelotasplus.eyeofbeholder.data.model.Disintegration
@@ -582,7 +583,7 @@ class ViewConeDebugViewModel(
                     levels = champion.levels.map { it.level },
                     hitPoints = "${champion.hitPoints.current}/${champion.hitPoints.max}",
                     food = champion.food.value,
-                    armorClass = champion.armorClass.value,
+                    armorClass = world.armourClassOf(PartySlot(slot)).value,
                     carrying = champion.carrying.mapNotNull { world.item(it) }
                         .map { itemNames?.of(it, itemTypes, evenIfUnknown = true) ?: "item of type ${it.type}" },
                 )
@@ -4227,6 +4228,7 @@ class ViewConeDebugViewModel(
             charged = CarrySlot.BOTH_HANDS
                 .mapNotNull { hand -> world.running.chargeOn(sheet.slot, hand)?.let { hand to it.looksLike } }
                 .toMap(),
+            armourClass = world.armourClassOf(sheet.slot),
         )
     }
 
@@ -4725,7 +4727,15 @@ class ViewConeDebugViewModel(
 
         sayOf(waiting.caster) { SpellMessages.casts(it, waiting.spell.calledIt) }
 
-        _state.update { it.copy(game = settled) }
+        // A suit of conjured armour laid on somebody already better armoured
+        // is spent all the same and gone at once, and saying so is the only
+        // sign that it bought nothing.
+        val (after, wasted) = settled.armourThatStoppedHelpingDropped()
+        wasted.firstOrNull()?.spell?.holdsArmourClassAt?.let { held ->
+            say(SpellMessages.alreadyBetterArmoured(pointedAt.name, held.forSomeone(pointedAt.nimbleness)))
+        }
+
+        _state.update { it.copy(game = after) }
         spend(waiting.caster, waiting.spell, waiting.from)
         keepTheSpellsRunning()
 

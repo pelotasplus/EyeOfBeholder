@@ -171,7 +171,7 @@ class PlayField(
 
         when (sheet.page) {
             CharacterSheet.Page.BELONGINGS -> drawCarried(sheet.carrying, sheet.arrows, sheet.charged)
-            CharacterSheet.Page.STATS -> drawStats(sheet.champion)
+            CharacterSheet.Page.STATS -> drawStats(sheet.champion, sheet.armourClass)
         }
     }
 
@@ -179,7 +179,7 @@ class PlayField(
      * The second page: what the champion is, written over the figure and the
      * slots of the first, which are painted out to make room.
      */
-    private fun drawStats(champion: Champion) {
+    private fun drawStats(champion: Champion, armourClass: ArmorClass) {
         val font = font ?: return
 
         StatsPage.BLANKED.forEach { blanked ->
@@ -224,7 +224,7 @@ class PlayField(
             colour = StatsPage.LABEL_COLOUR,
         )
         write(
-            text = "${champion.armorClass.value}",
+            text = "${armourClass.value}",
             font = font,
             left = StatsPage.ARMOUR_CLASS_VALUE_LEFT,
             top = StatsPage.ARMOUR_CLASS_TOP,

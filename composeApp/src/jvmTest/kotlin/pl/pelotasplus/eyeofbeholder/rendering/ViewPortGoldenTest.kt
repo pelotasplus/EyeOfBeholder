@@ -1618,6 +1618,40 @@ class ViewPortGoldenTest {
         )
 
     /**
+     * The same page under a shield, which is the only place the spell can be
+     * seen to have done anything at all: the armour class on it reads four
+     * rather than the six the mage's robe is worth.
+     *
+     * The mage and not the dwarf, because the dwarf is in plate and a shield
+     * is a ceiling rather than a bonus — cast over him it would change the
+     * page not at all, and a picture of it would say nothing.
+     *
+     * The spell is really cast rather than the number being handed in, so
+     * what the page shows is the spell's own.
+     */
+    @Test
+    fun `a champion's stats under a shield`() =
+        checkGolden(
+            "character-sheet-stats-shielded",
+            sheetOver(
+                "LEVEL4.INF",
+                x = 15,
+                y = 11,
+                slot = THE_MAGE,
+                page = CharacterSheet.Page.STATS,
+                under = Spell.SHIELD,
+            ),
+        )
+
+    /** And the same page bare, so the two are read against each other. */
+    @Test
+    fun `the same champion's stats without one`() =
+        checkGolden(
+            "character-sheet-stats-mage",
+            sheetOver("LEVEL4.INF", x = 15, y = 11, slot = THE_MAGE, page = CharacterSheet.Page.STATS),
+        )
+
+    /**
      * Camp → Preferences, each line saying which way its setting stands.
      * Sounds is on and bar graphs off, so both readings show at once.
      */
@@ -2163,6 +2197,8 @@ class ViewPortGoldenTest {
         reading: OnAParchment? = null,
         /** Whether a detect magic is running, which draws what is magical blue. */
         magicShowing: Boolean = false,
+        /** And a spell really cast over that champion, for the ones that show on the page. */
+        under: Spell? = null,
     ): BufferedImage = runBlocking {
         val resources = ResourceRepositoryImpl()
         val cps = CpsRepositoryImpl(resources)
@@ -2173,7 +2209,14 @@ class ViewPortGoldenTest {
         val saved = OriginalSaveRepositoryImpl(resources)
             .loadOriginalSave(OriginalSaveRepositoryImpl.QUICK_START)
             .getOrThrow()
-        val world = GameState(party = saved.standing, items = saved.items)
+        val standing = GameState(
+            party = saved.standing,
+            items = saved.items,
+            champions = saved.party,
+        )
+        val world = under
+            ?.let { standing.spellBegunOn(it, PartySlot(slot), PartySlot(slot), casterLevel = 9) }
+            ?: standing
         val champion = saved.party[slot]
 
         val viewPort = repository.renderPosition(
@@ -2205,7 +2248,9 @@ class ViewPortGoldenTest {
                 page = page,
                 champion = champion,
                 carrying = champion.carrying.map { world.item(it) },
+                armourClass = world.armourClassOf(PartySlot(slot)),
             ),
+            framedYellow = { whom -> world.running.framedYellow(whom) },
             dialogue = when (reading) {
                 null -> null
 
@@ -2474,6 +2519,42 @@ class ViewPortGoldenTest {
                 y = 11,
                 cast = Spell.PRAYER,
                 sparks = SparksOverTheParty(frame = 12),
+            ),
+        )
+
+    /**
+     * A shield up over the champion who read it: their box is framed and the
+     * other five are not, which is the whole of what the spell can be seen to
+     * do from the panel.
+     *
+     * Really cast rather than the frame being asked for by slot, so that the
+     * picture says the spell reaches one box and no others.
+     */
+    @Test
+    fun `party panel with a shield up`() =
+        checkGolden(
+            "party-panel-shield-spell",
+            partyOver(level = "LEVEL4.INF", x = 15, y = 11, cast = Spell.SHIELD),
+        )
+
+    /**
+     * And the moment a suit of conjured armour is laid on somebody: the
+     * sparks of the casting over their portrait and nobody else's.
+     *
+     * Frozen at a frame rather than rendered from a clock, as the other
+     * casting is — these are the same thirty-two frames a spell over the
+     * whole party uses, shown over one box.
+     */
+    @Test
+    fun `party panel the moment a suit of armour is laid on`() =
+        checkGolden(
+            "party-panel-armour-laid-on",
+            partyOver(
+                level = "LEVEL4.INF",
+                x = 15,
+                y = 11,
+                cast = Spell.ARMOUR,
+                sparks = SparksOverTheParty(frame = 12, over = PartySlot(0)),
             ),
         )
 
@@ -3796,6 +3877,9 @@ class ViewPortGoldenTest {
          * what matters is that it is the same one every run, because a swirl
          * made from chance has no picture to be compared against.
          */
+        /** Which of the saved party wears little enough for a shield to be worth something. */
+        private const val THE_MAGE = 3
+
         private const val A_KNOWN_THROW = 20260919L
 
         private val ARROWS = ItemTypeId(16)

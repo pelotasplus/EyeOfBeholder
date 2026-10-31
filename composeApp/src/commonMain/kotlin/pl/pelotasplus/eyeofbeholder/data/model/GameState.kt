@@ -1731,6 +1731,48 @@ data class GameState(
         get() = champions.any { it.inTheParty } && champions.none { it.onTheirFeet }
 
     /**
+     * What [whose]'s armour class comes to with everything running over them
+     * counted, which is the number a blow is rolled against and the number
+     * the sheet shows.
+     *
+     * A ceiling over what they are wearing rather than a part of it, so
+     * nothing has to be worked out again when a spell begins or ends — and
+     * two spells are two ceilings rather than a sum, the better of them
+     * winning.
+     */
+    fun armourClassOf(whose: PartySlot): ArmorClass {
+        val who = championIn(whose) ?: return ArmorClass(0)
+        val held = running.holdingArmourClass(whose)
+        if (held.isEmpty()) return who.armorClass
+
+        val best = held.minOf { it.forSomeone(who.nimbleness).value }
+        return ArmorClass(
+            maxOf(minOf(who.armorClass.value, best), THE_BEST_ARMOUR_CLASS_THERE_IS),
+        )
+    }
+
+    /**
+     * The world with any spell that armours somebody dropped where it has
+     * stopped being worth anything, and the ones that were dropped.
+     *
+     * A suit of conjured armour no better than what its wearer has since put
+     * on is not a spell quietly doing nothing — it is a spell over, because
+     * the suit is what the spell is. Asked after anything that changes what
+     * a champion is wearing, and after anything that wears one through.
+     */
+    fun armourThatStoppedHelpingDropped(): Pair<GameState, List<RunningSpell>> {
+        val over = running.all.filter { running ->
+            if (!running.spell.endsWhereItWouldNotHelp) return@filter false
+            val held = running.spell.holdsArmourClassAt ?: return@filter false
+            val who = running.on?.let { championIn(it) } ?: return@filter true
+            who.armorClass.value <= held.forSomeone(who.nimbleness).value
+        }
+
+        if (over.isEmpty()) return this to emptyList()
+        return copy(running = running.without(over)) to over
+    }
+
+    /**
      * The world with one champion [by] hit points worse off.
      *
      * Nothing else happens to them here: going down at nothing left and being
@@ -1748,10 +1790,15 @@ data class GameState(
         val left = (who.hitPoints.current - by.points)
             .coerceAtLeast(Champion.BEYOND_RAISING)
 
+        // Every point they take wears through what armours them, whether or
+        // not it was what took the blow.
+        val (worn, _) = running.harmTaken(whose, by)
+
         return copy(
             champions = champions.toMutableList().also {
                 it[whose.index] = who.copy(hitPoints = who.hitPoints.copy(current = left))
             },
+            running = worn,
             // A second blow before the first has faded shows its own number
             // rather than the two added up.
             showingDamage = showingDamage.filterNot { it.whose == whose } +

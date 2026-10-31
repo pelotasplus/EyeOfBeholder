@@ -125,6 +125,45 @@ enum class Spell(
     val burnsTheSquareAhead: Boolean = false,
 
     /**
+     * What it holds whoever is under it at, for the spells that armour
+     * somebody rather than hurting something — see [ArmourHeldAt].
+     */
+    val holdsArmourClassAt: ArmourHeldAt? = null,
+
+    /**
+     * Whether it stops a magic missile dead — no roll, no harm, and the bolt
+     * spent on arriving.
+     *
+     * One spell does this and one bolt is stopped. A missile is otherwise
+     * the one thing in the game with no throw against it and nothing to
+     * shrug it off with, which is what makes the pair worth naming.
+     */
+    val stopsAMagicMissile: Boolean = false,
+
+    /**
+     * Whether it is over the moment it stops being worth anything — its
+     * wearer having put on better armour, or having been better armoured all
+     * along.
+     *
+     * Only the spell that conjures a suit, because the suit is what the
+     * spell is: there is nothing left of it once there is better. A shield
+     * is not armour and does not care what is worn under it.
+     */
+    val endsWhereItWouldNotHelp: Boolean = false,
+
+    /**
+     * Whether reading it again over one already running starts it afresh
+     * rather than being refused.
+     *
+     * The refusal is the usual answer and is what keeps a scroll from being
+     * spent on something already in force. Two spells are written without
+     * the check that produces it, so reading one again simply winds its
+     * clock back up — and a party who know that will do it before a door
+     * rather than after it.
+     */
+    val castAgainRatherThanRefused: Boolean = false,
+
+    /**
      * Whether it shuts off the square ahead of the party for a while — see
      * [WallsOfForce]. Refused where that square will not hold one.
      */
@@ -198,7 +237,23 @@ enum class Spell(
     /** What it does to the creature ahead it is laid on or loosed at — see [Wounds]. */
     val wounds: Wounding? = null,
 ) {
-    ARMOUR(1, "armor", TrackIndex(92)),
+    /**
+     * A suit of nothing, laid on whichever champion is pointed at. It holds
+     * them at six over their own nimbleness and is worn through by their
+     * being hit rather than by any clock, so it is eight points and another
+     * for every level of whoever read it — and nothing at all to somebody
+     * already better armoured than six.
+     */
+    ARMOUR(
+        1,
+        "armor",
+        TrackIndex(92),
+        settlesOn = SettlesOn.WHOEVER_IS_POINTED_AT,
+        lasts = HowLongASpellRuns.WornThroughByHarm(base = 8, perLevel = 1),
+        holdsArmourClassAt = ArmourHeldAt.OverTheirNimbleness(points = 6),
+        endsWhereItWouldNotHelp = true,
+        framesTheBoxYellow = true,
+    ),
     BURNING_HANDS(2, "burning hands", TrackIndex(87), burnsTheSquareAhead = true),
     DETECT_MAGIC(
         3,
@@ -218,7 +273,23 @@ enum class Spell(
             hurting = setOf(HarmKind.MAGIC),
         ),
     ),
-    SHIELD(5, "shield", TrackIndex(92)),
+    /**
+     * A wall in front of the reader alone, holding them at four for two and
+     * a half minutes a level — and stopping a magic missile dead, which is
+     * the only thing in the game that stops one at all.
+     */
+    SHIELD(
+        5,
+        "shield",
+        TrackIndex(92),
+        sparksOverTheCaster = true,
+        settlesOn = SettlesOn.WHOEVER_CAST_IT,
+        lasts = SpellLasts(base = 0, perLevel = 5),
+        holdsArmourClassAt = ArmourHeldAt.At(ArmorClass(4)),
+        stopsAMagicMissile = true,
+        castAgainRatherThanRefused = true,
+        framesTheBoxYellow = true,
+    ),
     SHOCKING_GRASP(
         6,
         "shocking grasp",

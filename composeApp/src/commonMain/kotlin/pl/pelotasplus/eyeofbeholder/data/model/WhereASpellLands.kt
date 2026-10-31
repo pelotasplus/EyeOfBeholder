@@ -59,7 +59,7 @@ class WhereASpellLands(
             oneOfThemTakes(world, from, A_DIE_OF_SIX, times = castAt, against = SavingThrow.A_SPELL)
 
         MonsterSpell.MAGIC_MISSILE ->
-            oneOfThemTakes(world, from, A_MISSILE, times = missiles, against = null)
+            oneOfThemTakes(world, from, A_MISSILE, times = missiles, against = null, stoppedBy = Spell::stopsAMagicMissile)
 
         else -> Landed(world)
     }
@@ -125,7 +125,10 @@ class WhereASpellLands(
      * the back is reached by something that picks a single champion.
      *
      * [against] is the throw they get, or none: a missile cannot be thrown off
-     * at all, and is the only thing in the game that cannot.
+     * at all, and is the only thing in the game that cannot. [stoppedBy] is
+     * the other side of that — the one spell that stops a missile outright,
+     * asked of whoever it picked rather than of the party, so standing behind
+     * somebody else's shield is no shelter.
      */
     private fun oneOfThemTakes(
         world: GameState,
@@ -133,6 +136,7 @@ class WhereASpellLands(
         dealing: DamageDice,
         times: Int,
         against: SavingThrow?,
+        stoppedBy: (Spell) -> Boolean = { false },
     ): Landed {
         val quarter = from.onAQuarter().asSeenFacing(world.party.facing) ?: return Landed(world)
         var slot = quarter.ordinal
@@ -145,6 +149,8 @@ class WhereASpellLands(
         }
 
         val who = world.champions.getOrNull(slot)?.takeIf { it.inTheParty } ?: return Landed(world)
+
+        if (world.running.over(PartySlot(slot)).any { stoppedBy(it.spell) }) return Landed(world)
 
         val rolled = dice.roll(dealing.times, dealing.pips, dealing.base) * times
         val taken = if (against != null && who.saves(against, dice)) rolled / 2 else rolled

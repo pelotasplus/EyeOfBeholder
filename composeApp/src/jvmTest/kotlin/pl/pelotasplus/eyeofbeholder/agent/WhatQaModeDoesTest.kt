@@ -64,13 +64,20 @@ class WhatQaModeDoesTest {
         val field = field("LEVEL12.INF", Location(19, 15), Direction.SOUTH)
         val before = Diagnostics.since(0).lastOrNull()?.number ?: 0
 
-        assertNull(field.viewModel.setUp(QaSetup.GiveSpell(champion = 3, spell = "armor", ready = true)))
+        assertNull(field.viewModel.setUp(QaSetup.GiveSpell(champion = 3, spell = "vampiric touch", ready = true)))
         assertNull(field.viewModel.act(AgentAction.UseHand(champion = 3, hand = 1)))
         field.until("the book") { field.viewModel.observation()?.book != null }
-        assertEquals("Armor", field.viewModel.observation()?.book?.lines?.first())
+
+        // It is a third-level spell and the book opens on the first, because
+        // every first-level spell has something written for it now: finding
+        // one that has not means turning to where it is.
+        assertNull(field.viewModel.act(AgentAction.BookTab(2)))
+        field.until("the third page") {
+            field.viewModel.observation()?.book?.lines?.firstOrNull() == "Vampiric Touch"
+        }
 
         assertNull(field.viewModel.act(AgentAction.BookLine(0)))
-        field.until("the note") { Diagnostics.since(before).any { "armor" in it.said } }
+        field.until("the note") { Diagnostics.since(before).any { "vampiric touch" in it.said } }
     }
 
     @Test

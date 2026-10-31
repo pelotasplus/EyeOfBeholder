@@ -17,6 +17,20 @@ sealed interface HowLongASpellRuns {
      * what makes such a spell worth casting, and the whole of its cost.
      */
     data object UntilSomethingBreaksIt : HowLongASpellRuns
+
+    /**
+     * No clock either, and an end all the same: it is worn through by
+     * whoever is under it being hurt.
+     *
+     * Every point they take counts it down, not the points it turned aside,
+     * so being hit for less because of it does not make it last longer. A
+     * party who stand still keep it for ever and a party in a fight have it
+     * for about one fight, which is a different thing from a duration and
+     * cannot be said as one.
+     */
+    data class WornThroughByHarm(val base: Int, val perLevel: Int) : HowLongASpellRuns {
+        fun castBySomeoneOfLevel(level: Int) = base + perLevel * level
+    }
 }
 
 /**
@@ -98,6 +112,13 @@ data class RunningSpell(
 
     /** The hand it has charged, for a spell that charges one — see [ChargedHand]. */
     val charged: ChargedHand? = null,
+
+    /**
+     * How much more harm whoever is under it can take before it gives out,
+     * for the one spell that ends that way — see
+     * [HowLongASpellRuns.WornThroughByHarm]. Null for every other.
+     */
+    val holdsForAnother: Int? = null,
 )
 
 /**
@@ -216,26 +237,62 @@ data class SpellsRunning(val all: List<RunningSpell> = emptyList()) {
         lent: Int = 0,
         charged: ChargedHand? = null,
     ): SpellsRunning? {
-        if (on == null && isRunning(spell)) return null
-        if (on != null && isOn(spell, on)) return null
+        // One written without the check that refuses simply replaces what was
+        // there, which from the party's side is a clock wound back up.
+        val standing =
+            if (!spell.castAgainRatherThanRefused) all
+            else all.filterNot { it.spell == spell && it.on == on }
 
-        val ticks = when (val lasts = spell.lasts) {
-            null -> return null
-            HowLongASpellRuns.UntilSomethingBreaksIt -> null
-            is SpellLasts -> lasts.castBySomeoneOfLevel(casterLevel).value
-        }
+        if (on == null && standing.any { it.spell == spell && it.on == null }) return null
+        if (on != null && standing.any { it.spell == spell && it.on == on }) return null
+
+        val lasts = spell.lasts ?: return null
 
         return SpellsRunning(
-            all + RunningSpell(
+            standing + RunningSpell(
                 spell = spell,
                 castBy = by,
-                ticksLeft = ticks,
+                ticksLeft = (lasts as? SpellLasts)?.castBySomeoneOfLevel(casterLevel)?.value,
                 on = on,
                 lent = lent,
                 charged = charged,
+                holdsForAnother = (lasts as? HowLongASpellRuns.WornThroughByHarm)
+                    ?.castBySomeoneOfLevel(casterLevel),
             )
         )
     }
+
+    /**
+     * What is left once [whom] has taken [by] points, and which spells on
+     * them that wore through.
+     *
+     * Only the ones worn through by harm are touched. A clock is not hurried
+     * by its bearer being hit, and nothing else on them notices at all.
+     */
+    fun harmTaken(whom: PartySlot, by: Damage): Pair<SpellsRunning, List<RunningSpell>> {
+        if (by.points <= 0) return this to emptyList()
+
+        val worn = all.map {
+            if (it.on != whom || it.holdsForAnother == null) it
+            else it.copy(holdsForAnother = it.holdsForAnother - by.points)
+        }
+        val (left, through) = worn.partition { it.holdsForAnother == null || it.holdsForAnother > 0 }
+        return SpellsRunning(left) to through
+    }
+
+    /**
+     * Every armour class the spells on [whom] hold them at.
+     *
+     * A list rather than one answer, because two of them are two caps and
+     * not a sum: whoever reads a shield over a suit of conjured armour is
+     * held at the better of the two and no better than that.
+     */
+    fun holdingArmourClass(whom: PartySlot): List<ArmourHeldAt> =
+        over(whom).mapNotNull { it.spell.holdsArmourClassAt }
+
+    /** What is left once the spells in [these] have been taken off. */
+    fun without(these: List<RunningSpell>): SpellsRunning =
+        SpellsRunning(all.filterNot { it in these })
 
     /** The charge on [whose]'s [hand], if a spell has charged it. */
     fun chargeOn(whose: PartySlot, hand: CarrySlot): ChargedHand? =

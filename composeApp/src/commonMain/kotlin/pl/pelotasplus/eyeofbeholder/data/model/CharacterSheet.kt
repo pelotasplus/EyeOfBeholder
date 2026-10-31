@@ -244,6 +244,13 @@ data class OpenSheet(
     val arrows: Int = 0,
     /** How the charge in each charged hand looks, though nothing is in it. */
     val charged: Map<CarrySlot, ItemIconId> = emptyMap(),
+
+    /**
+     * What their armour class comes to with what is running over them
+     * counted, which is not what their gear alone says — see
+     * [GameState.armourClassOf].
+     */
+    val armourClass: ArmorClass = champion.armorClass,
 )
 
 /** What a click on an open [CharacterSheet] asks for. */

@@ -325,4 +325,12 @@ object SpellMessages {
 
     /** And nothing of them left for it to help. */
     fun ofNoUseTo(whose: String) = "The spell has no effect on $whose."
+
+    /**
+     * Said when a suit of conjured armour is laid on somebody already better
+     * armoured than it: the spell is spent all the same, and this is the
+     * only warning that it bought nothing.
+     */
+    fun alreadyBetterArmoured(whose: String, than: ArmorClass) =
+        "$whose already has an armor class better than AC ${than.value}."
 }
