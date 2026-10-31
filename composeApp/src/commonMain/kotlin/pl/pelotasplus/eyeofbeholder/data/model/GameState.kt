@@ -452,6 +452,10 @@ data class GameState(
                     was
                 }
             },
+            running = world.running.nothingLeftOn(whose),
+            recovering = world.recovering.filterNot { it.whose == whose },
+            showingDamage = world.showingDamage.filterNot { it.whose == whose },
+            holding = world.holding.filterNot { it.whose == whose },
         )
 
         return emptied.championsSwapped(whose, emptied.whereTheGapGoes(whose))
@@ -500,6 +504,12 @@ data class GameState(
         val first = champions.getOrNull(one.index) ?: return this
         val second = champions.getOrNull(other.index) ?: return this
 
+        fun moved(slot: PartySlot) = when (slot) {
+            one -> other
+            other -> one
+            else -> slot
+        }
+
         return copy(
             champions = champions.mapIndexed { slot, was ->
                 when (slot) {
@@ -508,6 +518,12 @@ data class GameState(
                     else -> was
                 }
             },
+            running = SpellsRunning(
+                running.all.map { it.copy(castBy = moved(it.castBy), on = it.on?.let(::moved)) },
+            ),
+            recovering = recovering.map { it.copy(whose = moved(it.whose)) },
+            showingDamage = showingDamage.map { it.copy(whose = moved(it.whose)) },
+            holding = holding.map { it.copy(whose = moved(it.whose)) },
         )
     }
 
