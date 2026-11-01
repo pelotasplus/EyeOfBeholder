@@ -210,6 +210,8 @@ dependencies {
 // The game data is not in the repository, so a checkout without it can only
 // run what does not read it. See NeedsGameData.
 tasks.named<Test>("jvmTest") {
+    // On the default 512 MB the suite runs out of memory, and can hang rather than fail.
+    maxHeapSize = "3g"
     if (providers.gradleProperty("withoutGameData").isPresent) {
         useJUnit { excludeCategories("pl.pelotasplus.eyeofbeholder.NeedsGameData") }
     }
