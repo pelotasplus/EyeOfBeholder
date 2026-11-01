@@ -241,6 +241,9 @@ enum class Spell(
     /** Whether it frightens off everything on the square ahead — see [Frightening]. */
     val frightensWhatIsAhead: Boolean = false,
 
+    /** Whether it asks the undead on the square ahead to turn — see [TurningUndead]. */
+    val turnsUndead: Boolean = false,
+
     /**
      * What it puts into a hand, where it puts anything — see [HandCharge].
      * Casting it wants the caster's other hand empty, and only one hand of
@@ -723,7 +726,7 @@ enum class Spell(
         TrackIndex(91),
         laidOn = LaidOnAChampion.Mends(Mending.TwiceWhatTheCasterHasLearnt),
     ),
-    TURN_UNDEAD(62, "turn undead", TrackIndex(103), throwsSparks = true),
+    TURN_UNDEAD(62, "turn undead", TrackIndex(103), throwsSparks = true, turnsUndead = true),
 
     // And the seven nobody learns. They have no names in the game because no
     // player is ever shown one.

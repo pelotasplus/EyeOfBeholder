@@ -98,6 +98,7 @@ data class MonsterInstance(
      * nowhere to go still spends one standing where it is.
      */
     val afraidFor: Int = 0,
+    val askedToTurn: Boolean = false,
     /**
      * Whether it has been roused. The pair on level 5 stand talking until
      * somebody hits one of them; a monster nobody has provoked is scenery.
@@ -263,6 +264,10 @@ data class MonsterInstance(
         return copy(afraidFor = WALKS_AFRAID, provoked = true, direction = away)
     }
 
+    /** Scared off for longer, and hunting whatever it was doing before once that ends. */
+    fun turnedBack(party: Location): MonsterInstance =
+        scaredOff(party).copy(afraidFor = WALKS_TURNED, mode = MonsterMode.HUNTING.asWritten)
+
     /** The same creature a walk closer to not being afraid. */
     fun aWalkLessAfraid() = copy(afraidFor = (afraidFor - 1).coerceAtLeast(0))
 
@@ -378,6 +383,7 @@ data class MonsterInstance(
          * back on, so it spends one fewer getting away. Transcribed.
          */
         const val WALKS_AFRAID = 20
+        const val WALKS_TURNED = 40
 
         /** Four eighths of a turn: facing the other way. */
         private const val HALF_A_TURN = 4

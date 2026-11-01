@@ -64,6 +64,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.WhoDoesIt
 import pl.pelotasplus.eyeofbeholder.data.model.WhoDoesTheWork
 import pl.pelotasplus.eyeofbeholder.data.model.FleshToStone
 import pl.pelotasplus.eyeofbeholder.data.model.Frightening
+import pl.pelotasplus.eyeofbeholder.data.model.TurningUndead
 import pl.pelotasplus.eyeofbeholder.data.model.THROWN_CPS
 import pl.pelotasplus.eyeofbeholder.data.model.HandRecovering
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterInstance
@@ -696,10 +697,16 @@ class ViewConeDebugViewModel(
             }
 
             is QaSetup.SpawnMonster -> {
-                val placedHere = inf.monsterInstances.filter { it.subLevel == now.subLevel }
-                fun looksOf(monster: MonsterInstance) = sublevel.monsterGfx.getOrNull(monster.gfxIndex)?.name
-                val template = placedHere.firstOrNull { looksOf(it).equals(setup.looksLike, ignoreCase = true) }
-                    ?: return "Nothing on this level looks like \"${setup.looksLike}\"; it has ${placedHere.mapNotNull(::looksOf).distinct()}."
+                val placed = inf.monsterInstances.filter { it.subLevel == now.subLevel }.map { it.type to it.gfxIndex }
+                // Some kinds are never placed and only ever arrive by a script,
+                // and a level's script is shared by sublevels with their own kinds.
+                val conjured = inf.script.map { it.token }.filterIsInstance<CreateMonster>()
+                    .filter { spawned -> sublevel.monsters.any { it.id == spawned.type.value } }
+                    .map { it.type to it.gfxIndex }
+                val known = placed + conjured
+                fun looksOf(gfx: Int) = sublevel.monsterGfx.getOrNull(gfx)?.name
+                val (type, gfxIndex) = known.firstOrNull { looksOf(it.second).equals(setup.looksLike, ignoreCase = true) }
+                    ?: return "Nothing on this level looks like \"${setup.looksLike}\"; it has ${known.mapNotNull { looksOf(it.second) }.distinct()}."
 
                 var at = world.party.position
                 repeat(setup.ahead.coerceAtLeast(1)) { at = world.party.facing.oneStepFrom(at) }
@@ -708,8 +715,8 @@ class ViewConeDebugViewModel(
                     location = at,
                     place = SquarePlace.MIDDLE,
                     direction = world.party.facing.turnedBy(HALF_TURN),
-                    type = template.type,
-                    gfxIndex = template.gfxIndex,
+                    type = type,
+                    gfxIndex = gfxIndex,
                     mode = MonsterMode.HUNTING.asWritten,
                     pause = 0,
                     weapon = 0,
@@ -3511,6 +3518,21 @@ class ViewConeDebugViewModel(
         keepTheFightGoing()
     }
 
+    private fun turnTheUndeadAhead(casterLevel: Int) {
+        val inf = _state.value.inf ?: return
+        val sublevel = inf.subLevels.getOrNull(_state.value.subLevel) ?: return
+
+        val cast = TurningUndead(kinds = sublevel.monsters, level = levelNumber(inf.name))
+            .castAt(_state.value.game, casterLevel)
+
+        _state.update { it.copy(game = cast.world) }
+        if (!cast.reachedAny) return
+
+        viewModelScope.launch { playTrack(UNDEAD_TURNED) }
+        renderViewPort()
+        keepTheFightGoing()
+    }
+
     /** The square the party are looking at, which is the only one aimed at. */
     private fun theSquareAhead(): Location =
         _state.value.game.party.facing.oneStepFrom(_state.value.game.party.position)
@@ -4659,6 +4681,8 @@ class ViewConeDebugViewModel(
                 }
             } else if (spell.frightensWhatIsAhead) {
                 frightenWhatIsAhead()
+            } else if (spell.turnsUndead) {
+                turnTheUndeadAhead(level)
             } else if (spell.wounds != null) {
                 woundWhatIsAhead(whose, spell.wounds)
             } else if (spell.throws == null) {
@@ -6064,6 +6088,7 @@ class ViewConeDebugViewModel(
 
         /** Played under a line that refuses something, or says it has ended. */
         private val WARNING = TrackIndex(79)
+        private val UNDEAD_TURNED = TrackIndex(95)
         private val PUT_DOWN = TrackIndex(22)
 
         /** The blast a mindflayer throws, which is all there is to notice of it. */

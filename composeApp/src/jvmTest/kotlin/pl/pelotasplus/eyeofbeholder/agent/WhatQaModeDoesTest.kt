@@ -6,7 +6,10 @@ import kotlinx.coroutines.withTimeout
 import org.junit.experimental.categories.Category
 import pl.pelotasplus.eyeofbeholder.NeedsGameData
 import pl.pelotasplus.eyeofbeholder.data.ThePlayField
+import pl.pelotasplus.eyeofbeholder.data.model.Dice
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
+import pl.pelotasplus.eyeofbeholder.data.model.ThrownSpell
+import pl.pelotasplus.eyeofbeholder.data.model.TurningUndead
 import pl.pelotasplus.eyeofbeholder.data.model.Holding
 import pl.pelotasplus.eyeofbeholder.data.model.Location
 import pl.pelotasplus.eyeofbeholder.data.model.PartySlot
@@ -109,11 +112,50 @@ class WhatQaModeDoesTest {
         }
     }
 
-    /**
-     * A slow poison read through the whole of a casting: turned away from
-     * somebody with no poison and the scroll kept for the next try, then
-     * settled on the poisoned mage.
-     */
+    @Test
+    fun `a turn undead read in play with nothing ahead has been written`() = runBlocking {
+        val field = field("LEVEL12.INF", Location(19, 15), Direction.SOUTH)
+        delay(THE_OPENING)
+        val before = Diagnostics.since(0).lastOrNull()?.number ?: 0
+
+        field.read(Spell.TURN_UNDEAD)
+
+        field.until("the words") { field.viewModel.observation()?.messages?.any { "turn undead" in it } == true }
+        assertTrue(Diagnostics.since(before).none { Spell.TURN_UNDEAD.calledIt in it.said })
+    }
+
+    /** The floor only ever conjures these, so the spawn has to find one in its scripts. */
+    @Test
+    fun `a turn undead read in play reaches a real skeleton warrior`() = runBlocking {
+        val field = field("LEVEL2.INF", Location(12, 3), Direction.NORTH)
+        delay(THE_OPENING)
+        assertNull(field.viewModel.setUp(QaSetup.SpawnMonster(looksLike = "skelwar")))
+
+        field.read(Spell.TURN_UNDEAD)
+
+        field.until("the skeleton to be asked") {
+            field.viewModel.state.value.game.monsters.any { it.location == Location(12, 2) && it.askedToTurn }
+        }
+    }
+
+    /** Resistance 8 at the level a scroll reads at, 9, needs a 7. */
+    @Test
+    fun `a real skeleton warrior turns on the throw its own numbers ask for`() = runBlocking {
+        val field = field("LEVEL2.INF", Location(12, 3), Direction.NORTH)
+        delay(THE_OPENING)
+        assertNull(field.viewModel.setUp(QaSetup.SpawnMonster(looksLike = "skelwar")))
+
+        val state = field.viewModel.state.value
+        val kinds = requireNotNull(state.inf).subLevels[state.subLevel].monsters
+        fun castThrowing(thrown: Int) = TurningUndead(kinds, level = 2, dice = Dice { _, _, _ -> thrown })
+            .castAt(state.game, ThrownSpell.AS_READ_FROM_A_SCROLL)
+
+        assertFalse(castThrowing(6).reachedAny)
+        val turned = castThrowing(7)
+        assertTrue(turned.reachedAny)
+        assertEquals(40, turned.world.monsters.single { it.location == Location(12, 2) }.afraidFor)
+    }
+
     @Test
     fun `a remove paralysis read in play frees whoever is held`() = runBlocking {
         val field = field("LEVEL12.INF", Location(19, 15), Direction.SOUTH)
@@ -133,6 +175,11 @@ class WhatQaModeDoesTest {
         )
     }
 
+    /**
+     * A slow poison read through the whole of a casting: turned away from
+     * somebody with no poison and the scroll kept for the next try, then
+     * settled on the poisoned mage.
+     */
     @Test
     fun `a slow poison is refused the healthy and settles on the poisoned`() = runBlocking {
         val field = field("LEVEL12.INF", Location(19, 15), Direction.SOUTH)

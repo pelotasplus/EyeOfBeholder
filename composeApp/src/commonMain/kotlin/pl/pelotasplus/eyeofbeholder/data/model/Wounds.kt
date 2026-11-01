@@ -104,7 +104,7 @@ class Wounds(
         return Dealt(hurt(roused, found, dealt), CameTo.LANDED)
     }
 
-    private fun hurt(world: GameState, target: MonsterInstance, dealt: Damage): GameState {
+    fun hurt(world: GameState, target: MonsterInstance, dealt: Damage): GameState {
         if (dealt.points <= 0) return world
         val after = world.monsterHurt(target.index, dealt, kinds, null, dice)
         val left = after.monsters.firstOrNull { it.index == target.index }

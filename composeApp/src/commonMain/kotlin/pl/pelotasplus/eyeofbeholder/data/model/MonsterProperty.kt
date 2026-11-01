@@ -10,7 +10,6 @@ package pl.pelotasplus.eyeofbeholder.data.model
  * - Attack roll: d20 + hitChance ≥ target's AC → hit
  * - Damage: roll [dmgDc] dice (up to 3 attack types per round)
  * - HP: roll hpDcTimes d hpDcPips + hpDcBase at spawn
- * - Turn Undead: if [tuResist] < cleric's turn check → monster is turned/destroyed
  *
  * ## Remote attacks
  * Some monsters can throw projectiles (e.g. a kobold throwing darts).
@@ -65,6 +64,8 @@ data class MonsterProperty(
     val dmgModifierEvade: Int,
     val decorations: List<MonsterDecorationSetId>,
 ) {
+    val isUndead: Boolean get() = typeFlags and TYPE_UNDEAD != 0
+
     /**
      * Bigger than a champion, which is what says which of a weapon's two sets
      * of damage dice it is struck with — a spear does more to a giant than to
@@ -184,6 +185,7 @@ data class MonsterProperty(
         }
 
     private companion object {
+        const val TYPE_UNDEAD = 0x04
         const val LARGE = 0x01
         const val CHANGES_RATHER_THAN_DYING = 0x04
         const val POISONS = 0x10
