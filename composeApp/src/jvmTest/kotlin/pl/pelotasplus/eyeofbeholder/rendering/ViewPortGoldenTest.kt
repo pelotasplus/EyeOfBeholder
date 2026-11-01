@@ -2382,6 +2382,80 @@ class ViewPortGoldenTest {
             ),
         )
 
+    @Test
+    fun `level5 the plaque that raises the dead`() =
+        checkGolden("level5-raising-plaque", "LEVEL5.INF", x = 2, y = 2, direction = Direction.WEST)
+
+    /** The dead and the bones share one list, so more than two names go into the grid. */
+    @Test
+    fun `dialogue asking who the plaque should raise`() =
+        checkGolden(
+            "dialogue-who-to-raise",
+            dialogueOver(
+                level = "LEVEL5.INF", x = 2, y = 2, direction = Direction.WEST,
+                message = WHO_TO_RAISE,
+                buttons = listOf("Laurann", "Shorn", "San-raal", NpcMeeting.ABORT),
+                withTheParty = true,
+            ),
+        )
+
+    /** Five dead and all three sets of bones the dungeon holds: the most it can ever ask. */
+    @Test
+    fun `dialogue asking who the plaque should raise at its longest`() =
+        checkGolden(
+            "dialogue-who-to-raise-longest",
+            dialogueOver(
+                level = "LEVEL5.INF", x = 2, y = 2, direction = Direction.WEST,
+                message = WHO_TO_RAISE,
+                buttons = listOf(
+                    "Pericles", "\"Stumpy\"", "Wolfspirit",
+                    "Laurann", "Insal", "Shorn",
+                    "San-raal", "Amber", NpcMeeting.ABORT,
+                ),
+                withTheParty = true,
+            ),
+        )
+
+    @Test
+    fun `dialogue asking who the plaque should raise with nobody to raise`() =
+        checkGolden(
+            "dialogue-who-to-raise-nobody",
+            dialogueOver(
+                level = "LEVEL5.INF", x = 2, y = 2, direction = Direction.WEST,
+                message = WHO_TO_RAISE,
+                buttons = listOf(NpcMeeting.ABORT),
+                withTheParty = true,
+            ),
+        )
+
+    @Test
+    fun `party panel with San-raal raised from his bones`() =
+        checkGolden(
+            "party-panel-joined-san-raal",
+            partyOver(level = "LEVEL5.INF", x = 2, y = 2, joinedBy = NpcMeeting.joiningAs(NpcId(3))),
+        )
+
+    @Test
+    fun `party panel with Amber raised from her bones`() =
+        checkGolden(
+            "party-panel-joined-amber",
+            partyOver(level = "LEVEL5.INF", x = 2, y = 2, joinedBy = NpcMeeting.joiningAs(NpcId(5))),
+        )
+
+    @Test
+    fun `party panel with a champion past raising`() =
+        checkGolden(
+            "party-panel-past-raising",
+            partyOver(level = "LEVEL5.INF", x = 2, y = 2, hurtTo = listOf(50, Champion.BEYOND_RAISING, 50, 50)),
+        )
+
+    @Test
+    fun `party panel with that champion raised`() =
+        checkGolden(
+            "party-panel-raised",
+            partyOver(level = "LEVEL5.INF", x = 2, y = 2, hurtTo = listOf(50, Champion.RAISED_WITH, 50, 50)),
+        )
+
     /**
      * The three ways a champion is shown: on their feet, down under a grid,
      * and past raising with another picture in place of the face. The rest of
@@ -3409,6 +3483,7 @@ class ViewPortGoldenTest {
         waitsToBeRead: Boolean = false,
         readOff: DialogueScene.ReadOff.Written = DialogueScene.ReadOff.TheStripBelow,
         subLevel: Int = 0,
+        withTheParty: Boolean = false,
     ): BufferedImage = runBlocking {
         val resources = ResourceRepositoryImpl()
         val cps = CpsRepositoryImpl(resources)
@@ -3434,14 +3509,25 @@ class ViewPortGoldenTest {
             ?: message?.let { inf.message(MessageId(it)) }
             ?: ""
 
+        val saved = if (!withTheParty) null else OriginalSaveRepositoryImpl(resources)
+            .loadOriginalSave(OriginalSaveRepositoryImpl.QUICK_START)
+            .getOrThrow()
+        val world = saved?.let { GameState(party = it.standing, items = it.items) }
+
         PlayField(
             background = cps.loadCps("PLAYFLD.CPS").getOrThrow(),
             decorations = cps.loadCps("DECORATE.CPS").getOrThrow(),
             palette = sublevel.palette,
             font = font,
+            itemIcons = if (withTheParty) cps.loadCps("ITEMICN.CPS").getOrThrow() else null,
+            itemTypes = if (withTheParty) ItemTypesRepositoryImpl(resources).loadItemTypes().getOrThrow() else null,
         ).render(
             viewPort = viewPort,
             direction = Direction.NORTH,
+            party = saved?.party.orEmpty(),
+            portraits = if (withTheParty) cps.loadCps("CHARGENA.CPS").getOrThrow() else null,
+            metPortraits = if (withTheParty) cps.loadCps(NpcMeeting.FACES).getOrThrow() else null,
+            carrying = { slot -> world?.item(slot) },
             dialogue = DialogueScene.layout(
                 frame = cps.loadCps("BORDER.CPS").getOrThrow(),
                 portrait = picture?.let {
@@ -3988,6 +4074,9 @@ class ViewPortGoldenTest {
     }
 
     companion object {
+        /** The fifth floor's line asking who the plaque should bring back. */
+        private const val WHO_TO_RAISE = 28
+
         /** Render the last frame a script drew rather than its first. */
         private const val LAST_FRAME = -1
 

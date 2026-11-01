@@ -131,6 +131,14 @@ data class NpcMeeting(
             else -> null
         }
 
+        /** Who each of the six is, should they come along or be raised from their bones. */
+        fun joiningAs(npc: NpcId): Champion? = when (npc) {
+            SAN_RAAL_IS -> SAN_RAAL
+            TANGLOR_IS -> TANGLOR
+            AMBER_IS -> AMBER
+            else -> called(npc)?.joiningAs
+        }
+
         /** The one bit of a champion's flag word that says they are here. */
         private const val IN_THE_PARTY = 0x01
 
@@ -330,6 +338,62 @@ data class NpcMeeting(
 
         /** Which of the six he is, which is how the opcode names him. */
         val TANGLOR_IS = NpcId(4)
+        val SAN_RAAL_IS = NpcId(3)
+        val AMBER_IS = NpcId(5)
+
+        /** Met only as bones. The spell words are data, each bit a line of the book. */
+        private val SAN_RAAL = Champion(
+            name = "San-raal",
+            portrait = PortraitId(-4),
+            abilities = Abilities(
+                strength = Ability(current = 11, max = 11),
+                strengthPercentile = Ability(current = 0, max = 0),
+                intelligence = Ability(current = 18, max = 18),
+                wisdom = Ability(current = 13, max = 13),
+                dexterity = Ability(current = 14, max = 14),
+                constitution = Ability(current = 16, max = 16),
+                charisma = Ability(current = 9, max = 9),
+            ),
+            hitPoints = HitPoints(current = 28, max = 28),
+            armorClass = ArmorClass(10),
+            food = Food(100),
+            race = Race.ELF,
+            sex = Sex.MALE,
+            characterClass = CharacterClass.MAGE,
+            alignment = Alignment.CHAOTIC_NEUTRAL,
+            levels = listOf(ClassLevel(level = 8, experience = XpPoints(97008))),
+            carrying = CarrySlot.NOTHING_IN_ANY,
+            flags = ChampionFlags(IN_THE_PARTY),
+            knownMageSpells = mageSpellsWrittenIn(0x096B4566L),
+        )
+
+        private val AMBER = Champion(
+            name = "Amber",
+            portrait = PortraitId(-6),
+            abilities = Abilities(
+                strength = Ability(current = 14, max = 14),
+                strengthPercentile = Ability(current = 0, max = 0),
+                intelligence = Ability(current = 17, max = 17),
+                wisdom = Ability(current = 12, max = 12),
+                dexterity = Ability(current = 18, max = 18),
+                constitution = Ability(current = 9, max = 9),
+                charisma = Ability(current = 17, max = 17),
+            ),
+            hitPoints = HitPoints(current = 36, max = 36),
+            armorClass = ArmorClass(10),
+            food = Food(100),
+            race = Race.ELF,
+            sex = Sex.FEMALE,
+            characterClass = CharacterClass.THIEF_MAGE,
+            alignment = Alignment.NEUTRAL_GOOD,
+            levels = listOf(
+                ClassLevel(level = 7, experience = XpPoints(64230)),
+                ClassLevel(level = 7, experience = XpPoints(64230)),
+            ),
+            carrying = CarrySlot.NOTHING_IN_ANY,
+            flags = ChampionFlags(IN_THE_PARTY),
+            knownMageSpells = mageSpellsWrittenIn(0x00294566L),
+        )
 
         /** The sheet every one of them is cut from while they speak. */
         const val SHEET = "OUTTAKE.CPS"

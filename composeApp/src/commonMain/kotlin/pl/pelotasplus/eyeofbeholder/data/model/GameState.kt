@@ -543,15 +543,22 @@ data class GameState(
         ).withoutBonesOf(whose)
     }
 
+    /** Whose bones the party have with them: each champion's pack in turn, then the hand. */
+    val bonesCarried: List<NpcId>
+        get() = heldByTheParty
+            .mapNotNull { slot -> item(slot)?.takeIf { it.exists && it.type == BONES } }
+            .map { NpcId(it.value - 1) }
+
+    private val heldByTheParty: List<ItemIndex>
+        get() = champions.filter { it.inTheParty }.flatMap { it.carrying } + inHand
+
     /**
      * A pile of bones knows whose it is by the number that person is, plus
      * one. Only what the party are carrying is let go of: bones of theirs
      * lying somewhere in the dungeon are nothing to do with the party.
      */
-    private fun withoutBonesOf(whose: NpcId): GameState {
-        val carried = champions.flatMap { it.carrying }.toSet() + inHand
-
-        val theirs = carried
+    fun withoutBonesOf(whose: NpcId): GameState {
+        val theirs = heldByTheParty
             .filter { slot ->
                 item(slot)?.let {
                     it.exists && it.type == BONES && it.value == whose.value + 1

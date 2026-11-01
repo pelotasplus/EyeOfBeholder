@@ -852,6 +852,12 @@ class LevelScriptRunner(
 
                 SpecialEvent.CharacterLevelGain -> state = aLevelGiven(state, dialogAnswer)
 
+                SpecialEvent.ResurrectionSelectDialogue -> {
+                    val (raised, answer) = someoneRaised(state, stage)
+                    state = raised
+                    dialogAnswer = answer
+                }
+
                 // The two coins the fifteenth floor's giant asks for. Which
                 // two is not in the script: the instruction says only "take
                 // what you came for", and the pair is written into the engine.
@@ -1194,6 +1200,48 @@ class LevelScriptRunner(
 
         val chosen = standing.getOrNull(answer.number - 1) ?: return DialogAnswer(NOBODY_CHOSE)
         return DialogAnswer(chosen.first)
+    }
+
+    /**
+     * The party asked who to bring back: the dead among them, then whoever's
+     * bones they carry, then a way out. Unlike the spell it refuses no elf.
+     *
+     * Backing out of dropping somebody to make room still answers
+     * [SOMEBODY_RAISED], so a limited use of this is spent even though nobody
+     * came back. Bones of somebody already standing with the party are not
+     * offered: there is only one of each of them.
+     */
+    private suspend fun someoneRaised(state: GameState, stage: ScriptStage): Pair<GameState, DialogAnswer> {
+        val dead = state.champions
+            .mapIndexed { slot, who -> PartySlot(slot) to who }
+            .filter { (_, who) -> who.inTheParty && who.deadForGood }
+        val bones = state.bonesCarried
+            .mapNotNull { npc -> NpcMeeting.joiningAs(npc)?.let { npc to it } }
+            .filter { (_, who) -> state.champions.none { it.inTheParty && it.portrait == who.portrait } }
+
+        val answer = stage.ask(
+            ScriptQuestion(
+                textId = null,
+                buttons = emptyList(),
+                words = dead.map { (_, who) -> who.name } + bones.map { (_, who) -> who.name } + NpcMeeting.ABORT,
+                scene = emptyList(),
+            ),
+        )
+        val chosen = answer.number - 1
+
+        val raised = dead.getOrNull(chosen)?.let { (slot, _) -> state.withChampion(slot) { it.raised() } }
+            ?: run {
+                val (npc, who) = bones.getOrNull(chosen - dead.size)
+                    ?: return state to DialogAnswer(NOBODY_RAISED)
+
+                // Their bones go before anybody is dropped, or the one dropped
+                // would leave them on the floor as well.
+                madeRoomFor(state.withoutBonesOf(npc), stage)?.joinedBy(who, npc)
+                    ?: return state to DialogAnswer(SOMEBODY_RAISED)
+            }
+
+        stage.show(raised)
+        return raised to DialogAnswer(SOMEBODY_RAISED)
     }
 
     /**
@@ -1616,5 +1664,8 @@ class LevelScriptRunner(
          * would do a thing and declined to name anybody. Transcribed.
          */
         const val NOBODY_CHOSE = 99
+
+        const val NOBODY_RAISED = 0
+        const val SOMEBODY_RAISED = 1
     }
 }

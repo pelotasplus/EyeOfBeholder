@@ -50,9 +50,8 @@ sealed interface LaidOnAChampion {
      * Somebody brought back from past raising, and from nowhere else: a
      * champion merely knocked down wants mending instead.
      *
-     * Not an elf. What an elf leaves behind does not answer to this, which is
-     * what the spell nobody has written is for — so a party of elves carry
-     * their dead.
+     * Not an elf. What an elf leaves behind does not answer to this, so a party
+     * of elves carry their dead to something in the dungeon that can raise them.
      */
     data object Raises : LaidOnAChampion {
         override fun wouldHelp(whom: Champion, world: GameState) =

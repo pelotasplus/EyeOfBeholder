@@ -5,7 +5,6 @@ import pl.pelotasplus.eyeofbeholder.data.model.Champion
 import pl.pelotasplus.eyeofbeholder.data.model.CharacterClass
 import pl.pelotasplus.eyeofbeholder.data.model.ChampionFlags
 import pl.pelotasplus.eyeofbeholder.data.model.ClassLevel
-import pl.pelotasplus.eyeofbeholder.data.model.DialogAnswer
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.GameState
 import pl.pelotasplus.eyeofbeholder.data.model.HitPoints
@@ -13,7 +12,6 @@ import pl.pelotasplus.eyeofbeholder.data.model.LevelScriptRunner
 import pl.pelotasplus.eyeofbeholder.data.model.Location
 import pl.pelotasplus.eyeofbeholder.data.model.PartyState
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptEvent
-import pl.pelotasplus.eyeofbeholder.data.model.ScriptQuestion
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptStage
 import pl.pelotasplus.eyeofbeholder.data.model.Trigger
 import pl.pelotasplus.eyeofbeholder.data.model.TriggerFlags
@@ -61,26 +59,6 @@ class TouchingAlainTest {
         champions = champions,
     )
 
-    /** Answers every question with the same button. */
-    private class Picks(private val button: Int) : ScriptStage {
-        val asked = mutableListOf<ScriptQuestion>()
-
-        override fun notImplemented(what: String) = Unit
-        override suspend fun show(world: GameState) = Unit
-        override suspend fun say(speech: pl.pelotasplus.eyeofbeholder.data.model.ScriptSpeech) = Unit
-        override suspend fun hold(ticks: pl.pelotasplus.eyeofbeholder.data.model.Ticks) = Unit
-        override suspend fun play(
-            track: pl.pelotasplus.eyeofbeholder.data.model.TrackIndex,
-            volume: pl.pelotasplus.eyeofbeholder.data.model.Volume,
-        ) = Unit
-        override suspend fun opensThePortal() = Unit
-
-        override suspend fun ask(question: ScriptQuestion): DialogAnswer {
-            asked += question
-            return DialogAnswer(button)
-        }
-    }
-
     private fun run(
         vararg script: Pair<Int, pl.pelotasplus.eyeofbeholder.data.model.script.ScriptToken>,
         stage: ScriptStage,
@@ -100,7 +78,7 @@ class TouchingAlainTest {
 
     @Test
     fun `it offers everyone who could act, and a way out`() {
-        val picks = Picks(button = 1)
+        val picks = Picks(1)
         run(0 to SpecialEvent.CharSelectDialogue, stage = picks)
 
         assertEquals(
@@ -112,7 +90,7 @@ class TouchingAlainTest {
 
     @Test
     fun `the stone and the past-raising are not asked`() {
-        val picks = Picks(button = 1)
+        val picks = Picks(1)
         run(
             0 to SpecialEvent.CharSelectDialogue,
             stage = picks,
@@ -131,7 +109,7 @@ class TouchingAlainTest {
     /** The last of the choices is the refusal, and it reads back as 99. */
     @Test
     fun `refusing reads back as nobody`() {
-        val picks = Picks(button = 3)
+        val picks = Picks(3)
 
         val said = run(
             0 to SpecialEvent.CharSelectDialogue,
@@ -161,7 +139,7 @@ class TouchingAlainTest {
         val given = run(
             0 to SpecialEvent.CharSelectDialogue,
             10 to SpecialEvent.CharacterLevelGain,
-            stage = Picks(button = 2),
+            stage = Picks(2),
         )
 
         assertEquals(
@@ -176,7 +154,7 @@ class TouchingAlainTest {
         val given = run(
             0 to SpecialEvent.CharSelectDialogue,
             10 to SpecialEvent.CharacterLevelGain,
-            stage = Picks(button = 1),
+            stage = Picks(1),
         )
 
         assertEquals(
@@ -192,7 +170,7 @@ class TouchingAlainTest {
         val given = run(
             0 to SpecialEvent.CharSelectDialogue,
             10 to SpecialEvent.CharacterLevelGain,
-            stage = Picks(button = 1),
+            stage = Picks(1),
         )
 
         val grown = given.champions.first()
