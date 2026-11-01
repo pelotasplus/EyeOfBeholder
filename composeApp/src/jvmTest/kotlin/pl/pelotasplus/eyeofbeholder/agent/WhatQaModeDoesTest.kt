@@ -124,6 +124,29 @@ class WhatQaModeDoesTest {
         assertTrue(Diagnostics.since(before).none { Spell.TURN_UNDEAD.calledIt in it.said })
     }
 
+    /** Read until it takes: the wolf can make its throw and only be wounded, and the dice are real. */
+    @Test
+    fun `a finger of death read in play reaches a wolf two squares off`() = runBlocking {
+        val field = field("LEVEL4.INF", Location(18, 14), Direction.NORTH)
+        delay(THE_OPENING)
+        fun monsters() = field.viewModel.state.value.game.monsters
+        val alreadyHere = monsters().map { it.index }.toSet()
+        assertNull(field.viewModel.setUp(QaSetup.SpawnMonster(looksLike = "wolf", ahead = 2)))
+        val wolf = monsters().single { it.index !in alreadyHere }
+
+        fun struck() = monsters().firstOrNull { it.index == wolf.index }
+            ?.let { it.hitPoints.current < wolf.hitPoints.current } ?: true
+
+        assertFalse(struck())
+        withTimeout(ALL_THE_READINGS) {
+            while (!struck()) {
+                field.read(Spell.FINGER_OF_DEATH)
+                delay(A_CASTING)
+                assertNull(field.viewModel.act(AgentAction.TakeHand(champion = THE_MAGE, hand = 0)))
+            }
+        }
+    }
+
     /** The floor only ever conjures these, so the spawn has to find one in its scripts. */
     @Test
     fun `a turn undead read in play reaches a real skeleton warrior`() = runBlocking {

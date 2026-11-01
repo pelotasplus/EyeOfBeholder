@@ -192,6 +192,11 @@ class WhatAWoundingSpellDoesTest {
         reachable: (Location) -> Boolean = { true },
     ) = Wounds(kinds = listOf(aKind(immunities)), dice = rolling(d20)).slainBy(world, wolfspirit, reachable)
 
+    @Test
+    fun `finger of death strikes the blow slay living does`() {
+        assertEquals(Spell.SLAY_LIVING.wounds, Spell.FINGER_OF_DEATH.wounds)
+    }
+
     /** From the back rank as well, and two squares off. */
     @Test
     fun `slay living kills a creature two squares off`() {

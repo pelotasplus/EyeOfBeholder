@@ -510,7 +510,8 @@ enum class Spell(
         lasts = SpellLasts(base = 0, perLevel = 1),
         seesTheHidden = true,
     ),
-    FINGER_OF_DEATH(30, "finger of death"),
+    /** Slay living's blow, but silent, and it does not give a hiding caster away. */
+    FINGER_OF_DEATH(30, "finger of death", wounds = Wounding.Slays),
     /** Silent and without a spark, and it does not give a hiding caster away. */
     POWER_WORD_STUN(31, "power word stun", turnsToStone = TurningToStone.BY_A_WORD),
     BIGBYS_CLENCHED_FIST(32, "bigby's clenched fist"),

@@ -79,7 +79,7 @@ class Wounds(
     }
 
     /**
-     * Slay living: the nearest creature on the first two squares ahead that
+     * The killing word: the nearest creature on the first two squares ahead that
      * the party can see onto, [reachable] saying which they can. One that gets
      * out of the way, or that this magic passes by, is untouched; one that
      * makes its throw takes [SLAIN_OR_THIS] instead of dying; the rest die,
@@ -121,7 +121,7 @@ class Wounds(
         /** More than anything has, which is how a spell kills outright. */
         val OUTRIGHT = Damage(1000)
 
-        /** What slay living does to a creature that makes its throw. */
+        /** What the killing word does to a creature that makes its throw. */
         val SLAIN_OR_THIS = DamageDice(times = 2, pips = 8, base = 1)
     }
 }
