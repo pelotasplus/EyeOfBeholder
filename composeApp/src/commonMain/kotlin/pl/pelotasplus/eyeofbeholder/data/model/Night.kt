@@ -220,7 +220,7 @@ suspend fun Resting.night(
                 return still
             }
             is Rest.Slept -> night = night.copy(world = still.world)
-            Rest.NotHere, is Rest.Woke -> Unit
+            Rest.NotHere, is Rest.Dreamt, is Rest.Woke -> Unit
         }
         watching.stepped(night.world)
 

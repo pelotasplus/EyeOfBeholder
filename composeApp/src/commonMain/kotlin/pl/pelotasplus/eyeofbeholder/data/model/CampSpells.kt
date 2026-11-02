@@ -174,6 +174,8 @@ object CampSpellMessages {
 
     val NEEDS_A_REST = listOf(" Your party needs", " to rest to gain", " spells.")
     val FULLY_RESTED = listOf("", " All characters", " are fully", " rested.")
+    val INSAL_IS_GONE = listOf("", " As you awaken, you", " discover that Insal", " the thief is gone!")
+    val EQUIPMENT_STOLEN = listOf("", " A quick inventory", " reveals equipment", " has been stolen!")
 
     const val SPELLS_AVAILABLE = "Spells Available:"
     const val CLEAR = "Clear"

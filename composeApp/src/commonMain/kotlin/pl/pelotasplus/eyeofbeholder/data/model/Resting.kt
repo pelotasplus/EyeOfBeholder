@@ -13,6 +13,9 @@ sealed interface Rest {
     /** Nobody slept: a script has forbidden it here. */
     data object NotHere : Rest
 
+    /** Nobody slept: a nightmare took the place of the rest, after the monsters had their turns in [world]. */
+    data class Dreamt(val world: GameState) : Rest
+
     /** The party may lie down: [world] is the one they lie down in. */
     data class Slept(val world: GameState) : Rest
 
@@ -37,6 +40,7 @@ class Resting(
     private val kinds: List<MonsterProperty>,
     private val stepping: MonsterStepping? = null,
     val types: ItemTypes? = null,
+    private val level: Int? = null,
 ) {
 
     /**
@@ -53,6 +57,7 @@ class Resting(
         if (settled.monsters.any { !(it.standingBy && !it.provoked) && settled.isBesideTheParty(it) }) {
             return Rest.SomethingIsNear(settled)
         }
+        if (level == THE_NIGHTMARE_FLOOR) return Rest.Dreamt(settled)
         return Rest.Slept(settled)
     }
 
@@ -84,6 +89,8 @@ class Resting(
 
         /** Which units are given those turns. */
         val THE_UNITS_THAT_STIR = listOf(0, 1)
+
+        const val THE_NIGHTMARE_FLOOR = 3
     }
 }
 

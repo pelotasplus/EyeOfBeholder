@@ -214,6 +214,14 @@ class RestingTest {
     }
 
     @Test
+    fun `a monster beside them is answered before the third floor's nightmare`() {
+        val near = world(champion(100, HitPoints(5, 20)), monstersOn = listOf(Location(13, 11)))
+            .let { it.copy(monsters = it.monsters.map { m -> m.takingUpTheHunt() }) }
+
+        assertIs<Rest.SomethingIsNear>(Resting(kinds = kinds, level = 3).begin(near))
+    }
+
+    @Test
     fun `a monster already beside the party stops them`() {
         val hurt = world(champion(100, HitPoints(5, 20)), monstersOn = listOf(Location(13, 11)))
             .let { it.copy(monsters = it.monsters.map { m -> m.takingUpTheHunt() }) }

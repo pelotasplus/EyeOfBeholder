@@ -98,6 +98,23 @@ data class CutScene(val beats: List<Beat>) {
         )
 
         /**
+         * What the third floor gives a party who lie down on it, in place of
+         * any sleep. The order of the cuts and how long each is held are data;
+         * nothing about the picture says what they should be. The line is said
+         * once and stands: said again, it would be written on after itself.
+         */
+        val THE_NIGHTMARE = CutScene(
+            listOf(1, 2, 3, 2, 1, 0, 1, 2, 3, 3, 2, 1, 0).mapIndexed { step, cut ->
+                Beat(
+                    shows = frameOf(DREAM, cut % 2 * SECOND, cut / 2 * BOTTOM),
+                    says = if (step == 0) DialogueTextId(99) else null,
+                    holdsFor = Ticks(if (cut == 0 || cut == 3) 12 else 7),
+                    heardAs = if (step == 0) TrackIndex(54) else null,
+                )
+            } + Beat(shows = frameOf(DREAM, FIRST, TOP), readOn = ALL_RIGHT),
+        )
+
+        /**
          * One of the four cuts of [sheet]. [column] is in eighths of the width
          * the way a picture instruction gives it, [row] in whole pixels.
          */
@@ -111,6 +128,7 @@ data class CutScene(val beats: List<Beat>) {
 
         private const val TRICKED = "KHELDRAN"
         private const val CHANGING = "DRANX"
+        private const val DREAM = "DREAM"
 
         private const val IN_THE_SPEAKERS_FRAME = 0
 

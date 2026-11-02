@@ -169,6 +169,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.Spell
 import pl.pelotasplus.eyeofbeholder.data.model.SpellMessages
 import pl.pelotasplus.eyeofbeholder.data.model.SparksInTheRoom
 import pl.pelotasplus.eyeofbeholder.data.model.SparksOverTheParty
+import pl.pelotasplus.eyeofbeholder.data.model.insalGoneInTheNight
 import pl.pelotasplus.eyeofbeholder.data.model.spellsRunThroughARest
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptStage
 import pl.pelotasplus.eyeofbeholder.data.model.ScriptsInTurn
@@ -1734,7 +1735,12 @@ class ViewConeDebugViewModel(
     private fun onRest() {
         val inf = _state.value.inf
         val kinds = inf?.subLevels?.getOrNull(_state.value.subLevel)?.monsters.orEmpty()
-        val resting = Resting(kinds = kinds, stepping = stepping(), types = itemTypes)
+        val resting = Resting(
+            kinds = kinds,
+            stepping = stepping(),
+            types = itemTypes,
+            level = inf?.let { levelNumber(it.name) },
+        )
 
         sleeping?.cancel()
         hoursSlept = 0
@@ -1755,6 +1761,14 @@ class ViewConeDebugViewModel(
                     _state.update { it.copy(game = ended.world.asAScriptLeaves(it.game)) }
                     showMenu(null)
                     say(MONSTERS_ARE_NEAR)
+                    renderViewPort()
+                }
+
+                is Rest.Dreamt -> {
+                    sleeping = null
+                    _state.update { it.copy(game = ended.world.asAScriptLeaves(it.game)) }
+                    showMenu(null)
+                    play(CutScene.THE_NIGHTMARE)
                     renderViewPort()
                 }
 
@@ -1850,7 +1864,19 @@ class ViewConeDebugViewModel(
         spellsWantARest = false
 
         showMenu(CampMenu.camp())
-        if (fullyRested) showMessage(CampSpellMessages.FULLY_RESTED, then = CampMenu.camp())
+        val level = _state.value.inf?.let { levelNumber(it.name) }
+        val robbed = level?.let { _state.value.game.insalGoneInTheNight(hours, it, Dice.random) }
+        if (robbed != null) _state.update { it.copy(game = robbed) }
+
+        if (robbed != null) {
+            readInTurn(
+                listOfNotNull(CampSpellMessages.FULLY_RESTED.takeIf { fullyRested }) +
+                    listOf(CampSpellMessages.INSAL_IS_GONE, CampSpellMessages.EQUIPMENT_STOLEN),
+                then = CampMenu.camp(),
+            )
+        } else if (fullyRested) {
+            showMessage(CampSpellMessages.FULLY_RESTED, then = CampMenu.camp())
+        }
         renderViewPort()
     }
 
@@ -1871,7 +1897,7 @@ class ViewConeDebugViewModel(
             is MenuChoice.ScribeLine -> scribe(choice.line)
             MenuChoice.Dismiss -> {
                 messageTimeout?.cancel()
-                showMenu(afterTheMessage)
+                if (messagesWaiting.isEmpty()) showMenu(afterTheMessage) else readInTurn(messagesWaiting, afterTheMessage)
             }
 
             MenuChoice.OpenCamp -> showMenu(CampMenu.camp())
@@ -2070,6 +2096,7 @@ class ViewConeDebugViewModel(
     private fun showMessage(says: List<String>, then: CampMenu?) {
         val under = _state.value.menu ?: CampMenu.camp()
         afterTheMessage = then
+        messagesWaiting = emptyList()
         showMenu(CampMenu.message(says, over = under))
 
         messageTimeout?.cancel()
@@ -2078,6 +2105,16 @@ class ViewConeDebugViewModel(
             if (_state.value.menu?.entries?.singleOrNull()?.choice == MenuChoice.Dismiss) showMenu(then)
         }
     }
+
+    /** Messages one after another, each up until it is clicked rather than for a while. */
+    private fun readInTurn(messages: List<List<String>>, then: CampMenu?) {
+        messageTimeout?.cancel()
+        afterTheMessage = then
+        messagesWaiting = messages.drop(1)
+        showMenu(CampMenu.message(messages.first(), over = CampMenu.camp()))
+    }
+
+    private var messagesWaiting = emptyList<List<String>>()
 
     /**
      * The party to choose from, or the refusal where there are too few of them

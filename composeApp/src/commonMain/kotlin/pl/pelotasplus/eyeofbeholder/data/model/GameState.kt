@@ -480,7 +480,7 @@ data class GameState(
      * party, rolled between. A thing dropped starts where a thing thrown
      * does, which is why both read the corners the same way.
      */
-    private fun letGoOf(facing: Direction, dice: Dice): SquarePlace =
+    fun letGoOf(facing: Direction, dice: Dice): SquarePlace =
         (if (dice.roll(1, 2, -1) == 0) ViewPlace.FAR_LEFT else ViewPlace.FAR_RIGHT)
             .onASquareFacing(facing)
 

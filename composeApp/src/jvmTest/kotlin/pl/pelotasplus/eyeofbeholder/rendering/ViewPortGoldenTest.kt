@@ -1105,6 +1105,31 @@ class ViewPortGoldenTest {
         )
 
     /**
+     * Its four cuts, each once, and the last beat with its button. The line
+     * stands from the first beat, so each is drawn with it.
+     */
+    @Test
+    fun `the nightmare on the third floor`() {
+        val beats = CutScene.THE_NIGHTMARE.beats
+        val shown = beats.distinctBy { it.shows.x to it.shows.y }.withIndex().map { "nightmare-${it.index}" to it.value }
+        (shown + ("nightmare-read" to beats.last())).forEach { (name, it) ->
+            checkGolden(
+                name,
+                dialogueOver(
+                    level = "LEVEL3.INF", x = 15, y = 15,
+                    picture = "${it.shows.pictureName}.CPS",
+                    sourceLeft = it.shows.x * ViewPort.TILE_SIZE,
+                    sourceTop = it.shows.y,
+                    goes = DialogueScene.PictureFrame.SPEAKER,
+                    textId = beats.first().says?.number,
+                    buttons = listOfNotNull(it.readOn),
+                    waitsToBeRead = it.readOn != null,
+                ),
+            )
+        }
+    }
+
+    /**
      * Every beat of the scene a party get for taking the twelfth floor's
      * advice, in the order they are played.
      *
