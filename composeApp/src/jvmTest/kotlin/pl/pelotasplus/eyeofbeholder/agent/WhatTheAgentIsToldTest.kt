@@ -56,4 +56,29 @@ class WhatTheAgentIsToldTest {
         assertEquals(listOf("+1 Dagger", "Spellbook"), laurann.hands)
         assertEquals(listOf("Turn undead"), told.party.single { it.name == "WOLFSPIRIT" }.spells)
     }
+
+    /**
+     * The old woman of the forest, who is the first conversation of the game.
+     * A conversation stops everything until it is answered, so an agent that
+     * is not told about it has no way to learn why nothing it does works.
+     */
+    @Test
+    fun `a conversation is told, words and buttons`(): Unit = runBlocking {
+        val field = ThePlayField()
+        field.opened("LEVEL4.INF", Location(13, 11), Direction.WEST)
+        field.until("the party") { field.viewModel.state.value.game.champions.isNotEmpty() }
+
+        field.viewModel.act(AgentAction.Step(AgentAction.Way.FORWARD))
+        field.until("the old woman") { field.viewModel.observation()?.dialogue?.says?.isNotEmpty() == true }
+
+        val asked = requireNotNull(field.viewModel.observation()?.dialogue)
+        assertTrue(asked.says.isNotEmpty(), "a conversation was told with nothing said")
+        assertTrue(asked.buttons.isNotEmpty(), "a conversation was told with nothing to answer")
+
+        assertEquals(
+            "Not done: a dialogue is up.",
+            field.viewModel.act(AgentAction.Step(AgentAction.Way.FORWARD)),
+            "a step under a conversation was turned away for the wrong reason",
+        )
+    }
 }

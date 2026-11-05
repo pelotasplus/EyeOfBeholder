@@ -42,6 +42,22 @@ data class Observation(
     val messages: List<String>,
     val menu: SeenMenu?,
     val book: SeenBook? = null,
+    val dialogue: SeenDialogue? = null,
+)
+
+/**
+ * A conversation over the play field, which nothing else gets done until it
+ * is answered.
+ *
+ * [buttons] are what `answer` counts from 0. A speech being read rather than
+ * answered has one button that turns the page, and [moreToRead] says the
+ * speaker has not finished.
+ */
+@Serializable
+data class SeenDialogue(
+    val says: List<String>,
+    val buttons: List<String>,
+    val moreToRead: Boolean = false,
 )
 
 /**
@@ -101,6 +117,8 @@ data class SeenChampion(
     val food: Int,
     val conditions: List<String>,
     val hands: List<String>,
+    /** What is in the pack's pockets, as the party know it. Empty pockets are left out. */
+    val pack: List<String>,
     /** Ready to cast, by the name the book shows them under. */
     val spells: List<String>,
 )
@@ -124,6 +142,7 @@ fun observe(
     menu: CampMenu?,
     book: SpellBook? = null,
     bookResting: Boolean = false,
+    dialogue: SeenDialogue? = null,
 ): Observation {
     val facing = world.party.facing
     fun squareAt(across: Int, ahead: Int): Location {
@@ -208,6 +227,7 @@ fun observe(
                 resting = bookResting,
             )
         },
+        dialogue = dialogue,
     )
 }
 
@@ -277,6 +297,9 @@ private fun Champion.seen(slot: Int, world: GameState, names: ItemNames?, types:
     hands = CarrySlot.BOTH_HANDS.map { hand ->
         val held = world.item(holding(hand))?.let { names?.of(it, types) } ?: "empty"
         if (world.isRecovering(pl.pelotasplus.eyeofbeholder.data.model.PartySlot(slot), hand)) "$held (recovering)" else held
+    },
+    pack = CarrySlot.THE_PACK.mapNotNull { pocket ->
+        world.item(holding(pocket))?.let { names?.of(it, types) ?: "something" }
     },
     spells = Discipline.entries.flatMap { discipline ->
         spellsOf(discipline).slots

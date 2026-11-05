@@ -142,6 +142,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.SpellSlot
 import pl.pelotasplus.eyeofbeholder.data.model.script.CreateMonster
 import pl.pelotasplus.eyeofbeholder.agent.Observation
 import pl.pelotasplus.eyeofbeholder.agent.Png
+import pl.pelotasplus.eyeofbeholder.agent.SeenDialogue
 import pl.pelotasplus.eyeofbeholder.data.model.ChampionBox
 import pl.pelotasplus.eyeofbeholder.agent.observe
 import pl.pelotasplus.eyeofbeholder.data.model.tintedAsMagical
@@ -451,7 +452,12 @@ class ViewConeDebugViewModel(
         // them to face something — steers them, and then they are its until it
         // is done. Answering is never steering; it is what a script asking a
         // question waits for.
-        if (scriptHasTheParty && event !is Event.DialogAnswered) return "a script is moving the party"
+        // A script waiting to be answered is not one of those, and saying it
+        // was sends whoever is playing looking for a party that is going
+        // nowhere. The dialogue is the thing in the way, so it is what is said.
+        if (scriptHasTheParty && event !is Event.DialogAnswered) {
+            return if (_state.value.dialog != null) "a dialogue is up" else "a script is moving the party"
+        }
 
         // Anything wakes a sleeping party, which is doing something.
         if (sleeping?.isActive == true && sleepingOnHungry == null && event.isTheirOwnDoing) return null
@@ -510,6 +516,7 @@ class ViewConeDebugViewModel(
                 ?: return "There is no hand ${action.hand} on champion ${action.champion}."
             is AgentAction.TakeHand -> handPoint(action.champion, action.hand)?.let { (x, y) -> Event.ClickedTheView(x, y) }
                 ?: return "There is no hand ${action.hand} on champion ${action.champion}."
+            is AgentAction.PutInPack -> return putInPack(action.champion)
             is AgentAction.CastOn -> championBoxes.getOrNull(action.champion)
                 ?.let { Event.ClickedTheView(it.left + BOX_INSET, it.top + BOX_INSET) }
                 ?: return "There is no champion ${action.champion}."
@@ -537,11 +544,66 @@ class ViewConeDebugViewModel(
                 if (openBook == null) return "No book is open."
                 Event.ClickedTheView(SpellBookLayout.ABORT_LEFT + BOX_INSET, SpellBookLayout.ABORT_TOP + SpellBookLayout.BUTTON_HEIGHT / 2)
             }
+            is AgentAction.Press -> return pressed(
+                when (action.key) {
+                    AgentAction.Stroke.ACCEPT -> Typing.Accept
+                    AgentAction.Stroke.RUBOUT -> Typing.Rubout
+                    AgentAction.Stroke.ABANDON -> Typing.Abandon
+                },
+                action.times,
+            )
             is AgentAction.Click -> Event.ClickedTheView(action.x, action.y)
             is AgentAction.Use -> Event.UsedWhatIsAt(action.x, action.y)
+            is AgentAction.Type -> return typeOut(action.text)
         }
         turnedAway(event)?.let { why -> return "Not done: $why." }
         onEvent(event)
+        return null
+    }
+
+    /**
+     * What is on the pointer into the first empty pocket, which is the one a
+     * player would drop it in: everything a pack refuses — a cursed hand, a
+     * slot that will not take it — is refused by the same code a click goes
+     * through.
+     */
+    private fun putInPack(champion: Int): String? {
+        val world = _state.value.game
+        val whose = PartySlot(champion)
+        val who = world.championIn(whose) ?: return "There is no champion $champion."
+        if (world.held == null) return "Nothing is on the pointer."
+
+        val pocket = CarrySlot.THE_PACK.firstOrNull { world.item(who.holding(it)) == null }
+            ?: return "${who.name}'s pack is full."
+
+        swapHandWith(whose, inventorySlotPositions[pocket.index])
+        return null
+    }
+
+    /** A key pressed [times] over, which is what holding it down does. */
+    private fun pressed(typing: Typing, times: Int): String? {
+        if (times < 1) return "A key cannot be pressed $times times."
+
+        repeat(times) {
+            val event = Event.Typed(typing)
+            turnedAway(event)?.let { why -> return "Not done: $why." }
+            onEvent(event)
+        }
+        return null
+    }
+
+    /** Each letter as its own key press, stopping at the first one turned away. */
+    private fun typeOut(text: String): String? {
+        if (_state.value.menu?.naming == null) return "Nothing is being typed into."
+
+        val unTypeable = text.filterNot { it.code in TYPEABLE }
+        if (unTypeable.isNotEmpty()) return "The game has no letter for \"$unTypeable\"."
+
+        text.forEach { character ->
+            val event = Event.Typed(Typing.Letter(character))
+            turnedAway(event)?.let { why -> return "Not done: $why." }
+            onEvent(event)
+        }
         return null
     }
 
@@ -747,6 +809,13 @@ class ViewConeDebugViewModel(
             menu = now.menu,
             book = openBook,
             bookResting = openBook?.whose in restingBooks,
+            dialogue = now.dialog?.let { asked ->
+                SeenDialogue(
+                    says = asked.scene.lines.map { it.trim() }.filter { it.isNotEmpty() },
+                    buttons = asked.scene.buttons.map { it.label },
+                    moreToRead = asked.unread.isNotEmpty(),
+                )
+            },
         )
     }
 

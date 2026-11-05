@@ -21,7 +21,7 @@ fun typingFor(key: Key, character: Char): Typing? = when {
 }
 
 /** Printable ASCII, which is exactly what the game's fonts have a glyph for. */
-private val TYPEABLE = 32..126
+val TYPEABLE = 32..126
 
 /**
  * The two hands do not agree about left and right, deliberately. The arrows

@@ -217,6 +217,10 @@ tasks.named<Test>("jvmTest") {
     }
 }
 
+tasks.withType<JavaExec>().configureEach {
+    providers.gradleProperty("eob.agent").orNull?.let { environment("EOB_AGENT", it) }
+}
+
 compose.desktop {
     application {
         mainClass = "pl.pelotasplus.eyeofbeholder.MainKt"

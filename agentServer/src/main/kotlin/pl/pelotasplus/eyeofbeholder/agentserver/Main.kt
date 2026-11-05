@@ -91,11 +91,11 @@ class Tools(private val games: Games) {
     suspend fun call(name: String, arguments: JsonObject): JsonObject {
         if (name == "list_games") {
             val listed = games.all.joinToString("\n") { "${it.number}: ${it.name}" }
-            return text(listed.ifEmpty { NO_GAMES })
+            return text(listed.ifEmpty { noGames() })
         }
 
         val game = pick(arguments) ?: return failed(
-            if (games.all.isEmpty()) NO_GAMES else "Several games are connected; say which with \"game\": ${games.all.map { it.number }}",
+            if (games.all.isEmpty()) noGames() else "Several games are connected; say which with \"game\": ${games.all.map { it.number }}",
         )
 
         return try {
@@ -119,6 +119,9 @@ class Tools(private val games: Games) {
             failed("the game did not answer: ${e.message}")
         }
     }
+
+    private fun noGames(): String =
+        if (games.portIsTaken) PORT_TAKEN else NO_GAMES
 
     private fun pick(arguments: JsonObject): Games.Game? {
         val asked = arguments["game"]?.jsonPrimitive?.intOrNull
@@ -164,6 +167,10 @@ class Tools(private val games: Games) {
     companion object {
         private const val NO_GAMES =
             "No game is connected. In the game, open the Debug menu and switch \"Agent\" on; it connects within a few seconds."
+
+        private const val PORT_TAKEN =
+            "Another agent server holds the port, so games reach it and not this one. Close the session it belongs to; " +
+                "this server takes the port as soon as it is free, and the game reconnects on its own."
 
         /** The longest one wait may be, so that an agent cannot hand a game a day of real time by mistake. */
         private const val MOST_A_WAIT = 60_000L
@@ -225,9 +232,12 @@ class Tools(private val games: Games) {
                     "Do what a player does. action is an object with a \"type\" and its fields: " +
                         "{type: step, way: FORWARD|BACK|LEFT|RIGHT}, {type: turn, toThe: LEFT|RIGHT}, {type: front_rank_strikes}, " +
                         "{type: use_hand, champion: 0-5, hand: 0|1} (swing, read, drink, eat, open the book), " +
-                        "{type: take_hand, champion, hand} (swap what the hand holds with what is on the pointer), {type: camp}, " +
+                        "{type: take_hand, champion, hand} (swap what the hand holds with what is on the pointer), " +
+                        "{type: put_in_pack, champion} (what is on the pointer into the first empty pocket), {type: camp}, " +
                         "{type: choose, label} (a line of the open menu by its words), {type: answer, button: 0..} (a dialogue button), " +
                         "{type: cast_on, champion}, {type: book_tab, page: 0-5}, {type: book_line, line: 0-5} (casts it), {type: book_abort}, " +
+                        "{type: type, text} (types it where a save is being named), " +
+                        "{type: press, key: ACCEPT|RUBOUT|ABANDON, times} (return, backspace, escape; times is holding it down), " +
                         "{type: click, x, y} and {type: use, x, y} (left and right click anywhere on the 320x200 screen). " +
                         "Answers done, or refused with the reason.",
                     properties = buildJsonObject {

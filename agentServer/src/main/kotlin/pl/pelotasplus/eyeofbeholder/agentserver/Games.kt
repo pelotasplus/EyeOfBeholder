@@ -19,9 +19,14 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.long
 import kotlinx.serialization.json.put
+import java.io.IOException
+import java.net.InetAddress
+import java.net.ServerSocket
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
+import kotlin.concurrent.thread
 
 /**
  * The games that have called in, each over a WebSocket of its own.
@@ -68,21 +73,66 @@ class Games(private val port: Int) {
 
     val all: List<Game> get() = connected.values.sortedBy { it.number }
 
-    /** Starts listening on this machine only. A port already taken is said, and the tools say no game is there. */
+    private val holdsThePort = AtomicBoolean(false)
+
+    /** Whether another server holds the port, so no game can call this one. */
+    val portIsTaken: Boolean get() = !holdsThePort.get()
+
+    /**
+     * Starts listening on this machine only, and keeps trying for as long as
+     * another server holds the port: one session's leftover server would
+     * otherwise keep every later one deaf until someone killed it by hand.
+     */
     fun listen() {
-        try {
-            embeddedServer(CIO, host = "127.0.0.1", port = port) {
-                install(WebSockets) {
-                    maxFrameSize = Long.MAX_VALUE
+        thread(isDaemon = true, name = "agent-listen") {
+            var said = false
+            while (!holdsThePort.get()) {
+                if (tryToListen()) {
+                    holdsThePort.set(true)
+                    log("listening for games on 127.0.0.1:$port")
+                } else {
+                    if (!said) log("port $port is held by another agent server; waiting for it")
+                    said = true
+                    Thread.sleep(PORT_AGAIN)
                 }
-                routing {
-                    webSocket("/game") { take(this) }
-                }
-            }.start(wait = false)
-            log("listening for games on 127.0.0.1:$port")
-        } catch (e: Exception) {
-            log("cannot listen on port $port (${e.message}) — is another agent server running?")
+            }
         }
+    }
+
+    /**
+     * CIO binds after `start` returns and reports the failure to nobody we
+     * can reach, so whether the port is ours is decided by looking.
+     */
+    private fun tryToListen(): Boolean {
+        if (!portIsFree()) return false
+        val server = embeddedServer(CIO, host = "127.0.0.1", port = port) {
+            install(WebSockets) {
+                maxFrameSize = Long.MAX_VALUE
+            }
+            routing {
+                webSocket("/game") { take(this) }
+            }
+        }
+        return try {
+            server.start(wait = false)
+            Thread.sleep(SETTLES_IN)
+            if (portIsFree()) {
+                server.stop()
+                false
+            } else {
+                true
+            }
+        } catch (e: Exception) {
+            log("cannot listen on port $port (${e.message})")
+            false
+        }
+    }
+
+    private fun portIsFree(): Boolean = try {
+        ServerSocket(port, 1, InetAddress.getLoopbackAddress()).close()
+        true
+    } catch (e: IOException) {
+        false
     }
 
     private suspend fun take(session: DefaultWebSocketServerSession) {
@@ -108,6 +158,9 @@ class Games(private val port: Int) {
     companion object {
         /** How long a game has to answer before the agent is told it did not. */
         const val ANSWER_WITHIN = 10_000L
+
+        private const val PORT_AGAIN = 1_000L
+        private const val SETTLES_IN = 200L
 
         val json = Json { ignoreUnknownKeys = true }
     }

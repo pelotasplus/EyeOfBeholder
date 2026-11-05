@@ -38,6 +38,11 @@ sealed interface AgentAction {
     @SerialName("take_hand")
     data class TakeHand(val champion: Int, val hand: Int) : AgentAction
 
+    /** What is on the pointer goes into the first empty pocket of that champion's pack. */
+    @Serializable
+    @SerialName("put_in_pack")
+    data class PutInPack(val champion: Int) : AgentAction
+
     /** Opens the camp, or shuts it if it is open. */
     @Serializable
     @SerialName("camp")
@@ -71,6 +76,16 @@ sealed interface AgentAction {
     @SerialName("book_abort")
     data object BookAbort : AgentAction
 
+    /** Those letters, one key press each, where the game is being typed into. */
+    @Serializable
+    @SerialName("type")
+    data class Type(val text: String) : AgentAction
+
+    /** The key that finishes what is being typed, or rubs a letter out. [times] is holding it down. */
+    @Serializable
+    @SerialName("press")
+    data class Press(val key: Stroke, val times: Int = 1) : AgentAction
+
     /** A left click anywhere, in the screen's own 320×200. */
     @Serializable
     @SerialName("click")
@@ -86,4 +101,7 @@ sealed interface AgentAction {
 
     @Serializable
     enum class Side { LEFT, RIGHT }
+
+    @Serializable
+    enum class Stroke { ACCEPT, RUBOUT, ABANDON }
 }

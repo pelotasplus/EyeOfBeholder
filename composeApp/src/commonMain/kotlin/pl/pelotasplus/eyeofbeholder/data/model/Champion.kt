@@ -464,6 +464,11 @@ value class CarrySlot(val index: Int) {
 
         val BOTH_HANDS = List(HANDS) { CarrySlot(it) }
 
+        /** The fourteen pockets, in the order they are drawn down the page. */
+        val THE_PACK = List(POCKETS) { CarrySlot(HANDS + it) }
+
+        private const val POCKETS = 14
+
         val EVERY_ONE = List(ALL_OF_THEM) { CarrySlot(it) }
 
         /** How many a champion has, filled or not. */

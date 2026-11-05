@@ -7,11 +7,13 @@ import pl.pelotasplus.eyeofbeholder.NeedsGameData
 import pl.pelotasplus.eyeofbeholder.data.ThePlayField
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.Location
+import pl.pelotasplus.eyeofbeholder.data.model.Naming
 import javax.imageio.ImageIO
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 /**
  * An agent doing what a player does, by name, and being answered as the
@@ -93,6 +95,65 @@ class WhatTheAgentCanDoTest {
         field.until("the game options") { field.told.menu?.title == "Game Options:" }
 
         assertNotNull(field.viewModel.act(AgentAction.Choose("Fly away")), "a line that is not there was chosen")
+    }
+
+    /**
+     * A save asks for a name and waits for return, so an agent that cannot
+     * type cannot save at all — and a run that cannot save cannot be picked
+     * up from where it went wrong.
+     */
+    @Test
+    fun `a save is named by typing and accepted by return`(): Unit = runBlocking {
+        val field = field("LEVEL12.INF", Location(19, 15), Direction.SOUTH)
+
+        assertNotNull(field.viewModel.act(AgentAction.Type("start")), "typed where nothing was being named")
+
+        assertNull(field.viewModel.act(AgentAction.Camp))
+        field.until("the camp") { field.told.menu?.title == "Camp:" }
+        assertNull(field.viewModel.act(AgentAction.Choose("Game Options")))
+        field.until("the game options") { field.told.menu?.title == "Game Options:" }
+        assertNull(field.viewModel.act(AgentAction.Choose("Save Game")))
+        field.until("the slots") { field.told.menu?.choices?.any { it.contains("Slot") } == true }
+
+        assertNull(field.viewModel.act(AgentAction.Choose("Empty Slot")))
+        field.until("a name to type into") { field.viewModel.state.value.menu?.naming != null }
+
+        assertNull(field.viewModel.act(AgentAction.Press(AgentAction.Stroke.RUBOUT, times = Naming.LONGEST)))
+        field.until("the suggested name gone") { field.viewModel.state.value.menu?.naming?.typed == "" }
+
+        assertNull(field.viewModel.act(AgentAction.Type("start")))
+        field.until("the name typed") { field.viewModel.state.value.menu?.naming?.typed == "start" }
+
+        assertNull(field.viewModel.act(AgentAction.Press(AgentAction.Stroke.ACCEPT)))
+        field.until("the save to be written") { field.viewModel.state.value.menu?.naming == null }
+    }
+
+    /**
+     * Picking something up fills the pointer, and nothing else can be picked
+     * up until it is empty again. Without somewhere to put things an agent
+     * carries one item at a time, which is no way to clear a floor.
+     */
+    @Test
+    fun `what is on the pointer goes into the pack`(): Unit = runBlocking {
+        val field = field("LEVEL12.INF", Location(19, 15), Direction.SOUTH)
+
+        assertEquals(
+            "Nothing is on the pointer.",
+            field.viewModel.act(AgentAction.PutInPack(champion = 0)),
+            "an empty pointer was packed",
+        )
+
+        assertNull(field.viewModel.act(AgentAction.TakeHand(champion = 3, hand = 0)))
+        field.until("the dagger on the pointer") { field.told.holding != null }
+        val taken = requireNotNull(field.told.holding)
+
+        assertNull(field.viewModel.act(AgentAction.PutInPack(champion = 0)))
+        field.until("the pointer empty") { field.told.holding == null }
+
+        assertTrue(
+            taken in field.told.party.single { it.slot == 0 }.pack,
+            "what was packed is not in the pack it went into",
+        )
     }
 
     @Test
