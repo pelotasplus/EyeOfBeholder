@@ -85,6 +85,20 @@ value class DistanceFromParty(private val hundredthsOfASquare: Int) :
         fun farSideOfSquare(relativeX: Int, relativeY: Int) =
             DistanceFromParty(distanceTo(relativeX, relativeY) + FACE)
 
+        /**
+         * The frame of an open doorway, and the posts either side of it: across
+         * the middle of the doorway's square, not at its face.
+         *
+         * What stands in the near half of that square, or fills the whole of
+         * it, is in front of the frame; what stands in the far half is behind
+         * it, and measured with [pastTheFrameOf].
+         */
+        fun frameOfTheDoorwayOn(relativeX: Int, relativeY: Int) =
+            standingOnSquare(relativeX, relativeY)
+
+        fun pastTheFrameOf(relativeX: Int, relativeY: Int) =
+            DistanceFromParty(distanceTo(relativeX, relativeY) + PAST_THE_FRAME)
+
         private fun distanceTo(relativeX: Int, relativeY: Int): Int =
             distanceToPoint(relativeX.toDouble(), relativeY.toDouble())
 
@@ -99,6 +113,9 @@ value class DistanceFromParty(private val hundredthsOfASquare: Int) :
          * diagonal to it, so it never overtakes a neighbouring square.
          */
         private const val FACE = 30
+
+        /** Short of [FACE], so the far half of a doorway is still in front of its own side walls. */
+        private const val PAST_THE_FRAME = 20
 
         /** Enough to sort in front of the face, and not enough to sort in front of anything else. */
         private const val A_HAIR = 1

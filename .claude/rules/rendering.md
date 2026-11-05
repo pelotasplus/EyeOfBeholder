@@ -74,6 +74,11 @@
 - What is set into a face is not what stands on the floor behind it: a niche's
   contents are measured at the wall they are cut into (`shelvedInThatFace`),
   a hair in front of it, or the wall covers them
+- An open doorway's frame, and the side faces running along its square that
+  carry its posts, are measured at the middle of the doorway's square
+  (`frameOfTheDoorwayOn`). The two near places, and a monster filling the
+  square, stand in front of it; the two far places are measured
+  `pastTheFrameOf` and stand behind it
 - Scope everything through `ViewPort.at(distance) { }`; nothing outside it
   needs to know the buffer exists
 

@@ -167,6 +167,25 @@ class ViewPortGoldenTest {
     fun `level1 four guards two rows ahead`() =
         checkGolden("level1-guards", "LEVEL1.INF", x = 10, y = 18, direction = Direction.SOUTH)
 
+    /** Standing in a doorway, a monster is in front of the frame it stands in. */
+    @Test
+    fun `level1 16x17 east guard in doorway`() = checkGolden(
+        "level1-16x17-east-guard-in-doorway",
+        renderFrame(
+            "LEVEL1.INF", x = 16, y = 17, direction = Direction.EAST,
+            monsters = { monsters ->
+                monsters.map { if (it.location == GUARDS_BEHIND_17X17) it.copy(location = DOOR_17X17) else it }
+            },
+        ) { at, side ->
+            when {
+                at != DOOR_17X17 -> null
+                side == WallSide.WEST -> OPEN_WITHOUT_BUTTON
+                side == WallSide.EAST -> OPEN_WITH_BUTTON
+                else -> null
+            }
+        },
+    )
+
     /** The pair that speak on level 5, seen from the square they speak from. */
     @Test
     fun `level5 encounter one square ahead`() =
@@ -1392,20 +1411,12 @@ class ViewPortGoldenTest {
     }
 
     /**
-     * A monster standing in an open doorway, drawn over the frame around it.
-     *
-     * This looks like a fault and is not one. A doorway does cut what is seen
-     * through it, top and bottom as well as at the sides — but only for a
-     * square *beyond* the doorway. The door on a square takes nothing at all
-     * off that same square, so a creature standing in the opening is drawn
-     * across the stonework rather than clipped by it.
-     *
-     * That asymmetry is the whole of it, and it is worth a picture because it
-     * reads as broken: see `a door on a square does not cut what stands on
-     * that same square`, which is the same rule stated in numbers.
+     * A monster filling the whole of an open doorway's square, drawn over the
+     * frame around it. The frame stands across the middle of its square, and
+     * only what stands in the far half of it is behind the frame.
      */
     @Test
-    fun `a monster in a doorway is drawn over the frame`() =
+    fun `a monster filling a doorway is drawn over the frame`() =
         checkGolden(
             "level12-monster-past-a-doorway",
             aMonsterThroughADoorway(
@@ -3803,6 +3814,7 @@ class ViewPortGoldenTest {
         x: Int,
         y: Int,
         direction: Direction,
+        monsters: (List<MonsterInstance>) -> List<MonsterInstance> = { it },
         instead: (Location, WallSide) -> WallByte?,
     ): ViewPort = runBlocking {
         val repository = repository()
@@ -3811,7 +3823,7 @@ class ViewPortGoldenTest {
 
         repository.renderPosition(
             items = dungeonItems,
-            monsters = inf.monsterInstances.arrivingIn(sublevel.index),
+            monsters = monsters(inf.monsterInstances.arrivingIn(sublevel.index)),
             sublevel = sublevel,
             playerX = x,
             playerY = y,
@@ -4146,6 +4158,11 @@ class ViewPortGoldenTest {
         private val ALMOST_OPEN = WallByte(11)
 
         private val DOORS_BESIDE_2X10 = listOf(Location(4, 9), Location(4, 11))
+
+        private val OPEN_WITH_BUTTON = WallByte(7)
+        private val OPEN_WITHOUT_BUTTON = WallByte(12)
+        private val DOOR_17X17 = Location(17, 17)
+        private val GUARDS_BEHIND_17X17 = Location(18, 17)
 
     }
 }

@@ -24,6 +24,9 @@ import pl.pelotasplus.eyeofbeholder.data.model.SubLevel
 import pl.pelotasplus.eyeofbeholder.data.model.TeleporterPulse
 import pl.pelotasplus.eyeofbeholder.data.model.ViewBlock
 import pl.pelotasplus.eyeofbeholder.data.model.ViewPlace
+import pl.pelotasplus.eyeofbeholder.data.model.ViewSlot
+import pl.pelotasplus.eyeofbeholder.data.model.BlockOffset
+import pl.pelotasplus.eyeofbeholder.data.model.WallSight
 import pl.pelotasplus.eyeofbeholder.data.model.ViewSquare
 import pl.pelotasplus.eyeofbeholder.data.model.InFlightSight
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterPose
@@ -305,7 +308,11 @@ class ViewConeRepositoryImpl(
                 return@forEachIndexed
             }
 
-            viewPort.at(slot.howFarOff) {
+            val measuredAt = doorwayFramedBy(slot, sublevel, playerX, playerY, direction, wallAt)
+                ?.let { DistanceFromParty.frameOfTheDoorwayOn(it.relativeX, it.relativeY) }
+                ?: slot.howFarOff
+
+            viewPort.at(measuredAt) {
                 when (wallType) {
                     is Maz.WallType.Decoration -> {
                         val levelDecoration = sublevel.decorations
@@ -345,7 +352,7 @@ class ViewConeRepositoryImpl(
                         val painted = if (levelDecoration.lyingOnTheFloor) {
                             DistanceFromParty.paintedOnTheFloorOf(slot.relativeX, slot.relativeY)
                         } else {
-                            slot.howFarOff
+                            measuredAt
                         }
 
                         viewPort.at(painted, within = windows[slot.block]) {
@@ -631,6 +638,9 @@ class ViewConeRepositoryImpl(
                         block.relativeX,
                         block.relativeY,
                     ),
+                    pastTheFrame = DistanceFromParty.pastTheFrameOf(block.relativeX, block.relativeY)
+                        .takeIf { sublevel.isAnOpenDoorway(face) },
+                    window = window,
                 )
 
             }
@@ -889,6 +899,8 @@ class ViewConeRepositoryImpl(
         partyFacing: Direction,
         /** How far off a thing set into this square's face is, rather than lying on it. */
         shelved: DistanceFromParty,
+        pastTheFrame: DistanceFromParty? = null,
+        window: ViewWindow = ViewWindow.WHOLE_VIEW,
     ) {
         // the slot is the item's place in the world's table, which is what its
         // nudge is taken from, so it is carried along with it
@@ -926,15 +938,22 @@ class ViewConeRepositoryImpl(
                     val scaleSteps = itemScaleStepsAt(dim, seenAt)
                     if (scaleSteps.isVisible) {
                         sheetFor(item.icon, smallIcons, largeIcons)?.let { sheet ->
-                            viewPort.drawFloorItem(
-                                largeIcons = sheet,
-                                iconIdx = item.icon,
-                                slot = slot,
-                                square = square,
-                                place = seenAt,
-                                scaleSteps = scaleSteps,
-                                nudge = nudge,
-                            )
+                            val draw = {
+                                viewPort.drawFloorItem(
+                                    largeIcons = sheet,
+                                    iconIdx = item.icon,
+                                    slot = slot,
+                                    square = square,
+                                    place = seenAt,
+                                    scaleSteps = scaleSteps,
+                                    nudge = nudge,
+                                )
+                            }
+                            if (pastTheFrame != null && seenAt.isInTheFarHalf) {
+                                viewPort.at(pastTheFrame, hiddenByCloserThings = true, within = window) { draw() }
+                            } else {
+                                draw()
+                            }
                         }
                     }
                 }
@@ -1015,7 +1034,7 @@ class ViewConeRepositoryImpl(
                 val decorations = kind?.decorations.orEmpty().mapNotNull { sheet.decoration(it, pose) }
 
                 viewPort.at(
-                    DistanceFromParty.standingOnSquare(block.relativeX, block.relativeY),
+                    sublevel.standingAt(BlockOffset(block.relativeX, block.relativeY), seenAt, face),
                     hiddenByCloserThings = true,
                     within = window,
                 ) {
@@ -1035,6 +1054,56 @@ class ViewConeRepositoryImpl(
             }
         }
     }
+
+    /**
+     * The open doorway this face is the frame of, if any: the doorway's own
+     * face towards the party, or a face seen side-on that runs along a
+     * doorway's square — which is where the posts of a frame are kept.
+     */
+    private fun doorwayFramedBy(
+        slot: ViewSlot,
+        sublevel: SubLevel,
+        playerX: Int,
+        playerY: Int,
+        direction: Direction,
+        wallAt: (Location, WallSide) -> Maz.WallType,
+    ): BlockOffset? {
+        val own = BlockOffset(slot.relativeX, slot.relativeY)
+        val alongside = when (slot.wallSide) {
+            WallSide.EAST -> listOf(own, BlockOffset(slot.relativeX + 1, slot.relativeY))
+            WallSide.WEST -> listOf(own, BlockOffset(slot.relativeX - 1, slot.relativeY))
+            else -> listOf(own)
+        }
+        return alongside.firstOrNull {
+            sublevel.isAnOpenDoorway(faceTowardsTheParty(it, playerX, playerY, direction, wallAt))
+        }
+    }
+
+    private fun faceTowardsTheParty(
+        square: BlockOffset,
+        playerX: Int,
+        playerY: Int,
+        direction: Direction,
+        wallAt: (Location, WallSide) -> Maz.WallType,
+    ): Maz.WallType {
+        val (dx, dy) = direction.transformCoordinates(square.relativeX, square.relativeY)
+        return wallAt(Location(playerX + dx, playerY + dy), direction.transformWallSide(WallSide.SOUTH))
+    }
+
+    // A door part way open still has its panel in the opening, and that panel
+    // is at the face.
+    private fun SubLevel.isAnOpenDoorway(face: Maz.WallType): Boolean = when (face) {
+        is Maz.WallType.Door -> face.isOpen
+        else -> sightThrough(face) == WallSight.OPEN_FRAME
+    }
+
+    /** How far off something standing at [place] on [square] is, given what the square turns towards the party. */
+    private fun SubLevel.standingAt(square: BlockOffset, place: ViewPlace, face: Maz.WallType) =
+        if (place.isInTheFarHalf && isAnOpenDoorway(face)) {
+            DistanceFromParty.pastTheFrameOf(square.relativeX, square.relativeY)
+        } else {
+            DistanceFromParty.standingOnSquare(square.relativeX, square.relativeY)
+        }
 
     /**
      * The door definition a square's wall asks for, or null where the sublevel
