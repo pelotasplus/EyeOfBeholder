@@ -11,6 +11,8 @@ import pl.pelotasplus.eyeofbeholder.data.model.ItemNames
 import pl.pelotasplus.eyeofbeholder.data.model.ItemTypes
 import pl.pelotasplus.eyeofbeholder.data.model.Location
 import pl.pelotasplus.eyeofbeholder.data.model.Maz
+import pl.pelotasplus.eyeofbeholder.data.model.MenuChoice
+import pl.pelotasplus.eyeofbeholder.data.model.MenuEntry
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterInstance
 import pl.pelotasplus.eyeofbeholder.data.model.SpellBook
 import pl.pelotasplus.eyeofbeholder.data.model.SpellSlot
@@ -43,6 +45,8 @@ data class Observation(
     val menu: SeenMenu?,
     val book: SeenBook? = null,
     val dialogue: SeenDialogue? = null,
+    /** Why a step would be turned away now — the last step still being taken, a script moving the party — or nothing. */
+    val busy: String? = null,
 )
 
 /**
@@ -116,7 +120,13 @@ data class SeenChampion(
     val hitPoints: String,
     val food: Int,
     val conditions: List<String>,
+    /**
+     * What each hand holds, and for a moment after a swing what it came to as
+     * the hand shows it — a number for a hit, MISS, CAN'T REACH.
+     */
     val hands: List<String>,
+    /** A blow just taken, as the number splashed over the portrait. */
+    val struckFor: Int? = null,
     /** What is in the pack's pockets, as the party know it. Empty pockets are left out. */
     val pack: List<String>,
     /** Ready to cast, by the name the book shows them under. */
@@ -125,6 +135,18 @@ data class SeenChampion(
 
 @Serializable
 data class SeenMenu(val title: String, val says: List<String>, val choices: List<String>)
+
+/**
+ * What a line of a menu is called: its words, or for a line with none drawn
+ * on it — a spell in a list, a champion's portrait — what it stands for.
+ * `choose` goes by the same name, so whatever is told can be chosen.
+ */
+fun MenuEntry.toldAs(world: GameState): String {
+    if (label.isNotBlank()) return label.trim()
+    spoken?.let { return it }
+    val whose = (choice as? MenuChoice.ThisOneDoesIt)?.whose ?: return ""
+    return world.championIn(whose)?.name ?: ""
+}
 
 /** How far ahead the party can see, which is as far as the view draws. */
 private const val SIGHT = 3
@@ -143,6 +165,7 @@ fun observe(
     book: SpellBook? = null,
     bookResting: Boolean = false,
     dialogue: SeenDialogue? = null,
+    busy: String? = null,
 ): Observation {
     val facing = world.party.facing
     fun squareAt(across: Int, ahead: Int): Location {
@@ -214,8 +237,8 @@ fun observe(
         menu = menu?.let { open ->
             SeenMenu(
                 title = open.title,
-                says = open.says.map { it.trim() }.filter { it.isNotEmpty() },
-                choices = open.entries.map { it.label }.filter { it.isNotBlank() },
+                says = (open.says + open.notes.map { it.text }).map { it.trim() }.filter { it.isNotEmpty() },
+                choices = open.entries.map { it.toldAs(world) }.filter { it.isNotBlank() },
             )
         },
         book = book?.let { open ->
@@ -228,6 +251,7 @@ fun observe(
             )
         },
         dialogue = dialogue,
+        busy = busy,
     )
 }
 
@@ -295,9 +319,16 @@ private fun Champion.seen(slot: Int, world: GameState, names: ItemNames?, types:
         if (heldFast) add("held")
     },
     hands = CarrySlot.BOTH_HANDS.map { hand ->
+        val whose = pl.pelotasplus.eyeofbeholder.data.model.PartySlot(slot)
         val held = world.item(holding(hand))?.let { names?.of(it, types) } ?: "empty"
-        if (world.isRecovering(pl.pelotasplus.eyeofbeholder.data.model.PartySlot(slot), hand)) "$held (recovering)" else held
+        val report = world.reportIn(whose, hand)
+        when {
+            report != null -> "$held (${report.lines.joinToString(" ")})"
+            world.isRecovering(whose, hand) -> "$held (recovering)"
+            else -> held
+        }
     },
+    struckFor = world.damageShownOn(pl.pelotasplus.eyeofbeholder.data.model.PartySlot(slot))?.points,
     pack = CarrySlot.THE_PACK.mapNotNull { pocket ->
         world.item(holding(pocket))?.let { names?.of(it, types) ?: "something" }
     },

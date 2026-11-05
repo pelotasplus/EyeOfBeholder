@@ -38,6 +38,28 @@ sealed interface AgentAction {
     @SerialName("take_hand")
     data class TakeHand(val champion: Int, val hand: Int) : AgentAction
 
+    /**
+     * A piece of floor within reach: what lies there is picked up, or what is
+     * on the pointer put down. [ahead] is 0 for the party's own square and 1
+     * for the one in front; only the two near corners of each can be reached.
+     */
+    @Serializable
+    @SerialName("reach")
+    data class Reach(val ahead: Int, val side: Side) : AgentAction
+
+    /** What is on the pointer, thrown the way the party face from that side. */
+    @Serializable
+    @SerialName("throw")
+    data class Throw(val side: Side) : AgentAction
+
+    /**
+     * Whatever on the wall ahead answers a hand — a button, a lever, a niche,
+     * a keyhole, a mouth — worked with what is on the pointer, or an empty hand.
+     */
+    @Serializable
+    @SerialName("touch_wall")
+    data object TouchWall : AgentAction
+
     /** What is on the pointer goes into the first empty pocket of that champion's pack. */
     @Serializable
     @SerialName("put_in_pack")

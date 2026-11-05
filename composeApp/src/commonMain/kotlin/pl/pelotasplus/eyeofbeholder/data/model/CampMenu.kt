@@ -144,7 +144,10 @@ data class CampMenu(
                     centred = true,
                     highlighted = page == menu.page,
                 )
-            } + listLines(menu.onThisPage.size) { MenuChoice.SpellLine(it) } + listOf(
+            } + listLines(
+                menu.onThisPage.size,
+                spoken = { CampSpellMessages.menuNameOf(menu.onThisPage[it], menu.discipline) },
+            ) { MenuChoice.SpellLine(it) } + listOf(
                 MenuEntry(
                     label = CampSpellMessages.CLEAR,
                     left = CLEAR_X,
@@ -196,7 +199,7 @@ data class CampMenu(
             saysLeft = PROMPT_LEFT,
             saysTop = TITLE_TOP,
             saysColour = GuiColour.LIGHT_BLUE,
-            entries = listLines(names.size) { MenuChoice.ScribeLine(it) } + MenuEntry(
+            entries = listLines(names.size, spoken = { names[it] }) { MenuChoice.ScribeLine(it) } + MenuEntry(
                 label = MenuChoice.OpenCamp.label,
                 left = LEAVE_X,
                 top = LIST_BUTTONS_TOP,
@@ -248,7 +251,7 @@ data class CampMenu(
         const val MESSAGE_LASTS_MILLIS = 1440L
 
         /** Invisible lines down the list, a click on each answering for that line. */
-        private fun listLines(count: Int, choice: (Int) -> MenuChoice) =
+        private fun listLines(count: Int, spoken: (Int) -> String, choice: (Int) -> MenuChoice) =
             List(minOf(count, LIST_LINES)) { line ->
                 MenuEntry(
                     label = "",
@@ -258,6 +261,7 @@ data class CampMenu(
                     height = LIST_STEP,
                     choice = choice(line),
                     framed = false,
+                    spoken = spoken(line),
                 )
             }
 
@@ -566,6 +570,11 @@ data class MenuEntry(
     val centred: Boolean = false,
     /** The label in light red: the page a menu is on. */
     val highlighted: Boolean = false,
+    /**
+     * What a line with nothing written on it is called by someone who cannot
+     * see what is drawn there: the spell a list line stands for.
+     */
+    val spoken: String? = null,
 ) {
     fun contains(x: Int, y: Int) = x in left until left + width && y in top until top + height
 

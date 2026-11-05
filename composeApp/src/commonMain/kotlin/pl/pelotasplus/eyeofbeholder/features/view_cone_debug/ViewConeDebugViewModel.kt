@@ -143,6 +143,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.script.CreateMonster
 import pl.pelotasplus.eyeofbeholder.agent.Observation
 import pl.pelotasplus.eyeofbeholder.agent.Png
 import pl.pelotasplus.eyeofbeholder.agent.SeenDialogue
+import pl.pelotasplus.eyeofbeholder.agent.toldAs
 import pl.pelotasplus.eyeofbeholder.data.model.ChampionBox
 import pl.pelotasplus.eyeofbeholder.agent.observe
 import pl.pelotasplus.eyeofbeholder.data.model.tintedAsMagical
@@ -517,13 +518,21 @@ class ViewConeDebugViewModel(
             is AgentAction.TakeHand -> handPoint(action.champion, action.hand)?.let { (x, y) -> Event.ClickedTheView(x, y) }
                 ?: return "There is no hand ${action.hand} on champion ${action.champion}."
             is AgentAction.PutInPack -> return putInPack(action.champion)
+            is AgentAction.Reach -> return reachedByName(action.ahead, action.side)
+            is AgentAction.Throw -> {
+                if (_state.value.game.held == null) return "Nothing is on the pointer."
+                Event.Threw(fromTheLeft = action.side == AgentAction.Side.LEFT)
+            }
+            AgentAction.TouchWall -> aimAtTheWallAhead()?.let { (x, y) -> Event.ClickedTheView(x, y) }
+                ?: return "Nothing on the wall ahead answers a hand."
             is AgentAction.CastOn -> championBoxes.getOrNull(action.champion)
                 ?.let { Event.ClickedTheView(it.left + BOX_INSET, it.top + BOX_INSET) }
                 ?: return "There is no champion ${action.champion}."
             is AgentAction.Choose -> {
                 val menu = _state.value.menu ?: return "No menu is open."
-                val entry = menu.entries.firstOrNull { it.label.trim().equals(action.label.trim(), ignoreCase = true) }
-                    ?: return "The menu has no \"${action.label}\": ${menu.entries.map { it.label }.filter { it.isNotBlank() }}"
+                val world = _state.value.game
+                val entry = menu.entries.firstOrNull { it.toldAs(world).equals(action.label.trim(), ignoreCase = true) }
+                    ?: return "The menu has no \"${action.label}\": ${menu.entries.map { it.toldAs(world) }.filter { it.isNotBlank() }}"
                 Event.ClickedTheView(menu.left + entry.left + entry.width / 2, menu.top + entry.top + entry.height / 2)
             }
             is AgentAction.BookTab -> {
@@ -578,6 +587,63 @@ class ViewConeDebugViewModel(
 
         swapHandWith(whose, inventorySlotPositions[pocket.index])
         return null
+    }
+
+    /** A piece of floor by name, answered by whether anything came of reaching into it. */
+    private fun reachedByName(ahead: Int, side: AgentAction.Side): String? {
+        val reach = when {
+            ahead == 0 && side == AgentAction.Side.LEFT -> FloorReach.OWN_LEFT
+            ahead == 0 -> FloorReach.OWN_RIGHT
+            ahead == 1 && side == AgentAction.Side.LEFT -> FloorReach.AHEAD_LEFT
+            ahead == 1 -> FloorReach.AHEAD_RIGHT
+            else -> return "Only the party's own square and the one ahead can be reached, not $ahead ahead."
+        }
+        val event = Event.ReachedInto(reach)
+        turnedAway(event)?.let { why -> return "Not done: $why." }
+
+        val before = _state.value.game
+        onEvent(event)
+        return if (_state.value.game == before) "Nothing came of it: nothing lies there, or it cannot go there." else null
+    }
+
+    /**
+     * A point on the view that works what the wall ahead holds, found the
+     * way a click is answered. Floor a click would reach into first is passed
+     * over, or a held thing would be put down instead.
+     */
+    private fun aimAtTheWallAhead(): Pair<Int, Int>? {
+        for (y in 0 until ViewPort.ROWS step AIM_STEP) {
+            for (x in 0 until ViewPort.COLS step AIM_STEP) {
+                if (worksTheWallAhead(x, y) && (aimedAt(x, y) ?: FloorReach.at(x, y)) == null) return x to y
+            }
+        }
+        return null
+    }
+
+    /** Whether a click at [x], [y] lands on whatever the wall ahead is worked by. */
+    private fun worksTheWallAhead(x: Int, y: Int): Boolean {
+        val inf = _state.value.inf ?: return false
+        val sublevel = inf.subLevels[_state.value.subLevel]
+        val (dx, dy) = party.facing.transformCoordinates(0, -1)
+        val ahead = Location(party.position.x + dx, party.position.y + dy)
+        val wall = _state.value.game.wall(levelNumber(inf.name), ahead, party.facing.transformWallSide(WallSide.SOUTH))
+
+        if (wall is Maz.WallType.Door) {
+            val door = sublevel.doors.getOrNull(wall.doorIndex.value) ?: return false
+            return wall.hasButton && ClickedWall.hitsDoorButton(door, x, y)
+        }
+        if (wall !is Maz.WallType.Decoration) return false
+
+        val decoration = sublevel.decorations
+            .firstOrNull { it.decorationWallIndex == wall.decorationWallIndex }
+            ?: return false
+        val hanging = decoration.dec.decorations.firstOrNull { it.index == decoration.decorationID }
+        val does = decoration.doesWhenClicked
+        return when {
+            does.answersAnyClick -> true
+            does.isShoved -> ClickedWall.hitsTheDoorway(x, y)
+            else -> hanging != null && ClickedWall.hits(hanging, decoration.dec.rectangles, x, y)
+        }
     }
 
     /** A key pressed [times] over, which is what holding it down does. */
@@ -816,6 +882,7 @@ class ViewConeDebugViewModel(
                     moreToRead = asked.unread.isNotEmpty(),
                 )
             },
+            busy = turnedAway(Event.MoveForward),
         )
     }
 
@@ -903,6 +970,8 @@ class ViewConeDebugViewModel(
             Event.RotateRight -> onRotateRight()
             Event.RotateLeft -> onRotateLeft()
             Event.FrontRankStrikes -> theFrontRankStrikes()
+            is Event.ReachedInto -> reachedInto(event.reach)
+            is Event.Threw -> letFly(if (event.fromTheLeft) 0 else ViewPort.COLS - 1)
 
             // there is nothing to type into with no menu open
             is Event.Typed -> Unit
@@ -6026,6 +6095,12 @@ class ViewConeDebugViewModel(
         /** A key press, while a save is being named. */
         data class Typed(val typing: Typing) : Event()
 
+        /** A piece of floor named rather than clicked, which is the agent's way of reaching it. */
+        data class ReachedInto(val reach: FloorReach) : Event()
+
+        /** What is held, let fly from one side or the other. */
+        data class Threw(val fromTheLeft: Boolean) : Event()
+
         /**
          * Whether this is the party moving themselves, which is the one thing
          * they are made to take their time over. Turning counts: it is a step
@@ -6043,7 +6118,7 @@ class ViewConeDebugViewModel(
          */
         val isTheirOwnDoing: Boolean
             get() = isAStep || this is ClickedTheView || this is UsedWhatIsAt ||
-                this is Camp
+                this is Camp || this is ReachedInto || this is Threw
     }
 
     /** A question a script is waiting on, drawn as [scene] over the play field. */
@@ -6143,6 +6218,9 @@ class ViewConeDebugViewModel(
 
         /** How far inside a box or button an agent's click lands, clear of its edge. */
         private const val BOX_INSET = 8
+
+        /** Fine enough to land inside the smallest button a wall has. */
+        private const val AIM_STEP = 2
 
         /** Quarter turns from facing the party's way to facing them. */
         private const val HALF_TURN = 2

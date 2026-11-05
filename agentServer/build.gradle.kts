@@ -9,6 +9,7 @@ dependencies {
     implementation(libs.ktor.server.websockets)
     implementation(libs.kotlinx.serializationJson)
     implementation(libs.kotlinx.coroutinesCore)
+    testImplementation(kotlin("test"))
 }
 
 application {

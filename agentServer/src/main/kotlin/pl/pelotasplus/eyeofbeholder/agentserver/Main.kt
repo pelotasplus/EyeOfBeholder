@@ -86,7 +86,9 @@ private fun rpcError(code: Int, text: String) = buildJsonObject {
 }
 
 /** What the agent can call, and how each is passed on to the game it picks. */
-class Tools(private val games: Games) {
+class Tools(private val games: Games, private val home: AgentHome = AgentHome.here()) {
+
+    private val map = TheMap(home.mapFile)
 
     suspend fun call(name: String, arguments: JsonObject): JsonObject {
         if (name == "list_games") {
@@ -100,7 +102,39 @@ class Tools(private val games: Games) {
 
         return try {
             when (name) {
-                "observe" -> answerOf(game.ask("observe")) { text(pretty(it)) }
+                "observe" -> answerOf(game.ask("observe")) {
+                    (it as? JsonObject)?.let(map::saw)
+                    text(pretty(it))
+                }
+                "walk" -> said(
+                    Playing(game, map, home).walk(
+                        (arguments["moves"] as? JsonArray)?.map { it.jsonPrimitive.content }.orEmpty(),
+                    ),
+                )
+                "fight" -> said(Playing(game, map, home).fight(arguments["rounds"]?.jsonPrimitive?.intOrNull ?: FIGHT_ROUNDS))
+                "wait_until" -> said(
+                    Playing(game, map, home).waitUntil(
+                        arguments["condition"]?.jsonPrimitive?.content ?: "free",
+                        (arguments["ms"]?.jsonPrimitive?.long ?: MOST_A_WAIT).coerceIn(0L, MOST_A_WAIT),
+                    ),
+                )
+                "checkpoint" -> said(
+                    Playing(game, map, home).checkpoint(
+                        arguments["name"]?.jsonPrimitive?.content ?: return failed("checkpoint wants a name"),
+                        arguments["over"]?.jsonPrimitive?.content,
+                    ),
+                )
+                "restore" -> said(
+                    Playing(game, map, home).restore(
+                        arguments["name"]?.jsonPrimitive?.content ?: return failed("restore wants a name"),
+                        arguments["over"]?.jsonPrimitive?.content,
+                    ),
+                )
+                "map" -> {
+                    val level = arguments["level"]?.jsonPrimitive?.intOrNull ?: map.currentLevel
+                        ?: return failed("No level seen yet; observe first, or say which level.")
+                    text(map.drawn(level))
+                }
                 "frame" -> answerOf(game.ask("frame")) { image(it.jsonPrimitive.content) }
                 "act" -> answerOf(game.ask("act", buildJsonObject { put("action", arguments["action"] ?: JsonNull) })) { text(pretty(it)) }
                 "wait" -> {
@@ -134,6 +168,10 @@ class Tools(private val games: Games) {
     }
 
     private fun pretty(element: JsonElement) = prettyJson.encodeToString(JsonElement.serializer(), element)
+
+    /** What a batch came to, then the observation it ended on, so no second call is needed to see where things stand. */
+    private fun said(outcome: Playing.Outcome) =
+        text(outcome.done + (outcome.observation?.let { "\n\n" + pretty(it) } ?: ""))
 
     private fun text(said: String) = buildJsonObject {
         putJsonArray("content") {
@@ -174,6 +212,8 @@ class Tools(private val games: Games) {
 
         /** The longest one wait may be, so that an agent cannot hand a game a day of real time by mistake. */
         private const val MOST_A_WAIT = 60_000L
+
+        private const val FIGHT_ROUNDS = 10
 
         private val prettyJson = kotlinx.serialization.json.Json { prettyPrint = true }
 
@@ -233,8 +273,14 @@ class Tools(private val games: Games) {
                         "{type: step, way: FORWARD|BACK|LEFT|RIGHT}, {type: turn, toThe: LEFT|RIGHT}, {type: front_rank_strikes}, " +
                         "{type: use_hand, champion: 0-5, hand: 0|1} (swing, read, drink, eat, open the book), " +
                         "{type: take_hand, champion, hand} (swap what the hand holds with what is on the pointer), " +
-                        "{type: put_in_pack, champion} (what is on the pointer into the first empty pocket), {type: camp}, " +
-                        "{type: choose, label} (a line of the open menu by its words), {type: answer, button: 0..} (a dialogue button), " +
+                        "{type: put_in_pack, champion} (what is on the pointer into the first empty pocket), " +
+                        "{type: reach, ahead: 0|1, side: LEFT|RIGHT} (pick up from, or put down on, the near corners of the party's square or the one ahead; " +
+                        "an item 'lying' far_left/far_right at ahead 0 or near_left/near_right at ahead 1 is reachable), " +
+                        "{type: throw, side: LEFT|RIGHT} (what is on the pointer), " +
+                        "{type: touch_wall} (work what is on the wall ahead — button, lever, niche, keyhole, mouth — with the pointer or an empty hand), " +
+                        "{type: camp}, " +
+                        "{type: choose, label} (a line of the open menu by its words — a spell in a memorize list by its name, a champion asked for by theirs), " +
+                        "{type: answer, button: 0..} (a dialogue button), " +
                         "{type: cast_on, champion}, {type: book_tab, page: 0-5}, {type: book_line, line: 0-5} (casts it), {type: book_abort}, " +
                         "{type: type, text} (types it where a save is being named), " +
                         "{type: press, key: ACCEPT|RUBOUT|ABANDON, times} (return, backspace, escape; times is holding it down), " +
@@ -263,6 +309,84 @@ class Tools(private val games: Games) {
                 ),
             )
             add(tool("release", "Stop driving the game: it runs in real time on its own again until you act or wait."))
+            add(
+                tool(
+                    "walk",
+                    "Several moves as one call, each done and waited for as act and wait would. Stops early when a move is refused or goes " +
+                        "nowhere, a monster comes within two squares, a dialogue or menu comes up, or someone is struck or badly hurt; says " +
+                        "what was seen lying about on the way, then the observation it ended on. " +
+                        "moves: forward, back, strafe_left, strafe_right, left, right (the last two turn).",
+                    properties = buildJsonObject {
+                        putJsonObject("moves") {
+                            put("type", "array")
+                            putJsonObject("items") { put("type", "string") }
+                        }
+                    },
+                    required = listOf("moves"),
+                ),
+            )
+            add(
+                tool(
+                    "fight",
+                    "The front rank strikes at what stands in front, round after round, until nothing does, someone is badly hurt, " +
+                        "a dialogue comes up or the rounds are up; says what each hand showed after each swing (a number is a hit), " +
+                        "then the observation it ended on.",
+                    properties = buildJsonObject {
+                        putJsonObject("rounds") {
+                            put("type", "integer")
+                            put("description", "At most this many, 10 if not said.")
+                        }
+                    },
+                ),
+            )
+            add(
+                tool(
+                    "wait_until",
+                    "Let the game run until condition holds: free (the party can step again), dialogue (one comes up), no_dialogue " +
+                        "(it goes). Gives up after ms, a minute at most. Then the observation it ended on.",
+                    properties = buildJsonObject {
+                        putJsonObject("condition") { put("type", "string") }
+                        putJsonObject("ms") { put("type", "integer") }
+                    },
+                ),
+            )
+            add(
+                tool(
+                    "map",
+                    "The map drawn so far from what observe has told, north up, as text: squares seen, walls, doors, walls with " +
+                        "something on them, and what was lying where when last seen. Kept on disk across sessions.",
+                    properties = buildJsonObject {
+                        putJsonObject("level") {
+                            put("type", "integer")
+                            put("description", "Which level; the one the party are on if not said.")
+                        }
+                    },
+                ),
+            )
+            add(
+                tool(
+                    "checkpoint",
+                    "Save through the camp menu under name, and keep a copy outside the game's six slots so it can be gone back to " +
+                        "however many checkpoints there are. A slot already of that name is saved over, then an empty one, then the one named over.",
+                    properties = buildJsonObject {
+                        putJsonObject("name") { put("type", "string") }
+                        putJsonObject("over") { put("type", "string") }
+                    },
+                    required = listOf("name"),
+                ),
+            )
+            add(
+                tool(
+                    "restore",
+                    "Go back to a checkpoint by name, putting its kept copy back into a slot first if the slot was saved over " +
+                        "(into an empty one, or over the save named over).",
+                    properties = buildJsonObject {
+                        putJsonObject("name") { put("type", "string") }
+                        putJsonObject("over") { put("type", "string") }
+                    },
+                    required = listOf("name"),
+                ),
+            )
             add(
                 tool(
                     "diagnostics",

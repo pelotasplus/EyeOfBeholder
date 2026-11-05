@@ -156,6 +156,52 @@ class WhatTheAgentCanDoTest {
         )
     }
 
+    /**
+     * The forest's first rock, which `observe` tells as lying on the party's
+     * own square at the far right corner. Reaching there with an empty hand
+     * takes it, and reaching again with it held puts it back.
+     */
+    @Test
+    fun `a thing on the floor is picked up and put back by naming the corner`(): Unit = runBlocking {
+        val field = field("LEVEL4.INF", Location(13, 6), Direction.SOUTH)
+        val rockHere = { field.told.inSight.single { it.ahead == 0 && it.across == 0 }.items.any { it.name == "Rock" } }
+        assertTrue(rockHere(), "the rock is not where the test expects it")
+
+        assertNull(field.viewModel.act(AgentAction.Reach(ahead = 0, side = AgentAction.Side.RIGHT)))
+        assertEquals("Rock", field.told.holding)
+        assertTrue(!rockHere(), "the rock was taken and is still on the floor")
+
+        assertNull(field.viewModel.act(AgentAction.Reach(ahead = 0, side = AgentAction.Side.RIGHT)))
+        assertNull(field.told.holding)
+        assertTrue(rockHere(), "the rock was put down and is not on the floor")
+
+        assertNotNull(
+            field.viewModel.act(AgentAction.Reach(ahead = 0, side = AgentAction.Side.LEFT)),
+            "reaching into a bare corner with an empty hand came to something",
+        )
+    }
+
+    /** Memorize Spells as the agent is told it: the spells by name, chosen by name, and the places left. */
+    @Test
+    fun `spells are memorized by name`(): Unit = runBlocking {
+        val field = field("LEVEL12.INF", Location(19, 15), Direction.SOUTH)
+
+        assertNull(field.viewModel.act(AgentAction.Camp))
+        field.until("the camp") { field.told.menu?.title == "Camp:" }
+        assertNull(field.viewModel.act(AgentAction.Choose("Memorize Spells")))
+        field.until("the spells") { field.told.menu?.choices?.contains("Magic Missile") == true }
+
+        val before = field.told.menu!!.says
+        assertTrue(before.any { it.startsWith("4 of 4 Remaining") }, "the places left were not told: $before")
+
+        assertNull(field.viewModel.act(AgentAction.Choose("Magic Missile")))
+        field.until("one place taken") { field.told.menu!!.says.any { it.startsWith("3 of 4 Remaining") } }
+        assertTrue(
+            field.told.menu!!.says.any { it.startsWith("Magic Missile") && it.endsWith("1") },
+            "the spell chosen does not show as chosen once: ${field.told.menu!!.says}",
+        )
+    }
+
     @Test
     fun `the frame is the screen as a picture`() = runBlocking {
         val field = field("LEVEL12.INF", Location(19, 15), Direction.SOUTH)
