@@ -120,6 +120,26 @@ class WhatTheSpellBookDoesTest {
         assertTrue(book(pages(0 to mm, 6 to shield)).canScroll)
     }
 
+    /**
+     * Both of two spells cast go to the end of the page, so after a rest they
+     * stand in its eighth and ninth places: the first half is blank and the
+     * buttons stay covered, but the other half is not empty.
+     */
+    @Test
+    fun `spells left at the end of a page are on the other half`() {
+        val castTwice = book(pages(0 to mm, 1 to mm)).cast().cast()
+        val rested = SpellPages(castTwice.pages.slots.map { (it as? SpellSlot.Learning)?.let { l -> SpellSlot.Ready(l.spell) } ?: it })
+        val opened = book(rested).onTab(0)
+
+        assertEquals(List(6) { null }, opened.lines)
+        assertTrue(!opened.canScroll)
+        assertTrue(opened.otherHalfHolds, "the spells at the end of the page were not told")
+
+        val scrolled = opened.scrolled(down = true)
+        assertEquals(listOf(null, Spell.MAGIC_MISSILE, Spell.MAGIC_MISSILE, null, null, null), scrolled.lines)
+        assertTrue(!scrolled.otherHalfHolds)
+    }
+
     // --- casting ------------------------------------------------------------
 
     /**

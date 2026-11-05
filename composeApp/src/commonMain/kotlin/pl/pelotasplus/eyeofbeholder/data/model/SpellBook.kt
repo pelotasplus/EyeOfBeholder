@@ -22,6 +22,14 @@ data class SpellBook(
     /** Whether the second half of the page has anything, which is what the scroll buttons are for. */
     val canScroll: Boolean get() = readyAt(LINES) != null
 
+    /**
+     * Whether the half not showing has a spell ready on it. Not [canScroll]:
+     * a cast moves a spell to the end of its page, so two casts and a rest
+     * leave a page's spells in its last places with the buttons still covered.
+     */
+    val otherHalfHolds: Boolean
+        get() = (if (at.scrolledBy > 0) 0 until LINES else LINES until SHOWN).any { readyAt(it) != null }
+
     val onAbort: Boolean get() = at.line == ABORT
 
     /** The tab clicked: its first ready line picked, or the way out where it has none. */

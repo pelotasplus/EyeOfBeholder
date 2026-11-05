@@ -157,6 +157,46 @@ class WhatTheAgentCanDoTest {
     }
 
     /**
+     * The first floor's hidden button, eight pixels wide and low on the
+     * wall, wholly over floor the party could reach into. With nothing held
+     * and nothing lying there the floor lets a click through to the wall, so
+     * the button is pressed, and pressing it takes the wall away.
+     */
+    @Test
+    fun `a button low on a wall over empty floor is pressed`(): Unit = runBlocking {
+        val field = field("LEVEL1.INF", Location(15, 5), Direction.EAST)
+        val wallAhead = { field.told.inSight.single { it.ahead == 1 && it.across == 0 }.near }
+        assertTrue(wallAhead() != null, "there was no wall to take away")
+
+        assertNull(field.viewModel.act(AgentAction.TouchWall))
+        field.until("the wall gone") { wallAhead() == null }
+    }
+
+    /**
+     * What is packed has to come out again — a holy symbol to pray with, a
+     * key for a lock, a rock for a plate — and it comes out by the name the
+     * pack is told with.
+     */
+    @Test
+    fun `a thing in the pack is taken out by its name`(): Unit = runBlocking {
+        val field = field("LEVEL12.INF", Location(19, 15), Direction.SOUTH)
+        val symbol = "Cleric Holy symbol"
+        val wolfspirit = { field.told.party.single { it.slot == 2 } }
+
+        assertEquals(
+            "WOLFSPIRIT has no \"Rock\" in the pack.",
+            field.viewModel.act(AgentAction.TakeFromPack(champion = 2, item = "Rock")),
+        )
+
+        assertNull(field.viewModel.act(AgentAction.TakeFromPack(champion = 2, item = symbol)))
+        field.until("the symbol on the pointer") { field.told.holding == symbol }
+        assertTrue(symbol !in wolfspirit().pack, "the symbol is still in the pack it was taken from")
+
+        assertNull(field.viewModel.act(AgentAction.TakeHand(champion = 2, hand = 1)))
+        field.until("the symbol in hand") { symbol in wolfspirit().hands }
+    }
+
+    /**
      * The forest's first rock, which `observe` tells as lying on the party's
      * own square at the far right corner. Reaching there with an empty hand
      * takes it, and reaching again with it held puts it back.

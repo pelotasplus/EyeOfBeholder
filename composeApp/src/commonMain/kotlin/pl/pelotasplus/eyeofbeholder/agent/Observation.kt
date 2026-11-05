@@ -11,6 +11,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.ItemNames
 import pl.pelotasplus.eyeofbeholder.data.model.ItemTypes
 import pl.pelotasplus.eyeofbeholder.data.model.Location
 import pl.pelotasplus.eyeofbeholder.data.model.Maz
+import pl.pelotasplus.eyeofbeholder.data.model.doesWhenClicked
 import pl.pelotasplus.eyeofbeholder.data.model.MenuChoice
 import pl.pelotasplus.eyeofbeholder.data.model.MenuEntry
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterInstance
@@ -76,6 +77,10 @@ data class SeenBook(
     val lines: List<String?>,
     val picked: Int?,
     val resting: Boolean,
+    /** Whether the lines are the second half of the page; `book_scroll` turns to the other. */
+    val secondHalf: Boolean = false,
+    /** Whether the other half has a spell on it, which `book_scroll` shows. */
+    val canScroll: Boolean = false,
 )
 
 /**
@@ -179,7 +184,7 @@ fun observe(
         visibleMonsters.filter { it.x == at.x && it.y == at.y }.map { it.seenFrom(facing, sublevel) },
         world.items
             .filter { it.level == level && it.location == at }
-            .map { SeenItem(names?.of(it, types) ?: "something", it.place.asSeenFacing(facing)?.name?.lowercase() ?: "on the floor") },
+            .map { SeenItem(names?.of(it, types) ?: "something", it.place.asSeenFacing(facing)?.name?.lowercase() ?: "in a niche") },
     )
 
     val squares = mutableListOf<SeenSquare>()
@@ -187,7 +192,9 @@ fun observe(
         val here = squareAt(0, ahead)
         val near = face(here, WallSide.SOUTH)
 
-        if (ahead > 0 && !sublevel.showsWhatIsOnIt(near)) {
+        // A doorway shows what is past it, but a shut door is a solid panel.
+        val shutDoor = near is Maz.WallType.Door && near.isShut
+        if (ahead > 0 && (!sublevel.showsWhatIsOnIt(near) || shutDoor)) {
             squares += SeenSquare(ahead, 0, near = describe(near, sublevel))
             break
         }
@@ -248,6 +255,8 @@ fun observe(
                 lines = open.lines.map { spell -> spell?.let { CampSpellMessages.menuNameOf(it, open.discipline) } },
                 picked = if (open.onAbort) null else open.at.line,
                 resting = bookResting,
+                secondHalf = open.at.scrolledBy > 0,
+                canScroll = open.otherHalfHolds,
             )
         },
         dialogue = dialogue,
@@ -276,9 +285,12 @@ private fun describe(wall: Maz.WallType, sublevel: SubLevel): String? = when (wa
         when {
             painted == null -> "wall"
             painted.lyingOnTheFloor -> null
+            // drawn as a door sitting a little above its threshold; whether it
+            // can be forced or is jammed for good does not show
+            painted.doesWhenClicked.isShoved -> "stuck door"
             else -> {
                 val base = if (painted.wallType == WallSet.DOOR_FRAME.vmpIndex) "doorway" else "wall"
-                if (painted.decorationID > 0) "$base with picture ${painted.decorationID}" else base
+                if (painted.decorationID >= 0) "$base with picture ${painted.decorationID}" else base
             }
         }
     }
@@ -291,7 +303,7 @@ private fun describe(wall: Maz.WallType, sublevel: SubLevel): String? = when (wa
 private fun onTheFloor(near: Maz.WallType, sublevel: SubLevel): String? {
     if (near !is Maz.WallType.Decoration) return null
     val painted = sublevel.decorations.firstOrNull { it.decorationWallIndex == near.decorationWallIndex }
-    if (painted == null || !painted.lyingOnTheFloor || painted.decorationID <= 0) return null
+    if (painted == null || !painted.lyingOnTheFloor || painted.decorationID < 0) return null
     return "picture ${painted.decorationID}"
 }
 

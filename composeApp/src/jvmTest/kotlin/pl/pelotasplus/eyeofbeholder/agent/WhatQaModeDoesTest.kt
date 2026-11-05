@@ -45,6 +45,28 @@ class WhatQaModeDoesTest {
         }
     }
 
+    /**
+     * A page holds nine spells and the book shows six, so what is memorised
+     * past the sixth is only reached by the arrow under the list. Without it
+     * a spell put there — as a cast and a rest put Bless there — cannot be cast.
+     */
+    @Test
+    fun `the other half of a page is reached by scrolling`() = runBlocking {
+        val field = field("LEVEL12.INF", Location(19, 15), Direction.SOUTH)
+        // until the page is full, whatever it started with
+        while (field.viewModel.setUp(QaSetup.GiveSpell(champion = 3, spell = "magic missile")) == null) Unit
+
+        assertNull(field.viewModel.act(AgentAction.UseHand(champion = 3, hand = 1)))
+        field.until("the book open") { field.viewModel.observation()?.book != null }
+        assertNull(field.viewModel.act(AgentAction.BookTab(page = 0)))
+        assertTrue(requireNotNull(field.viewModel.observation()?.book).canScroll, "a page of more than six did not say it scrolls")
+
+        assertNull(field.viewModel.act(AgentAction.BookScroll(down = true)))
+        val book = requireNotNull(field.viewModel.observation()?.book)
+        assertTrue(book.secondHalf, "the book did not turn to the second half")
+        assertEquals("Magic Missile", book.lines.first())
+    }
+
     @Test
     fun `a teleport puts the party where it says`() = runBlocking {
         val field = field("LEVEL12.INF", Location(19, 15), Direction.SOUTH)

@@ -64,23 +64,54 @@ class Playing(private val game: Games.Game, private val map: TheMap, private val
      * nothing does, someone is badly hurt, or [rounds] are up. What each
      * hand showed after its swing is collected, which is how a player knows
      * a fight is going their way.
+     *
+     * Each round is strike, step aside while the hands recover, step back in:
+     * standing in front of a monster through its swing is how parties die in
+     * this game. With no open side it stops rather than trade blows, unless
+     * [stand] says to stay put and take them.
      */
-    suspend fun fight(rounds: Int): Outcome {
+    suspend fun fight(rounds: Int, stand: Boolean = false): Outcome {
         val shown = mutableListOf<String>()
         repeat(rounds) { round ->
             val now = observe() ?: return Outcome("The game gave no observation.", null)
             if (!somethingInFront(now)) return Outcome(summary("Nothing stands in front after $round rounds", shown), now)
             now["dialogue"]?.let { return Outcome(summary("A dialogue is up", shown), now) }
 
+            // Checked before the blow: a dance that cannot step aside is a
+            // trade of blows, which is the one thing it exists to avoid.
+            val aside = if (stand) null else sideStepFrom(now)
+                ?: return Outcome(summary("No side square is open to step aside to; fight with stand to trade blows here", shown), now)
+
             act(STRIKE)?.let { refused -> return Outcome(summary("The strike was refused: $refused", shown), now) }
             game.ask("wait", buildJsonObject { put("ms", REPORT_SHOWS) }, within = REPORT_SHOWS + Games.ANSWER_WITHIN)
             observe()?.let { shown += "round ${round + 1}: " + handReports(it).ifEmpty { listOf("nothing shown") }.joinToString(", ") }
-            game.ask("wait", buildJsonObject { put("ms", HANDS_RECOVER) }, within = HANDS_RECOVER + Games.ANSWER_WITHIN)
+
+            if (aside == null) {
+                game.ask("wait", buildJsonObject { put("ms", HANDS_RECOVER) }, within = HANDS_RECOVER + Games.ANSWER_WITHIN)
+            } else {
+                stepWhenFree(aside)?.let { refused -> return Outcome(summary("The step aside was refused: $refused", shown), observe()) }
+                game.ask("wait", buildJsonObject { put("ms", HANDS_RECOVER) }, within = HANDS_RECOVER + Games.ANSWER_WITHIN)
+                stepWhenFree(OTHER_SIDE.getValue(aside))?.let { refused ->
+                    return Outcome(summary("The step back in was refused: $refused", shown), observe())
+                }
+                untilFree()
+            }
 
             val after = observe() ?: return Outcome(summary("The game gave no observation", shown), null)
             badlyHurt(after)?.let { who -> return Outcome(summary("$who is badly hurt", shown), after) }
         }
         return Outcome(summary("$rounds rounds fought", shown), observe())
+    }
+
+    /** A step to [side], taken as soon as a swing or the last step lets it be. */
+    private suspend fun stepWhenFree(side: String): String? {
+        var waited = 0L
+        while (true) {
+            val refused = act(step(side)) ?: return null
+            if (waited >= MOST_A_STEP_TAKES || (A_SWING_COMING !in refused && STEP_STILL_GOING !in refused)) return refused
+            game.ask("wait", buildJsonObject { put("ms", POLL) }, within = POLL + Games.ANSWER_WITHIN)
+            waited += POLL
+        }
     }
 
     /**
@@ -244,6 +275,7 @@ class Playing(private val game: Games.Game, private val map: TheMap, private val
             "right" to turn("RIGHT"),
         )
         val STEPS = setOf("forward", "back", "strafe_left", "strafe_right")
+        val OTHER_SIDE = mapOf("LEFT" to "RIGHT", "RIGHT" to "LEFT")
 
         val STRIKE = buildJsonObject { put("type", "front_rank_strikes") }
         val CAMP = buildJsonObject { put("type", "camp") }
@@ -319,3 +351,29 @@ class AgentHome(val directory: File, private val saves: File) {
         }
     }
 }
+
+/**
+ * Which way the party can step aside out of a monster's reach, as `step`
+ * names it, or null when both sides are shut. A side is open when the
+ * party's own square has no face there, or an open door, and nothing is
+ * seen standing on the square beyond it. Left is tried first.
+ */
+internal fun sideStepFrom(seen: JsonObject): String? {
+    val squares = (seen["inSight"] as? JsonArray)?.map { it.jsonObject }.orEmpty()
+    val own = squares.firstOrNull { it.at(ahead = 0, across = 0) } ?: return null
+
+    fun open(face: String, across: Int): Boolean {
+        val wall = own[face]?.jsonPrimitive?.content
+        if (wall != null && wall != "open door") return false
+        return squares.none { it.at(ahead = 0, across = across) && (it["monsters"] as? JsonArray)?.isNotEmpty() == true }
+    }
+
+    return when {
+        open("left", -1) -> "LEFT"
+        open("right", 1) -> "RIGHT"
+        else -> null
+    }
+}
+
+private fun JsonObject.at(ahead: Int, across: Int) =
+    this["ahead"]?.jsonPrimitive?.int == ahead && this["across"]?.jsonPrimitive?.int == across

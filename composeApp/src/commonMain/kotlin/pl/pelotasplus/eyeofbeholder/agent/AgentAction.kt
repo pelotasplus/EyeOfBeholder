@@ -65,6 +65,15 @@ sealed interface AgentAction {
     @SerialName("put_in_pack")
     data class PutInPack(val champion: Int) : AgentAction
 
+    /**
+     * The first thing in that champion's pack told by the name [item], onto
+     * the pointer — changing places with what was on it, as a click on the
+     * pocket does.
+     */
+    @Serializable
+    @SerialName("take_from_pack")
+    data class TakeFromPack(val champion: Int, val item: String) : AgentAction
+
     /** Opens the camp, or shuts it if it is open. */
     @Serializable
     @SerialName("camp")
@@ -97,6 +106,11 @@ sealed interface AgentAction {
     @Serializable
     @SerialName("book_abort")
     data object BookAbort : AgentAction
+
+    /** The arrow under the list, which shows the other half of a page. */
+    @Serializable
+    @SerialName("book_scroll")
+    data class BookScroll(val down: Boolean = true) : AgentAction
 
     /** Those letters, one key press each, where the game is being typed into. */
     @Serializable

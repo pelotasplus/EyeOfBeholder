@@ -9,6 +9,7 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.add
 import kotlinx.serialization.json.addJsonObject
 import kotlinx.serialization.json.buildJsonArray
+import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.int
 import kotlinx.serialization.json.intOrNull
@@ -111,7 +112,12 @@ class Tools(private val games: Games, private val home: AgentHome = AgentHome.he
                         (arguments["moves"] as? JsonArray)?.map { it.jsonPrimitive.content }.orEmpty(),
                     ),
                 )
-                "fight" -> said(Playing(game, map, home).fight(arguments["rounds"]?.jsonPrimitive?.intOrNull ?: FIGHT_ROUNDS))
+                "fight" -> said(
+                    Playing(game, map, home).fight(
+                        arguments["rounds"]?.jsonPrimitive?.intOrNull ?: FIGHT_ROUNDS,
+                        stand = arguments["stand"]?.jsonPrimitive?.booleanOrNull ?: false,
+                    ),
+                )
                 "wait_until" -> said(
                     Playing(game, map, home).waitUntil(
                         arguments["condition"]?.jsonPrimitive?.content ?: "free",
@@ -274,6 +280,7 @@ class Tools(private val games: Games, private val home: AgentHome = AgentHome.he
                         "{type: use_hand, champion: 0-5, hand: 0|1} (swing, read, drink, eat, open the book), " +
                         "{type: take_hand, champion, hand} (swap what the hand holds with what is on the pointer), " +
                         "{type: put_in_pack, champion} (what is on the pointer into the first empty pocket), " +
+                        "{type: take_from_pack, champion, item} (the first thing in the pack by the name observe gives it, onto the pointer, swapped with what was there), " +
                         "{type: reach, ahead: 0|1, side: LEFT|RIGHT} (pick up from, or put down on, the near corners of the party's square or the one ahead; " +
                         "an item 'lying' far_left/far_right at ahead 0 or near_left/near_right at ahead 1 is reachable), " +
                         "{type: throw, side: LEFT|RIGHT} (what is on the pointer), " +
@@ -281,7 +288,8 @@ class Tools(private val games: Games, private val home: AgentHome = AgentHome.he
                         "{type: camp}, " +
                         "{type: choose, label} (a line of the open menu by its words — a spell in a memorize list by its name, a champion asked for by theirs), " +
                         "{type: answer, button: 0..} (a dialogue button), " +
-                        "{type: cast_on, champion}, {type: book_tab, page: 0-5}, {type: book_line, line: 0-5} (casts it), {type: book_abort}, " +
+                        "{type: cast_on, champion}, {type: book_tab, page: 0-5}, {type: book_line, line: 0-5} (casts it), " +
+                        "{type: book_scroll, down: true|false} (the other half of the page, when the book says canScroll), {type: book_abort}, " +
                         "{type: type, text} (types it where a save is being named), " +
                         "{type: press, key: ACCEPT|RUBOUT|ABANDON, times} (return, backspace, escape; times is holding it down), " +
                         "{type: click, x, y} and {type: use, x, y} (left and right click anywhere on the 320x200 screen). " +
@@ -330,11 +338,16 @@ class Tools(private val games: Games, private val home: AgentHome = AgentHome.he
                     "fight",
                     "The front rank strikes at what stands in front, round after round, until nothing does, someone is badly hurt, " +
                         "a dialogue comes up or the rounds are up; says what each hand showed after each swing (a number is a hit), " +
-                        "then the observation it ended on.",
+                        "then the observation it ended on. Each round strikes, steps aside while the hands recover, and steps back in; " +
+                        "it stops if neither side is open, unless stand is set.",
                     properties = buildJsonObject {
                         putJsonObject("rounds") {
                             put("type", "integer")
                             put("description", "At most this many, 10 if not said.")
+                        }
+                        putJsonObject("stand") {
+                            put("type", "boolean")
+                            put("description", "Stay in front and trade blows instead of stepping aside. False if not said.")
                         }
                     },
                 ),

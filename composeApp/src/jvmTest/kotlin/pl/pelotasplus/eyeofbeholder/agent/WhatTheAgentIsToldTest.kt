@@ -46,6 +46,55 @@ class WhatTheAgentIsToldTest {
         assertTrue(told.inSight.none { it.ahead > 1 }, "it was told what is behind the wall")
     }
 
+    /**
+     * The second floor's Skull door at 8x6, shut, with a room and its loot
+     * behind it. A shut door is drawn as a solid panel, so nothing past it is
+     * told.
+     */
+    @Test
+    fun `nothing behind a shut door is told`() {
+        val told = toldAt("LEVEL2.INF", Location(8, 7), Direction.NORTH)
+
+        assertEquals("shut door", told.inSight.single { it.ahead == 1 && it.across == 0 }.near)
+        assertTrue(told.inSight.none { it.ahead > 1 }, "it was told what is behind the door")
+        assertTrue(told.inSight.all { it.items.isEmpty() && it.monsters.isEmpty() }, "it was told what is behind the door")
+    }
+
+    /**
+     * The door into the second floor's store at 8x3, which Pericles calls
+     * stuck and which is drawn as a door, not a wall.
+     */
+    @Test
+    fun `a stuck door is told as a door`() {
+        val told = toldAt("LEVEL2.INF", Location(8, 4), Direction.NORTH)
+
+        assertEquals("stuck door", told.inSight.single { it.ahead == 1 && it.across == 0 }.near)
+    }
+
+    /**
+     * An undug grave in the forest, the first picture of its set — drawn as a
+     * cross in front of the party, and the thing to click to dig it.
+     */
+    @Test
+    fun `the first picture of a set is told like any other`() {
+        val told = toldAt("LEVEL4.INF", Location(19, 5), Direction.NORTH)
+
+        assertEquals("picture 0", told.inSight.single { it.ahead == 1 && it.across == 0 }.floor)
+    }
+
+    /**
+     * The first floor's food store, Iron Rations on the shelf in the wall
+     * ahead. They are reached through the wall, not from the floor, and are
+     * told so.
+     */
+    @Test
+    fun `a thing on a shelf is told as in a niche`() {
+        val told = toldAt("LEVEL1.INF", Location(4, 3), Direction.WEST)
+        val shelf = told.inSight.single { it.ahead == 1 && it.across == 0 }
+
+        assertEquals(listOf(SeenItem("Iron Rations", "in a niche")), shelf.items)
+    }
+
     /** The quick start party as the panel shows them: who is in each hand, what they could cast. */
     @Test
     fun `the party is told as the panel shows them`() {

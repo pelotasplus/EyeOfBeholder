@@ -518,6 +518,7 @@ class ViewConeDebugViewModel(
             is AgentAction.TakeHand -> handPoint(action.champion, action.hand)?.let { (x, y) -> Event.ClickedTheView(x, y) }
                 ?: return "There is no hand ${action.hand} on champion ${action.champion}."
             is AgentAction.PutInPack -> return putInPack(action.champion)
+            is AgentAction.TakeFromPack -> return takeFromPack(action.champion, action.item)
             is AgentAction.Reach -> return reachedByName(action.ahead, action.side)
             is AgentAction.Throw -> {
                 if (_state.value.game.held == null) return "Nothing is on the pointer."
@@ -552,6 +553,13 @@ class ViewConeDebugViewModel(
             AgentAction.BookAbort -> {
                 if (openBook == null) return "No book is open."
                 Event.ClickedTheView(SpellBookLayout.ABORT_LEFT + BOX_INSET, SpellBookLayout.ABORT_TOP + SpellBookLayout.BUTTON_HEIGHT / 2)
+            }
+            is AgentAction.BookScroll -> {
+                if (openBook == null) return "No book is open."
+                Event.ClickedTheView(
+                    if (action.down) SpellBookLayout.DOWN_LEFT + BOX_INSET else SpellBookLayout.UP_LEFT + BOX_INSET,
+                    SpellBookLayout.ABORT_TOP + SpellBookLayout.BUTTON_HEIGHT / 2,
+                )
             }
             is AgentAction.Press -> return pressed(
                 when (action.key) {
@@ -589,6 +597,21 @@ class ViewConeDebugViewModel(
         return null
     }
 
+    /** The pocket holding something told as [item], clicked as a player clicks it. */
+    private fun takeFromPack(champion: Int, item: String): String? {
+        val world = _state.value.game
+        val whose = PartySlot(champion)
+        val who = world.championIn(whose) ?: return "There is no champion $champion."
+        val names = itemNames ?: return "The items are not loaded."
+
+        val pocket = CarrySlot.THE_PACK.firstOrNull { pocket ->
+            world.item(who.holding(pocket))?.let { names.of(it, itemTypes) }.equals(item.trim(), ignoreCase = true)
+        } ?: return "${who.name} has no \"$item\" in the pack."
+
+        swapHandWith(whose, inventorySlotPositions[pocket.index])
+        return null
+    }
+
     /** A piece of floor by name, answered by whether anything came of reaching into it. */
     private fun reachedByName(ahead: Int, side: AgentAction.Side): String? {
         val reach = when {
@@ -609,16 +632,35 @@ class ViewConeDebugViewModel(
     /**
      * A point on the view that works what the wall ahead holds, found the
      * way a click is answered. Floor a click would reach into first is passed
-     * over, or a held thing would be put down instead.
+     * over, or a held thing would be put down instead — but floor that would
+     * let the click through is not: a button low on a wall can sit over it.
      */
     private fun aimAtTheWallAhead(): Pair<Int, Int>? {
         for (y in 0 until ViewPort.ROWS step AIM_STEP) {
             for (x in 0 until ViewPort.COLS step AIM_STEP) {
-                if (worksTheWallAhead(x, y) && (aimedAt(x, y) ?: FloorReach.at(x, y)) == null) return x to y
+                val floor = aimedAt(x, y) ?: FloorReach.at(x, y)
+                if (worksTheWallAhead(x, y) && (floor == null || !floorTakes(floor))) return x to y
             }
         }
         return null
     }
+
+    /** Whether a click on [reach] would be answered by the floor, as [reachedInto] answers it. */
+    private fun floorTakes(reach: FloorReach): Boolean {
+        val inf = _state.value.inf ?: return false
+        val level = levelNumber(inf.name)
+        val world = _state.value.game
+        val at = squareReached(reach)
+
+        if (reach.aheadOfTheParty && !canReachOnto(inf, level, at)) return false
+        return world.inHand.isSomething || world.lyingAt(level, at, reach.placeFacing(party.facing)) != null
+    }
+
+    private fun squareReached(reach: FloorReach): Location =
+        if (!reach.aheadOfTheParty) party.position else {
+            val (dx, dy) = party.facing.transformCoordinates(0, -1)
+            Location(party.position.x + dx, party.position.y + dy)
+        }
 
     /** Whether a click at [x], [y] lands on whatever the wall ahead is worked by. */
     private fun worksTheWallAhead(x: Int, y: Int): Boolean {
@@ -4395,11 +4437,7 @@ class ViewConeDebugViewModel(
         val inf = _state.value.inf ?: return false
         val level = levelNumber(inf.name)
         val world = _state.value.game
-
-        val at = if (!reach.aheadOfTheParty) party.position else {
-            val (dx, dy) = party.facing.transformCoordinates(0, -1)
-            Location(party.position.x + dx, party.position.y + dy)
-        }
+        val at = squareReached(reach)
 
         // nothing can be put through the wall a square turns towards the party
         if (reach.aheadOfTheParty && !canReachOnto(inf, level, at)) return false
