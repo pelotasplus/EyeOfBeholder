@@ -140,6 +140,19 @@ class WhatTheCampDoesWithSpellsTest {
         )
     }
 
+    /** A spell still to learn goes behind every learned one on the page, whatever their order on the list. */
+    @Test
+    fun `what was learned comes before what is still to learn`() {
+        val later = requireNotNull(Discipline.MAGE.spellNumbered(5))
+        val holding = champion(laurann).copy(
+            mageSpells = SpellPages.read(listOf(5) + List(79) { 0 }, Discipline.MAGE),
+        )
+
+        val page = memorizing(holding).onLine(2).added().chosenPages().page(0)
+
+        assertEquals(listOf(SpellSlot.Ready(later), SpellSlot.Learning(Spell.MAGIC_MISSILE)), page.take(2))
+    }
+
     /**
      * Opening and leaving keeps what was held. Whether a rest is wanted
      * afterwards is whether anything is still to learn — a spell chosen

@@ -58,7 +58,13 @@ class SavedGameRepositoryImpl(
 
     override suspend fun load(slot: SaveSlot): Result<SavedGame> = runCatching {
         val contents = store.read(slot) ?: error("Nothing saved in ${slot.name}")
-        json.decodeFromString<SavedGame>(contents)
+        val saved = json.decodeFromString<SavedGame>(contents)
+        // a save written before pages were kept closed up
+        saved.copy(
+            champions = saved.champions.map {
+                it.copy(mageSpells = it.mageSpells.readyFirst(), clericSpells = it.clericSpells.readyFirst())
+            },
+        )
     }
 
     override suspend fun save(

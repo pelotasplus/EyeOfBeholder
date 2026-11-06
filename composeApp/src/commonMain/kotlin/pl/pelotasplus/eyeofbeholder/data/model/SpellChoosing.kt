@@ -86,7 +86,7 @@ data class SpellChoosing(
             repeat(count - stillLearned) { putOn(page, SpellSlot.Learning(spell)) }
         }
 
-        return SpellPages(slots)
+        return SpellPages(slots).readyFirst()
     }
 
     /** Whether anything chosen is still to be learned, which a rest is for. */

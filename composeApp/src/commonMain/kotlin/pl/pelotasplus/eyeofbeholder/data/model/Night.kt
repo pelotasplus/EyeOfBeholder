@@ -122,20 +122,21 @@ data class Night(
             if (!healer.isAHealer || !world.carries(whose, ItemKind.HOLY_SYMBOL, types)) continue
             if (counts[slot] >= LEARNING_FROM && healer.clericSpells.slots.any { it is SpellSlot.Learning && it.spell in CURES }) break
 
+            val cast = mutableMapOf<Int, SpellSlot>()
             healer.clericSpells.slots.forEachIndexed { at, place ->
                 if (place !is SpellSlot.Ready || place.spell !in CURES) return@forEachIndexed
                 val cure = (place.spell.laidOn as LaidOnAChampion.Mends).by
                 val hurt = world.champions[target.index]
 
-                world = world
-                    .withChampion(whose) { it.copy(clericSpells = it.clericSpells.with(at, SpellSlot.Learning(place.spell))) }
-                    .withChampion(target) {
-                        val mended = it.hitPoints.current + cure.given(healer, hurt, dice)
-                        it.copy(hitPoints = it.hitPoints.copy(current = mended.coerceAtMost(it.hitPoints.max)))
-                    }
+                world = world.withChampion(target) {
+                    val mended = it.hitPoints.current + cure.given(healer, hurt, dice)
+                    it.copy(hitPoints = it.hitPoints.copy(current = mended.coerceAtMost(it.hitPoints.max)))
+                }
+                cast[at] = SpellSlot.Learning(place.spell)
                 counts[slot] = 0
                 said += "${healer.name} casts healing on ${hurt.name}."
             }
+            world = world.withChampion(whose) { it.copy(clericSpells = it.clericSpells.withEach(cast)) }
         }
         return copy(world = world, counts = counts)
     }

@@ -1879,8 +1879,8 @@ class ViewPortGoldenTest {
 
     /**
      * Laurann's book on her first level: two magic missiles and a shield
-     * ready, a detect magic still being learned between them as a blank line,
-     * and the second magic missile picked.
+     * ready, a detect magic still being learned closed up behind them, and the
+     * shield picked.
      */
     private val laurannsBook get() = SpellBook(
         PartySlot(3),
@@ -1916,7 +1916,7 @@ class ViewPortGoldenTest {
             laurannsBook.copy(
                 pages = spellPages(*Array(8) { it to SpellSlot.Ready(if (it % 2 == 0) Spell.MAGIC_MISSILE else Spell.SHIELD) }),
                 at = BookPosition(),
-            ).scrolled(down = true),
+            ).scrolled(),
         ),
     )
 

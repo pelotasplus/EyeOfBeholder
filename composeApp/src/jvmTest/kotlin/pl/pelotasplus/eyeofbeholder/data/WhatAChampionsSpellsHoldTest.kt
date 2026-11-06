@@ -63,8 +63,8 @@ class WhatAChampionsSpellsHoldTest {
         val pages = SpellPages.read(listOf(29, -3, 28) + List(77) { 0 }, Discipline.CLERIC)
 
         assertEquals(SpellSlot.Ready(Spell.TURN_UNDEAD), pages.slots[0])
-        assertEquals(SpellSlot.Learning(Spell.CURE_LIGHT_WOUNDS), pages.slots[1])
-        assertEquals(SpellSlot.Ready(Spell.LAY_ON_HANDS), pages.slots[2])
+        assertEquals(SpellSlot.Ready(Spell.LAY_ON_HANDS), pages.slots[1], "the page is read closed up")
+        assertEquals(SpellSlot.Learning(Spell.CURE_LIGHT_WOUNDS), pages.slots[2])
     }
 
     /** A number that names nothing can only be damage, and reads as an empty place. */

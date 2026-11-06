@@ -20,9 +20,9 @@ import kotlin.test.assertTrue
  * The book opened over the compass, on its own: which line it opens on, what
  * a tab and the scroll buttons do, and what casting does to the page.
  *
- * The page is the champion's own ten places, read as they stand: a place
- * being learned is a blank line, nine are ever shown, and a spell cast goes
- * to the ninth place to be learned again while the rest close up behind it.
+ * The page is the champion's own ten places, closed up with what is ready
+ * first: nine are ever shown, and a spell cast goes to be learned again
+ * behind what is still ready.
  */
 class WhatTheSpellBookDoesTest {
 
@@ -48,31 +48,16 @@ class WhatTheSpellBookDoesTest {
         assertEquals(BookPosition(page = 0, scrolledBy = 0, line = 1), opened.at)
     }
 
-    /** A line with nothing ready on it gives way to the next that has. */
+    /** The page may have been chosen afresh since: a book left on its second half comes back to what is left. */
     @Test
-    fun `and moves down off a line with nothing ready`() {
-        val opened = SpellBook.opened(
-            mage(pages(0 to mm, 1 to SpellSlot.Learning(Spell.SHIELD), 2 to armour)),
-            PartySlot(3),
-            Discipline.MAGE,
-        )
+    fun `a book left past its last spell opens on that spell`() {
+        val two = pages(0 to mm, 1 to shield)
 
-        assertEquals(BookPosition(page = 0, scrolledBy = 0, line = 0), opened.at)
+        val leftScrolled = SpellBook.opened(mage(two, BookPosition(scrolledBy = 6, line = 2)), PartySlot(3), Discipline.MAGE)
+        assertEquals(BookPosition(page = 0, scrolledBy = 0, line = 1), leftScrolled.at)
 
-        val fromALearningLine = SpellBook.opened(
-            mage(pages(0 to mm, 1 to SpellSlot.Learning(Spell.SHIELD), 2 to armour), BookPosition(line = 1)),
-            PartySlot(3),
-            Discipline.MAGE,
-        )
-        assertEquals(2, fromALearningLine.at.line)
-    }
-
-    /** Onto the second half where that is where the first ready one is. */
-    @Test
-    fun `onto the second half of the page if it has to`() {
-        val opened = SpellBook.opened(mage(pages(7 to mm)), PartySlot(3), Discipline.MAGE)
-
-        assertEquals(BookPosition(page = 0, scrolledBy = 6, line = 1), opened.at)
+        val leftLow = SpellBook.opened(mage(two, BookPosition(line = 4)), PartySlot(3), Discipline.MAGE)
+        assertEquals(Spell.SHIELD, leftLow.pickedSpell)
     }
 
     @Test
@@ -86,10 +71,13 @@ class WhatTheSpellBookDoesTest {
     // --- what shows ---------------------------------------------------------
 
     @Test
-    fun `a place being learned is a blank line, not closed up`() {
-        val shown = book(pages(0 to mm, 1 to SpellSlot.Learning(Spell.SHIELD), 2 to armour)).lines
+    fun `a page closes up with what is ready first, leaving no gap`() {
+        val learning = SpellSlot.Learning(Spell.SHIELD)
+        val closed = pages(0 to mm, 1 to learning, 2 to learning, 4 to armour, 12 to learning, 13 to shield).readyFirst()
 
-        assertEquals(listOf(Spell.MAGIC_MISSILE, null, Spell.ARMOUR, null, null, null), shown)
+        assertEquals(listOf(mm, armour, learning, learning) + List(6) { SpellSlot.Empty }, closed.page(0))
+        assertEquals(listOf(shield, learning), closed.page(1).take(2), "a page was closed up into the next")
+        assertEquals(listOf(Spell.MAGIC_MISSILE, Spell.ARMOUR, null, null, null, null), book(closed).lines)
     }
 
     /** The tenth place is never shown, so a full page scrolls to three lines. */
@@ -97,7 +85,7 @@ class WhatTheSpellBookDoesTest {
     fun `nine places are ever shown`() {
         val full = pages(*Array(10) { it to mm })
 
-        val second = book(full).scrolled(down = true)
+        val second = book(full).scrolled()
 
         assertEquals(6, second.at.scrolledBy)
         assertEquals(listOf(Spell.MAGIC_MISSILE, Spell.MAGIC_MISSILE, Spell.MAGIC_MISSILE, null, null, null), second.lines)
@@ -109,51 +97,65 @@ class WhatTheSpellBookDoesTest {
     fun `a tab opens at its first ready line`() {
         val book = book(pages(10 to SpellSlot.Learning(Spell.BLUR), 11 to SpellSlot.Ready(Spell.MELFS_ACID_ARROW)))
 
-        assertEquals(BookPosition(page = 1, scrolledBy = 0, line = 1), book.onTab(1).at)
+        assertEquals(BookPosition(page = 1, scrolledBy = 0, line = 0), book.onTab(1).at)
+        assertEquals(Spell.MELFS_ACID_ARROW, book.onTab(1).pickedSpell)
         assertTrue(book.onTab(2).onAbort, "an empty tab picked a line")
     }
 
     @Test
     fun `scrolling passes over a half with nothing on it`() {
-        assertEquals(0, book(pages(0 to mm, 1 to shield)).scrolled(down = true).at.scrolledBy)
+        assertEquals(0, book(pages(0 to mm, 1 to shield)).scrolled().at.scrolledBy)
         assertTrue(!book(pages(0 to mm, 1 to shield)).canScroll)
-        assertTrue(book(pages(0 to mm, 6 to shield)).canScroll)
+        assertTrue(book(pages(*Array(7) { it to mm })).canScroll)
     }
 
-    /**
-     * Both of two spells cast go to the end of the page, so after a rest they
-     * stand in its eighth and ninth places: the first half is blank and the
-     * buttons stay covered, but the other half is not empty.
-     */
+    /** A book showing a second half with nothing left on it goes back to the first. */
     @Test
-    fun `spells left at the end of a page are on the other half`() {
+    fun `scrolling from an emptied second half goes back to the first`() {
+        val stale = book(pages(0 to mm, 1 to shield), BookPosition(scrolledBy = 6))
+
+        assertEquals(0, stale.scrolled().at.scrolledBy)
+    }
+
+    /** Writing a place closes its page up, so a page never has a gap however it was written. */
+    @Test
+    fun `writing a place closes its page up`() {
+        val written = pages(0 to mm, 1 to shield).with(0, SpellSlot.Learning(Spell.MAGIC_MISSILE))
+
+        assertEquals(listOf(shield, SpellSlot.Learning(Spell.MAGIC_MISSILE)), written.page(0).take(2))
+    }
+
+    /** A page that reaches the book with a gap still opens on a ready spell. */
+    @Test
+    fun `a gapped page still opens on a ready spell`() {
+        val gapped = SpellPages(listOf(mm, SpellSlot.Learning(Spell.SHIELD), armour) + List(77) { SpellSlot.Empty })
+
+        val opened = SpellBook.opened(mage(gapped, BookPosition(line = 1)), PartySlot(3), Discipline.MAGE)
+
+        assertEquals(Spell.MAGIC_MISSILE, opened.pickedSpell)
+    }
+
+    @Test
+    fun `spells cast and learned again come back to the top of the page`() {
         val castTwice = book(pages(0 to mm, 1 to mm)).cast().cast()
         val rested = SpellPages(castTwice.pages.slots.map { (it as? SpellSlot.Learning)?.let { l -> SpellSlot.Ready(l.spell) } ?: it })
-        val opened = book(rested).onTab(0)
+        val opened = SpellBook.opened(mage(rested), PartySlot(3), Discipline.MAGE)
 
-        assertEquals(List(6) { null }, opened.lines)
+        assertEquals(listOf(Spell.MAGIC_MISSILE, Spell.MAGIC_MISSILE, null, null, null, null), opened.lines)
         assertTrue(!opened.canScroll)
-        assertTrue(opened.otherHalfHolds, "the spells at the end of the page were not told")
-
-        val scrolled = opened.scrolled(down = true)
-        assertEquals(listOf(null, Spell.MAGIC_MISSILE, Spell.MAGIC_MISSILE, null, null, null), scrolled.lines)
-        assertTrue(!scrolled.otherHalfHolds)
     }
 
     // --- casting ------------------------------------------------------------
 
-    /**
-     * The cast place closes up, everything after it moves up one, and the
-     * spell is put ninth to be learned again.
-     */
+    /** The cast place closes up, and the spell goes behind what is still ready to be learned again. */
     @Test
     fun `casting uses the place up and closes the page behind it`() {
         val cast = book(pages(0 to mm, 1 to shield, 2 to armour)).cast()
 
         assertEquals(shield, cast.pages.slots[0])
         assertEquals(armour, cast.pages.slots[1])
-        assertEquals(SpellSlot.Empty, cast.pages.slots[2])
-        assertEquals(SpellSlot.Learning(Spell.MAGIC_MISSILE), cast.pages.slots[8])
+        assertEquals(SpellSlot.Learning(Spell.MAGIC_MISSILE), cast.pages.slots[2])
+        assertEquals(SpellSlot.Empty, cast.pages.slots[8])
         assertEquals(0, cast.at.line, "the line moved off a spell still ready")
     }
 
@@ -207,7 +209,7 @@ class WhatTheSpellBookDoesTest {
         assertEquals(SpellBookLayout.Part.Line(0), SpellBookLayout.partAt(80, 132))
         assertEquals(SpellBookLayout.Part.Line(5), SpellBookLayout.partAt(80, 167))
         assertEquals(SpellBookLayout.Part.Abort, SpellBookLayout.partAt(100, 170))
-        assertEquals(SpellBookLayout.Part.Scroll(down = false), SpellBookLayout.partAt(150, 170))
-        assertEquals(SpellBookLayout.Part.Scroll(down = true), SpellBookLayout.partAt(165, 170))
+        assertEquals(SpellBookLayout.Part.Scroll, SpellBookLayout.partAt(150, 170))
+        assertEquals(SpellBookLayout.Part.Scroll, SpellBookLayout.partAt(165, 170))
     }
 }

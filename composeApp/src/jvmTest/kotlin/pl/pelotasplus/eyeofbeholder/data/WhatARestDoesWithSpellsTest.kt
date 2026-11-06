@@ -170,6 +170,21 @@ class WhatARestDoesWithSpellsTest {
         assertEquals(8, after.world.champions[laurann.index].hitPoints.current)
     }
 
+    /** A cure cast in the night goes behind what the healer still has ready. */
+    @Test
+    fun `a cure cast in the night closes the page up`() {
+        val hurt = party(
+            cleric = pages(0 to SpellSlot.Ready(Spell.CURE_SERIOUS_WOUNDS), 1 to SpellSlot.Ready(Spell.BLESS)),
+        ).withChampion(laurann) { it.copy(hitPoints = HitPoints(5, it.hitPoints.max)) }
+
+        val (after, _) = stepped(Night(hurt, healersHeal = true), 1)
+
+        assertEquals(
+            listOf(SpellSlot.Ready(Spell.BLESS), SpellSlot.Learning(Spell.CURE_SERIOUS_WOUNDS)),
+            after.world.champions[wolfspirit.index].clericSpells.page(0).take(2),
+        )
+    }
+
     @Test
     fun `nobody heals unless the healers were let`() {
         val hurt = party(cleric = pages(0 to SpellSlot.Ready(Spell.CURE_SERIOUS_WOUNDS)))

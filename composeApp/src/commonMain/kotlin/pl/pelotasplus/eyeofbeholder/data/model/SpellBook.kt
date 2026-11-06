@@ -4,9 +4,9 @@ package pl.pelotasplus.eyeofbeholder.data.model
  * A champion's spells open over the compass: a mage's book or a cleric's
  * holy symbol, read a level at a time.
  *
- * The book shows the champion's own places on the page as they stand, six
- * at a time and nine in all, so a place still being learned or left empty is
- * a blank line rather than closed up. [at] is the page, how far it is
+ * The book shows the champion's own places on the page, six at a time and
+ * nine in all, closed up so that what is ready comes first and the places
+ * still being learned or left empty fall to the end. [at] is the page, how far it is
  * scrolled and which line is picked; [ABORT] is the line below the list that
  * closes the book.
  */
@@ -22,14 +22,6 @@ data class SpellBook(
     /** Whether the second half of the page has anything, which is what the scroll buttons are for. */
     val canScroll: Boolean get() = readyAt(LINES) != null
 
-    /**
-     * Whether the half not showing has a spell ready on it. Not [canScroll]:
-     * a cast moves a spell to the end of its page, so two casts and a rest
-     * leave a page's spells in its last places with the buttons still covered.
-     */
-    val otherHalfHolds: Boolean
-        get() = (if (at.scrolledBy > 0) 0 until LINES else LINES until SHOWN).any { readyAt(it) != null }
-
     val onAbort: Boolean get() = at.line == ABORT
 
     /** The tab clicked: its first ready line picked, or the way out where it has none. */
@@ -40,18 +32,13 @@ data class SpellBook(
     }
 
     /**
-     * The list moved on by a screenful, round to the other half and back. A
-     * half with nothing ready on it is passed over, and a page whose first
-     * place is not ready is left showing its second half.
+     * The list moved to the other half of the page. Nine places make two
+     * halves, so either button goes round to the other one; with nothing on
+     * the second half it goes back to, or stays on, the first.
      */
-    fun scrolled(down: Boolean): SpellBook {
-        if (readyAt(0) == null) return copy(at = at.copy(scrolledBy = LINES))
-
-        var by = at.scrolledBy + if (down) LINES else -LINES
-        if (by >= SHOWN) by = 0 else if (by < 0) by = SHOWN - SHOWN % LINES
-        while ((by until minOf(by + LINES, SpellPages.PER_PAGE)).none { readyAt(it) != null }) {
-            by = if (down) 0 else by - LINES
-        }
+    fun scrolled(): SpellBook {
+        val by = if (at.scrolledBy == 0 && canScroll) LINES else 0
+        if (by == at.scrolledBy) return this
         return copy(at = at.copy(scrolledBy = by, line = 0))
     }
 
@@ -79,9 +66,9 @@ data class SpellBook(
         val slots = pages.slots.toMutableList()
         for (i in from until LAST) slots[base + i] = slots[base + i + 1]
         slots[base + LAST] = SpellSlot.Learning(spell)
-        val used = copy(pages = SpellPages(slots))
+        val used = copy(pages = SpellPages(slots).readyFirst())
 
-        if (slots[base + from] !is SpellSlot.Learning) return used
+        if (used.pages.slots[base + from] !is SpellSlot.Learning) return used
         val line = at.line - 1
         return used.copy(
             at = when {
@@ -112,22 +99,23 @@ data class SpellBook(
 
         /**
          * [whose]'s book opened where they left it. A line with nothing ready
-         * on it moves down to the first that has, onto the second half if
-         * that is where it is, and to the way out where there is none.
+         * on it — the page may have been chosen afresh since — moves to the
+         * nearest ready spell before it, or the first after it, onto the other
+         * half if that is where it is, and a page with nothing ready opens on
+         * the way out.
          */
         fun opened(champion: Champion, whose: PartySlot, discipline: Discipline): SpellBook {
             val book = SpellBook(whose, discipline, champion.spellsOf(discipline), champion.bookLeftAt)
-            val by = book.at.scrolledBy
-            if (book.readyAt(by + book.at.line) != null) return book
+            val ready = (0 until SHOWN).filter { book.readyAt(it) != null }
+            if (ready.isEmpty()) return book.copy(at = book.at.copy(scrolledBy = 0, line = ABORT))
 
-            for (line in book.at.line until SpellPages.PER_PAGE) {
-                if (book.readyAt(by + line) == null) continue
-                return book.copy(
-                    at = if (line >= LINES) book.at.copy(scrolledBy = LINES, line = line - LINES)
-                    else book.at.copy(line = line),
-                )
-            }
-            return book.copy(at = book.at.copy(scrolledBy = 0, line = ABORT))
+            val by = book.at.scrolledBy.takeIf { it <= ready.last() } ?: 0
+            if (book.onAbort) return book.copy(at = book.at.copy(scrolledBy = by))
+
+            val left = by + book.at.line
+            val place = ready.lastOrNull { it <= left } ?: ready.first()
+            val half = if (place >= LINES) LINES else 0
+            return book.copy(at = book.at.copy(scrolledBy = half, line = place - half))
         }
 
         /**
@@ -164,7 +152,8 @@ object SpellBookLayout {
         data class Tab(val page: Int) : Part
         data class Line(val line: Int) : Part
         data object Abort : Part
-        data class Scroll(val down: Boolean) : Part
+        /** Either of the two buttons: both go round to the other half. */
+        data object Scroll : Part
     }
 
     const val LEFT = 64
@@ -215,7 +204,7 @@ object SpellBookLayout {
             y in LINE_TOP until LINE_TOP + SpellBook.LINES * LINE_HEIGHT -> Part.Line((y - LINE_TOP) / LINE_HEIGHT)
             y !in ABORT_TOP until ABORT_TOP + BUTTON_HEIGHT -> null
             x < UP_LEFT -> Part.Abort
-            else -> Part.Scroll(down = x >= DOWN_LEFT)
+            else -> Part.Scroll
         }
     }
 

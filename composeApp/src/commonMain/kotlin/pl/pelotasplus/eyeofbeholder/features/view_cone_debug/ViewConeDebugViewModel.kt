@@ -4135,7 +4135,7 @@ class ViewConeDebugViewModel(
                 castSpell(book.whose, spell, CastFrom.TheBook(bookHand, book.discipline))
             }
             SpellBookLayout.Part.Abort -> closeTheBook()
-            is SpellBookLayout.Part.Scroll -> turnTo(book.scrolled(down = part.down))
+            SpellBookLayout.Part.Scroll -> turnTo(book.scrolled())
             null -> Unit
         }
     }

@@ -14,6 +14,8 @@ import pl.pelotasplus.eyeofbeholder.data.model.MonsterSpell
 import pl.pelotasplus.eyeofbeholder.data.model.MonsterTypeId
 import pl.pelotasplus.eyeofbeholder.data.model.Projectile
 import pl.pelotasplus.eyeofbeholder.data.model.Spell
+import pl.pelotasplus.eyeofbeholder.data.model.SpellPages
+import pl.pelotasplus.eyeofbeholder.data.model.SpellSlot
 import pl.pelotasplus.eyeofbeholder.data.model.ThrownSpell
 import pl.pelotasplus.eyeofbeholder.data.model.PaletteIndex
 import pl.pelotasplus.eyeofbeholder.data.model.PartyState
@@ -95,6 +97,21 @@ class SavedGameRoundTripTest {
         repository.save(slot, "flying", 0, 5, champions = champions, world = world).getOrThrow()
 
         assertEquals(listOf(stillFlying), repository.load(slot).getOrThrow().world.inFlight)
+    }
+
+    /** A save written before pages were kept closed up comes back closed up. */
+    @Test
+    fun `spell pages come back closed up`() = runBlocking {
+        val gapped = SpellPages(
+            listOf(SpellSlot.Learning(Spell.SHIELD), SpellSlot.Ready(Spell.MAGIC_MISSILE)) + List(78) { SpellSlot.Empty },
+        )
+        val slot = SaveSlot.numbered[3]
+        repository.save(slot, "gapped", 0, 5, champions = champions.map { it.copy(mageSpells = gapped) }, world = world).getOrThrow()
+
+        assertEquals(
+            listOf(SpellSlot.Ready(Spell.MAGIC_MISSILE), SpellSlot.Learning(Spell.SHIELD)),
+            repository.load(slot).getOrThrow().champions.first().mageSpells.page(0).take(2),
+        )
     }
 
     @Test

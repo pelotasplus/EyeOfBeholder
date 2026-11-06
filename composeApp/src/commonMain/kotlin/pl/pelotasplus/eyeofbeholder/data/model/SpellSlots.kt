@@ -60,17 +60,48 @@ sealed interface SpellSlot {
  * places to a page.
  *
  * Eight pages are kept and six are ever shown, so the last two are carried
- * as a save has them and nothing here puts anything on them. The places on a
- * page are not sorted — what is chosen goes in the first empty place, and
- * what is cast moves to the end of its page — so the order is part of what a
- * champion carries and is kept as it stands.
+ * as a save has them and nothing here puts anything on them. A page is kept
+ * closed up — [with] and [withEach] do it to what they change, [readyFirst]
+ * to pages built whole — so a ready spell never sits behind one still being
+ * learned or an empty place.
  */
 @Serializable
 data class SpellPages(val slots: List<SpellSlot> = List(PAGES * PER_PAGE) { SpellSlot.Empty }) {
 
     fun page(index: Int): List<SpellSlot> = slots.subList(index * PER_PAGE, (index + 1) * PER_PAGE)
 
-    fun with(at: Int, place: SpellSlot) = SpellPages(slots.toMutableList().also { it[at] = place })
+    /** [place] put at [at], and its page closed up: the place it lands in may not be [at]. */
+    fun with(at: Int, place: SpellSlot) = withEach(mapOf(at to place))
+
+    /** Several places changed at once, numbered as they stand now, and their pages closed up. */
+    fun withEach(changes: Map<Int, SpellSlot>): SpellPages {
+        if (changes.isEmpty()) return this
+        val changed = slots.toMutableList()
+        changes.forEach { (at, place) -> changed[at] = place }
+        changes.keys.map { it / PER_PAGE }.distinct().forEach { page ->
+            val from = page * PER_PAGE
+            changed.subList(from, minOf(from + PER_PAGE, changed.size)).closeUp()
+        }
+        return SpellPages(changed)
+    }
+
+    /** Each page closed up: what is ready first, then what is being learned, then the empty places. */
+    fun readyFirst() = SpellPages(
+        slots.toMutableList().apply {
+            for (from in indices step PER_PAGE) subList(from, minOf(from + PER_PAGE, size)).closeUp()
+        },
+    )
+
+    private fun MutableList<SpellSlot>.closeUp() {
+        val closed = sortedBy {
+            when (it) {
+                is SpellSlot.Ready -> 0
+                is SpellSlot.Learning -> 1
+                SpellSlot.Empty -> 2
+            }
+        }
+        closed.forEachIndexed { i, place -> this[i] = place }
+    }
 
     companion object {
         const val PAGES = 8
@@ -95,7 +126,7 @@ data class SpellPages(val slots: List<SpellSlot> = List(PAGES * PER_PAGE) { Spel
                     else -> SpellSlot.Learning(spell)
                 }
             },
-        )
+        ).readyFirst()
     }
 }
 

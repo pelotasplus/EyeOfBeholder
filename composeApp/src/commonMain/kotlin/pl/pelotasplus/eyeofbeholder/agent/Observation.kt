@@ -256,7 +256,7 @@ fun observe(
                 picked = if (open.onAbort) null else open.at.line,
                 resting = bookResting,
                 secondHalf = open.at.scrolledBy > 0,
-                canScroll = open.otherHalfHolds,
+                canScroll = open.canScroll,
             )
         },
         dialogue = dialogue,
