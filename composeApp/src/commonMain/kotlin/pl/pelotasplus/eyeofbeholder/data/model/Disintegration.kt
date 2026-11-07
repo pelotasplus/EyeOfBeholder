@@ -40,7 +40,7 @@ class Disintegration(
 
         val gone = if (!reachable) null else whatItUnmakes(world, level, ahead)
 
-        val after = (gone?.let { world.monsterHurt(it, UNMADE, kinds, itemTypes, dice) } ?: world)
+        val after = (gone?.let { world.monsterHurtAndSearched(it, UNMADE, kinds, itemTypes, level, dice) } ?: world)
             .wallsChanged(level, ahead, WallByte(0))
 
         return Unmade(after, gone)

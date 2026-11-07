@@ -62,6 +62,7 @@ class AConeOfCold(
     private val kinds: List<MonsterProperty> = emptyList(),
     private val itemTypes: ItemTypes? = null,
     private val dice: Dice = Dice.random,
+    private val level: Int = 0,
 ) {
     /** The world afterwards, and everything the cold reached. */
     data class Struck(
@@ -81,7 +82,7 @@ class AConeOfCold(
             val dealt = dealtTo(kind, casterLevel)
 
             struck.copy(
-                world = struck.world.monsterHurt(monster.index, dealt, kinds, itemTypes, dice),
+                world = struck.world.monsterHurtAndSearched(monster.index, dealt, kinds, itemTypes, level, dice),
                 frozen = struck.frozen + monster.index,
             )
         }

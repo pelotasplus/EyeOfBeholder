@@ -197,6 +197,48 @@ class WhatTheAgentCanDoTest {
     }
 
     /**
+     * A champion who joins carries her armour in a pack, and it does her no
+     * good there. Stumpy's plate comes off by its name, will not go on a mage,
+     * and goes back on the fighter it came off.
+     */
+    @Test
+    fun `armour is taken off and put on by name`(): Unit = runBlocking {
+        val field = field("LEVEL12.INF", Location(19, 15), Direction.SOUTH)
+        val plate = "Plate Mail"
+        val stumpy = { field.told.party.single { it.slot == 1 } }
+        val laurann = { field.told.party.single { it.slot == 3 } }
+
+        assertEquals("Nothing is on the pointer.", field.viewModel.act(AgentAction.Wear(champion = 1)))
+        assertEquals(
+            "LAURANN is not wearing \"$plate\".",
+            field.viewModel.act(AgentAction.TakeOff(champion = 3, item = plate)),
+        )
+
+        assertNull(field.viewModel.act(AgentAction.TakeOff(champion = 1, item = plate)))
+        field.until("the plate on the pointer") { field.told.holding == plate }
+        assertTrue(plate !in stumpy().worn, "the plate is still worn after it was taken off")
+
+        assertEquals("$plate will not go on LAURANN.", field.viewModel.act(AgentAction.Wear(champion = 3)))
+        assertTrue(plate !in laurann().worn, "a mage was put in plate")
+
+        assertNull(field.viewModel.act(AgentAction.Wear(champion = 1)))
+        field.until("the plate worn again") { plate in stumpy().worn }
+        assertNull(field.told.holding, "the pointer still holds something after the plate went on")
+    }
+
+    /** A shield goes in a hand, and there is no place on the body to wear one. */
+    @Test
+    fun `a thing that is not worn is not put on`(): Unit = runBlocking {
+        val field = field("LEVEL12.INF", Location(19, 15), Direction.SOUTH)
+
+        assertNull(field.viewModel.act(AgentAction.TakeHand(champion = 2, hand = 1)))
+        field.until("the shield on the pointer") { field.told.holding == "Shield" }
+
+        assertEquals("Shield is not worn.", field.viewModel.act(AgentAction.Wear(champion = 2)))
+        assertEquals("Shield", field.told.holding)
+    }
+
+    /**
      * The forest's first rock, which `observe` tells as lying on the party's
      * own square at the far right corner. Reaching there with an empty hand
      * takes it, and reaching again with it held puts it back.

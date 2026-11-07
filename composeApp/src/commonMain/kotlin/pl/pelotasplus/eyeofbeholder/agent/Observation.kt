@@ -134,6 +134,8 @@ data class SeenChampion(
     val struckFor: Int? = null,
     /** What is in the pack's pockets, as the party know it. Empty pockets are left out. */
     val pack: List<String>,
+    /** What is on the body: armour, helmet, bracers, amulet, boots, rings. */
+    val worn: List<String> = emptyList(),
     /** Ready to cast, by the name the book shows them under. */
     val spells: List<String>,
 )
@@ -343,6 +345,9 @@ private fun Champion.seen(slot: Int, world: GameState, names: ItemNames?, types:
     struckFor = world.damageShownOn(pl.pelotasplus.eyeofbeholder.data.model.PartySlot(slot))?.points,
     pack = CarrySlot.THE_PACK.mapNotNull { pocket ->
         world.item(holding(pocket))?.let { names?.of(it, types) ?: "something" }
+    },
+    worn = CarrySlot.EVERY_ONE.filter { it.isWornOnTheBody }.mapNotNull { place ->
+        world.item(holding(place))?.let { names?.of(it, types) ?: "something" }
     },
     spells = Discipline.entries.flatMap { discipline ->
         spellsOf(discipline).slots

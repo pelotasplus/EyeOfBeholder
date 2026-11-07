@@ -117,6 +117,7 @@ class BurningHands(
     private val kinds: List<MonsterProperty> = emptyList(),
     private val itemTypes: ItemTypes? = null,
     private val dice: Dice = Dice.random,
+    private val level: Int = 0,
 ) {
     /** The world afterwards, and everything the flame reached, in order. */
     data class Struck(
@@ -141,11 +142,12 @@ class BurningHands(
             val kind = kinds.firstOrNull { it.id == caught.type.value }
 
             struck.copy(
-                world = struck.world.monsterHurt(
+                world = struck.world.monsterHurtAndSearched(
                     caught.index,
                     dealtTo(kind, casterLevel),
                     kinds,
                     itemTypes,
+                    level,
                     dice,
                 ),
                 burned = struck.burned + caught.index,

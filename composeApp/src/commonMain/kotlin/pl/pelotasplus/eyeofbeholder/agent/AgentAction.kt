@@ -74,6 +74,20 @@ sealed interface AgentAction {
     @SerialName("take_from_pack")
     data class TakeFromPack(val champion: Int, val item: String) : AgentAction
 
+    /**
+     * What is on the pointer put on that champion, in the place on the body
+     * that takes it — armour, helmet, bracers, amulet, boots, a ring — as a
+     * click on that box does. Whatever was worn there comes onto the pointer.
+     */
+    @Serializable
+    @SerialName("wear")
+    data class Wear(val champion: Int) : AgentAction
+
+    /** What that champion wears told by the name [item], onto the pointer. */
+    @Serializable
+    @SerialName("take_off")
+    data class TakeOff(val champion: Int, val item: String) : AgentAction
+
     /** Opens the camp, or shuts it if it is open. */
     @Serializable
     @SerialName("camp")

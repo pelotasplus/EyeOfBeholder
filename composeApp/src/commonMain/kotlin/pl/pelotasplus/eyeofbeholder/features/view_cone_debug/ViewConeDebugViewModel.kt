@@ -27,6 +27,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.PaletteIndex
 import pl.pelotasplus.eyeofbeholder.data.model.CharacterSheet
 import pl.pelotasplus.eyeofbeholder.data.model.OpenSheet
 import pl.pelotasplus.eyeofbeholder.data.model.SheetChoice
+import pl.pelotasplus.eyeofbeholder.data.model.SlotTakes
 import pl.pelotasplus.eyeofbeholder.data.model.championBoxes
 import pl.pelotasplus.eyeofbeholder.data.model.MenuChoice
 import pl.pelotasplus.eyeofbeholder.data.model.Naming
@@ -519,6 +520,8 @@ class ViewConeDebugViewModel(
                 ?: return "There is no hand ${action.hand} on champion ${action.champion}."
             is AgentAction.PutInPack -> return putInPack(action.champion)
             is AgentAction.TakeFromPack -> return takeFromPack(action.champion, action.item)
+            is AgentAction.Wear -> return wear(action.champion)
+            is AgentAction.TakeOff -> return takeOff(action.champion, action.item)
             is AgentAction.Reach -> return reachedByName(action.ahead, action.side)
             is AgentAction.Throw -> {
                 if (_state.value.game.held == null) return "Nothing is on the pointer."
@@ -609,6 +612,50 @@ class ViewConeDebugViewModel(
         } ?: return "${who.name} has no \"$item\" in the pack."
 
         swapHandWith(whose, inventorySlotPositions[pocket.index])
+        return null
+    }
+
+    /**
+     * What is on the pointer onto the box on the body that takes it, an empty
+     * one first, so a second ring goes on the other hand rather than over
+     * the first.
+     */
+    private fun wear(champion: Int): String? {
+        val world = _state.value.game
+        val whose = PartySlot(champion)
+        val who = world.championIn(whose) ?: return "There is no champion $champion."
+        val held = world.held ?: return "Nothing is on the pointer."
+        val types = itemTypes ?: return "The items are not loaded."
+
+        val places = inventorySlotPositions.filter { place ->
+            place.slot.isWornOnTheBody && place.takes is SlotTakes.Only && types.mayGoIn(place.takes, held)
+        }
+        val called = itemNames?.of(held, types) ?: "That"
+        val place = places.firstOrNull { world.item(who.holding(it.slot)) == null }
+            ?: places.firstOrNull()
+            ?: return "$called is not worn."
+
+        // The click would only say so, and an agent told "done" would believe it.
+        if (!types.willSwap(who, place, held, world.item(who.holding(place.slot)))) {
+            return "$called will not go on ${who.name}."
+        }
+
+        swapHandWith(whose, place)
+        return null
+    }
+
+    /** What is worn told as [item], clicked off as a player clicks its box. */
+    private fun takeOff(champion: Int, item: String): String? {
+        val world = _state.value.game
+        val whose = PartySlot(champion)
+        val who = world.championIn(whose) ?: return "There is no champion $champion."
+        val names = itemNames ?: return "The items are not loaded."
+
+        val place = CarrySlot.EVERY_ONE.filter { it.isWornOnTheBody }.firstOrNull { place ->
+            world.item(who.holding(place))?.let { names.of(it, itemTypes) }.equals(item.trim(), ignoreCase = true)
+        } ?: return "${who.name} is not wearing \"$item\"."
+
+        swapHandWith(whose, inventorySlotPositions[place.index])
         return null
     }
 
@@ -3832,7 +3879,8 @@ class ViewConeDebugViewModel(
             }
         }
 
-        val struck = AConeOfCold(kinds = kinds, itemTypes = itemTypes)
+        val level = _state.value.inf?.name?.let(::levelNumber) ?: 0
+        val struck = AConeOfCold(kinds = kinds, itemTypes = itemTypes, level = level)
             .castBy(_state.value.game, casterLevel)
 
         // The swirl is gone from the world by here, so this is the frame that
@@ -3865,7 +3913,8 @@ class ViewConeDebugViewModel(
         drawViewPort()
         tick(AFanOfFlame.HELD_FOR)
 
-        val struck = BurningHands(kinds = kinds, itemTypes = itemTypes)
+        val level = _state.value.inf?.name?.let(::levelNumber) ?: 0
+        val struck = BurningHands(kinds = kinds, itemTypes = itemTypes, level = level)
             .castBy(_state.value.game, casterLevel)
 
         // The fan comes off in the same frame that shows what it left, so the

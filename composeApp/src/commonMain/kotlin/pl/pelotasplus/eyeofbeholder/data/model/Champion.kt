@@ -459,6 +459,10 @@ value class CarrySlot(val index: Int) {
     /** The hands are the first two, and are the only ones a curse sticks to. */
     val isAHand: Boolean get() = index < HANDS
 
+    /** Armour, helmet, bracers, amulet, boots and the rings: not a hand, the pack, the quiver or the belt. */
+    val isWornOnTheBody: Boolean
+        get() = !isAHand && this !in THE_PACK && this != QUIVER && this !in BELT
+
     companion object {
         const val HANDS = 2
 

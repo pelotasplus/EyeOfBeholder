@@ -226,3 +226,23 @@ fun GameState.paidForAndSearched(
     val worth = kinds.firstOrNull { it.id == killed.type.value }?.experience ?: 0
     return partyEarns(XpPoints(worth.toLong()), dice).whatAMonsterDrops(killed, level, dice)
 }
+
+/**
+ * The monster in [slot] hurt by [by], and paid for and searched if that
+ * killed it, whatever did the hurting: a spell or a thing in the air pays
+ * out the same as a blade.
+ */
+fun GameState.monsterHurtAndSearched(
+    slot: MonsterSlot,
+    by: Damage,
+    kinds: List<MonsterProperty>,
+    itemTypes: ItemTypes?,
+    level: Int,
+    dice: Dice,
+): GameState {
+    val before = monsters.firstOrNull { it.index == slot } ?: return this
+    val after = monsterHurt(slot, by, kinds, itemTypes, dice)
+    val left = after.monsters.firstOrNull { it.index == slot }
+    val killed = left == null || left.type != before.type
+    return if (killed) after.paidForAndSearched(before, kinds, level, dice) else after
+}

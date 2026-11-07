@@ -281,6 +281,8 @@ class Tools(private val games: Games, private val home: AgentHome = AgentHome.he
                         "{type: take_hand, champion, hand} (swap what the hand holds with what is on the pointer), " +
                         "{type: put_in_pack, champion} (what is on the pointer into the first empty pocket), " +
                         "{type: take_from_pack, champion, item} (the first thing in the pack by the name observe gives it, onto the pointer, swapped with what was there), " +
+                        "{type: wear, champion} (what is on the pointer put on, where the body takes it — armour, helmet, bracers, amulet, boots, a ring; what was worn there comes onto the pointer), " +
+                        "{type: take_off, champion, item} (what is worn, by the name observe gives it under worn, onto the pointer), " +
                         "{type: reach, ahead: 0|1, side: LEFT|RIGHT} (pick up from, or put down on, the near corners of the party's square or the one ahead; " +
                         "an item 'lying' far_left/far_right at ahead 0 or near_left/near_right at ahead 1 is reachable), " +
                         "{type: throw, side: LEFT|RIGHT} (what is on the pointer), " +
