@@ -382,7 +382,8 @@ class Tools(private val games: Games, private val home: AgentHome = AgentHome.he
                 tool(
                     "checkpoint",
                     "Save through the camp menu under name, and keep a copy outside the game's six slots so it can be gone back to " +
-                        "however many checkpoints there are. A slot already of that name is saved over, then an empty one, then the one named over.",
+                        "however many checkpoints there are. A slot already of that name is saved over, then an empty one, then the one named over, " +
+                        "then the oldest save (its kept copy can still be restored).",
                     properties = buildJsonObject {
                         putJsonObject("name") { put("type", "string") }
                         putJsonObject("over") { put("type", "string") }

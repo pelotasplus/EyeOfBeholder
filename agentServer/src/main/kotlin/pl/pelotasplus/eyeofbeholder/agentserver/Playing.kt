@@ -145,19 +145,22 @@ class Playing(private val game: Games.Game, private val map: TheMap, private val
      * Saves through the camp menu under [name], then keeps a copy of the
      * save outside the game's six slots, so any checkpoint can be gone back
      * to however many there are. A slot already named [name] is saved over,
-     * then an empty one, then [over] if given.
+     * then an empty one, then [over] if given, then the oldest save — whose
+     * kept copy still lets it be gone back to.
      */
     suspend fun checkpoint(name: String, over: String?): Outcome {
         openTheSlots(saving = true)?.let { return Outcome(it, observe()) }
 
         val slots = menuChoices()
-        val slot = slots.firstOrNull { it.equals(name, ignoreCase = true) }
-            ?: slots.firstOrNull { it.equals(EMPTY_SLOT, ignoreCase = true) }
-            ?: over?.let { wanted -> slots.firstOrNull { it.equals(wanted, ignoreCase = true) } }
+        fun slotNamed(wanted: String?) = wanted?.let { slots.firstOrNull { it.equals(wanted, ignoreCase = true) } }
+        val slot = slotNamed(name)
+            ?: slotNamed(EMPTY_SLOT)
+            ?: slotNamed(over)
+            ?: slotNamed(home.oldestSave())
         if (slot == null) {
             act(choose("Cancel"))
             leaveTheCamp()
-            return Outcome("Every slot is taken; give over as one of $slots to save over it.", observe())
+            return Outcome("Every slot is taken and none could be picked to save over; give over as one of $slots.", observe())
         }
 
         act(choose(slot))?.let { return Outcome("Could not open \"$slot\": $it", observe()) }
@@ -168,7 +171,8 @@ class Playing(private val game: Games.Game, private val map: TheMap, private val
 
         val written = home.saveNamed(name) ?: return Outcome("Saved as \"$name\", but no save file of that name was found to keep.", observe())
         val kept = home.keep(name, written)
-        return Outcome("Saved as \"$name\" and kept at ${kept.path}.", observe())
+        val replaced = if (slot.equals(name, ignoreCase = true) || slot.equals(EMPTY_SLOT, ignoreCase = true)) "" else " over \"$slot\""
+        return Outcome("Saved as \"$name\"$replaced and kept at ${kept.path}.", observe())
     }
 
     /**
@@ -323,6 +327,11 @@ class AgentHome(val directory: File, private val saves: File) {
         checkpointsDirectory.mkdirs()
         return File(checkpointsDirectory, "$name.json").also { save.copyTo(it, overwrite = true) }
     }
+
+    /** The name of the save least recently written, which is the one to give up when all six are taken. */
+    fun oldestSave(): String? = saves.listFiles { f -> f.extension == "json" }
+        ?.minByOrNull { it.lastModified() }
+        ?.let(::descriptionOf)
 
     fun kept(name: String): File? = File(checkpointsDirectory, "$name.json").takeIf { it.exists() }
 
