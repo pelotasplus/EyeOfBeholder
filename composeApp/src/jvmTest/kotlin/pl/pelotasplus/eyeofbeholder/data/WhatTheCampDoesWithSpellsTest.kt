@@ -3,6 +3,7 @@ package pl.pelotasplus.eyeofbeholder.data
 import kotlinx.coroutines.runBlocking
 import org.junit.experimental.categories.Category
 import pl.pelotasplus.eyeofbeholder.NeedsGameData
+import pl.pelotasplus.eyeofbeholder.data.model.AScroll
 import pl.pelotasplus.eyeofbeholder.data.model.CampSpellMessages
 import pl.pelotasplus.eyeofbeholder.data.model.CampSpellWork
 import pl.pelotasplus.eyeofbeholder.data.model.CarrySlot
@@ -11,7 +12,7 @@ import pl.pelotasplus.eyeofbeholder.data.model.Discipline
 import pl.pelotasplus.eyeofbeholder.data.model.GameState
 import pl.pelotasplus.eyeofbeholder.data.model.HitPoints
 import pl.pelotasplus.eyeofbeholder.data.model.ItemIndex
-import pl.pelotasplus.eyeofbeholder.data.model.ItemKind
+import pl.pelotasplus.eyeofbeholder.data.model.ItemTypeId
 import pl.pelotasplus.eyeofbeholder.data.model.ItemTypes
 import pl.pelotasplus.eyeofbeholder.data.model.PartySlot
 import pl.pelotasplus.eyeofbeholder.data.model.Scribing
@@ -285,7 +286,7 @@ class WhatTheCampDoesWithSpellsTest {
     /** A mage scroll for a spell not in her book, put in Stumpy's pack. */
     private fun withAScroll(): Pair<GameState, Spell> {
         val (index, scroll) = save.items.withIndex().first { (_, item) ->
-            item.exists && types.kindOf(item) == ItemKind.MAGE_SCROLL &&
+            item.exists && types.isAMageScroll(item) &&
                 Discipline.MAGE.spellNumbered(item.value)?.let { it !in champion(laurann).knownMageSpells } == true
         }
         val spell = assertNotNull(Discipline.MAGE.spellNumbered(scroll.value))
@@ -324,8 +325,44 @@ class WhatTheCampDoesWithSpellsTest {
         assertFalse(after.champions[1].holding(CarrySlot(IN_THE_PACK)).isSomething, "the scroll is still there")
     }
 
+    /** [kind] of thing with [value] written on it, put in the pack of whoever stands in [slot]. */
+    private fun GameState.withA(kind: ItemTypeId, value: Int, slot: Int): GameState {
+        val spare = items.indexOfLast { !it.exists }
+        val scroll = save.items.first { it.exists && types.isAMageScroll(it) }
+        val placed = copy(items = items.toMutableList().also { it[spare] = scroll.copy(type = kind, value = value) })
+        return placed.carrying(PartySlot(slot), CarrySlot(IN_THE_PACK), ItemIndex(spare))
+    }
+
+    /**
+     * A mage scroll's value is the spell's number on the mage list, and that
+     * number is what the line says: 28 is stone to flesh and 23 cone of cold.
+     */
+    @Test
+    fun `a scroll is offered as the spell it is numbered`() {
+        val world = world.withA(A_MAGE_SCROLL, 28, slot = 0).withA(A_MAGE_SCROLL, 23, slot = 1)
+
+        val offered = Scribing.offeredTo(champion(laurann), Scribing.scrollsIn(world, types))
+
+        assertTrue(AScroll(Spell.STONE_TO_FLESH, PartySlot(0), CarrySlot(IN_THE_PACK)) in offered)
+        assertTrue(AScroll(Spell.CONE_OF_COLD, PartySlot(1), CarrySlot(IN_THE_PACK)) in offered)
+    }
+
+    /**
+     * Magic dust carries stone to flesh's number, and a fire sphere
+     * fireball's, but only a scroll is copied.
+     */
+    @Test
+    fun `what is read like a scroll and is not one is not offered`() {
+        val world = world.withA(DUST_OR_A_SPHERE, 28, slot = 0)
+
+        assertTrue(Scribing.scrollsIn(world, types).none { it.spell == Spell.STONE_TO_FLESH })
+    }
+
     private companion object {
         /** A slot that is neither hand nor finger. */
         const val IN_THE_PACK = 10
+
+        val A_MAGE_SCROLL = ItemTypeId(34)
+        val DUST_OR_A_SPHERE = ItemTypeId(26)
     }
 }

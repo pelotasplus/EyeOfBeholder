@@ -129,7 +129,7 @@ object Scribing {
                 if (!who.inTheParty) return@firstNotNullOfOrNull null
                 CarrySlot.EVERY_ONE.firstOrNull { carry ->
                     val item = world.item(who.holding(carry)) ?: return@firstOrNull false
-                    types.kindOf(item) == ItemKind.MAGE_SCROLL && item.value == number
+                    types.isAMageScroll(item) && item.value == number
                 }?.let { AScroll(spell, PartySlot(slot), it) }
             }
         }

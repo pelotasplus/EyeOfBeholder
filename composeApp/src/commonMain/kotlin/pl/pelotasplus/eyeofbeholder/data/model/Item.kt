@@ -239,6 +239,13 @@ data class ItemTypes(private val types: List<ItemType>) {
     /** Whether this is something a champion eats — rations, however fresh. */
     fun isEaten(item: Item): Boolean = item.type == RATIONS
 
+    /**
+     * Whether this is a mage's scroll proper, the one type a mage can copy
+     * into a book. Magic dust and a fire sphere are read like one, and their
+     * value names a spell too, but they are not scrolls.
+     */
+    fun isAMageScroll(item: Item): Boolean = item.type == MAGE_SCROLL
+
     /** Which horn this is, if it is one: a horn is blown rather than swung. */
     fun hornBlown(item: Item): Horn? =
         if (kindOf(item) != ItemKind.A_HORN) null else Horn.of(item.value)
@@ -455,6 +462,8 @@ data class ItemTypes(private val types: List<ItemType>) {
 
         /** The one type a champion eats. Its value is the food it restores. */
         val RATIONS = ItemTypeId(31)
+
+        val MAGE_SCROLL = ItemTypeId(34)
 
         val ARROWS = ItemTypeId(16)
         val A_BOW = ItemTypeId(7)
