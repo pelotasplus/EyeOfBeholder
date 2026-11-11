@@ -46,7 +46,7 @@ class Playing(private val game: Games.Game, private val map: TheMap, private val
             if (move.lowercase() in STEPS && before?.get("at") == after["at"]) {
                 return Outcome(said("Stopped after $made of ${moves.size}: \"$move\" went nowhere."), after)
             }
-            stopFor(after)?.let { why -> return Outcome(said("Stopped after $made of ${moves.size}: $why."), after) }
+            stopFor(before, after)?.let { why -> return Outcome(said("Stopped after $made of ${moves.size}: $why."), after) }
         }
         return Outcome(said("Walked all ${moves.size}."), observe())
     }
@@ -289,12 +289,12 @@ class Playing(private val game: Games.Game, private val map: TheMap, private val
         return (answer["result"] as? JsonObject)?.get("refused")?.jsonPrimitive?.content
     }
 
-    private fun stopFor(seen: JsonObject): String? {
+    private fun stopFor(before: JsonObject?, seen: JsonObject): String? {
         if (seen["dialogue"] != null) return "a dialogue is up"
         if (seen["menu"] != null) return "a menu is open"
         if (somethingWithin(seen, NEAR_ENOUGH)) return "a monster is in sight"
         badlyHurt(seen)?.let { return "$it is badly hurt" }
-        val struck = party(seen).filter { it["struckFor"] != null }.map { it["name"]!!.jsonPrimitive.content }
+        val struck = struckBetween(before, seen)
         if (struck.isNotEmpty()) return "${struck.joinToString()} struck"
         return null
     }
@@ -389,6 +389,21 @@ internal fun badlyHurt(seen: JsonObject): String? =
         val (now, most) = who["hitPoints"]!!.jsonPrimitive.content.split('/').map { it.toInt() }
         !out && now * BADLY_HURT_DIVISOR < most
     }?.let { "${it["name"]!!.jsonPrimitive.content} (${it["hitPoints"]!!.jsonPrimitive.content})" }
+
+/**
+ * Whoever lost hit points between two observations.
+ *
+ * The number a blow leaves over a portrait stays a few seconds, longer than a
+ * step takes, so it says someone was struck lately and not that they were
+ * struck by this move.
+ */
+internal fun struckBetween(before: JsonObject?, after: JsonObject): List<String> {
+    fun hitPoints(seen: JsonObject?) = (seen?.get("party") as? JsonArray).orEmpty().map { it.jsonObject }
+        .associate { it["name"]!!.jsonPrimitive.content to it["hitPoints"]!!.jsonPrimitive.content.substringBefore('/').toInt() }
+
+    val was = hitPoints(before)
+    return hitPoints(after).filter { (name, now) -> was[name]?.let { now < it } == true }.keys.toList()
+}
 
 private val OUT_OF_IT = setOf("down", "dead")
 

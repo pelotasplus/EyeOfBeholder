@@ -43,4 +43,25 @@ class BadlyHurtTest {
 
         assertEquals("Stumpy (10/82)", badlyHurt(seen))
     }
+
+    @Test
+    fun `someone is struck by a move only if they lost hit points over it`() {
+        val before = party(
+            """{"name":"Calandra","hitPoints":"54/76","struckFor":22}""",
+            """{"name":"LAURANN","hitPoints":"26/33"}""",
+        )
+        val after = party(
+            """{"name":"Calandra","hitPoints":"54/76","struckFor":22}""",
+            """{"name":"LAURANN","hitPoints":"17/33","struckFor":9}""",
+        )
+
+        assertEquals(listOf("LAURANN"), struckBetween(before, after))
+    }
+
+    @Test
+    fun `a blow still shown from before the move does not stop it`() {
+        val seen = party("""{"name":"Calandra","hitPoints":"54/76","struckFor":22}""")
+
+        assertEquals(emptyList(), struckBetween(seen, seen))
+    }
 }
