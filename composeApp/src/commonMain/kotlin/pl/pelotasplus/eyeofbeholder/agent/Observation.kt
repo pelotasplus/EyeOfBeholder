@@ -128,7 +128,8 @@ data class SeenChampion(
     val conditions: List<String>,
     /**
      * What each hand holds, and for a moment after a swing what it came to as
-     * the hand shows it — a number for a hit, MISS, CAN'T REACH.
+     * the hand shows it — a number for a hit, MISS, CAN'T REACH. Once that
+     * fades the last blow is still told, as `last:`, until the hand swings again.
      */
     val hands: List<String>,
     /** A blow just taken, as the number splashed over the portrait. */
@@ -338,9 +339,11 @@ private fun Champion.seen(slot: Int, world: GameState, names: ItemNames?, types:
         val whose = pl.pelotasplus.eyeofbeholder.data.model.PartySlot(slot)
         val held = world.item(holding(hand))?.let { names?.of(it, types) } ?: "empty"
         val report = world.reportIn(whose, hand)
+        val last = world.lastBlowOf(whose, hand)?.lines?.joinToString(" ")
         when {
             report != null -> "$held (${report.lines.joinToString(" ")})"
-            world.isRecovering(whose, hand) -> "$held (recovering)"
+            world.isRecovering(whose, hand) -> if (last != null) "$held (recovering, last: $last)" else "$held (recovering)"
+            last != null -> "$held (last: $last)"
             else -> held
         }
     },

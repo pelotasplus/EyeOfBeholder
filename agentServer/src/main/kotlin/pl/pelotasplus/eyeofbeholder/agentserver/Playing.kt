@@ -312,10 +312,19 @@ class Playing(private val game: Games.Game, private val map: TheMap, private val
         it["ahead"]!!.jsonPrimitive.int <= ahead && (it["monsters"] as? JsonArray)?.isNotEmpty() == true
     }
 
+    // A hand at rest saying `last:` is telling an older swing, not this round's.
     private fun handReports(seen: JsonObject): List<String> = party(seen).flatMap { who ->
         (who["hands"] as? JsonArray).orEmpty().map { it.jsonPrimitive.content }
-            .filter { it.endsWith(")") && !it.endsWith("(recovering)") }
-            .map { "${who["name"]!!.jsonPrimitive.content} ${it.substringAfterLast('(').dropLast(1)}" }
+            .filter { it.endsWith(")") }
+            .map { it.substringAfterLast('(').dropLast(1) }
+            .mapNotNull { said ->
+                when {
+                    said.startsWith("recovering, last: ") -> said.removePrefix("recovering, last: ")
+                    said == "recovering" || said.startsWith("last: ") -> null
+                    else -> said
+                }
+            }
+            .map { "${who["name"]!!.jsonPrimitive.content} $it" }
     }
 
     private fun summary(why: String, shown: List<String>) =

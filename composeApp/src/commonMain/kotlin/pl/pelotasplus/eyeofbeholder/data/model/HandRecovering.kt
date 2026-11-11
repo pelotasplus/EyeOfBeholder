@@ -14,6 +14,8 @@ package pl.pelotasplus.eyeofbeholder.data.model
  * to in place of the weapon's icon, and for the rest it shows the weapon again
  * and is still refused.
  */
+data class LastBlow(val whose: PartySlot, val hand: CarrySlot, val came: WhatTheBlowCameTo)
+
 data class HandRecovering(
     val whose: PartySlot,
     val hand: CarrySlot,

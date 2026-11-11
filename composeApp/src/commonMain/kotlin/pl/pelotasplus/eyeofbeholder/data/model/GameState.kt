@@ -146,6 +146,13 @@ data class GameState(
     /** The hands still coming back to rest from a swing, on the same footing. */
     val recovering: List<HandRecovering> = emptyList(),
 
+    /**
+     * What each hand's last blow came to, kept until it swings again. The slot
+     * shows it only for a moment; this is for an agent, who reads the world
+     * far less often than a player glances at it.
+     */
+    val lastBlows: List<LastBlow> = emptyList(),
+
     /** The blows the party have just taken, still showing on their portraits. */
     val showingDamage: List<DamageShown> = emptyList(),
 
@@ -450,6 +457,7 @@ data class GameState(
             },
             running = world.running.nothingLeftOn(whose),
             recovering = world.recovering.filterNot { it.whose == whose },
+            lastBlows = world.lastBlows.filterNot { it.whose == whose },
             showingDamage = world.showingDamage.filterNot { it.whose == whose },
             holding = world.holding.filterNot { it.whose == whose },
         )
@@ -518,6 +526,7 @@ data class GameState(
                 running.all.map { it.copy(castBy = moved(it.castBy), on = it.on?.let(::moved)) },
             ),
             recovering = recovering.map { it.copy(whose = moved(it.whose)) },
+            lastBlows = lastBlows.map { it.copy(whose = moved(it.whose)) },
             showingDamage = showingDamage.map { it.copy(whose = moved(it.whose)) },
             holding = holding.map { it.copy(whose = moved(it.whose)) },
         )
@@ -2387,6 +2396,11 @@ data class GameState(
         return copy(
             recovering = recovering.filterNot { it.whose == whose && it.hand == hand } +
                 HandRecovering(whose, hand, wait.value, came),
+            lastBlows = if (came == null) {
+                lastBlows
+            } else {
+                lastBlows.filterNot { it.whose == whose && it.hand == hand } + LastBlow(whose, hand, came)
+            },
         )
     }
 
@@ -2583,6 +2597,9 @@ data class GameState(
         .firstOrNull { it.whose == whose && it.hand == hand && it.stillReporting }
         ?.came
 
+    fun lastBlowOf(whose: PartySlot, hand: CarrySlot): WhatTheBlowCameTo? =
+        lastBlows.firstOrNull { it.whose == whose && it.hand == hand }?.came
+
     /**
      * The world one tick of the recovery clock later. A hand whose wait has run
      * out is dropped, which is what puts it back to use.
@@ -2606,6 +2623,7 @@ data class GameState(
      */
     fun asAScriptLeaves(live: GameState) = copy(
         recovering = live.recovering,
+        lastBlows = live.lastBlows,
         showingDamage = live.showingDamage,
     )
 

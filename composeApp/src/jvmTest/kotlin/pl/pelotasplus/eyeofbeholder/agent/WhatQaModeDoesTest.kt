@@ -6,6 +6,7 @@ import kotlinx.coroutines.withTimeout
 import org.junit.experimental.categories.Category
 import pl.pelotasplus.eyeofbeholder.NeedsGameData
 import pl.pelotasplus.eyeofbeholder.data.ThePlayField
+import pl.pelotasplus.eyeofbeholder.data.model.CarrySlot
 import pl.pelotasplus.eyeofbeholder.data.model.Dice
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.ThrownSpell
@@ -102,6 +103,22 @@ class WhatQaModeDoesTest {
         )
         val beside = requireNotNull(field.viewModel.observation()).inSight.single { it.ahead == 0 && it.across == -1 }
         assertEquals("wolf", beside.monsters.single().looksLike)
+    }
+
+    /** The slot says what a blow came to for a moment only; the agent is told it until the next swing. */
+    @Test
+    fun `a blow is told after its slot has stopped saying it`() = runBlocking {
+        val field = field("LEVEL4.INF", Location(18, 14), Direction.NORTH)
+        assertNull(field.viewModel.setUp(QaSetup.SpawnMonster(looksLike = "wolf", ahead = 1)))
+
+        assertNull(field.viewModel.act(AgentAction.UseHand(champion = 0, hand = 0)))
+        field.until("the hand back at rest") {
+            val world = field.viewModel.state.value.game
+            !world.isRecovering(PartySlot(0), CarrySlot.BOTH_HANDS.first())
+        }
+
+        val hand = requireNotNull(field.viewModel.observation()).party.first { it.slot == 0 }.hands.first()
+        assertTrue("(last: " in hand, "the blow was not told once the slot stopped saying it: $hand")
     }
 
     @Test
