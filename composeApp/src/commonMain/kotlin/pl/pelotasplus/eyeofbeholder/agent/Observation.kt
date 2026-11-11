@@ -85,7 +85,8 @@ data class SeenBook(
 
 /**
  * One square in sight, [ahead] squares in front of the party and [across]
- * to the side (negative to the left). The party's own square is 0, 0.
+ * to the side (negative to the left). The party's own square is 0, 0; the
+ * squares at 0, ±1 are told only for a monster standing there.
  *
  * The faces are named as the party see them: [near] is the one turned
  * towards them, [left], [right] and [far] the others. A face with nothing on
@@ -222,13 +223,14 @@ fun observe(
         )
 
         // What stands beside a square in sight shows through its open sides.
-        if (ahead > 0) {
-            for ((across, side) in listOf(-1 to leftFace, 1 to rightFace)) {
-                if (!sublevel.showsWhatIsOnIt(side)) continue
-                val (beside, besideItems) = contentsOf(squareAt(across, ahead))
-                if (beside.isNotEmpty() || besideItems.isNotEmpty()) {
-                    squares += SeenSquare(ahead, across, monsters = beside, items = besideItems)
-                }
+        // Beside the party the view draws nothing, but whatever stands there
+        // can strike that side of the party, so it is told; what lies there is not.
+        for ((across, side) in listOf(-1 to leftFace, 1 to rightFace)) {
+            if (!sublevel.showsWhatIsOnIt(side)) continue
+            val (beside, besideItems) = contentsOf(squareAt(across, ahead))
+            val told = if (ahead > 0) besideItems else emptyList()
+            if (beside.isNotEmpty() || told.isNotEmpty()) {
+                squares += SeenSquare(ahead, across, monsters = beside, items = told)
             }
         }
     }

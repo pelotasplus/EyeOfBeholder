@@ -280,7 +280,8 @@ class Tools(private val games: Games, private val home: AgentHome = AgentHome.he
                     "What the party can see and know right now, as JSON: the squares in sight as they look (faces near/left/right/far, " +
                         "what is on the floor, monsters by the picture they are drawn with and which way they face, items as the party know them), " +
                         "the party (hit points, food, conditions, what each hand holds, ready spells), what is on the pointer, the messages, " +
-                        "any open menu and the open spellbook. Squares are counted 'ahead' from the party (0 is their own) and 'across' (negative left). " +
+                        "any open menu and the open spellbook. Squares are counted 'ahead' from the party (0 is their own) and 'across' (negative left); " +
+                        "a monster at the party's shoulder (ahead 0, across ±1) is told though the frame does not draw it. " +
                         "With brief, each champion's pack and what they wear are left out.",
                     properties = buildJsonObject {
                         putJsonObject("brief") {

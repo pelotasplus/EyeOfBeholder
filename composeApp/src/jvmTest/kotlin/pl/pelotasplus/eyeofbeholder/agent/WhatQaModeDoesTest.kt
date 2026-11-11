@@ -87,6 +87,23 @@ class WhatQaModeDoesTest {
         assertEquals(Direction.SOUTH, wolf.facing)
     }
 
+    /** The view draws nothing beside the party, but a monster there strikes that side of it. */
+    @Test
+    fun `a monster at the party's shoulder is told`() = runBlocking {
+        val field = field("LEVEL4.INF", Location(18, 14), Direction.NORTH)
+        assertNull(field.viewModel.setUp(QaSetup.SpawnMonster(looksLike = "wolf", ahead = 1)))
+
+        assertNull(field.viewModel.act(AgentAction.Turn(AgentAction.Side.RIGHT)))
+        field.until("facing east") { field.viewModel.observation()?.facing == Direction.EAST }
+
+        assertTrue(
+            requireNotNull(field.viewModel.inspection()).monsters.any { it.looksLike == "wolf" && it.at == Location(18, 13) },
+            "the wolf moved off the square to the party's left",
+        )
+        val beside = requireNotNull(field.viewModel.observation()).inSight.single { it.ahead == 0 && it.across == -1 }
+        assertEquals("wolf", beside.monsters.single().looksLike)
+    }
+
     @Test
     fun `a look the floor does not place is refused, naming those it does`() {
         val field = field("LEVEL4.INF", Location(18, 14), Direction.NORTH)
