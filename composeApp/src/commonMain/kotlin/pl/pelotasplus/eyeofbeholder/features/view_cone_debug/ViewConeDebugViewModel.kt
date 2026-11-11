@@ -678,15 +678,17 @@ class ViewConeDebugViewModel(
 
     /**
      * A point on the view that works what the wall ahead holds, found the
-     * way a click is answered. Floor a click would reach into first is passed
-     * over, or a held thing would be put down instead — but floor that would
-     * let the click through is not: a button low on a wall can sit over it.
+     * way a click is answered. Outside [ClickedWall.comesBeforeTheFloor],
+     * floor a click would reach into first is passed over, or a held thing
+     * would be put down instead — but floor that would let the click through
+     * is not: a button low on a wall can sit over it.
      */
     private fun aimAtTheWallAhead(): Pair<Int, Int>? {
         for (y in 0 until ViewPort.ROWS step AIM_STEP) {
             for (x in 0 until ViewPort.COLS step AIM_STEP) {
                 val floor = aimedAt(x, y) ?: FloorReach.at(x, y)
-                if (worksTheWallAhead(x, y) && (floor == null || !floorTakes(floor))) return x to y
+                val reached = ClickedWall.comesBeforeTheFloor(x, y) || floor == null || !floorTakes(floor)
+                if (worksTheWallAhead(x, y) && reached) return x to y
             }
         }
         return null
@@ -2548,6 +2550,14 @@ class ViewConeDebugViewModel(
 
         if (x >= ViewPort.COLS || y >= ViewPort.ROWS) return
 
+        // The wall ahead is offered the click before the floor, and a full
+        // hand throws only what both turn down. Reaching a keyhole, a niche or
+        // a button is aiming at something and is why anybody walks up to one
+        // holding something at all; the rest of a wall is somewhere to throw
+        // past.
+        val wallFirst = ClickedWall.comesBeforeTheFloor(x, y)
+        if (wallFirst && onClickedTheWorld(x, y)) return
+
         // A piece of floor answers a click only when there is something to do
         // with it — otherwise the click is the wall's, so a lever low on one
         // stays clickable with an empty hand.
@@ -2555,11 +2565,7 @@ class ViewConeDebugViewModel(
             if (reachedInto(reach)) return
         }
 
-        // The wall ahead is offered the click first, and a full hand throws
-        // only what it turns down. Reaching a keyhole, a niche or a button is
-        // aiming at something and is why anybody walks up to one holding
-        // something at all; the rest of a wall is somewhere to throw past.
-        if (onClickedTheWorld(x, y)) return
+        if (!wallFirst && onClickedTheWorld(x, y)) return
 
         if (_state.value.game.inHand.isSomething) letFly(x)
     }
@@ -4609,7 +4615,9 @@ class ViewConeDebugViewModel(
         // A door is worked by the button beside it and by nothing else. One
         // with no button, or a click that misses the button it has, gets the
         // line the game gives a door that will not be opened by hand — but
-        // only while it is shut, an open doorway having nothing to say.
+        // only while it is shut, an open doorway having nothing to say, and
+        // only on the doorway, so the party's own floor below it still takes
+        // what is put down.
         if (wall is Maz.WallType.Door) {
             val door = sublevel.doors.getOrNull(wall.doorIndex.value) ?: return false
 
@@ -4619,7 +4627,7 @@ class ViewConeDebugViewModel(
                     true
                 }
 
-                !wall.isOpen -> {
+                !wall.isOpen && ClickedWall.hitsTheDoorway(x, y) -> {
                     say(DoorMessages.NO_ONE_CAN_PRY)
                     drawWords()
                     true

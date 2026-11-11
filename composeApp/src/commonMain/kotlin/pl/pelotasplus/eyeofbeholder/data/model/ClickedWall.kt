@@ -54,6 +54,22 @@ object ClickedWall {
     fun hitsTheDoorway(x: Int, y: Int): Boolean =
         x in DOORWAY_LEFT..DOORWAY_RIGHT && y in DOORWAY_TOP..DOORWAY_BOTTOM
 
+    /**
+     * True where a click is offered to the wall ahead before the floor.
+     *
+     * The floor ahead is drawn under the bottom of this box, so a shape lying
+     * on it — soft earth to plant something in — can only be worked with a
+     * full hand because the wall is asked first. Outside it the floor has the
+     * click to itself.
+     */
+    fun comesBeforeTheFloor(x: Int, y: Int): Boolean =
+        x in WALL_FIRST_LEFT..WALL_FIRST_RIGHT && y in WALL_FIRST_TOP..WALL_FIRST_BOTTOM
+
+    private const val WALL_FIRST_LEFT = 24
+    private const val WALL_FIRST_TOP = 8
+    private const val WALL_FIRST_RIGHT = 152
+    private const val WALL_FIRST_BOTTOM = 104
+
     private const val DOORWAY_LEFT = 40
     private const val DOORWAY_TOP = 16
     private const val DOORWAY_RIGHT = 136

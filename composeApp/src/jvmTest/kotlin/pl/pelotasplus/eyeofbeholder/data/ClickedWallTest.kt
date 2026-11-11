@@ -46,6 +46,15 @@ class ClickedWallTest {
     }
 
     @Test
+    fun `the wall is asked before the floor from 24x8 to 152x104, edges included`() {
+        assertTrue(ClickedWall.comesBeforeTheFloor(24, 8))
+        assertTrue(ClickedWall.comesBeforeTheFloor(152, 104))
+        assertFalse(ClickedWall.comesBeforeTheFloor(23, 50))
+        assertFalse(ClickedWall.comesBeforeTheFloor(88, 105))
+        assertFalse(ClickedWall.comesBeforeTheFloor(153, 50))
+    }
+
+    @Test
     fun `a mirrored decoration is measured from the other edge`() {
         // 176 - 80 - 16 leaves it at 80 again, which would hide the bug, so
         // check a point that only the mirrored reading can contain
