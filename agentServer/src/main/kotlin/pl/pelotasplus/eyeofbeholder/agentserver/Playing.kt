@@ -254,12 +254,6 @@ class Playing(private val game: Games.Game, private val map: TheMap, private val
             .map { "${who["name"]!!.jsonPrimitive.content} ${it.substringAfterLast('(').dropLast(1)}" }
     }
 
-    /** Whoever is below a third of their hit points, which is when a player stops to heal. */
-    private fun badlyHurt(seen: JsonObject): String? = party(seen).firstOrNull { who ->
-        val (now, most) = who["hitPoints"]!!.jsonPrimitive.content.split('/').map { it.toInt() }
-        now * BADLY_HURT_DIVISOR < most
-    }?.let { "${it["name"]!!.jsonPrimitive.content} (${it["hitPoints"]!!.jsonPrimitive.content})" }
-
     private fun summary(why: String, shown: List<String>) =
         if (shown.isEmpty()) "$why." else "$why. ${shown.joinToString("; ")}."
 
@@ -295,9 +289,22 @@ class Playing(private val game: Games.Game, private val map: TheMap, private val
         const val REPORT_SHOWS = 400L
         const val HANDS_RECOVER = 2_600L
         const val NEAR_ENOUGH = 2
-        const val BADLY_HURT_DIVISOR = 3
     }
 }
+
+/**
+ * Whoever is below a third of their hit points, which is when a player
+ * stops to heal. The dead are past healing, and stopping for them would
+ * stop every step until they are raised.
+ */
+internal fun badlyHurt(seen: JsonObject): String? =
+    (seen["party"] as? JsonArray).orEmpty().map { it.jsonObject }.firstOrNull { who ->
+        val down = (who["conditions"] as? JsonArray).orEmpty().any { it.jsonPrimitive.content == "down" }
+        val (now, most) = who["hitPoints"]!!.jsonPrimitive.content.split('/').map { it.toInt() }
+        !down && now * BADLY_HURT_DIVISOR < most
+    }?.let { "${it["name"]!!.jsonPrimitive.content} (${it["hitPoints"]!!.jsonPrimitive.content})" }
+
+private const val BADLY_HURT_DIVISOR = 3
 
 /**
  * Where the agent keeps what outlives a session: its map, and every
