@@ -108,6 +108,13 @@ class Tools(private val games: Games, private val home: AgentHome = AgentHome.he
                     val brief = arguments["brief"]?.jsonPrimitive?.booleanOrNull ?: false
                     text(pretty(if (brief && it is JsonObject) briefly(it) else it))
                 }
+                "cast" -> said(
+                    Playing(game, map, home).cast(
+                        arguments["champion"]?.jsonPrimitive?.intOrNull ?: return failed("cast wants a champion"),
+                        arguments["spell"]?.jsonPrimitive?.content ?: return failed("cast wants a spell"),
+                        on = arguments["on"]?.jsonPrimitive?.intOrNull,
+                    ),
+                )
                 "walk" -> said(
                     Playing(game, map, home).walk(
                         (arguments["moves"] as? JsonArray)?.map { it.jsonPrimitive.content }.orEmpty(),
@@ -281,6 +288,30 @@ class Tools(private val games: Games, private val home: AgentHome = AgentHome.he
                             put("description", "Leave out packs and what is worn. False if not said.")
                         }
                     },
+                ),
+            )
+            add(
+                tool(
+                    "cast",
+                    "A spell cast from a champion's book or holy symbol by its name, as a player would: the hand holding it is used, " +
+                        "the pages are turned until the spell is found, and its line is clicked; with on, the champion the spell is " +
+                        "laid on is picked too. Waits out a swing or a step before starting. Says what the messages said, then the " +
+                        "observation it ended on (packs left out).",
+                    properties = buildJsonObject {
+                        putJsonObject("champion") {
+                            put("type", "integer")
+                            put("description", "Who casts, 0-5.")
+                        }
+                        putJsonObject("spell") {
+                            put("type", "string")
+                            put("description", "The spell's name as the book lists it, e.g. \"Fireball\", \"M's Acid Arrow\", \"Cure Serious\".")
+                        }
+                        putJsonObject("on") {
+                            put("type", "integer")
+                            put("description", "For a spell laid on a champion (a cure, Aid): who, 0-5.")
+                        }
+                    },
+                    required = listOf("champion", "spell"),
                 ),
             )
             add(tool("frame", "The screen as it was last drawn, as a 320x200 PNG."))

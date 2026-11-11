@@ -2,7 +2,9 @@ package pl.pelotasplus.eyeofbeholder.agentserver
 
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -101,6 +103,64 @@ class Playing(private val game: Games.Game, private val map: TheMap, private val
             badlyHurt(after)?.let { who -> return Outcome(summary("$who is badly hurt", shown), after) }
         }
         return Outcome(summary("$rounds rounds fought", shown), observe())
+    }
+
+    /**
+     * [spell] cast by [champion] through the book or holy symbol in their
+     * hand, the pages turned until it is found; [on] picks who a laid-on
+     * spell goes to. A page is read from the open book after turning to it,
+     * so this knows no more than the clicks would show.
+     */
+    suspend fun cast(champion: Int, spell: String, on: Int?): Outcome {
+        untilFree()
+        val now = observe() ?: return Outcome("The game gave no observation.", null)
+        val caster = party(now).getOrNull(champion) ?: return Outcome("No champion $champion.", now)
+        val name = caster["name"]!!.jsonPrimitive.content
+        val ready = (caster["spells"] as? JsonArray).orEmpty().map { it.jsonPrimitive.content }
+        if (ready.none { it.equals(spell, ignoreCase = true) }) {
+            return Outcome("$name has no \"$spell\" ready; ready: $ready.", now)
+        }
+        val hand = (caster["hands"] as? JsonArray).orEmpty().map { it.jsonPrimitive.content.lowercase() }
+            .indexOfFirst { BOOKS.any(it::contains) }
+            .takeIf { it >= 0 } ?: return Outcome("$name holds no spellbook or holy symbol.", now)
+
+        actWhenFree(useHand(champion, hand))?.let { return Outcome("Opening the book was refused: $it", observe()) }
+        for (page in 0 until PAGES) {
+            actWhenFree(bookTab(page))?.let { return Outcome("Turning to page ${page + 1} was refused: $it", observe()) }
+            wait(PAGE_TURNS)
+            val lines = (observe()?.get("book")?.jsonObject?.get("lines") as? JsonArray).orEmpty()
+                .map { (it as? JsonPrimitive)?.contentOrNull }
+            val line = lines.indexOfFirst { it.equals(spell, ignoreCase = true) }
+            if (line < 0) continue
+
+            actWhenFree(bookLine(line))?.let { return Outcome("Casting was refused: $it", observe()) }
+            if (on != null) {
+                wait(PAGE_TURNS)
+                actWhenFree(castOn(on))?.let { return Outcome("Laying it on champion $on was refused: $it", observe()) }
+            }
+            wait(SPELL_LEAVES)
+            val after = observe()
+            if (after?.get("book") != null) act(BOOK_ABORT)
+            val said = (after?.get("messages") as? JsonArray).orEmpty().map { it.jsonPrimitive.content }.takeLast(2)
+            return Outcome("Cast. Last said: ${said.joinToString(" / ")}", observe())
+        }
+        act(BOOK_ABORT)
+        return Outcome("\"$spell\" is ready but was not found on any page of $name's book.", observe())
+    }
+
+    private suspend fun wait(ms: Long) {
+        game.ask("wait", buildJsonObject { put("ms", ms) }, within = ms + Games.ANSWER_WITHIN)
+    }
+
+    /** [action], done as soon as a swing or the last step lets it be. */
+    private suspend fun actWhenFree(action: JsonObject): String? {
+        var waited = 0L
+        while (true) {
+            val refused = act(action) ?: return null
+            if (waited >= MOST_A_STEP_TAKES || (A_SWING_COMING !in refused && STEP_STILL_GOING !in refused)) return refused
+            wait(POLL)
+            waited += POLL
+        }
     }
 
     /** A step to [side], taken as soon as a swing or the last step lets it be. */
@@ -278,8 +338,21 @@ class Playing(private val game: Games.Game, private val map: TheMap, private val
         val STRIKE = buildJsonObject { put("type", "front_rank_strikes") }
         val CAMP = buildJsonObject { put("type", "camp") }
 
+        val BOOK_ABORT = buildJsonObject { put("type", "book_abort") }
+
         fun step(way: String) = buildJsonObject { put("type", "step"); put("way", way) }
         fun turn(side: String) = buildJsonObject { put("type", "turn"); put("toThe", side) }
+        fun useHand(champion: Int, hand: Int) = buildJsonObject { put("type", "use_hand"); put("champion", champion); put("hand", hand) }
+        fun bookTab(page: Int) = buildJsonObject { put("type", "book_tab"); put("page", page) }
+        fun bookLine(line: Int) = buildJsonObject { put("type", "book_line"); put("line", line) }
+        fun castOn(champion: Int) = buildJsonObject { put("type", "cast_on"); put("champion", champion) }
+
+        val BOOKS = listOf("spellbook", "holy symbol")
+        const val PAGES = 6
+
+        /** Long enough for a page turned or a line clicked to take; sent back to back, the second click is sometimes lost. */
+        const val PAGE_TURNS = 200L
+        const val SPELL_LEAVES = 400L
 
         /** The two reasons a step is turned away that time alone clears, as `busy` says them. */
         const val STEP_STILL_GOING = "the last step is still being taken"
