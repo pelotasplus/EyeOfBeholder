@@ -385,10 +385,12 @@ class Playing(private val game: Games.Game, private val map: TheMap, private val
  */
 internal fun badlyHurt(seen: JsonObject): String? =
     (seen["party"] as? JsonArray).orEmpty().map { it.jsonObject }.firstOrNull { who ->
-        val down = (who["conditions"] as? JsonArray).orEmpty().any { it.jsonPrimitive.content == "down" }
+        val out = (who["conditions"] as? JsonArray).orEmpty().any { it.jsonPrimitive.content in OUT_OF_IT }
         val (now, most) = who["hitPoints"]!!.jsonPrimitive.content.split('/').map { it.toInt() }
-        !down && now * BADLY_HURT_DIVISOR < most
+        !out && now * BADLY_HURT_DIVISOR < most
     }?.let { "${it["name"]!!.jsonPrimitive.content} (${it["hitPoints"]!!.jsonPrimitive.content})" }
+
+private val OUT_OF_IT = setOf("down", "dead")
 
 private const val BADLY_HURT_DIVISOR = 3
 

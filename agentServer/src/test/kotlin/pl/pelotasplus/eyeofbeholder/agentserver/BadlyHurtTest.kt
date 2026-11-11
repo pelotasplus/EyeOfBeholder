@@ -27,7 +27,7 @@ class BadlyHurtTest {
     @Test
     fun `a dead champion does not stop every step`() {
         val seen = party(
-            """{"name":"San-raal","hitPoints":"-10/28","conditions":["down"]}""",
+            """{"name":"San-raal","hitPoints":"-10/28","conditions":["dead"]}""",
             """{"name":"Calandra","hitPoints":"76/76","conditions":[]}""",
         )
 
@@ -37,7 +37,7 @@ class BadlyHurtTest {
     @Test
     fun `a dead champion does not hide a living one who is hurt`() {
         val seen = party(
-            """{"name":"San-raal","hitPoints":"-10/28","conditions":["down"]}""",
+            """{"name":"San-raal","hitPoints":"-10/28","conditions":["dead"]}""",
             """{"name":"Stumpy","hitPoints":"10/82","conditions":[]}""",
         )
 

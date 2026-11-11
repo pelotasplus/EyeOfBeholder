@@ -334,7 +334,7 @@ private fun Champion.seen(slot: Int, world: GameState, names: ItemNames?, types:
     hitPoints = "${hitPoints.current}/${hitPoints.max}",
     food = food.value,
     conditions = buildList {
-        if (dead) add("down")
+        if (deadForGood) add("dead") else if (dead) add("down")
         if (poisoned) add("poisoned")
         if (paralysed) add("paralysed")
         if (petrified) add("stone")

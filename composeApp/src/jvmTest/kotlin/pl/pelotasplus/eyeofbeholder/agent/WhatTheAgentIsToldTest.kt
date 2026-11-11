@@ -4,8 +4,10 @@ import kotlinx.coroutines.runBlocking
 import org.junit.experimental.categories.Category
 import pl.pelotasplus.eyeofbeholder.NeedsGameData
 import pl.pelotasplus.eyeofbeholder.data.ThePlayField
+import pl.pelotasplus.eyeofbeholder.data.model.Champion
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.Location
+import pl.pelotasplus.eyeofbeholder.data.model.PartySlot
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -118,6 +120,34 @@ class WhatTheAgentIsToldTest {
         assertEquals(4, told.party.size)
         assertEquals(listOf("+1 Dagger", "Spellbook"), laurann.hands)
         assertEquals(listOf("Turn undead"), told.party.single { it.name == "WOLFSPIRIT" }.spells)
+    }
+
+    /**
+     * A champion at no hit points or below is down and can still be healed;
+     * at the point past raising they are dead, and are told so.
+     */
+    @Test
+    fun `the dead are told apart from the down`(): Unit = runBlocking {
+        val field = ThePlayField()
+        field.opened("LEVEL5.INF", Location(10, 8), Direction.EAST)
+        field.until("the party") { field.viewModel.state.value.game.champions.isNotEmpty() }
+        val now = field.viewModel.state.value
+        val world = now.game
+            .withChampion(PartySlot(0)) { it.copy(hitPoints = it.hitPoints.copy(current = Champion.BEYOND_RAISING)) }
+            .withChampion(PartySlot(1)) { it.copy(hitPoints = it.hitPoints.copy(current = -4)) }
+
+        val told = observe(
+            world = world,
+            level = 5,
+            sublevel = requireNotNull(now.inf).subLevels[now.subLevel],
+            names = null,
+            types = null,
+            messages = emptyList(),
+            menu = null,
+        )
+
+        assertEquals(listOf("dead"), told.party[0].conditions)
+        assertEquals(listOf("down"), told.party[1].conditions)
     }
 
     /**
