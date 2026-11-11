@@ -37,6 +37,20 @@ class WhatTheAgentIsToldTest {
         assertEquals("wall", told.inSight.single { it.ahead == 3 }.near)
     }
 
+    /**
+     * The wall of souls on the eleventh floor, the east face of 11x20: a
+     * picture with no wall behind it, like a floor plate, but one that stops
+     * the party, so it is a face across the way and not something on the floor.
+     */
+    @Test
+    fun `a picture that bars the way is told as a wall`() {
+        val told = toldAt("LEVEL11.INF", Location(3, 20), Direction.WEST)
+        val itsSquare = told.inSight.single { it.ahead == 1 && it.across == 0 }
+
+        assertEquals("wall with picture 36", itsSquare.near)
+        assertEquals(null, itsSquare.floor)
+    }
+
     /** `level5-10x8-east`: a wall straight in front, and nothing beyond it is told. */
     @Test
     fun `nothing behind a wall is told`() {

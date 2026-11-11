@@ -4,6 +4,7 @@ import kotlinx.serialization.Serializable
 import pl.pelotasplus.eyeofbeholder.data.model.CampMenu
 import pl.pelotasplus.eyeofbeholder.data.model.CarrySlot
 import pl.pelotasplus.eyeofbeholder.data.model.Champion
+import pl.pelotasplus.eyeofbeholder.data.model.Decoration
 import pl.pelotasplus.eyeofbeholder.data.model.Direction
 import pl.pelotasplus.eyeofbeholder.data.model.Discipline
 import pl.pelotasplus.eyeofbeholder.data.model.GameState
@@ -289,7 +290,7 @@ private fun describe(wall: Maz.WallType, sublevel: SubLevel): String? = when (wa
         val painted = sublevel.decorations.firstOrNull { it.decorationWallIndex == wall.decorationWallIndex }
         when {
             painted == null -> "wall"
-            painted.lyingOnTheFloor -> null
+            painted.liesFlat -> null
             // drawn as a door sitting a little above its threshold; whether it
             // can be forced or is jammed for good does not show
             painted.doesWhenClicked.isShoved -> "stuck door"
@@ -308,9 +309,13 @@ private fun describe(wall: Maz.WallType, sublevel: SubLevel): String? = when (wa
 private fun onTheFloor(near: Maz.WallType, sublevel: SubLevel): String? {
     if (near !is Maz.WallType.Decoration) return null
     val painted = sublevel.decorations.firstOrNull { it.decorationWallIndex == near.decorationWallIndex }
-    if (painted == null || !painted.lyingOnTheFloor || painted.decorationID < 0) return null
+    if (painted == null || !painted.liesFlat || painted.decorationID < 0) return null
     return "picture ${painted.decorationID}"
 }
+
+// A picture with no wall behind it is a floor plate when the party walk over
+// it, and a barrier hanging across the way — the wall of souls — when it stops them.
+private val Decoration.liesFlat: Boolean get() = lyingOnTheFloor && flags.letThePartyThrough
 
 private fun MonsterInstance.seenFrom(facing: Direction, sublevel: SubLevel) = SeenMonster(
     looksLike = sublevel.monsterGfx.getOrNull(gfxIndex)?.name ?: "something",
