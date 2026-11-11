@@ -105,7 +105,8 @@ class Tools(private val games: Games, private val home: AgentHome = AgentHome.he
             when (name) {
                 "observe" -> answerOf(game.ask("observe")) {
                     (it as? JsonObject)?.let(map::saw)
-                    text(pretty(it))
+                    val brief = arguments["brief"]?.jsonPrimitive?.booleanOrNull ?: false
+                    text(pretty(if (brief && it is JsonObject) briefly(it) else it))
                 }
                 "walk" -> said(
                     Playing(game, map, home).walk(
@@ -175,9 +176,13 @@ class Tools(private val games: Games, private val home: AgentHome = AgentHome.he
 
     private fun pretty(element: JsonElement) = prettyJson.encodeToString(JsonElement.serializer(), element)
 
-    /** What a batch came to, then the observation it ended on, so no second call is needed to see where things stand. */
+    /**
+     * What a batch came to, then the observation it ended on, so no second
+     * call is needed to see where things stand. Packs are left out of it;
+     * observe shows them.
+     */
     private fun said(outcome: Playing.Outcome) =
-        text(outcome.done + (outcome.observation?.let { "\n\n" + pretty(it) } ?: ""))
+        text(outcome.done + (outcome.observation?.let { "\n\n" + pretty(briefly(it)) } ?: ""))
 
     private fun text(said: String) = buildJsonObject {
         putJsonArray("content") {
@@ -268,7 +273,14 @@ class Tools(private val games: Games, private val home: AgentHome = AgentHome.he
                     "What the party can see and know right now, as JSON: the squares in sight as they look (faces near/left/right/far, " +
                         "what is on the floor, monsters by the picture they are drawn with and which way they face, items as the party know them), " +
                         "the party (hit points, food, conditions, what each hand holds, ready spells), what is on the pointer, the messages, " +
-                        "any open menu and the open spellbook. Squares are counted 'ahead' from the party (0 is their own) and 'across' (negative left).",
+                        "any open menu and the open spellbook. Squares are counted 'ahead' from the party (0 is their own) and 'across' (negative left). " +
+                        "With brief, each champion's pack and what they wear are left out.",
+                    properties = buildJsonObject {
+                        putJsonObject("brief") {
+                            put("type", "boolean")
+                            put("description", "Leave out packs and what is worn. False if not said.")
+                        }
+                    },
                 ),
             )
             add(tool("frame", "The screen as it was last drawn, as a 320x200 PNG."))
