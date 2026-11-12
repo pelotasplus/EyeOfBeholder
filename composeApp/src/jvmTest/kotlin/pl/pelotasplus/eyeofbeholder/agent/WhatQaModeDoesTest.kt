@@ -130,14 +130,7 @@ class WhatQaModeDoesTest {
     @Test
     fun `a turn made mid-swing is done once the blow lands`() = runBlocking {
         val field = field("LEVEL4.INF", Location(18, 14), Direction.NORTH)
-        delay(THE_OPENING)
-        assertNull(field.viewModel.setUp(QaSetup.SpawnMonster(looksLike = "wolf", ahead = 1)))
-        assertNull(field.viewModel.act(AgentAction.UseHand(champion = 0, hand = 0)))
-        field.agentTime.takeOver()
-
-        withTimeout(ALL_THE_READINGS) {
-            while (!field.viewModel.state.value.game.pinnedByASwing) field.agentTime.advance(20)
-        }
+        field.untilSwungAt()
 
         assertNull(field.viewModel.act(AgentAction.Turn(AgentAction.Side.RIGHT)), "a turn mid-swing was refused")
         assertEquals(Direction.NORTH, field.viewModel.observation()?.facing, "the turn went in under the swing")
@@ -151,14 +144,7 @@ class WhatQaModeDoesTest {
     @Test
     fun `the camp asked for mid-swing is refused rather than held`() = runBlocking {
         val field = field("LEVEL4.INF", Location(18, 14), Direction.NORTH)
-        delay(THE_OPENING)
-        assertNull(field.viewModel.setUp(QaSetup.SpawnMonster(looksLike = "wolf", ahead = 1)))
-        assertNull(field.viewModel.act(AgentAction.UseHand(champion = 0, hand = 0)))
-        field.agentTime.takeOver()
-
-        withTimeout(ALL_THE_READINGS) {
-            while (!field.viewModel.state.value.game.pinnedByASwing) field.agentTime.advance(20)
-        }
+        field.untilSwungAt()
 
         assertEquals("Not done: the party are being swung at.", field.viewModel.act(AgentAction.Camp))
         field.agentTime.advance(1_000)
@@ -401,6 +387,27 @@ class WhatQaModeDoesTest {
 
         assertNull(field.viewModel.setUp(QaSetup.GiveScroll(Spell.SLOW_POISON.calledIt)))
         assertEquals("Cleric Scroll of slow poison", field.viewModel.observation()?.holding)
+    }
+
+    /**
+     * A wolf in front swinging at the party, on the agent's time. A spawned
+     * wolf only fights once struck, and a lucky blow can kill it outright, so
+     * a new one is put there and struck until one is swinging.
+     */
+    private suspend fun ThePlayField.untilSwungAt() {
+        delay(THE_OPENING)
+        val ahead = Location(18, 13)
+        withTimeout(ALL_THE_READINGS) {
+            while (!viewModel.state.value.game.pinnedByASwing) {
+                if (viewModel.state.value.game.monsters.none { it.location == ahead && it.hitPoints.current > 0 }) {
+                    agentTime.handBack()
+                    assertNull(viewModel.setUp(QaSetup.SpawnMonster(looksLike = "wolf", ahead = 1)))
+                    assertNull(viewModel.act(AgentAction.UseHand(champion = 0, hand = 0)))
+                    agentTime.takeOver()
+                }
+                agentTime.advance(20)
+            }
+        }
     }
 
     /** A scroll of [spell] swapped into the mage's free hand and read. */

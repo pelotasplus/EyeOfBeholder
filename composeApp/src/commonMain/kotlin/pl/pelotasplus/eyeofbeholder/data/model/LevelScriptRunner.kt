@@ -1509,6 +1509,10 @@ class LevelScriptRunner(
 
                 is Conditional.IsWholePartyHidden -> push(state.wholePartyIsHidden)
 
+                // How many of the party could act this moment: neither down,
+                // held nor stone.
+                is Conditional.TestCharacters -> push(ConditionValue.of(state.champions.count { it.canAct }))
+
                 is Conditional.GetPointerItem.ItemType ->
                     push(ConditionValue.of(state.heldAsAScriptReadsIt?.type?.value ?: 0))
 

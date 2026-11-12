@@ -332,6 +332,30 @@ class ConditionStackTest {
         assertFalse(holds(listOf(Conditional.HasRace(nobodyIs)), world))
     }
 
+    /** Counted as able to act: not down, not held and not stone. */
+    @Test
+    fun `how many of the party are standing`() {
+        val party = runBlocking {
+            OriginalSaveRepositoryImpl(ResourceRepositoryImpl())
+                .loadOriginalSave(OriginalSaveRepositoryImpl.QUICK_START)
+                .getOrThrow()
+                .party
+        }
+        val all = party.count { it.inTheParty }
+        fun standingAre(count: Int, world: GameState) =
+            holds(listOf(Conditional.TestCharacters, number(count), Conditional.Equals), world)
+
+        assertTrue(standingAre(all, standing.copy(champions = party)), "a fresh party is not all standing")
+
+        val inTheParty = party.withIndex().filter { it.value.inTheParty }.map { it.index }
+        val troubled = party.toMutableList().apply {
+            this[inTheParty[0]] = this[inTheParty[0]].turnedToStone()
+            this[inTheParty[1]] = this[inTheParty[1]].paralysed(true)
+            this[inTheParty[2]] = this[inTheParty[2]].let { it.copy(hitPoints = it.hitPoints.copy(current = 0)) }
+        }
+        assertTrue(standingAre(all - 3, standing.copy(champions = troubled)), "stone, held or down still counted")
+    }
+
     /**
      * What the player answered, which a script may test more than once and
      * well past the branch it chose. Nothing asked yet is nothing answered.
