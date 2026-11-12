@@ -379,6 +379,14 @@ class ViewConeDebugViewModel(
      */
     private var stepStillRunning = 0
 
+    /**
+     * What the party did while an arm was coming down at them, done the moment
+     * it lands and before any other monster's turn comes round. Without it a
+     * squareful of monsters swing back to back and nothing the party try ever
+     * finds a gap. Only the first is kept: one thing gets done per gap.
+     */
+    private var heldForTheSwing: Event? = null
+
     /** How long until the venom takes its next bite out of everyone it has. */
     private var untilPoisonBites = 0
     private var pulse = TeleporterPulse.AS_LAID_OUT
@@ -481,12 +489,12 @@ class ViewConeDebugViewModel(
         // Nothing the party do gets done while an arm is coming down at them.
         // Only the party are held: the doors and the other monsters carry on
         // underneath, which keeps them from hitching.
-        if (event.isTheirOwnDoing && _state.value.game.pinnedByASwing) return "the party are being swung at"
+        if (event.isTheirOwnDoing && _state.value.game.pinnedByASwing) return BEING_SWUNG_AT
 
         // A party do not move as fast as a key repeats. Four ticks a step is
         // transcribed rather than tuned, and it is what makes stepping round a
         // monster a matter of timing rather than of holding a key down.
-        if (event.isAStep && stepStillRunning > 0) return "the last step is still being taken"
+        if (event.isAStep && stepStillRunning > 0) return STEP_STILL_RUNNING
 
         return null
     }
@@ -576,9 +584,24 @@ class ViewConeDebugViewModel(
             is AgentAction.Use -> Event.UsedWhatIsAt(action.x, action.y)
             is AgentAction.Type -> return typeOut(action.text)
         }
-        turnedAway(event)?.let { why -> return "Not done: $why." }
+        turnedAway(event)?.let { why ->
+            if (!heldUntilTheSwingLands(event, why)) return "Not done: $why."
+            return null
+        }
         onEvent(event)
         return null
+    }
+
+    /** Whether [event], turned away for [why], was kept to be done once the swing lands. */
+    private fun heldUntilTheSwingLands(event: Event, why: String): Boolean {
+        // The camp opens and shuts on the same key, so one pressed late would
+        // flip it the other way from whatever the presser meant.
+        if (why != BEING_SWUNG_AT || event is Event.Camp) return false
+        // only the clock lands a swing, and a stopped one would pin the party forever
+        keepTheFightGoing()
+        if (heldForTheSwing != null) return false
+        heldForTheSwing = event
+        return true
     }
 
     /**
@@ -986,7 +1009,7 @@ class ViewConeDebugViewModel(
         if (event !is Event.Initialize) audioSink.wake()
 
         turnedAway(event)?.let { why ->
-            Logger.d(TAG) { "Ignoring $event: $why" }
+            if (!heldUntilTheSwingLands(event, why)) Logger.d(TAG) { "Ignoring $event: $why" }
             return
         }
 
@@ -1812,6 +1835,7 @@ class ViewConeDebugViewModel(
     /** The party as a new game has them, standing where a new game starts. */
     private suspend fun startAgain() {
         offeredAfterLosing = false
+        heldForTheSwing = null
         fighting?.cancel()
         _state.update {
             it.copy(
@@ -2475,6 +2499,7 @@ class ViewConeDebugViewModel(
             .getOrNull() ?: return
 
         offeredAfterLosing = false
+        heldForTheSwing = null
         resume(saved)
         showMenu(null)
         onVmpSelected(
@@ -3066,6 +3091,21 @@ class ViewConeDebugViewModel(
                 anybodyFought = anybodyFought || _state.value.game.monsters.any { it.provoked }
                 tick(GameState.CLOCK_STEP)
 
+                // The held action takes this tick to itself: a camp it opens
+                // must find the floor between swings, not under a new one.
+                // A swing or a step still finishing only delays it; anything
+                // else in the way now is in the way for good.
+                heldForTheSwing?.let { held ->
+                    val why = turnedAway(held)
+                    if (why != BEING_SWUNG_AT && why != STEP_STILL_RUNNING) {
+                        heldForTheSwing = null
+                        if (why == null) {
+                            onEvent(held)
+                            continue
+                        }
+                    }
+                }
+
                 tickNow += GameState.CLOCK_STEP.value
                 untilTheNextFrame -= GameState.CLOCK_STEP.value
 
@@ -3400,6 +3440,9 @@ class ViewConeDebugViewModel(
                 if (moved) drawViewPort()
             }
 
+            // a menu or a box stopped the clock, and what was held is not
+            // what anybody means once it is taken down again
+            heldForTheSwing = null
             if (anybodyFought) Logger.d(TAG) { "The fight is over" }
         }
     }
@@ -6386,6 +6429,9 @@ class ViewConeDebugViewModel(
 
         /** How long one frame of a monster's swing is held. Transcribed. */
         private val A_SWING_FRAME = Ticks(8)
+
+        private const val BEING_SWUNG_AT = "the party are being swung at"
+        private const val STEP_STILL_RUNNING = "the last step is still being taken"
 
         /** And how often a monster's group takes a turn. Also transcribed. */
         private val A_MONSTER_TURN = Ticks(20)

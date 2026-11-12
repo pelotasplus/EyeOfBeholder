@@ -121,6 +121,50 @@ class WhatQaModeDoesTest {
         assertTrue("(last: " in hand, "the blow was not told once the slot stopped saying it: $hand")
     }
 
+    /**
+     * What the party do while an arm is coming down at them waits for the
+     * blow to land rather than being thrown away. A squareful of monsters
+     * swing back to back, and a party whose every move mid-swing was refused
+     * could never get one in between.
+     */
+    @Test
+    fun `a turn made mid-swing is done once the blow lands`() = runBlocking {
+        val field = field("LEVEL4.INF", Location(18, 14), Direction.NORTH)
+        delay(THE_OPENING)
+        assertNull(field.viewModel.setUp(QaSetup.SpawnMonster(looksLike = "wolf", ahead = 1)))
+        assertNull(field.viewModel.act(AgentAction.UseHand(champion = 0, hand = 0)))
+        field.agentTime.takeOver()
+
+        withTimeout(ALL_THE_READINGS) {
+            while (!field.viewModel.state.value.game.pinnedByASwing) field.agentTime.advance(20)
+        }
+
+        assertNull(field.viewModel.act(AgentAction.Turn(AgentAction.Side.RIGHT)), "a turn mid-swing was refused")
+        assertEquals(Direction.NORTH, field.viewModel.observation()?.facing, "the turn went in under the swing")
+
+        withTimeout(ALL_THE_READINGS) {
+            while (field.viewModel.observation()?.facing != Direction.EAST) field.agentTime.advance(20)
+        }
+    }
+
+    /** The camp key both opens and shuts it, so a late one would do the opposite of what was meant. */
+    @Test
+    fun `the camp asked for mid-swing is refused rather than held`() = runBlocking {
+        val field = field("LEVEL4.INF", Location(18, 14), Direction.NORTH)
+        delay(THE_OPENING)
+        assertNull(field.viewModel.setUp(QaSetup.SpawnMonster(looksLike = "wolf", ahead = 1)))
+        assertNull(field.viewModel.act(AgentAction.UseHand(champion = 0, hand = 0)))
+        field.agentTime.takeOver()
+
+        withTimeout(ALL_THE_READINGS) {
+            while (!field.viewModel.state.value.game.pinnedByASwing) field.agentTime.advance(20)
+        }
+
+        assertEquals("Not done: the party are being swung at.", field.viewModel.act(AgentAction.Camp))
+        field.agentTime.advance(1_000)
+        assertNull(field.viewModel.state.value.menu, "the camp opened after the swing")
+    }
+
     @Test
     fun `a look the floor does not place is refused, naming those it does`() {
         val field = field("LEVEL4.INF", Location(18, 14), Direction.NORTH)
