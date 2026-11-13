@@ -157,7 +157,7 @@ private val atEachQuarter = listOf(
 
     sealed interface Hurt {
         data class AChampion(val slot: PartySlot, val by: Damage) : Hurt
-        data class AMonster(val slot: MonsterSlot, val by: Damage) : Hurt
+        data class AMonster(val slot: MonsterSlot, val by: Damage, val byTheParty: Boolean = true) : Hurt
 
         /**
          * Not hurt at all: stopped where it stands, for [forTurns] turns.
@@ -441,6 +441,7 @@ private val atEachQuarter = listOf(
                     thrownAgainst(damageOf(world, flying, kind), flying) { off ->
                         kind?.saves(off, dice) == true
                     },
+                    byTheParty = fromTheParty,
                 )
             }
         }
@@ -711,7 +712,8 @@ private val atEachQuarter = listOf(
     }
 
     private fun struckDown(world: GameState, hurt: Hurt): GameState = when (hurt) {
-        is Hurt.AMonster -> world.monsterHurtAndSearched(hurt.slot, hurt.by, kinds, itemTypes, level, dice)
+        is Hurt.AMonster ->
+            world.monsterHurtAndSearched(hurt.slot, hurt.by, kinds, itemTypes, level, dice, hurt.byTheParty)
         is Hurt.AChampion -> world.championHurt(hurt.slot, hurt.by)
         is Hurt.AMonsterHeld -> world.monsterHeld(hurt.slot, hurt.forTurns)
         is Hurt.AHoldSpentOn -> world

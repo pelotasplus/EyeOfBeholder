@@ -239,9 +239,10 @@ fun GameState.monsterHurtAndSearched(
     itemTypes: ItemTypes?,
     level: Int,
     dice: Dice,
+    byTheParty: Boolean = true,
 ): GameState {
     val before = monsters.firstOrNull { it.index == slot } ?: return this
-    val after = monsterHurt(slot, by, kinds, itemTypes, dice)
+    val after = monsterHurt(slot, by, kinds, itemTypes, dice, byTheParty)
     val left = after.monsters.firstOrNull { it.index == slot }
     val killed = left == null || left.type != before.type
     return if (killed) after.paidForAndSearched(before, kinds, level, dice) else after

@@ -1347,6 +1347,7 @@ data class GameState(
         kinds: List<MonsterProperty> = emptyList(),
         types: ItemTypes? = null,
         dice: Dice = Dice.random,
+        byTheParty: Boolean = true,
     ): GameState {
         val hit = monsters.firstOrNull { it.index == slot } ?: return this
 
@@ -1358,7 +1359,7 @@ data class GameState(
         val kind = kinds.firstOrNull { it.id == hit.type.value }
         if (kind?.burstsWhenHurt == true) return burstOf(hit, types, dice)
 
-        val after = hit.hurt(by)
+        val after = hit.hurt(by, byTheParty)
         if (after.hitPoints.current > 0) {
             return copy(monsters = monsters.map { if (it.index == slot) after else it })
         }
@@ -1942,7 +1943,7 @@ data class GameState(
      */
     fun rousedBy(slot: MonsterSlot) = copy(
         monsters = monsters.map {
-            if (it.index == slot || it.standingBy) it.copy(provoked = true) else it
+            if (it.index == slot || it.standingBy) it.takingUpTheHunt() else it
         },
     )
 

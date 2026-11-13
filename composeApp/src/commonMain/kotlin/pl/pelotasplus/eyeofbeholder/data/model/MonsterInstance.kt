@@ -105,6 +105,17 @@ data class MonsterInstance(
      */
     val provoked: Boolean = false,
     /**
+     * The square it is making for: where it last noticed the party. None
+     * means the party themselves, wherever they are.
+     */
+    val heading: Location? = null,
+    /**
+     * Whether the party have landed anything on it — see [huntsForGood].
+     * Null for one out of a save written before this was kept, or one
+     * nothing has hurt since.
+     */
+    val hitByTheParty: Boolean? = null,
+    /**
      * How far through its own swing it is, if it is swinging: the arm goes
      * back and then comes down, and the sprites for both are cut already.
      */
@@ -172,9 +183,17 @@ data class MonsterInstance(
      * A turn of a hold spent. The last of them puts the creature on the hunt
      * rather than back to whatever it was doing before — a thing let go of
      * has had the party standing over it and is nobody's patrol any more.
+     *
+     * Where it was making for before the hold is forgotten: it looks again
+     * from where it stands, and one that does not see the party then gives
+     * up on the spot.
      */
     fun theHoldRunningDown() =
-        if (heldFor <= 1) copy(heldFor = 0).takingUpTheHunt() else copy(heldFor = heldFor - 1)
+        if (heldFor <= 1) {
+            copy(heldFor = 0).takingUpTheHunt().copy(heading = if (huntsForGood) null else location)
+        } else {
+            copy(heldFor = heldFor - 1)
+        }
     val x: Int get() = location.x
     val y: Int get() = location.y
 
@@ -238,12 +257,24 @@ data class MonsterInstance(
      * A blow also ends being afraid: one chased down and struck from behind
      * turns and fights.
      */
-    fun hurt(by: Damage) = copy(
+    fun hurt(by: Damage, byTheParty: Boolean = true) = copy(
         hitPoints = hitPoints.copy(current = hitPoints.current - by.points),
         struck = true,
         provoked = true,
+        hitByTheParty = byTheParty || huntsForGood,
+        heading = if (byTheParty) null else heading,
         afraidFor = 0,
     )
+
+    /**
+     * Whether it stays after the party however far they go, which only a
+     * blow of theirs earns; one that has only seen them gives up at the last
+     * square it saw them on. Where nothing says, a wound is taken for the
+     * party's, since a save written before this was kept is otherwise
+     * mid-fight with monsters that have forgotten who hurt them.
+     */
+    val huntsForGood: Boolean
+        get() = hitByTheParty ?: (couldBeHurt && hitPoints.current < hitPoints.max)
 
     val afraid: Boolean get() = afraidFor > 0
 
@@ -299,6 +330,32 @@ data class MonsterInstance(
 
     /** The same monster set after the party, whatever it was doing before. */
     fun takingUpTheHunt() = copy(mode = MonsterMode.HUNTING.asWritten, provoked = true)
+
+    fun sawTheParty(at: Location) = takingUpTheHunt().copy(heading = at)
+
+    /**
+     * Arrived where the party were last seen and found nobody: it stops
+     * hunting and strays, [towards] one side, until it notices them again.
+     */
+    fun lostTheParty(towards: MonsterMode) = copy(
+        mode = towards.asWritten,
+        provoked = false,
+        heading = null,
+        straying = Straying.TURNED_AWAY,
+    )
+
+    fun makingFor(party: PartyState): Location =
+        heading?.takeUnless { huntsForGood } ?: party.position
+
+    /**
+     * Whether it has come to the square it was making for and the party are
+     * not there: it stands on it, or faces it from the next one.
+     */
+    fun cameToNothing(party: PartyState): Boolean {
+        val goal = heading ?: return false
+        if (goal == party.position) return false
+        return goal == location || direction.oneStepFrom(location) == goal
+    }
 
     /**
      * Whether its arm gets to the party from where it stands: it must face

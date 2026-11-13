@@ -105,14 +105,17 @@ class MonstersTurn(
         if (world.pinnedByASwing) return Turned(world)
 
         // Anything that walks also notices, and whatever it was doing before it
-        // is now hunting. What is standing by is deaf until it is hit, which is
+        // is now hunting, making for the square it saw the party on. One
+        // already hunting looks again, so it follows them for as long as they
+        // stay in sight. What is standing by is deaf until it is hit, which is
         // the whole of level 5's encounter.
         val noticing = if (walking == null) world else world.copy(
             monsters = world.monsters.map {
-                if (!it.stone && it.whatItDoes.noticesTheParty && !it.provoked && it.notices(world.party)) {
-                    it.takingUpTheHunt()
-                } else {
-                    it
+                val sees = !it.stone && it.whatItDoes.noticesTheParty && it.notices(world.party)
+                when {
+                    !sees -> it
+                    it.huntsForGood -> it.takingUpTheHunt()
+                    else -> it.sawTheParty(world.party.position)
                 }
             },
         )
@@ -217,8 +220,16 @@ class MonstersTurn(
                 ?: ready
         }
 
+        // Come to where the party were and found nobody: it gives up and
+        // strays, which is how a party breaks off a chase. One they have hit
+        // never gets this far, since it goes after them rather than a square.
+        if (!walker.huntsForGood && walker.cameToNothing(ready.party)) {
+            val strays = if (dice.roll(1, 2, 0) == 1) MonsterMode.STRAYING_LEFT else MonsterMode.STRAYING_RIGHT
+            return ready.holding(walker.lostTheParty(strays))
+        }
+
         val after = when (
-            val went = walking.towards(ready, walker, ready.party.position, wayRound)
+            val went = walking.towards(ready, walker, walker.makingFor(ready.party), wayRound)
         ) {
             is MonsterStepping.Stepped.Moved -> went.world
             is MonsterStepping.Stepped.Turned -> went.world
