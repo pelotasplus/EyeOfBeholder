@@ -69,6 +69,24 @@ class WhatQaModeDoesTest {
     }
 
     @Test
+    fun `a book put down while open goes on casting`() = runBlocking {
+        val field = field("LEVEL12.INF", Location(19, 15), Direction.SOUTH)
+        delay(THE_OPENING)
+        assertNull(field.viewModel.setUp(QaSetup.GiveSpell(champion = 3, spell = "magic missile")))
+
+        assertNull(field.viewModel.act(AgentAction.UseHand(champion = 3, hand = 1)))
+        field.until("the book open") { field.viewModel.observation()?.book != null }
+        assertNull(field.viewModel.act(AgentAction.BookTab(page = 0)))
+        assertNull(field.viewModel.act(AgentAction.TakeHand(champion = 3, hand = 1)))
+        assertNull(field.viewModel.act(AgentAction.Reach(ahead = 0, side = AgentAction.Side.LEFT)))
+
+        val line = requireNotNull(field.viewModel.observation()?.book).lines.indexOf("Magic Missile")
+        assertNull(field.viewModel.act(AgentAction.BookLine(line = line)))
+        field.until("the casting") { field.viewModel.observation()?.messages?.any { "casts magic missile" in it } == true }
+        assertTrue(field.viewModel.observation()?.book != null, "the book shut once it was out of the hand")
+    }
+
+    @Test
     fun `a teleport puts the party where it says`() = runBlocking {
         val field = field("LEVEL12.INF", Location(19, 15), Direction.SOUTH)
 

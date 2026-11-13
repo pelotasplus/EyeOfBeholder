@@ -4195,17 +4195,22 @@ class ViewConeDebugViewModel(
     private var bookHand: CarrySlot = CarrySlot.BOTH_HANDS.first()
 
     /**
-     * Whether [book]'s owner is still holding it and still able to read from
-     * it. A book taken out of the hand, or a reader knocked down or turned to
-     * stone, is a book that casts nothing.
+     * Whether [book]'s owner can still read from it. Only being knocked
+     * down, held or turned to stone shuts it: a book put down while open
+     * goes on casting.
      */
-    private fun stillInHand(book: SpellBook): Boolean {
-        val world = _state.value.game
-        val owner = world.championIn(book.whose) ?: return false
-        if (owner.hitPoints.current <= 0 || owner.petrified) return false
-        val held = world.item(owner.holding(bookHand)) ?: return false
-        return itemTypes?.whatAHandDoesWith(held) == HandUse.OpenTheBook(book.discipline)
+    private fun stillReadable(book: SpellBook): Boolean {
+        val owner = _state.value.game.championIn(book.whose) ?: return false
+        return owner.hitPoints.current > 0 && !owner.petrified && !owner.paralysed
     }
+
+    /**
+     * The hand an open book is read from. Once the book is put down its hand
+     * is empty, and the other one is named instead so that a spell charging
+     * "the other hand" lands in the one the book left free.
+     */
+    private fun readFrom(whose: PartySlot): CarrySlot =
+        if (_state.value.game.handIsFree(whose, bookHand)) CarrySlot.BOTH_HANDS.first { it != bookHand } else bookHand
 
     private fun closeTheBook() {
         if (openBook == null) return
@@ -4227,7 +4232,7 @@ class ViewConeDebugViewModel(
      */
     private fun bookClicked(x: Int, y: Int) {
         val book = openBook ?: return
-        if (!stillInHand(book)) {
+        if (!stillReadable(book)) {
             closeTheBook()
             return
         }
@@ -4237,7 +4242,7 @@ class ViewConeDebugViewModel(
                 val picked = book.picked(part.line) ?: return
                 turnTo(picked)
                 val spell = picked.pickedSpell ?: return
-                castSpell(book.whose, spell, CastFrom.TheBook(bookHand, book.discipline))
+                castSpell(book.whose, spell, CastFrom.TheBook(readFrom(book.whose), book.discipline))
             }
             SpellBookLayout.Part.Abort -> closeTheBook()
             SpellBookLayout.Part.Scroll -> turnTo(book.scrolled())
@@ -5068,7 +5073,7 @@ class ViewConeDebugViewModel(
     /** Whether [from] is ready: a hand back from its rest, or a book back from its own. */
     private fun canCastFrom(whose: PartySlot, from: CastFrom): Boolean = when (from) {
         is CastFrom.AScroll -> !_state.value.game.isRecovering(whose, from.hand)
-        is CastFrom.TheBook -> whose !in restingBooks && openBook?.whose == whose && openBook?.let(::stillInHand) == true
+        is CastFrom.TheBook -> whose !in restingBooks && openBook?.whose == whose && openBook?.let(::stillReadable) == true
     }
 
     private fun casterLevel(whose: PartySlot, from: CastFrom): Int = when (from) {
