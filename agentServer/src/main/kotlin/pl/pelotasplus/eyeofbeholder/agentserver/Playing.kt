@@ -480,7 +480,11 @@ internal fun sideStepFrom(seen: JsonObject): String? {
     fun open(face: String, across: Int): Boolean {
         val wall = own[face]?.jsonPrimitive?.content
         if (wall != null && wall != "open door") return false
-        return squares.none { it.at(ahead = 0, across = across) && (it["monsters"] as? JsonArray)?.isNotEmpty() == true }
+        // Not into a square another monster stands beside: ahead of it, or
+        // beyond it. Stepping aside is only worth it out of everybody's reach.
+        return listOf(0 to across, 1 to across, 0 to across * 2).none { (ahead, x) ->
+            squares.any { it.at(ahead = ahead, across = x) && (it["monsters"] as? JsonArray)?.isNotEmpty() == true }
+        }
     }
 
     return when {

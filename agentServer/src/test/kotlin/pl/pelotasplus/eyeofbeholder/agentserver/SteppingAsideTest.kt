@@ -44,4 +44,23 @@ class SteppingAsideTest {
         )
         assertEquals("RIGHT", sideStepFrom(seen))
     }
+
+    @Test
+    fun `a side another monster stands in front of is not stepped to`() {
+        val seen = told(
+            """{"inSight":[{"ahead":0,"across":0},
+            {"ahead":1,"across":0,"monsters":[{"looksLike":"bulette","facing":"towards you","standing":"middle"}]},
+            {"ahead":1,"across":-1,"monsters":[{"looksLike":"bulette","facing":"towards you","standing":"middle"}]}]}""",
+        )
+        assertEquals("RIGHT", sideStepFrom(seen))
+    }
+
+    @Test
+    fun `a side with a monster beyond it is not stepped to`() {
+        val seen = told(
+            """{"inSight":[{"ahead":0,"across":0,"right":"wall"},
+            {"ahead":0,"across":-2,"monsters":[{"looksLike":"bulette","facing":"towards you","standing":"middle"}]}]}""",
+        )
+        assertNull(sideStepFrom(seen))
+    }
 }
