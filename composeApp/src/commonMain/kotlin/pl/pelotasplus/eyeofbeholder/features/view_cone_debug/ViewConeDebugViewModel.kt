@@ -3189,6 +3189,8 @@ class ViewConeDebugViewModel(
                 }
 
                 _state.update { state ->
+                    // an update can be run again, and a blast it threw away is no blast
+                    blasted = emptyList()
                     var world = state.game
                     stoodBefore = state.game.champions
 
