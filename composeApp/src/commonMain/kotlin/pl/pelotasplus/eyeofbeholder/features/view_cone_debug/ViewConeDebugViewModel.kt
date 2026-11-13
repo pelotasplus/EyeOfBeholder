@@ -254,8 +254,15 @@ class ViewConeDebugViewModel(
      *
      * While an agent is playing, the game runs only when it says to wait —
      * see [AgentTime] — and whether anybody is looking does not come into it.
+     * The wait itself is then counted in the agent's time, so a clock does
+     * not fire the moment a wait starts.
      */
     private suspend fun tick(wait: Long) {
+        if (agentTime.driving.value) {
+            agentTime.runFor(wait)
+            return
+        }
+
         delay(wait)
 
         if (agentTime.driving.value) {

@@ -6,6 +6,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withTimeoutOrNull
+import kotlin.time.TimeSource
 
 /**
  * The game's clock while an agent is playing.
@@ -41,6 +43,24 @@ class AgentTime {
     suspend fun mayRun() {
         combine(_driving, running) { driving, waiting -> !driving || waiting }.first { it }
     }
+
+    /**
+     * A clock's wait of [millis], counted only while the game runs: a wait
+     * the agent stops half way through carries on from there at its next one,
+     * so no beat fires early and a wait of the agent's runs no longer than it
+     * said.
+     */
+    suspend fun runFor(millis: Long) {
+        var left = millis
+        while (left > 0) {
+            mayRun()
+            val started = TimeSource.Monotonic.markNow()
+            withTimeoutOrNull(left) { stoodStill.first { it } }
+            left -= started.elapsedNow().inWholeMilliseconds
+        }
+    }
+
+    private val stoodStill = combine(_driving, running) { driving, waiting -> driving && !waiting }
 
     /** The game run for [millis], then stood still again. */
     suspend fun advance(millis: Long) {

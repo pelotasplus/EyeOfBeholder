@@ -48,6 +48,32 @@ class AgentTimeTest {
     }
 
     @Test
+    fun `a clock's wait does not end at the start of the agent's`() = runBlocking {
+        val time = AgentTime().apply { takeOver() }
+        val beat = async { time.runFor(200) }
+        delay(50)
+
+        time.advance(50)
+
+        assertFalse(beat.isCompleted, "a 200 ms wait ended after 50 ms of the game running")
+        beat.cancel()
+    }
+
+    @Test
+    fun `a clock's wait carries on across the agent's waits`() = runBlocking {
+        val time = AgentTime().apply { takeOver() }
+        val beat = async { time.runFor(150) }
+        delay(20)
+
+        time.advance(100)
+        delay(200)
+        assertFalse(beat.isCompleted, "the wait ran on while the game stood still")
+
+        time.advance(100)
+        assertTrue(beat.isCompleted)
+    }
+
+    @Test
     fun `handed back, the game runs again`() = runBlocking {
         val time = AgentTime().apply { takeOver() }
         val beat = async { time.mayRun() }
